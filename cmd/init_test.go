@@ -1,0 +1,256 @@
+package cmd_test
+
+import (
+	"errors"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/appsody/appsody/cmd/cmdtest"
+)
+
+// requires clean dir
+func TestInit(t *testing.T) {
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.RemoveAll(projectDir)
+	log.Println("Created project dir: " + projectDir)
+
+	// appsody init nodejs-express
+	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	appsodyResultsCheck(projectDir, t)
+}
+
+//This test makes sure that no project creation occurred because app.js existed prior to the call
+func TestNoOverwrite(t *testing.T) {
+
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-nooverwrite-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
+
+	appjs := filepath.Join(projectDir, "app.js")
+	packagejson := filepath.Join(projectDir, "package.json")
+	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+
+	defer os.RemoveAll(projectDir)
+	appjsPath := filepath.Join(projectDir, "app.js")
+	_, err = os.Create(appjsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = os.Stat(appjs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// appsody init nodejs-express
+	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+
+	shouldNotExist(appsodyFile, t)
+
+	shouldNotExist(packagejson, t)
+	shouldNotExist(packagejsonlock, t)
+
+}
+
+func shouldNotExist(file string, t *testing.T) {
+	var err error
+	_, err = os.Stat(file)
+	if err == nil {
+		err = errors.New(file + " should not exist without overwrite.")
+
+		t.Fatal(err)
+	}
+}
+
+//This test makes sure that no project creation occurred because app.js existed prior to the call
+func TestOverwrite(t *testing.T) {
+
+	var fileInfoFinal os.FileInfo
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-overwrite-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
+
+	appjs := filepath.Join(projectDir, "app.js")
+	packagejson := filepath.Join(projectDir, "package.json")
+	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+
+	defer os.RemoveAll(projectDir)
+	appjsPath := filepath.Join(projectDir, "app.js")
+	_, err = os.Create(appjsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	//file should be 0 bytes
+	_, err = os.Stat(appjs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// appsody init nodejs-express
+	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "--overwrite"}, projectDir)
+
+	shouldExist(appsodyFile, t)
+
+	shouldExist(packagejson, t)
+
+	shouldExist(packagejsonlock, t)
+
+	fileInfoFinal, err = os.Stat(appjs)
+	if err != nil {
+		err = errors.New(appjs + " should exist with overwrite.")
+
+		t.Fatal(err)
+	}
+
+	if fileInfoFinal.Size() == 0 {
+		err = errors.New(appjs + " should have data.")
+
+		t.Fatal(err)
+	}
+}
+
+//This test makes sure that no files are created except .appsody-config.yaml
+func TestNoStarter(t *testing.T) {
+	var fileInfoFinal os.FileInfo
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-nostarter-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
+
+	appjs := filepath.Join(projectDir, "app.js")
+	packagejson := filepath.Join(projectDir, "package.json")
+	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+
+	defer os.RemoveAll(projectDir)
+	appjsPath := filepath.Join(projectDir, "app.js")
+	// file size should be 0 bytes
+	_, err = os.Create(appjsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	shouldExist(appjs, t)
+
+	// appsody init nodejs-express
+	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "--no-starter"}, projectDir)
+
+	shouldExist(appsodyFile, t)
+
+	shouldNotExist(packagejson, t)
+
+	shouldNotExist(packagejsonlock, t)
+
+	fileInfoFinal, err = os.Stat(appjs)
+	if err != nil {
+		err = errors.New(appjs + " should exist without overwrite.")
+
+		t.Fatal(err)
+	}
+	// if we accidently overwrite the size would be >0
+	if fileInfoFinal.Size() != 0 {
+		err = errors.New(appjs + " should NOT have data.")
+
+		t.Fatal(err)
+	}
+}
+
+// the command should work despite existing artifacts
+func TestWhiteList(t *testing.T) {
+
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-nostarter-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	appjs := filepath.Join(projectDir, "app.js")
+	vscode := filepath.Join(projectDir, ".vscode")
+	project := filepath.Join(projectDir, ".project")
+	cwSet := filepath.Join(projectDir, ".cw-settings")
+	cwExtension := filepath.Join(projectDir, ".cw-extension")
+	packagejson := filepath.Join(projectDir, "package.json")
+	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+	metadata := filepath.Join(projectDir, ".metadata")
+	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
+
+	defer os.RemoveAll(projectDir)
+
+	_, err = os.Create(project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = os.Create(cwSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = os.Create(cwExtension)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.MkdirAll(vscode, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.MkdirAll(metadata, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// appsody init nodejs-express
+	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+
+	shouldExist(appsodyFile, t)
+
+	shouldExist(vscode, t)
+
+	shouldExist(appjs, t)
+
+	shouldExist(packagejson, t)
+
+	shouldExist(packagejsonlock, t)
+
+}
+func shouldExist(file string, t *testing.T) {
+	var err error
+	_, err = os.Stat(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+func appsodyResultsCheck(projectDir string, t *testing.T) {
+
+	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
+
+	appjs := filepath.Join(projectDir, "app.js")
+	packagejson := filepath.Join(projectDir, "package.json")
+	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+
+	shouldExist(appsodyFile, t)
+
+	shouldExist(appjs, t)
+
+	shouldExist(packagejson, t)
+
+	shouldExist(packagejsonlock, t)
+
+}
