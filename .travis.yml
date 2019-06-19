@@ -3,11 +3,6 @@ language: go
 go:
   - 1.12.x
 
-# needed for github enterprise deployment
-env:
-  global:
-    - OCTOKIT_API_ENDPOINT="https://github.com/api/v3"
-
 os:
   - linux
   # travis enterprise doesn't support osx or windows
@@ -20,7 +15,8 @@ services:
   - docker
 # skip because dependencies are baked in vendor dir
 install:
-  - wget https://github.com/appsody/stacks/releases/download/0.0.1/appsody-controller
+  # temporarily the controller is checked into github
+  # - wget https://github.com/appsody/stacks/releases/download/0.0.1/appsody-controller
   - chmod +x appsody-controller
   - mkdir ~/.appsody
   - cp appsody-controller ~/.appsody/

@@ -32,7 +32,7 @@ import (
 )
 
 var (
-	overwrite bool
+	overwrite  bool
 	noTemplate bool
 )
 var whiteListDotDirectories = []string{"github", "vscode", "settings", "metadata"}
