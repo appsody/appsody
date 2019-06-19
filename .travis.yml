@@ -20,7 +20,7 @@ services:
   - docker
 # skip because dependencies are baked in vendor dir
 install:
-  - wget https://github.com/kylegc/nodejs-express-stack/releases/download/0.0.1/appsody-controller
+  - wget https://github.com/appsody/stacks/releases/download/0.0.1/appsody-controller
   - chmod +x appsody-controller
   - mkdir ~/.appsody
   - cp appsody-controller ~/.appsody/

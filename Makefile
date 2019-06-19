@@ -14,7 +14,7 @@ BINARY_EXT_darwin :=
 BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := chilantim/debian-builder
-CONTROLLER_BASE_URL := https://github.com/kylegc/nodejs-express-stack/releases/download/0.0.1
+CONTROLLER_BASE_URL := https://github.com/appsody/stacks/releases/download/0.0.1
 
 #### Dynamic variables. These change depending on the target name.
 # Gets the current os from the target name, e.g. the 'build-linux' target will result in os = 'linux'

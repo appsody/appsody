@@ -33,7 +33,7 @@ import (
 
 var (
 	overwrite bool
-	noStarter bool
+	noTemplate bool
 )
 var whiteListDotDirectories = []string{"github", "vscode", "settings", "metadata"}
 var whiteListDotFiles = []string{"git", "project", "DS_Store", "classpath", "factorypath", "gitattributes", "gitignore", "cw-settings", "cw-extension"}
@@ -41,12 +41,12 @@ var whiteListDotFiles = []string{"git", "project", "DS_Store", "classpath", "fac
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init [stack]",
-	Short: "Initialize an appsody project with a stack and starter app",
+	Short: "Initialize an appsody project with a stack and template app",
 	Long: `This creates a new appsody project in a local directory or sets up the local dev environment of an existing appsody project. 
 
-With the [stack] argument, this command will setup a new appsody project. It will create an appsody stack config file, unzip a starter app, and 
+With the [stack] argument, this command will setup a new appsody project. It will create an appsody stack config file, unzip a template app, and 
 run the stack init script to setup the local dev environment. It is typically run on an empty directory and may fail
-if files already exist. See the --overwrite and --no-starter options for more details.
+if files already exist. See the --overwrite and --no-template options for more details.
 Use 'appsody list' to see the available stack options.
 
 Without the [stack] argument, this command must be run on an existing appsody project and will only run the stack init script to 
@@ -54,7 +54,7 @@ setup the local dev environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var index RepoIndex
 
-		var proceedWithStarter bool
+		var proceedWithTemplate bool
 
 		err := CheckPrereqs()
 		if err != nil {
@@ -92,19 +92,19 @@ setup the local dev environment.`,
 			os.Exit(1)
 		}
 
-		if noStarter || overwrite {
-			proceedWithStarter = true
+		if noTemplate || overwrite {
+			proceedWithTemplate = true
 		} else {
-			proceedWithStarter = isFileLaydownSafe(dir)
+			proceedWithTemplate = isFileLaydownSafe(dir)
 		}
 		// Download and untar
 
-		if !overwrite && !proceedWithStarter {
-			Error.log("Local files exist which may conflict with the starter project. If you wish to proceed, try again with the --overwrite option.")
+		if !overwrite && !proceedWithTemplate {
+			Error.log("Local files exist which may conflict with the template project. If you wish to proceed, try again with the --overwrite option.")
 			os.Exit(1)
 		}
 
-		Info.logf("Downloading %s starter project from %s", projectType, projectName)
+		Info.logf("Downloading %s template project from %s", projectType, projectName)
 		filename := projectType + ".tar.gz"
 
 		err = downloadFile(projectName, filename)
@@ -113,8 +113,8 @@ setup the local dev environment.`,
 			os.Exit(1)
 		}
 		Info.log("Download complete. Extracting files from ", filename)
-		//if noStarter
-		errUntar := untar(filename, noStarter)
+		//if noTemplate
+		errUntar := untar(filename, noTemplate)
 
 		if dryrun {
 			Info.logf("Dry Run - Skipping remove of temporary file for project type: %s project name: %s", projectType, projectName)
@@ -126,7 +126,7 @@ setup the local dev environment.`,
 			Info.log("Successfully initialized ", projectType, " project")
 		}
 		if errUntar != nil {
-			Error.log("Error extracting starter: ", errUntar)
+			Error.log("Error extracting template: ", errUntar)
 			// this leave the tar file in the dir
 			os.Exit(1)
 		}
@@ -137,8 +137,8 @@ setup the local dev environment.`,
 
 func init() {
 	rootCmd.AddCommand(initCmd)
-	initCmd.PersistentFlags().BoolVar(&overwrite, "overwrite", false, "Download and extract the starter project, overwriting existing files.")
-	initCmd.PersistentFlags().BoolVar(&noStarter, "no-starter", false, "Only create the .appsody-config.yaml file. Do not unzip the starter project.")
+	initCmd.PersistentFlags().BoolVar(&overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.")
+	initCmd.PersistentFlags().BoolVar(&noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project.")
 
 }
 
@@ -195,12 +195,12 @@ func downloadFile(url string, destFile string) error {
 	return nil
 }
 
-func untar(file string, noStarter bool) error {
+func untar(file string, noTemplate bool) error {
 
 	if dryrun {
 		Info.log("Dry Run - Skipping untar of file:  ", file)
 	} else {
-		if !overwrite && !noStarter {
+		if !overwrite && !noTemplate {
 			err := preCheckTar(file)
 			if err != nil {
 				return err
@@ -233,7 +233,7 @@ func untar(file string, noStarter bool) error {
 			filename := header.Name
 			Debug.log("Untar creating ", filename)
 
-			if header.Typeflag == tar.TypeDir && !noStarter {
+			if header.Typeflag == tar.TypeDir && !noTemplate {
 				if _, err := os.Stat(filename); err != nil {
 					err := os.MkdirAll(filename, 0755)
 					if err != nil {
@@ -241,7 +241,7 @@ func untar(file string, noStarter bool) error {
 					}
 				}
 			} else if header.Typeflag == tar.TypeReg {
-				if !noStarter || (noStarter && strings.HasSuffix(filename, ".appsody-config.yaml")) {
+				if !noTemplate || (noTemplate && strings.HasSuffix(filename, ".appsody-config.yaml")) {
 
 					f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 					if err != nil {
@@ -340,7 +340,7 @@ func preCheckTar(file string) error {
 				if err == nil {
 					if !fileInfo.IsDir() {
 						preCheckOK = false
-						Warning.log("Conflict: " + header.Name + " exists in the file system and the starter project.")
+						Warning.log("Conflict: " + header.Name + " exists in the file system and the template project.")
 
 					}
 

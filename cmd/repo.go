@@ -64,7 +64,7 @@ type RepositoryEntry struct {
 }
 
 var (
-	appsodyHubURL = "https://github.com/kylegc/nodejs-express-stack/releases/download/0.0.1/index.yaml"
+	appsodyHubURL = "https://github.com/appsody/stacks/releases/download/0.0.1/index.yaml"
 )
 
 // repoCmd represents the repo command

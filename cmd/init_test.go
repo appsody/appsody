@@ -128,10 +128,10 @@ func TestOverwrite(t *testing.T) {
 }
 
 //This test makes sure that no files are created except .appsody-config.yaml
-func TestNoStarter(t *testing.T) {
+func TestNoTemplate(t *testing.T) {
 	var fileInfoFinal os.FileInfo
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-nostarter-test")
+	projectDir, err := ioutil.TempDir("", "appsody-init-notemplate-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestNoStarter(t *testing.T) {
 	shouldExist(appjs, t)
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "--no-starter"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "--no-template"}, projectDir)
 
 	shouldExist(appsodyFile, t)
 
@@ -178,7 +178,7 @@ func TestNoStarter(t *testing.T) {
 func TestWhiteList(t *testing.T) {
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-nostarter-test")
+	projectDir, err := ioutil.TempDir("", "appsody-init-notemplate-test")
 	if err != nil {
 		t.Fatal(err)
 	}
