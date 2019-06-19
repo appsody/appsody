@@ -1,0 +1,3 @@
+home: testdata/multiple_repository_config
+images: index.docker.io
+tektonserver: ""

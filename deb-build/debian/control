@@ -1,0 +1,13 @@
+Source: PACKAGE_NAME
+Section: devel 
+Priority: optional
+Maintainer: Appsody <appsodydev@gmail.com>
+Build-Depends: debhelper (>= 10)
+Standards-Version: 4.1.2
+Homepage: http://appsody.dev
+
+Package: PACKAGE_NAME
+Architecture: amd64
+Depends: ${misc:Depends}
+Description: This is the Debian package for the KapN Command Line Interface
+ This is the package for the KapN CLI. 

@@ -1,0 +1,3 @@
+home: testdata/empty_repository_config
+images: index.docker.io
+tektonserver: ""
