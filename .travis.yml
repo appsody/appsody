@@ -1,41 +1,29 @@
 language: go
-
 go:
-  - 1.12.x
-
+- 1.12.x
 os:
-  - linux
-  # travis enterprise doesn't support osx or windows
-  # - osx
-  # - windows
-
+- linux
 go_import_path: github.com/appsody/appsody
-
 services:
-  - docker
-# skip because dependencies are baked in vendor dir
+- docker
 install:
-  # temporarily the controller is checked into github
-  # - wget https://github.com/appsody/stacks/releases/download/0.0.1/appsody-controller
-  - chmod +x appsody-controller
-  - mkdir ~/.appsody
-  - cp appsody-controller ~/.appsody/
-
+- chmod +x appsody-controller
+- mkdir ~/.appsody
+- cp appsody-controller ~/.appsody/
 script:
-  - make lint
-  - make test
-
-
-# note before_deploy will run before each deploy provider
+- make lint
+- make test
 before_deploy:
-  - make VERSION=${TRAVIS_TAG}  package
-
+- make VERSION=${TRAVIS_TAG}  package
 deploy:
   provider: releases
   skip_cleanup: true
   api_key:
-    secure: "C6jbd+u362UXYRY1JbtwUDPVKV35geznR3JUiKuXpccNnaeKRvBizp+UBBYC9+CUv1cZ01wWJQBHKOnI4qu5IK+EEMk38Lc5gRNWmQVoDA6uKZiVoKF1e/3ALeUBlZWHuTXJWX8Dg81dGuilZ3/o19yZ1Np0rZegiG/o+w2GKAqRnXT1vHBioSAr4eDf0HxG8CTzNuK78FGtoRNbpA4THg+lmzwVuZLcVcRoYQljpGoSKS2N8Kr4mY5Jx98t2WvTtSrUjLPXITE0DSaPQPkaCaCPopOzLLWySH4hR9yD5kHUoeoBj+uuyPsRkf0ZGBIzOaIreyDpLi3mwoNCLuwBI0cXhU7aq3fXVKaNT16MRdHfmPUfkW5JvI0fpwBHmctt4qJ2gEYbhZ8MCTK2frsVqRNXskzjpEquDYtkZw1TCaUbRlzUwWNkqQhOMh5sp21kdPP7INqt3hagMiKbse4erYpFCuwjxi+aaS2Rye6kLV+RFVv698NN8AMM3pC01DXgyAmpY/FzozgNiqYMPgeD8DmJ4RY+OnSFw3xVHyYD2yx0UnaeD+HJ10lX4+Rt5y/sGoS9Uc5Wcd+kWBawEsgduM/fS2lz1/TVYSwTbmjBmIljNlFPDbfrsrV2VZXMUlfKpiN2SZ2mdRoEDuo23dI+8Xskdu+2a5ixk/JCT25RccY="
+    secure: C6jbd+u362UXYRY1JbtwUDPVKV35geznR3JUiKuXpccNnaeKRvBizp+UBBYC9+CUv1cZ01wWJQBHKOnI4qu5IK+EEMk38Lc5gRNWmQVoDA6uKZiVoKF1e/3ALeUBlZWHuTXJWX8Dg81dGuilZ3/o19yZ1Np0rZegiG/o+w2GKAqRnXT1vHBioSAr4eDf0HxG8CTzNuK78FGtoRNbpA4THg+lmzwVuZLcVcRoYQljpGoSKS2N8Kr4mY5Jx98t2WvTtSrUjLPXITE0DSaPQPkaCaCPopOzLLWySH4hR9yD5kHUoeoBj+uuyPsRkf0ZGBIzOaIreyDpLi3mwoNCLuwBI0cXhU7aq3fXVKaNT16MRdHfmPUfkW5JvI0fpwBHmctt4qJ2gEYbhZ8MCTK2frsVqRNXskzjpEquDYtkZw1TCaUbRlzUwWNkqQhOMh5sp21kdPP7INqt3hagMiKbse4erYpFCuwjxi+aaS2Rye6kLV+RFVv698NN8AMM3pC01DXgyAmpY/FzozgNiqYMPgeD8DmJ4RY+OnSFw3xVHyYD2yx0UnaeD+HJ10lX4+Rt5y/sGoS9Uc5Wcd+kWBawEsgduM/fS2lz1/TVYSwTbmjBmIljNlFPDbfrsrV2VZXMUlfKpiN2SZ2mdRoEDuo23dI+8Xskdu+2a5ixk/JCT25RccY=
   file: package/*
   file_glob: true
   on:
     tags: true
+env:
+  global:
+    secure: bFnhPhfcDRSbqVLkaI1o6fL+uI116RATZD+S2NQvuMpi29FsE+MhrOhP4R+494GE1g4duJRA5n71cH+ZD/UlO531U/B9iwQOzu0Lsezdr+aIO/Acf5hA5ndaWAUGtkK0nAKxi1sweu9Pcdty5oYidRP/edNrBU8Ftm7ukbTj7Tth/1R5CJNuVAM1JT1ojbcK+EbKZRkviIi7ON04F+287q3bcjmSjHPsMXN51dH61eXqPoGTO25DEr0LUXrN12v9A0uvSyoUDwZ6iXydwiLhqis7dpK+N75EIojQbKwqGIgrHr/b79XDE6s0DtAMpuqaoL5qmjJpuWmEpH9fyaimhojkV+fproWgXW/zf/4uDBxybl3c/YG+IL72GqYjA72ModZxvzU94iQQPi8tfHNzjBKHNJHMRcwkZd/rJSfbT4EYgafQd8RSw+wxk0SNRI/fOTQca1WXPH9SjiWKFhvOdG4S86mSqXzWPy/+in/nNT1r9tYdMn0zlgBsrf69xe7MmeUg8gZnogjISKpipj52yp72vctQiUbtjU0fvYeYUX9392Ywx/8Xf/il9xHf8Lvbhvo321pqP0wI/PBel8ZhIfXsvuN5fMkCSLy3j7npDaiJpV8p3GJs4f4sLmAiRXHFThcC72CuP8GWCS0QtjrMc8N4jNlF0aMEZbtrxe5lx4c=
