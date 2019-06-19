@@ -153,6 +153,9 @@ func getVolumeArgs() []string {
 			mappedMount = filepath.Join(projectDir, mount)
 			overridden = projectDirOverridden
 		}
+		// mappedMount contains local and container (linux) paths. When on windows, the Join above replaces all '/' with '\' and
+		// breaks the linux paths. This method is to always use '/' because windows docker tolerates this.
+		mappedMount = filepath.ToSlash(mappedMount)
 
 		if !overridden && !mountExistsLocally(mappedMount) {
 			Warning.log("Could not mount ", mappedMount, " because the local file was not found.")
