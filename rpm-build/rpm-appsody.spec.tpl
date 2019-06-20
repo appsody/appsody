@@ -6,7 +6,7 @@ Summary: PACKAGE_NAME CLI RPM
 Name: PACKAGE_NAME
 Version: PACKAGE_VERSION
 Release: 1
-License: GPL
+License: ASL 2.0
 URL: http://appsody.dev
 Group: System
 Packager: Michele Chilanti

@@ -10,7 +10,8 @@ echo $VERSION
 cp appsody-formula-template.rb ./$2.rb
 wget $3/$2-controller
 cp ../$2 .
-tar -cvzf $FILE_PREFIX-$VERSION.tar.gz $2 $2-controller
+cp ../LICENSE .
+tar -cvzf $FILE_PREFIX-$VERSION.tar.gz $2 $2-controller LICENSE
 SHA_256=`shasum -a 256 $FILE_PREFIX-$VERSION.tar.gz | cut -c -64`
 if [[ "$OSTYPE" == "darwin"* ]]; then
 echo "FOR LOCAL DEBUG ONLY..."
