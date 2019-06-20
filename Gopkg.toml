@@ -55,3 +55,11 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/cpuguy83/go-md2man"
+  version = "1.0.10"
+
+[[constraint]]
+  name = "github.com/russross/blackfriday"
+  version = "1.5.2"
