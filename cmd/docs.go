@@ -14,11 +14,58 @@
 package cmd
 
 import (
+	"errors"
 	"os"
+	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 	flag "github.com/spf13/pflag"
 )
+
+//generate Doc file (.md) for cmds in package
+
+func generateDoc(commandDocFile string) error {
+
+	if commandDocFile == "" {
+		return errors.New("no docFile specified")
+	}
+	dir := filepath.Dir(commandDocFile)
+
+	if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
+		mkdirErr := os.MkdirAll(dir, 0755)
+		if mkdirErr != nil {
+			Error.log("Could not create doc file directory: ", mkdirErr)
+			return mkdirErr
+		}
+	}
+	docFile, createErr := os.Create(commandDocFile)
+	if createErr != nil {
+		Error.log("Could not create doc file (.md): ", createErr)
+		return createErr
+	}
+
+	defer docFile.Close()
+	linkHandler := func(name string) string {
+		base := strings.TrimSuffix(name, path.Ext(name))
+		newbase := strings.ReplaceAll(base, "_", "-")
+		return "#" + newbase
+	}
+	commandArray := []*cobra.Command{rootCmd, buildCmd, bashCompletionCmd, debugCmd, deployCmd, extractCmd, initCmd, listCmd, repoCmd, addCmd, repoListCmd, removeCmd, runCmd, stopCmd, testCmd, versionCmd}
+	for _, cmd := range commandArray {
+
+		markdownGenErr := doc.GenMarkdownCustom(cmd, docFile, linkHandler)
+
+		if markdownGenErr != nil {
+			Error.log("Doc file generation failed: ", markdownGenErr)
+			return markdownGenErr
+		}
+	}
+	return nil
+
+}
 
 // docs command is used to generate markdown file for all the appsody commands
 var docsCmd = &cobra.Command{
@@ -27,7 +74,7 @@ var docsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		Debug.log("Running appsody docs command.")
-		err := GenerateDoc(docFile)
+		err := generateDoc(docFile)
 		if err != nil {
 			Error.log("appsody docs command failed with error: ", err)
 			os.Exit(1)

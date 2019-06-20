@@ -86,5 +86,4 @@ var setupCmd = &cobra.Command{
 
 func init() {
 	buildCmd.AddCommand(setupCmd)
-	// disable this command until we have a better plan on how to support ci pipelines
 }
