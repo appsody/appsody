@@ -349,6 +349,7 @@ func getExposedPorts() []string {
 
 //GenKnativeYaml generates a simple yaml for KNative serving
 func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, deployImage string) (fileName string, yamlErr error) {
+	// KNative serving YAML representation in a struct
 	type Y struct {
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
@@ -372,7 +373,8 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 			} `yaml:"runLatest"`
 		} `yaml:"spec"`
 	}
-
+	const YamlFilePrefix = "appsody"
+	const YamlFileSuffix = "service"
 	yamlMap := Y{}
 	err := yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
 	//Set the name
@@ -426,7 +428,8 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 		Error.log("Error getting current directory ", err)
 		return "", err
 	}
-	yamlFilePrefix := serviceName + "-*-knative.yaml"
+	// Generate a file name appsody-service-xxxxx.yaml
+	yamlFilePrefix := YamlFilePrefix + "-" + YamlFileSuffix + "-*.yaml"
 	if dryrun {
 		Info.log("Skipping creation of yaml file with prefix: ", yamlFilePrefix)
 		return yamlFilePrefix, nil
