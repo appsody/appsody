@@ -3,6 +3,8 @@ set -e
 cd $(dirname "$0")
 VERSION=$4
 FILE_PREFIX="appsody-homebrew"
+REPO_NAME=${TRAVIS_REPO_SLUG}
+RELEASE_TAG=${TRAVIS_TAG}
 echo $VERSION
 
 cp appsody-formula-template.rb ./$2.rb
@@ -15,11 +17,15 @@ echo "FOR LOCAL DEBUG ONLY..."
 sed -i "" "s/VERSION_NUMBER/$VERSION/g" $2.rb
 sed -i "" "s/SHA_256/$SHA_256/g" $2.rb
 sed -i "" "s/FILE_PREFIX/$FILE_PREFIX/g" $2.rb
+sed -i "" "s!REPO_NAME!$REPO_NAME!g" $2.rb
+sed -i "" "s!RELEASE_TAG!$RELEASE_TAG!g" $2.rb
 else
 echo "Travis only..."
 sed -i "s/VERSION_NUMBER/$VERSION/g" $2.rb
 sed -i "s/SHA_256/$SHA_256/g" $2.rb
-sed -i "s/FILE_PREFIX/$FILE_PREFIX/g" $2.rb    
+sed -i "s/FILE_PREFIX/$FILE_PREFIX/g" $2.rb
+sed -i "s!REPO_NAME!$REPO_NAME!g" $2.rb
+sed -i "s!RELEASE_TAG!$RELEASE_TAG!g" $2.rb   
 fi
 
 mv $FILE_PREFIX-$VERSION.tar.gz $1/
