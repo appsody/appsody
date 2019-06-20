@@ -21,11 +21,14 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
@@ -705,4 +708,43 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 		}
 	}
 	return err
+}
+
+//Generate Doc file (.md) for cmds in package
+
+func GenerateDoc(commandDocFile string) error {
+
+	dir := filepath.Dir(commandDocFile)
+
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0755)
+		if err != nil {
+			Error.log("Could not create doc file directory: ", err)
+			return err
+		}
+	}
+	f, err := os.Create(commandDocFile)
+	if err != nil {
+		Error.log("Could not create doc file (.md): ", err)
+		return err
+	}
+
+	defer f.Close()
+	linkHandler := func(name string) string {
+		base := strings.TrimSuffix(name, path.Ext(name))
+		newbase := strings.ReplaceAll(base, "_", "-")
+		return "#" + newbase
+	}
+	commandArray := []*cobra.Command{rootCmd, buildCmd, bashCompletionCmd, debugCmd, deployCmd, extractCmd, initCmd, listCmd, repoCmd, addCmd, repoListCmd, removeCmd, runCmd, stopCmd, testCmd, versionCmd}
+	for _, cmd := range commandArray {
+
+		err = doc.GenMarkdownCustom(cmd, f, linkHandler)
+
+		if err != nil {
+			Error.log("Doc file generation failed: ", err)
+			break
+		}
+	}
+	return err
+
 }

@@ -26,9 +26,11 @@ import (
 
 // deleteCmd provides the ability to delete a GitHook for a Tekton build pipeline
 var deleteCmd = &cobra.Command{
-	Use:   "delete",
-	Short: "Delete a Githook and build pipeline for your Appsody project",
-	Long:  `This allows you to delete a Githook for your Appsody project.`,
+	Use: "delete",
+	// disable this command until we have a better plan on how to support ci pipelines
+	Hidden: true,
+	Short:  "Delete a Githook and build pipeline for your Appsody project",
+	Long:   `This allows you to delete a Githook for your Appsody project.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		projectDir := getProjectDir()
 		projectName := filepath.Base(projectDir)
@@ -70,5 +72,5 @@ var deleteCmd = &cobra.Command{
 func init() {
 	buildCmd.AddCommand(deleteCmd)
 	// disable this command until we have a better plan on how to support ci pipelines
-	buildCmd.RemoveCommand(deleteCmd)
+
 }

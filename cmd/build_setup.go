@@ -27,9 +27,11 @@ import (
 
 // setupCmd allows you to setup a GitHook to drive a Tekton build pipeline for the Appsodys project in Git
 var setupCmd = &cobra.Command{
-	Use:   "setup",
-	Short: "Setup a Githook and build pipeline for your Appsody project",
-	Long:  `This allows you to register a Githook for your Appsody project.`,
+	Use: "setup",
+	// disable this command until we have a better plan on how to support ci pipelines
+	Hidden: true,
+	Short:  "Setup a Githook and build pipeline for your Appsody project",
+	Long:   `This allows you to register a Githook for your Appsody project.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// TODO: should we dynamically pick up the Git URL from the .git in the project?
@@ -85,5 +87,4 @@ var setupCmd = &cobra.Command{
 func init() {
 	buildCmd.AddCommand(setupCmd)
 	// disable this command until we have a better plan on how to support ci pipelines
-	buildCmd.RemoveCommand(setupCmd)
 }
