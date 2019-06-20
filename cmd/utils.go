@@ -714,22 +714,25 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 
 func GenerateDoc(commandDocFile string) error {
 
+	if commandDocFile == "" {
+		return errors.New("No docFile specified.")
+	}
 	dir := filepath.Dir(commandDocFile)
 
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0755)
-		if err != nil {
-			Error.log("Could not create doc file directory: ", err)
-			return err
+	if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
+		mkdirErr := os.MkdirAll(dir, 0755)
+		if mkdirErr != nil {
+			Error.log("Could not create doc file directory: ", mkdirErr)
+			return mkdirErr
 		}
 	}
-	f, err := os.Create(commandDocFile)
-	if err != nil {
-		Error.log("Could not create doc file (.md): ", err)
-		return err
+	docFile, createErr := os.Create(commandDocFile)
+	if createErr != nil {
+		Error.log("Could not create doc file (.md): ", createErr)
+		return createErr
 	}
 
-	defer f.Close()
+	defer docFile.Close()
 	linkHandler := func(name string) string {
 		base := strings.TrimSuffix(name, path.Ext(name))
 		newbase := strings.ReplaceAll(base, "_", "-")
@@ -738,13 +741,13 @@ func GenerateDoc(commandDocFile string) error {
 	commandArray := []*cobra.Command{rootCmd, buildCmd, bashCompletionCmd, debugCmd, deployCmd, extractCmd, initCmd, listCmd, repoCmd, addCmd, repoListCmd, removeCmd, runCmd, stopCmd, testCmd, versionCmd}
 	for _, cmd := range commandArray {
 
-		err = doc.GenMarkdownCustom(cmd, f, linkHandler)
+		markdownGenErr := doc.GenMarkdownCustom(cmd, docFile, linkHandler)
 
-		if err != nil {
-			Error.log("Doc file generation failed: ", err)
-			break
+		if markdownGenErr != nil {
+			Error.log("Doc file generation failed: ", markdownGenErr)
+			return markdownGenErr
 		}
 	}
-	return err
+	return nil
 
 }

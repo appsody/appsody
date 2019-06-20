@@ -14,24 +14,28 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
 )
 
-// debug Cmd represents the debug command
+// docs command is used to generate markdown file for all the appsody commands
 var docsCmd = &cobra.Command{
 	Use:    "docs",
 	Hidden: true,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		Info.log("Running appsody docs command.")
+		Debug.log("Running appsody docs command.")
 		err := GenerateDoc(docFile)
 		if err != nil {
-			Error.log("docs command failed with error: ", err)
+			Error.log("appsody docs command failed with error: ", err)
+			os.Exit(1)
 		}
-		Info.log("appsocy docs command completed successfully.")
+		Debug.log("appsody docs command completed successfully.")
 	},
 }
+
 var docFile string
 
 func init() {
