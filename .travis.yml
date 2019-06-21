@@ -29,6 +29,7 @@ script:
 # note before_deploy will run before each deploy provider
 before_deploy:
   - make VERSION=${TRAVIS_TAG}  package
+  - make deploy
 
 deploy:
   provider: releases

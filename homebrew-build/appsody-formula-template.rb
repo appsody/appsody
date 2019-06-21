@@ -2,7 +2,7 @@ class Appsody < Formula
     desc "Appsody command-line interface"
     homepage "https://github.com/appsody/appsody#readme"
     version "VERSION_NUMBER"
-    url "https://github.com/REPO_NAME/releases/RELEASE_TAG/FILE_PREFIX-VERSION_NUMBER.tar.gz" 
+    url "https://github.com/REPO_NAME/releases/download/RELEASE_TAG/FILE_PREFIX-VERSION_NUMBER.tar.gz" 
     sha256 "SHA_256"
   #  url "https://github.com/appsody/appsody/archive/master.zip",
   #      :tag      => "master"
