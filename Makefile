@@ -117,6 +117,11 @@ rpm-linux: build-linux ## Build the linux binary and package it as a .rpm for Re
 	rpm-build/build-rpm.sh $(package_binary) $(DOCKER_IMAGE_RPM) $(PACKAGE_PATH) $(CONTROLLER_BASE_URL) $(VERSION)
 	rm -f $(package_binary)	
 
+.PHONY: deploy
+deploy: ## Publishes the formula
+	
+
+
 
 # Auto documented help from http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 .PHONY: help
