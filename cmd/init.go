@@ -368,7 +368,7 @@ func extractAndInitialize() error {
 	//We run it only if there is an initialization script to run locally
 	//Checking if the script is present on the image
 	stackImage := getProjectConfig().Platform
-	bashCmd := "find / -type f -name " + scriptFileName
+	bashCmd := "find /project -type f -name " + scriptFileName
 	cmdOptions := []string{"--rm"}
 	Debug.log("Attempting to run ", bashCmd, " on image ", stackImage, " with options: ", cmdOptions)
 	//DockerRunBashCmd has a pullImage call

@@ -19,7 +19,6 @@ import (
 
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -100,23 +99,8 @@ in preparation to build the final docker image.`,
 
 		dockerPullImage(stackImage)
 		cmdArgs := []string{"--rm", "--name", extractContainerName}
-		bashCmd := "if [ -f /project/Dockerfile ]; then echo \"/project/Dockerfile\"; else find / -type f -name Dockerfile; fi"
-		Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
 
-		var dockerFindOut string
-		if dockerFindOut, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd); err != nil {
-			Error.log("Could not execute ", bashCmd, " on the stack image: ", stackImage)
-			os.Exit(1)
-		}
-
-		if dockerFindOut == "" {
-			Error.log("Could not find file \"Dockerfile\" in the stack image. Ensure you are using a proper appsody project.")
-			os.Exit(1)
-		}
-		Debug.log("Output of docker find: ", dockerFindOut)
-		dockerFindOut = strings.Split(dockerFindOut, "\n")[0]
-
-		containerProjectDir := filepath.Dir(dockerFindOut)
+		containerProjectDir := "/project"
 		Debug.log("Container project dir: ", containerProjectDir)
 		volumeMaps := getVolumeArgs()
 		cmdName := "docker"
@@ -144,7 +128,7 @@ in preparation to build the final docker image.`,
 			// and navigate all the symlinks using cp -rL
 			// then extract /tmp/project and remove the container
 
-			bashCmd = "cp -rfL " + filepath.ToSlash(containerProjectDir) + " " + filepath.ToSlash(filepath.Join("/tmp", containerProjectDir))
+			bashCmd := "cp -rfL " + filepath.ToSlash(containerProjectDir) + " " + filepath.ToSlash(filepath.Join("/tmp", containerProjectDir))
 
 			Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
 			_, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd)
