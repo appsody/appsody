@@ -117,11 +117,12 @@ type appsodylogger string
 
 // define the logging levels
 var (
-	Info      appsodylogger = "Info"
-	Warning   appsodylogger = "Warning"
-	Error     appsodylogger = "Error"
-	Debug     appsodylogger = "Debug"
-	Container appsodylogger = "Container"
+	Info       appsodylogger = "Info"
+	Warning    appsodylogger = "Warning"
+	Error      appsodylogger = "Error"
+	Debug      appsodylogger = "Debug"
+	Container  appsodylogger = "Container"
+	InitScript appsodylogger = "InitScript"
 )
 
 func (l appsodylogger) log(args ...interface{}) {

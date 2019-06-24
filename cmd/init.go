@@ -27,6 +27,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -152,9 +153,13 @@ func install() {
 
 	err := extractAndInitialize()
 	if err != nil {
-		Error.logf("Stack init script failed: %v\nTo try again, run `appsody init` with no arguments.", err)
+		// For some reason without this sleep, the [InitScript] output log would get cut off and
+		// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
+		time.Sleep(100 * time.Millisecond)
+		Warning.log("The stack init script failed: ", err)
+		Warning.log("Your local IDE may not build properly, but the Appsody container should still work.")
+		Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
 	}
-
 }
 
 func downloadFile(url string, destFile string) error {
@@ -374,12 +379,12 @@ func extractAndInitialize() error {
 	//DockerRunBashCmd has a pullImage call
 	scriptFindOut, err := DockerRunBashCmd(cmdOptions, stackImage, bashCmd)
 	if err != nil {
-		Error.log("Failed to run the find command for the ", scriptFileName, " on the stack image: ", stackImage)
-		os.Exit(1)
+		Debug.log("Failed to run the find command for the ", scriptFileName, " on the stack image: ", stackImage)
+		return fmt.Errorf("Failed to run the docker find command: %s", err)
 	}
 
 	if scriptFindOut == "" {
-		Debug.log("There is no initialization script in the image - skipping extract")
+		Debug.log("There is no initialization script in the image - skipping extract and initialize")
 		return nil
 	}
 
@@ -391,8 +396,7 @@ func extractAndInitialize() error {
 		if workdirExists && err == nil {
 			err = os.RemoveAll(workdir)
 			if err != nil {
-				Error.log("Could not remove working dir ", err)
-				return err
+				return fmt.Errorf("Could not remove temp dir %s  %s", workdir, err)
 			}
 		}
 		// set the --target-dir flag for extract
@@ -408,14 +412,17 @@ func extractAndInitialize() error {
 
 	if scriptExists && err == nil { // if it doesn't exist, don't run it
 		Debug.log("Running appsody_init script ", scriptFile)
-		execAndWaitWithWorkDir(scriptFile, nil, Info, workdir)
+		err = execAndWaitWithWorkDirReturnErr(scriptFile, nil, InitScript, workdir)
+		if err != nil {
+			return err
+		}
 	}
 
 	if !dryrun {
 		Debug.log("Removing ", workdir)
 		err = os.RemoveAll(workdir)
 		if err != nil {
-			Error.log("Could not remove working dir ", err)
+			return fmt.Errorf("Could not remove temp dir %s  %s", workdir, err)
 		}
 	}
 
