@@ -117,9 +117,21 @@ rpm-linux: build-linux ## Build the linux binary and package it as a .rpm for Re
 	rpm-build/build-rpm.sh $(package_binary) $(DOCKER_IMAGE_RPM) $(PACKAGE_PATH) $(CONTROLLER_BASE_URL) $(VERSION)
 	rm -f $(package_binary)	
 
+
+.PHONY: build-docs
+build-docs:
+        # make docs md file
+        mkdir my-project
+        cd my-project
+        pwd
+        ls
+        go run main.go docs --docFile $(BUILD_PATH)/cli-commands.md
+        cd ..
+        rm -rf my-project
 .PHONY: deploy
 deploy: ## Publishes the formula
 	./deploy-build/deploy.sh
+	./deploy-docs/deploy.sh
 
 
 
