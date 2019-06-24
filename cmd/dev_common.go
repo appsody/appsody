@@ -116,7 +116,11 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 					os.Exit(1)
 				}
 				// Making the controller executable in case CopyFile loses permissions
-				os.Chmod(destController, 0755)
+				chmodErr := os.Chmod(destController, 0755)
+				if chmodErr != nil {
+					Error.log("Cannot make the controller  executable - exiting: ", chmodErr)
+					os.Exit(1)
+				}
 			}
 		}
 	}
