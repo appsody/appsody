@@ -40,7 +40,7 @@ var whiteListDotFiles = []string{"git", "project", "DS_Store", "classpath", "fac
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
-	Use:   "init [stack]",
+	Use:   "init <stack>",
 	Short: "Initialize an Appsody project with a stack and template app",
 	Long: `This creates a new Appsody project in a local directory or sets up the local dev environment of an existing Appsody project. 
 
