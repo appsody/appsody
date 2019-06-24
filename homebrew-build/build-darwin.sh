@@ -9,6 +9,7 @@ echo $VERSION
 
 cp appsody-formula-template.rb ./$2.rb
 wget $3/$2-controller
+chmod 755 $2-controller
 cp ../$2 .
 cp ../LICENSE .
 tar -cvzf $FILE_PREFIX-$VERSION.tar.gz $2 $2-controller LICENSE
