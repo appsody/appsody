@@ -39,6 +39,7 @@ var whiteListDotDirectories = []string{"github", "vscode", "settings", "metadata
 var whiteListDotFiles = []string{"git", "project", "DS_Store", "classpath", "factorypath", "gitattributes", "gitignore", "cw-settings", "cw-extension"}
 
 // initCmd represents the init command
+
 var initCmd = &cobra.Command{
 	Use:   "init [stack]",
 	Short: "Initialize an Appsody project with a stack and template app",
