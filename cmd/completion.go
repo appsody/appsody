@@ -27,7 +27,6 @@ var bashCompletionCmd = &cobra.Command{
 	Short: "Generates bash tab completions",
 	Long: `Outputs a bash completion script for appsody to stdout.  Bash completion is optionally available for your convenience. It helps you fill out appsody commands when you type the [TAB] key. 
 
-	
 	To install on macOs
 	1. brew install bash-completion
 	2. Make sure to update your ~/.bash_profile as instructed
@@ -48,7 +47,7 @@ var bashCompletionCmd = &cobra.Command{
 		// We need to use real spaces because .GenBashCompletion does and formatting requires it
 		spaceTab := "    "
 		afterAppsodyDevInit := strings.Split(output, "_appsody_init()")
-		header := "# Outputs a bash completion script for appsody to stdout.\n" +
+		header := "# Outputs a bash completion script for appsody to stdout. " +
 			"Bash completion is optionally available for your convenience. It helps you fill out appsody commands when you type the [TAB] key.\n" +
 			"# To install on Linux\n" +
 			"# 1. On a current Linux OS (in a non-minimal installation), bash completion should be available.\n" +
