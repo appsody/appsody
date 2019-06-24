@@ -18,7 +18,7 @@ import "github.com/spf13/cobra"
 // debug Cmd represents the debug command
 var debugCmd = &cobra.Command{
 	Use:   "debug",
-	Short: "Run the local appsody environment in debug mode",
+	Short: "Run the local Appsody environment in debug mode",
 	Long:  `This starts a docker based continuous build environment for your project with debugging enabled.`,
 	Run: func(cmd *cobra.Command, args []string) {
 

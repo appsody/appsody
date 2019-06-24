@@ -48,6 +48,15 @@ func generateDoc(commandDocFile string) error {
 	}
 
 	defer docFile.Close()
+
+	preAmble := "---\ntitle: Appsody CLI Reference\npath: /docs/using-appsody/cli-commands\nsection: Using Appsody\n---\n"
+	preAmbleBytes := []byte(preAmble)
+	_, preambleErr := docFile.Write(preAmbleBytes)
+	if preambleErr != nil {
+		Error.log("Could not write to markdown file:", preambleErr)
+		return preambleErr
+	}
+
 	linkHandler := func(name string) string {
 		base := strings.TrimSuffix(name, path.Ext(name))
 		newbase := strings.ReplaceAll(base, "_", "-")

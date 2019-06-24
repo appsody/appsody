@@ -41,9 +41,9 @@ func homeDir() string {
 var rootCmd = &cobra.Command{
 	Use:   "appsody",
 	Short: "Appsody CLI",
-	Long: `A client CLI to enable the rapid development of cloud native applications.
+	Long: `The Appsody command-line tool (CLI) enables the rapid development of cloud native applications.
 
-Complete documentation is available at http://appsody.dev`,
+Complete documentation is available at https://appsody.dev`,
 	//Run: no run action for the root command
 }
 
