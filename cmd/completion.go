@@ -27,14 +27,17 @@ var bashCompletionCmd = &cobra.Command{
 	Short: "Generates bash tab completions",
 	Long: `Running the completion command:
 	Command line completion automatically fills in partially typed commands.  This functionality can be added for appsody commands by doing the following:
-	
+
 	appsody completion > "your-directory"/appsody  
-	Linux
 	
-	1. On a current Linux OS (in a non-minimal installation), bash completion should be available.  
-	2. Place the completion script generated above in your Linux bash completions directory, e.g. /etc/bash_completion.d/. 
+	To install on Linux
+	1. On a current Linux OS (in a non-minimal installation), bash completion should be available. 
+	2. For Debian see the following link for more information:  https://debian-administration.org/article/316/An_introduction_to_bash_completion_part_1 
+	3. Make sure to copy the appsody completion file generated above into the appropriate directory for your Linux distribution e.g.
+	appsody completion > <your-directory>/appsody
+	The <your-directory> could be /etc/bash_completion.d or the output file can be saved in user local directory and sourced from ~/.bashrc file as well.
 	
-	macOs
+	To install on macOs
 	1. Install bash completions if need be with brew or MacPorts  
 	2. Make sure to update your ~/.bash_profile as instructed  
 	3. Put the output of 'appsody completion' into your bash completions directory e.g. /usr/local/etc/bash_completion.d/  
