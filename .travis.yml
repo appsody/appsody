@@ -39,4 +39,4 @@ deploy:
   file_glob: true
   on:
     tags: true
-    repo: appsody/appsody
+   
