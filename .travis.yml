@@ -15,7 +15,7 @@ services:
   - docker
 
 install:
-  - wget https://github.com/kewegner/controller/releases/download/0.2.3/appsody-controller
+  - wget https://github.com/kewegner/controller/releases/download/0.2.4/appsody-controller
   - chmod +x appsody-controller
   - mkdir ~/.appsody
   - cp appsody-controller ~/.appsody/
