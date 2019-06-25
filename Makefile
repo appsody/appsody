@@ -120,12 +120,9 @@ rpm-linux: build-linux ## Build the linux binary and package it as a .rpm for Re
 
 .PHONY: build-docs
 build-docs:
-        # make docs md file
+		# make docs md file
 		mkdir my-project
-		cd my-project
-		pwd
-		ls
-		go run main.go docs --docFile $(BUILD_PATH)/cli-commands.md
+		cd my-project && go run ../main.go docs --docFile $(BUILD_PATH)/cli-commands.md
 		cd ..
 		rm -rf my-project
 .PHONY: deploy
