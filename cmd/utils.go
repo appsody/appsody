@@ -348,7 +348,7 @@ func getExposedPorts() []string {
 }
 
 //GenKnativeYaml generates a simple yaml for KNative serving
-func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, deployImage string) (fileName string, yamlErr error) {
+func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, deployImage string, pullImage bool) (fileName string, yamlErr error) {
 	// KNative serving YAML representation in a struct
 	type Y struct {
 		APIVersion string `yaml:"apiVersion"`
@@ -381,6 +381,10 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 	yamlMap.Metadata.Name = serviceName
 	//Set the image
 	yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Image = deployImage
+	//Set the image pull policy to Never if we're not pushing an image to a registry
+	if (pullImage == false) {
+		yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.ImagePullPolicy = "Never"
+	}
 	//Set the containerPort
 	ports := yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Ports
 	if len(ports) > 1 {
@@ -470,7 +474,7 @@ spec:
         spec:
           container:
             image: myimage
-            imagePullPolicy: Always
+            imagePullPolicy: IfNotPresent 
             ports:
             - containerPort: 8080
 `
