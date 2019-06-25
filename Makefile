@@ -128,7 +128,7 @@ build-docs:
 .PHONY: deploy
 deploy: ## Publishes the formula
 	./deploy-build/deploy.sh
-	./deploy-docs/deploy.sh
+	./docs-build/deploy.sh
 
 
 
