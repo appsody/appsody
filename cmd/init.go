@@ -27,6 +27,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -63,76 +64,74 @@ setup the local dev environment.`,
 		}
 
 		index.getIndex()
-		if len(args) < 1 {
-			install()
-			os.Exit(1)
+		if len(args) >= 1 {
 
-		}
+			projectType := args[0]
 
-		projectType := args[0]
-
-		if len(index.Projects[projectType]) < 1 {
-			Error.logf("Could not find a stack with the name %s. Run `appsody list` to see the available stacks or -h for help.", projectType)
-			os.Exit(1)
-		}
-		var projectName = index.Projects[projectType][0].URLs[0]
-
-		Info.log("Running appsody init...")
-
-		// 1. Check for empty directory
-		dir, err := os.Getwd()
-		if err != nil {
-			Error.log("Error getting current directory ", err)
-			os.Exit(1)
-		}
-		appsodyConfigFile := filepath.Join(dir, ".appsody-config.yaml")
-
-		_, err = os.Stat(appsodyConfigFile)
-		if err == nil {
-			Error.log("Cannot run appsody init <stack> on an existing appsody project.")
-			os.Exit(1)
-		}
-
-		if noTemplate || overwrite {
-			proceedWithTemplate = true
-		} else {
-			proceedWithTemplate = isFileLaydownSafe(dir)
-		}
-		// Download and untar
-
-		if !overwrite && !proceedWithTemplate {
-			Error.log("Local files exist which may conflict with the template project. If you wish to proceed, try again with the --overwrite option.")
-			os.Exit(1)
-		}
-
-		Info.logf("Downloading %s template project from %s", projectType, projectName)
-		filename := projectType + ".tar.gz"
-
-		err = downloadFile(projectName, filename)
-		if err != nil {
-			Error.log("Error downloading tar ", err)
-			os.Exit(1)
-		}
-		Info.log("Download complete. Extracting files from ", filename)
-		//if noTemplate
-		errUntar := untar(filename, noTemplate)
-
-		if dryrun {
-			Info.logf("Dry Run - Skipping remove of temporary file for project type: %s project name: %s", projectType, projectName)
-		} else {
-			err = os.Remove(filename)
-			if err != nil {
-				Warning.log("Unable to remove temporary file ", filename)
+			if len(index.Projects[projectType]) < 1 {
+				Error.logf("Could not find a stack with the name %s. Run `appsody list` to see the available stacks or -h for help.", projectType)
+				os.Exit(1)
 			}
-			Info.log("Successfully initialized ", projectType, " project")
-		}
-		if errUntar != nil {
-			Error.log("Error extracting template: ", errUntar)
-			// this leave the tar file in the dir
-			os.Exit(1)
-		}
+			var projectName = index.Projects[projectType][0].URLs[0]
 
+			// 1. Check for empty directory
+			dir, err := os.Getwd()
+			if err != nil {
+				Error.log("Error getting current directory ", err)
+				os.Exit(1)
+			}
+			appsodyConfigFile := filepath.Join(dir, ".appsody-config.yaml")
+
+			_, err = os.Stat(appsodyConfigFile)
+			if err == nil {
+				Error.log("Cannot run `appsody init <stack>` on an existing appsody project.")
+				os.Exit(1)
+			}
+
+			if noTemplate || overwrite {
+				proceedWithTemplate = true
+			} else {
+				proceedWithTemplate = isFileLaydownSafe(dir)
+			}
+
+			if !overwrite && !proceedWithTemplate {
+				Error.log("Non-empty directory found with files which may conflict with the template project.")
+				Info.log("It is recommended that you run `appsody init <stack>` in an empty directory.")
+				Info.log("If you wish to proceed and possibly overwrite files in the current directory, try again with the --overwrite option.")
+				os.Exit(1)
+			}
+
+			Info.log("Running appsody init...")
+			Info.logf("Downloading %s template project from %s", projectType, projectName)
+			filename := projectType + ".tar.gz"
+
+			err = downloadFile(projectName, filename)
+			if err != nil {
+				Error.log("Error downloading tar ", err)
+				os.Exit(1)
+			}
+			Info.log("Download complete. Extracting files from ", filename)
+			//if noTemplate
+			errUntar := untar(filename, noTemplate)
+
+			if dryrun {
+				Info.logf("Dry Run - Skipping remove of temporary file for project type: %s project name: %s", projectType, projectName)
+			} else {
+				err = os.Remove(filename)
+				if err != nil {
+					Warning.log("Unable to remove temporary file ", filename)
+				}
+			}
+			if errUntar != nil {
+				Error.log("Error extracting project template: ", errUntar)
+				Info.log("It is recommended that you run `appsody init <stack>` in an empty directory.")
+				Info.log("If you wish to proceed and overwrite files in the current directory, try again with the --overwrite option.")
+				// this leave the tar file in the dir
+				os.Exit(1)
+			}
+		}
 		install()
+		Info.log("Successfully initialized Appsody project")
 	},
 }
 
@@ -140,7 +139,6 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 	initCmd.PersistentFlags().BoolVar(&overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.")
 	initCmd.PersistentFlags().BoolVar(&noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project.")
-
 }
 
 //Runs the .appsody-init.sh/bat files if necessary
@@ -153,9 +151,14 @@ func install() {
 
 	err := extractAndInitialize()
 	if err != nil {
-		Error.logf("Stack init script failed: %v\nTo try again, run `appsody init` with no arguments.", err)
+		// For some reason without this sleep, the [InitScript] output log would get cut off and
+		// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
+		time.Sleep(100 * time.Millisecond)
+		Warning.log("The stack init script failed: ", err)
+		Warning.log("Your local IDE may not build properly, but the Appsody container should still work.")
+		Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
+		os.Exit(0)
 	}
-
 }
 
 func downloadFile(url string, destFile string) error {
@@ -274,11 +277,17 @@ func isFileLaydownSafe(directory string) bool {
 
 		whiteListed := inWhiteList(f.Name())
 		if !whiteListed {
-			Debug.logf("%s is not in the list of white listed files or directories", f.Name())
 			safe = false
+			Debug.logf("%s file exists and is not safe to extract the project template over", f.Name())
+		} else {
+			Debug.logf("%s file exists and is safe to extract the project template over", f.Name())
 		}
 	}
-	Debug.logf("Returning %v from laydown\n", safe)
+	if safe {
+		Debug.log("It is safe to extract the project template")
+	} else {
+		Debug.log("It is not safe to extract the project template")
+	}
 	return safe
 
 }
@@ -303,7 +312,7 @@ func inWhiteList(filename string) bool {
 
 	whiteListRegexp := regexp.MustCompile(whiteListTest)
 	isWhiteListed := whiteListRegexp.MatchString(filename)
-	Debug.logf("filename %s is in the whitelist %v\n", filename, isWhiteListed)
+
 	return isWhiteListed
 }
 
@@ -350,8 +359,7 @@ func preCheckTar(file string) error {
 		}
 	}
 	if !preCheckOK {
-		err = errors.New("conflicts exist. If you wish to proceed, try again with the --overwrite option")
-
+		err = errors.New("conflicts exist")
 	}
 	return err
 }
@@ -369,18 +377,18 @@ func extractAndInitialize() error {
 	//We run it only if there is an initialization script to run locally
 	//Checking if the script is present on the image
 	stackImage := getProjectConfig().Platform
-	bashCmd := "find / -type f -name " + scriptFileName
+	bashCmd := "find /project -type f -name " + scriptFileName
 	cmdOptions := []string{"--rm"}
 	Debug.log("Attempting to run ", bashCmd, " on image ", stackImage, " with options: ", cmdOptions)
 	//DockerRunBashCmd has a pullImage call
 	scriptFindOut, err := DockerRunBashCmd(cmdOptions, stackImage, bashCmd)
 	if err != nil {
-		Error.log("Failed to run the find command for the ", scriptFileName, " on the stack image: ", stackImage)
-		os.Exit(1)
+		Debug.log("Failed to run the find command for the ", scriptFileName, " on the stack image: ", stackImage)
+		return fmt.Errorf("Failed to run the docker find command: %s", err)
 	}
 
 	if scriptFindOut == "" {
-		Debug.log("There is no initialization script in the image - skipping extract")
+		Debug.log("There is no initialization script in the image - skipping extract and initialize")
 		return nil
 	}
 
@@ -392,8 +400,7 @@ func extractAndInitialize() error {
 		if workdirExists && err == nil {
 			err = os.RemoveAll(workdir)
 			if err != nil {
-				Error.log("Could not remove working dir ", err)
-				return err
+				return fmt.Errorf("Could not remove temp dir %s  %s", workdir, err)
 			}
 		}
 		// set the --target-dir flag for extract
@@ -409,14 +416,17 @@ func extractAndInitialize() error {
 
 	if scriptExists && err == nil { // if it doesn't exist, don't run it
 		Debug.log("Running appsody_init script ", scriptFile)
-		execAndWaitWithWorkDir(scriptFile, nil, Info, workdir)
+		err = execAndWaitWithWorkDirReturnErr(scriptFile, nil, InitScript, workdir)
+		if err != nil {
+			return err
+		}
 	}
 
 	if !dryrun {
 		Debug.log("Removing ", workdir)
 		err = os.RemoveAll(workdir)
 		if err != nil {
-			Error.log("Could not remove working dir ", err)
+			return fmt.Errorf("Could not remove temp dir %s  %s", workdir, err)
 		}
 	}
 
