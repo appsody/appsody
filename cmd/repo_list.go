@@ -21,7 +21,7 @@ import (
 // repo list represent repo list cmd
 var repoListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List configured Appsody respositories",
+	Short: "List configured Appsody repositories",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		var repos RepositoryFile
