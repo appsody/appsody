@@ -25,19 +25,19 @@ import (
 var bashCompletionCmd = &cobra.Command{
 	Use:   "completion",
 	Short: "Generates bash tab completions",
-	Long: `Running the completion command:
+	Long: `Outputs a bash completion script for appsody to stdout.  Bash completion is optionally available for your convenience. It helps you fill out appsody commands when you type the [TAB] key. 
 
-	appsody completion > "your-directory"/appsody  
-	Linux
-	
-	1. On a current Linux OS (in a non-minimal installation), bash completion should be available.  
-	2. Place the completion script generated above in your bash completions directory.  
-	
-	Mac
-	1. Install bash completions if need be with brew or MacPorts  
-	2. Make sure to update your ~/.bash_profile as instructed  
-	3. Put the output of 'appsody completion' into your bash completions directory e.g. /usr/local/etc/bash_completion.d/  
-	`,
+	To install on macOs
+	1. brew install bash-completion
+	2. Make sure to update your ~/.bash_profile as instructed
+	3. appsody completion > /usr/local/etc/bash_completion.d/appsody
+
+	To install on Linux
+	1. On a current Linux OS (in a non-minimal installation), bash completion should be available. 
+	2. For Debian see the following link for more information:  https://debian-administration.org/article/316/An_introduction_to_bash_completion_part_1 
+	3. Make sure to copy the appsody completion file generated above into the appropriate directory for your Linux distribution e.g.
+	appsody completion >  /etc/bash_completion.d/appsody`,
+
 	Run: func(cmd *cobra.Command, args []string) {
 		buf := new(bytes.Buffer)
 
@@ -47,15 +47,16 @@ var bashCompletionCmd = &cobra.Command{
 		// We need to use real spaces because .GenBashCompletion does and formatting requires it
 		spaceTab := "    "
 		afterAppsodyDevInit := strings.Split(output, "_appsody_init()")
-		header := "# Running the completion command\n #appsody completion > \"your-directory\"/appsody\n\n" +
-			"# Linux\n" +
+		header := "# Outputs a bash completion script for appsody to stdout. " +
+			"Bash completion is optionally available for your convenience. It helps you fill out appsody commands when you type the [TAB] key.\n" +
+			"# To install on Linux\n" +
 			"# 1. On a current Linux OS (in a non-minimal installation), bash completion should be available.\n" +
-			"# 2. Place the completion script generated above in your bash completions directory.\n\n" +
-			"# Mac\n" +
-			"# 1. Install bash completions if need be with brew or MacPorts\n" +
+			"# 2. Place the completion script generated above in your bash completions directory.\n" +
+			"# 3. appsody completion > /usr/local/etc/bash_completion.d/appsody\n\n" +
+			"# To install on macOs\n" +
+			"# 1. brew install bash-completion\n" +
 			"# 2. Make sure to update your ~/.bash_profile as instructed\n" +
-			"# 3. Put the output of 'appsody completion' into your bash completions directory e.g. /usr/local/etc/bash_completion.d/\n"
-
+			"# 3. appsody completion > /usr/local/etc/bash_completion.d/appsdy\n"
 		extra := "flags=()\n" + spaceTab +
 			"kdl=\"$((appsody list) | awk -F ' ' '{print $1}')\"\n" +
 			spaceTab + "arr=($kdl)\n" + spaceTab + "len=${#arr[@]}\n" +

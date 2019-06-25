@@ -25,8 +25,8 @@ import (
 
 // initCmd represents the init command
 var addCmd = &cobra.Command{
-	Use:   "add name url",
-	Short: "Add an Appsody respository",
+	Use:   "add <name> <url>",
+	Short: "Add an Appsody repository",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) < 2 {
