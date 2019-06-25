@@ -25,7 +25,7 @@ import (
 // stopCmd represents the stop command
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Stop the local appsody environment for your project",
+	Short: "Stop the local Appsody environment for your project",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 

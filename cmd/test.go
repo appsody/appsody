@@ -18,7 +18,7 @@ import "github.com/spf13/cobra"
 // testCmd represents the test command
 var testCmd = &cobra.Command{
 	Use:   "test",
-	Short: "Test your project in the local appsody environment",
+	Short: "Test your project in the local Appsody environment",
 	Long:  `This starts a docker container for your project and runs your test in it.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
