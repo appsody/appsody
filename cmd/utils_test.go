@@ -13,9 +13,11 @@ var yamlGenTests = []struct {
 	testImageName      string
 	testPortNum        int
 	testServiceName    string
+	testPullPolicy     bool
 }{
-	{getKNativeTemplate1, "TESTIMAGE", 9091, "TESTSERVICE"},
-	{getKNativeTemplateNoports, "TESTIMAGE", 9091, "TESTSERVICE"},
+	{getKNativeTemplate1, "TESTIMAGE", 9091, "TESTSERVICE", false},
+	{getKNativeTemplate2, "TESTIMAGE", 9091, "TESTSERVICE", true},
+	{getKNativeTemplateNoports, "TESTIMAGE", 9091, "TESTSERVICE", true},
 }
 
 // requires clean dir
@@ -27,7 +29,8 @@ func TestGenYAML(t *testing.T) {
 			testImageName := test.testImageName
 			testPortNum := test.testPortNum
 			testGetter := test.yamlTemplateGetter
-			yamlFileName, err := cmd.GenKnativeYaml(testGetter(), testPortNum, testServiceName, testImageName)
+			testPullPolicy := test.testPullPolicy
+			yamlFileName, err := cmd.GenKnativeYaml(testGetter(), testPortNum, testServiceName, testImageName, testPullPolicy)
 			if err != nil {
 				t.Fatal("Can't generate the YAML for KNative serving deploy. Error: ", err)
 			}
@@ -58,6 +61,27 @@ spec:
 `
 	return yamltempl
 }
+
+func getKNativeTemplate2() string {
+	yamltempl := `
+apiVersion: serving.knative.dev/v1alpha1
+kind: Service
+metadata:
+  name: test
+spec:
+  runLatest:
+    configuration:
+      revisionTemplate:
+        spec:
+          container:
+            image: myimage
+            imagePullPolicy: Never
+            ports:
+            - containerPort: 8080
+`
+	return yamltempl
+}
+
 func getKNativeTemplateNoports() string {
 	yamltempl := `
 apiVersion: serving.knative.dev/v1alpha1
