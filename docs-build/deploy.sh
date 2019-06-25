@@ -2,7 +2,7 @@
 set -e
 mkdir ./tmpdocclone
 cd ./tmpdocclone
-git clone git@github.com:${GH_ORG}/docs.git
+git clone https://github.com/${GH_ORG}/docs.git
 
 cd docs
 git checkout -b test${TRAVIS_BUILD_NUMBER}
