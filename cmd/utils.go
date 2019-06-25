@@ -382,7 +382,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 	//Set the image
 	yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Image = deployImage
 	//Set the image pull policy to Never if we're not pushing an image to a registry
-	if pullImage == false {
+	if !pullImage {
 		yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.ImagePullPolicy = "Never"
 	}
 	//Set the containerPort

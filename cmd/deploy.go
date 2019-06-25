@@ -62,7 +62,7 @@ service in your local cluster.`,
 		deployImage := getProjectName()
 
 		// We're not pushing to a repository, so we need to use dev.local for Knative to be able to find it
-		if (push == false) {
+		if !push {
 			tag = "dev.local/" + deployImage
 		}
 		//Tagging the image if necessary and using the tag as the deployImage for KNative
