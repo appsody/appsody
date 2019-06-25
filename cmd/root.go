@@ -68,8 +68,11 @@ func isHelpCommand() bool {
 	if len(os.Args) <= 1 {
 		return true
 	}
+	if os.Args[1] == "help" {
+		return true
+	}
 	for _, arg := range os.Args {
-		if arg == "help" || arg == "-h" || arg == "--help" {
+		if arg == "-h" || arg == "--help" {
 			return true
 		}
 	}
