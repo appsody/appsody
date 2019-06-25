@@ -28,7 +28,7 @@ var extractContainerName string
 
 var extractCmd = &cobra.Command{
 	Use:   "extract",
-	Short: "Extract the stack and your appsody project to a local directory",
+	Short: "Extract the stack and your Appsody project to a local directory",
 	Long: `This copies the full project, stack plus app, into a local directory
 in preparation to build the final docker image.`,
 	Run: func(cmd *cobra.Command, args []string) {
