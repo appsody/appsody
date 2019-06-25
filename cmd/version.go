@@ -21,7 +21,7 @@ import (
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Show appsody CLI version",
+	Short: "Show Appsody CLI version",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		Info.log(rootCmd.Use, " ", VERSION)

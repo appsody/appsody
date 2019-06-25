@@ -23,8 +23,8 @@ import (
 
 // initCmd represents the init command
 var removeCmd = &cobra.Command{
-	Use:   "remove name",
-	Short: "Remove a configured Appsody respository",
+	Use:   "remove <name>",
+	Short: "Remove a configured Appsody repository",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) < 1 {

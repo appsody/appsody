@@ -19,7 +19,6 @@ import (
 
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -29,7 +28,7 @@ var extractContainerName string
 
 var extractCmd = &cobra.Command{
 	Use:   "extract",
-	Short: "Extract the stack and your appsody project to a local directory",
+	Short: "Extract the stack and your Appsody project to a local directory",
 	Long: `This copies the full project, stack plus app, into a local directory
 in preparation to build the final docker image.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -99,29 +98,13 @@ in preparation to build the final docker image.`,
 		stackImage := projectConfig.Platform
 
 		dockerPullImage(stackImage)
-		cmdArgs := []string{"--rm", "--name", extractContainerName}
-		bashCmd := "if [ -f /project/Dockerfile ]; then echo \"/project/Dockerfile\"; else find / -type f -name Dockerfile; fi"
-		Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
 
-		var dockerFindOut string
-		if dockerFindOut, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd); err != nil {
-			Error.log("Could not execute ", bashCmd, " on the stack image: ", stackImage)
-			os.Exit(1)
-		}
-
-		if dockerFindOut == "" {
-			Error.log("Could not find file \"Dockerfile\" in the stack image. Ensure you are using a proper appsody project.")
-			os.Exit(1)
-		}
-		Debug.log("Output of docker find: ", dockerFindOut)
-		dockerFindOut = strings.Split(dockerFindOut, "\n")[0]
-
-		containerProjectDir := filepath.Dir(dockerFindOut)
+		containerProjectDir := "/project"
 		Debug.log("Container project dir: ", containerProjectDir)
 		volumeMaps := getVolumeArgs()
 		cmdName := "docker"
 		var appDir string
-		cmdArgs = []string{"--name", extractContainerName}
+		cmdArgs := []string{"--name", extractContainerName}
 		if len(volumeMaps) > 0 {
 			cmdArgs = append(cmdArgs, volumeMaps...)
 		}
@@ -144,7 +127,7 @@ in preparation to build the final docker image.`,
 			// and navigate all the symlinks using cp -rL
 			// then extract /tmp/project and remove the container
 
-			bashCmd = "cp -rfL " + filepath.ToSlash(containerProjectDir) + " " + filepath.ToSlash(filepath.Join("/tmp", containerProjectDir))
+			bashCmd := "cp -rfL " + filepath.ToSlash(containerProjectDir) + " " + filepath.ToSlash(filepath.Join("/tmp", containerProjectDir))
 
 			Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
 			_, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd)

@@ -13,10 +13,9 @@ go_import_path: github.com/appsody/appsody
 
 services:
   - docker
-# skip because dependencies are baked in vendor dir
+
 install:
-  # temporarily the controller is checked into github
-  # - wget https://github.com/appsody/stacks/releases/download/0.0.1/appsody-controller
+  - wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
   - chmod +x appsody-controller
   - mkdir ~/.appsody
   - cp appsody-controller ~/.appsody/

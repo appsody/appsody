@@ -21,7 +21,7 @@ import (
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List the appsody stacks available to init",
+	Short: "List the Appsody stacks available to init",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 
