@@ -98,14 +98,13 @@ in preparation to build the final docker image.`,
 		stackImage := projectConfig.Platform
 
 		dockerPullImage(stackImage)
-		cmdArgs := []string{"--rm", "--name", extractContainerName}
 
 		containerProjectDir := "/project"
 		Debug.log("Container project dir: ", containerProjectDir)
 		volumeMaps := getVolumeArgs()
 		cmdName := "docker"
 		var appDir string
-		cmdArgs = []string{"--name", extractContainerName}
+		cmdArgs := []string{"--name", extractContainerName}
 		if len(volumeMaps) > 0 {
 			cmdArgs = append(cmdArgs, volumeMaps...)
 		}
