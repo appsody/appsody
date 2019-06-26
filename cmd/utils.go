@@ -554,7 +554,7 @@ func KubeApply(fileToApply string) error {
 		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
 		return nil
 	}
-	Debug.log("Running: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, kargs)
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
@@ -563,7 +563,29 @@ func KubeApply(fileToApply string) error {
 	}
 	Debug.log("kubectl apply success: ", string(kout[:]))
 	return nil
+}
 
+//KubeGetRouteURL issues kubectl get rt <service> -o jsonpath="{.status.url}" and prints the return URL
+func KubeGetRouteURL(service string) (url string, err error) {
+	kcmd := "kubectl"
+	kargs := append([]string{"get", "rt"}, service)
+	kargs = append(kargs, "-o", "jsonpath=\"{.status.url}\"")
+	if namespace != "" {
+		kargs = append(kargs, "--name", namespace)
+	}
+
+	if dryrun {
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		return "", nil
+	}
+	Info.log("Running command: ", kcmd, kargs)
+	execCmd := exec.Command(kcmd, kargs...)
+	kout, kerr := execCmd.Output()
+	if kerr != nil {
+		Error.log("kubectl get failed: ", kerr, " ", string(kout[:]))
+		return "", kerr
+	}
+	return string(kout[:]), nil
 }
 
 //dockerPullCmd
