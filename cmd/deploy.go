@@ -61,6 +61,10 @@ service in your local cluster.`,
 		//Deploy image name is also project name
 		deployImage := getProjectName()
 
+		// We're not pushing to a repository, so we need to use dev.local for Knative to be able to find it
+		if !push {
+			tag = "dev.local/" + deployImage
+		}
 		//Tagging the image if necessary and using the tag as the deployImage for KNative
 		if tag != "" {
 			err = DockerTag(deployImage, tag)
@@ -72,7 +76,7 @@ service in your local cluster.`,
 		}
 		//Generating the KNative yaml file
 		Debug.logf("Calling GenKnativeYaml with parms: %s %d %s %s \n", knativeTempl, port, serviceName, deployImage)
-		yamlFileName, err := GenKnativeYaml(knativeTempl, port, serviceName, deployImage)
+		yamlFileName, err := GenKnativeYaml(knativeTempl, port, serviceName, deployImage, push)
 		if err != nil {
 			Error.log("Could not generate the KNative YAML file: ", err)
 			os.Exit(1)
