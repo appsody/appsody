@@ -40,3 +40,4 @@ deploy:
   on:
     tags: true
     repo: appsody/appsody
+   
