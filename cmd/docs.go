@@ -49,7 +49,7 @@ func generateDoc(commandDocFile string) error {
 
 	defer docFile.Close()
 
-	preAmble := "---\ntitle: Appsody CLI Reference\npath: /docs/using-appsody/cli-commands\nsection: Using Appsody\n---\n# Appsody CLI\n"
+	preAmble := "---\ntitle: CLI Reference\npath: /docs/using-appsody/cli-commands\nsection: Using Appsody\n---\n# Appsody CLI\n"
 	preAmbleBytes := []byte(preAmble)
 	_, preambleErr := docFile.Write(preAmbleBytes)
 	if preambleErr != nil {
