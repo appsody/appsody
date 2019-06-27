@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-// Copyright © 2019 NAME HERE IBM Corporation and others.
-=======
 // Copyright © 2019 IBM Corporation and others.
->>>>>>> master
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
