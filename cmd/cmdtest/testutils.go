@@ -187,10 +187,11 @@ func AddLocalFileRepo(repoName string, repoFilePath string) (string, func(), err
 	if err != nil {
 		return "", nil, err
 	}
+	var repoURL string
 	if runtime.GOOS == "windows" {
-		repoURL := "file:\\" + absPath
+		repoURL = "file:\\" + absPath
 	} else {
-		repoURL := "file://" + absPath
+		repoURL = "file://" + absPath
 	}
 
 	// add a new repo
