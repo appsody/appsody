@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/appsody/appsody/cmd"
@@ -186,7 +187,11 @@ func AddLocalFileRepo(repoName string, repoFilePath string) (string, func(), err
 	if err != nil {
 		return "", nil, err
 	}
-	repoURL := "file://" + absPath
+	if runtime.GOOS == "windows" {
+		repoURL := "file:\\" + absPath
+	} else {
+		repoURL := "file://" + absPath
+	}
 
 	// add a new repo
 	_, err = RunAppsodyCmdExec([]string{"repo", "add", repoName, repoURL}, ".")
