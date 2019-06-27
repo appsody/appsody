@@ -1,4 +1,4 @@
-// Copyright © 2019 NAME HERE <EMAIL ADDRESS>
+// Copyright © 2019 NAME HERE IBM Corporation and others.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ func generateDoc(commandDocFile string) error {
 
 	defer docFile.Close()
 
-	preAmble := "---\ntitle: Appsody CLI Reference\npath: /docs/using-appsody/cli-commands\nsection: Using Appsody\n---\n# Appsody CLI\n"
+	preAmble := "---\ntitle: CLI Reference\npath: /docs/using-appsody/cli-commands\nsection: Using Appsody\n---\n# Appsody CLI\n"
 	preAmbleBytes := []byte(preAmble)
 	_, preambleErr := docFile.Write(preAmbleBytes)
 	if preambleErr != nil {
