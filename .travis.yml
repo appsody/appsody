@@ -5,9 +5,8 @@ go:
 
 os:
   - linux
-  # travis enterprise doesn't support osx or windows
-  # - osx
-  # - windows
+  - osx
+  - windows
 
 go_import_path: github.com/appsody/appsody
 
