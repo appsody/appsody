@@ -1,5 +1,4 @@
-![](https://raw.githubusercontent.com/appsody/website/master/src/images/appsody_full_logo.svg?sanitize=true)
-
+[![](https://raw.githubusercontent.com/appsody/website/master/src/images/appsody_full_logo.svg?sanitize=true)](https://appsody.dev)
 
 ## Welcome to Appsody!
 <https://appsody.dev>
@@ -22,6 +21,8 @@ We welcome all contributions to the Appsody project. Please see our [Contributin
 ## Community
 
 Join our [Slack](https://appsody-slack.eu-gb.mybluemix.net/) to meet the team, ask for help, and talk about Appsody!
+
+If you find a bug, such as a typo, please let us know by [creating an issue](https://github.com/appsody/appsody/issues/new).
 
 ## Licence
 
