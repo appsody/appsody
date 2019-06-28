@@ -189,7 +189,7 @@ func AddLocalFileRepo(repoName string, repoFilePath string) (string, func(), err
 	}
 	var repoURL string
 	if runtime.GOOS == "windows" {
-		repoURL = "file:///" + absPath
+		repoURL = "file:///" + filepath.ToSlash(absPath)
 	} else {
 		repoURL = "file://" + absPath
 	}
