@@ -44,14 +44,14 @@ var whiteListDotFiles = []string{"git", "project", "DS_Store", "classpath", "fac
 var initCmd = &cobra.Command{
 	Use:   "init [stack]",
 	Short: "Initialize an Appsody project with a stack and template app",
-	Long: `This creates a new Appsody project in a local directory or sets up the local dev environment of an existing Appsody project. 
+	Long: `This creates a new Appsody project in a local directory or sets up the local dev environment of an existing Appsody project.
 
-With the [stack] argument, this command will setup a new Appsody project. It will create an Appsody stack config file, unzip a template app, and 
+With the [stack] argument, this command will setup a new Appsody project. It will create an Appsody stack config file, unzip a template app, and
 run the stack init script to setup the local dev environment. It is typically run on an empty directory and may fail
 if files already exist. See the --overwrite and --no-template options for more details.
 Use 'appsody list' to see the available stack options.
 
-Without the [stack] argument, this command must be run on an existing Appsody project and will only run the stack init script to 
+Without the [stack] argument, this command must be run on an existing Appsody project and will only run the stack init script to
 setup the local dev environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var index RepoIndex
