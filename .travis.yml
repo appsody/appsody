@@ -3,42 +3,65 @@ language: go
 go:
   - 1.12.x
 
-os:
-  - linux
-  - windows
-  # - osx # Travis osx doesn't support docker
 
 go_import_path: github.com/appsody/appsody
 
-services:
-  - docker
+# services:
+#   - docker
 
-install:
-  - wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
-  - chmod +x appsody-controller
-  - mkdir ~/.appsody
-  - cp appsody-controller ~/.appsody/
-  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
+# skip the default language install and script
+install: skip
+script: skip
 
-script:
-  - make lint
-  - make test
+stages:
+  - name: lint
+  - name: test
+  - name: deploy
+    # if: branch = master
+    # if: tag IS present
+
+jobs:
+  include:
+    - name: Lint
+      stage: lint
+      os: linux
+      script: make lint
+    - name: Test on Linux
+      stage: test
+      os: linux
+      script: make test
+    # - name: Test on MacOS
+    #   stage: test
+    #   os: osx
+    #   script: make test
+    - name: Test on Windows
+      stage: test
+      os: windows
+      script: make test
+    - name: Deploy Release
+      stage: deploy
+      os: linux
+      script:
+        - make VERSION=${TRAVIS_TAG}  package
+        - make deploy
+      deploy:
+        provider: releases
+        skip_cleanup: true
+        api_key:
+          secure: gtGyAu3m2v26KtkzQu4ljkLGLGKpCJAak0cO00zlvDvEGxwqmiH7yytG8uoAOise8Fp/1pF5YXrhpw6I7+WN1s8k+GJyCKoLG60wf9ODF4BR+9vGiwOfObs91yAfKz4oA/zzGG2eLdD59Y4VoRgY46OzsmGDbw9Zf34r+xGQ3fdrQCYbLItJzLwX/GEfWGBtVmJVb+BIuFrZ0UF1zTswC8+TkPDj/u+Pnc5bMXUqH7gUz2wrVdDc873EJjILB6U8iMIrFrKshr1CQ/C4JTJh7l6xiCJ5NS8Ik40jYrVfytMHo9cC93VkUnl1fNJuBo7kRQAbek1Jp7gmsfX1BQzmXp6p+VpgQmealqDWa+b25VhBS7T0Bz3nZvktAdRE6kbpVYgbS/YpDEQWNLaMreezd9taYjDFz+k3PlNCsMqPGfyU4jV1VViHuyFJvBuIt3JlHOm3mF/bNIdfDLVtkugl/etBoyITD0Gths+xNh997ctB9diGhlwmu3VkMEo173aEtYjpNPLQrkAFtA0476xLIJroPb4R2KlO31iC5tpUU9Ge/65ZUPaMaDIgR8kcLGmKvAdNwdDonZguT8Q/XlEPpn0MCmKbZcX2/G3l3+Sc2YN7EHeH1t7gGbQAjzHzsQCHLCCbL2p8X/AJzf6vQJRI1kEEs9QFwLg7vBjjT2n6Nzg=
+        file: package/*
+        file_glob: true
+        on:
+          branch: master
+          condition: $TRAVIS_OS_NAME = linux
+          tags: true
 
 
-# note before_deploy will run before each deploy provider
-before_deploy:
-  - make VERSION=${TRAVIS_TAG}  package
-  - make deploy
+# install:
+#   - wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
+#   - chmod +x appsody-controller
+#   - mkdir ~/.appsody
+#   - cp appsody-controller ~/.appsody/
+#   - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
 
-deploy:
-  provider: releases
-  skip_cleanup: true
-  api_key:
-    secure: gtGyAu3m2v26KtkzQu4ljkLGLGKpCJAak0cO00zlvDvEGxwqmiH7yytG8uoAOise8Fp/1pF5YXrhpw6I7+WN1s8k+GJyCKoLG60wf9ODF4BR+9vGiwOfObs91yAfKz4oA/zzGG2eLdD59Y4VoRgY46OzsmGDbw9Zf34r+xGQ3fdrQCYbLItJzLwX/GEfWGBtVmJVb+BIuFrZ0UF1zTswC8+TkPDj/u+Pnc5bMXUqH7gUz2wrVdDc873EJjILB6U8iMIrFrKshr1CQ/C4JTJh7l6xiCJ5NS8Ik40jYrVfytMHo9cC93VkUnl1fNJuBo7kRQAbek1Jp7gmsfX1BQzmXp6p+VpgQmealqDWa+b25VhBS7T0Bz3nZvktAdRE6kbpVYgbS/YpDEQWNLaMreezd9taYjDFz+k3PlNCsMqPGfyU4jV1VViHuyFJvBuIt3JlHOm3mF/bNIdfDLVtkugl/etBoyITD0Gths+xNh997ctB9diGhlwmu3VkMEo173aEtYjpNPLQrkAFtA0476xLIJroPb4R2KlO31iC5tpUU9Ge/65ZUPaMaDIgR8kcLGmKvAdNwdDonZguT8Q/XlEPpn0MCmKbZcX2/G3l3+Sc2YN7EHeH1t7gGbQAjzHzsQCHLCCbL2p8X/AJzf6vQJRI1kEEs9QFwLg7vBjjT2n6Nzg=
-  file: package/*
-  file_glob: true
-  on:
-    branch: master
-    condition: $TRAVIS_OS_NAME = linux
-    tags: true
     
