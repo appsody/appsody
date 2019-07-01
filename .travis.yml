@@ -20,18 +20,16 @@ stages:
     # if: branch = master
     # if: tag IS present
 
-alias-templates: 
-  - &test-stage-template
-    name: Test on $TRAVIS_OS_NAME
-    stage: test
-    install:
-      - wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
-      - chmod +x appsody-controller
-      - mkdir ~/.appsody
-      - cp appsody-controller ~/.appsody/
-      - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
-    script:
-      - make test
+test-stage-template: &test-stage-template
+  stage: test
+  install:
+    - wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
+    - chmod +x appsody-controller
+    - mkdir ~/.appsody
+    - cp appsody-controller ~/.appsody/
+    - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
+  script:
+    - make test
       
 jobs:
   include:
@@ -40,10 +38,13 @@ jobs:
       os: linux
       script: make lint
     - <<: *test-stage-template
+      name: Test on Linux
       os: linux
     # - <<: *test-stage-template
+    #   name: Test on MacOS
     #   os: osx
     - <<: *test-stage-template
+      name: Test on Windows
       os: windows
     - name: Deploy Release
       stage: deploy
