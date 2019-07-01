@@ -6,10 +6,7 @@ go:
 
 go_import_path: github.com/appsody/appsody
 
-# services:
-#   - docker
-
-# skip the default language install and script
+# skip the default language's install and script steps, we implement job stages instead
 install: skip
 script: skip
 
@@ -17,8 +14,7 @@ stages:
   - name: lint
   - name: test
   - name: deploy
-    # if: branch = master
-    # if: tag IS present
+    if: branch = master AND tag IS present
 
 test-stage-template: &test-stage-template
   stage: test
@@ -46,6 +42,7 @@ jobs:
     - <<: *test-stage-template
       name: Test on Windows
       os: windows
+      env: YARN_GPG=no
     - name: Deploy Release
       stage: deploy
       os: linux
