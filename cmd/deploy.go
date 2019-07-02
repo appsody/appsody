@@ -28,7 +28,7 @@ var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Build and deploy your Appsody project on a local Kubernetes cluster",
 	Long: `This command extracts the code from your project, builds a local Docker image for deployment,
-generates a KNative serving deployment manifest (yaml) file, and deploys your image as a KNative 
+generates a KNative serving deployment manifest (yaml) file, and deploys your image as a KNative
 service in your local cluster.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Extract code and build the image

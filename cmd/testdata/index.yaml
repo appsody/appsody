@@ -1,70 +1,57 @@
 apiVersion: v1
-generated: 2019-02-01T13:08:45.039293383Z
+generated: 2019-06-24T21:00:00+00:00
 projects:
   java-microprofile:
-  - created: 2019-02-01T13:08:45.039293383Z
-    description: Java Microprofile Project 
-    digest: c043777f921203f4e03c1dc5089ba9d26d9f353b0df2b239b956200aab5205d6
+  - created: 2019-06-24T21:00:00+00:00
+    description: Microprofile using Adopt OpenJDK and Maven
     icon: https://
     keywords:
-    - Java 
-    - Microprofile 
-    - Skeleton 
+    - Java
+    - Microprofile
+    - Maven
+    - Open Liberty
     name: java-microprofile
-    home: http://my-home
-    maintainers: 
-    - me
-    - you
+    maintainers:
+    - neeraj.laad@gmail.com
     urls:
-    - https://github.com/appsody/stacks/releases/download/0.0.1/incubator.java-microprofile.templates.sample.tar.gz
-    version: 1.1.0
+    - https://github.com/appsody/stacks/releases/download/0.2.0/incubator.java-microprofile.templates.default.tar.gz
+    version: 0.2.0
   java-spring-boot2:
-  - created: 2019-02-01T13:08:45.039293383Z
-    description: Java Spring Project 
-    digest: c043777f921203f4e03c1dc5089ba9d26d9f353b0df2b239b956200aab5205d6
+  - created: 2019-06-24T21:00:00+00:00
+    description: Spring Boot using IBM Java SDK and Maven
     icon: https://
     keywords:
-    - Java 
-    - Microprofile 
-    - Skeleton 
+    - Java
+    - Spring Boot
+    - Maven
     name: java-spring-boot2
-    home: http://my-home
-    maintainers: 
-    - me
-    - you
+    maintainers:
+    - schnabel@us.ibm.com
     urls:
-    - https://github.com/appsody/stacks/releases/download/0.0.1/incubator.java-spring-boot2.templates.microservice.tar.gz
-    version: 1.0.0    
+    - https://github.com/appsody/stacks/releases/download/0.2.0/incubator.java-spring-boot2.templates.default.tar.gz
+    version: 0.2.0
   nodejs:
-  - created: 2019-02-01T13:08:45.039293383Z
-    description: Node.js Base Project
-    digest: c043777f921203f4e03c1dc5089ba9d26d9f353b0df2b239b956200aab5205d6
+  - created: 2019-06-24T21:00:00+00:00
+    description: Node.js Runtime
     icon: https://
     keywords:
     - Node.js
-    - Base
-    - Skeleton
     name: nodejs
-    home: http://my-home
     maintainers:
-    - me
+    - neeraj.laad@gmail.com
     urls:
-    - https://github.com/appsody/stacks/releases/download/0.0.1/incubator.nodejs.templates.simple.tar.gz
-    version: 0.8.0  
+    - https://github.com/appsody/stacks/releases/download/0.2.0/incubator.nodejs.templates.simple.tar.gz
+    version: 0.2.0
   nodejs-express:
-  - created: 2019-02-01T13:08:45.039293383Z
-    description: Node.js Express Project
-    digest: c043777f921203f4e03c1dc5089ba9d26d9f353b0df2b239b956200aab5205d6
+  - created: 2019-06-24T21:00:00+00:00
+    description: Express web framework for Node.js
     icon: https://
     keywords:
     - Node.js
     - Express
-    - Skeleton
     name: nodejs-express
-    home: http://my-home
     maintainers:
-    - me
+    - neeraj.laad@gmail.com
     urls:
-    - https://github.com/appsody/stacks/releases/download/0.0.1/incubator.nodejs-express.starters.simple.tar.gz
-    version: 0.8.0
-  
+    - https://github.com/appsody/stacks/releases/download/0.2.0/incubator.nodejs-express.templates.simple.tar.gz
+    version: 0.2.0

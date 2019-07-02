@@ -140,6 +140,7 @@ var (
 	Debug      appsodylogger = "Debug"
 	Container  appsodylogger = "Container"
 	InitScript appsodylogger = "InitScript"
+	DockerLog  appsodylogger = "Docker"
 )
 
 func (l appsodylogger) log(args ...interface{}) {
