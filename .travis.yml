@@ -25,7 +25,7 @@ test-stage-template: &test-stage-template
     - cp appsody-controller ~/.appsody/
     - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
   script:
-    - make test
+    - travis_wait 3 make test
       
 jobs:
   include:
@@ -42,7 +42,6 @@ jobs:
     - <<: *test-stage-template
       name: Test on Windows
       os: windows
-      env: YARN_GPG=no
     - name: Deploy Release
       stage: deploy
       os: linux

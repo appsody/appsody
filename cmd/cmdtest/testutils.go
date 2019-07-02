@@ -66,8 +66,11 @@ func RunAppsodyCmdExec(args []string, workingDir string) (string, error) {
 		return "", err
 	}
 	defer func() {
+		fmt.Println("DEFER Closing outReader")
 		outReader.Close()
+		fmt.Println("DEFER Closing outWriter")
 		outWriter.Close()
+		fmt.Println("DEFER done closing")
 	}()
 	execCmd.Stdout = outWriter
 	execCmd.Stderr = outWriter
@@ -87,13 +90,18 @@ func RunAppsodyCmdExec(args []string, workingDir string) (string, error) {
 		return "", err
 	}
 
-	// replace the original working directory when this funciton completes
+	// replace the original working directory when this function completes
 	err = os.Chdir(execDir)
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	fmt.Println("Waiting for exec")
 	err = execCmd.Wait()
+	fmt.Println("Closing outReader")
+	outReader.Close()
+	fmt.Println("Closing outWriter")
+	outWriter.Close()
+	fmt.Println("Done closing")
 	return outBuffer.String(), err
 }
 
