@@ -32,14 +32,19 @@ var stopCmd = &cobra.Command{
 		Info.log("Stopping development environment")
 		projectDir := getProjectDir()
 		imageName := fmt.Sprintf("%s-dev", filepath.Base(projectDir))
-
-		dockerStop(imageName)
+		if stopContainerName == "" {
+			dockerStop(imageName)
+		} else {
+			dockerStop(stopContainerName)
+		}
 		//dockerRemove(imageName) is not needed due to --rm flag
 		os.Exit(1)
 	},
 }
+var stopContainerName string
 
 func init() {
 	rootCmd.AddCommand(stopCmd)
+	stopCmd.PersistentFlags().StringVar(&stopContainerName, "name", "", "The name of your development container.")
 
 }
