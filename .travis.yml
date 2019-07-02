@@ -27,7 +27,10 @@ test-stage-template: &test-stage-template
   script:
     - systeminfo | findstr OS
     - docker version
-    - "& 'C:\Program Files\Docker\Docker\DockerCli.exe' -SwitchDaemon"
+    # - choco install docker-for-windows
+    - Powershell -Command '[Environment]::SetEnvironmentVariable("LCOW_SUPPORTED", "1", "Machine")'
+    - Powershell -Command 'Restart-Service Docker'
+    # - "& 'C:\Program Files\Docker\Docker\DockerCli.exe' -SwitchDaemon"
     - docker pull appsody/nodejs-express:0.2
       
 jobs:
