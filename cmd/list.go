@@ -15,6 +15,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +28,11 @@ var listCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		var index RepoIndex
-		index.getIndex()
+		err := index.getIndex()
+		if err != nil {
+			Error.log("Could not read index: ", err)
+			os.Exit(1)
+		}
 		Info.log("\n", index.listProjects())
 	},
 }

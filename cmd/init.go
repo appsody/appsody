@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -63,7 +62,11 @@ setup the local dev environment.`,
 			Warning.logf("Failed to check prerequisites: %v\n", err)
 		}
 
-		index.getIndex()
+		err = index.getIndex()
+		if err != nil {
+			Error.log("Could not read index: ", err)
+			os.Exit(1)
+		}
 		if len(args) >= 1 {
 
 			projectType := args[0]
@@ -105,7 +108,7 @@ setup the local dev environment.`,
 			Info.logf("Downloading %s template project from %s", projectType, projectName)
 			filename := projectType + ".tar.gz"
 
-			err = downloadFile(projectName, filename)
+			err = downloadFileToDisk(projectName, filename)
 			if err != nil {
 				Error.log("Error downloading tar ", err)
 				os.Exit(1)
@@ -161,7 +164,7 @@ func install() {
 	}
 }
 
-func downloadFile(url string, destFile string) error {
+func downloadFileToDisk(url string, destFile string) error {
 	if dryrun {
 		Info.logf("Dry Run -Skipping download of url: %s to destination %s", url, destFile)
 
@@ -172,29 +175,10 @@ func downloadFile(url string, destFile string) error {
 		}
 		defer outFile.Close()
 
-		// allow file:// scheme
-		t := &http.Transport{}
-		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
-
-		httpClient := &http.Client{Transport: t}
-		req, err := http.NewRequest("GET", url, nil)
+		err = downloadFile(url, outFile)
 		if err != nil {
 			return err
 		}
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("Failed to fetch %s : %s", url, resp.Status)
-		}
-
-		_, err = io.Copy(outFile, resp.Body)
-		if err != nil {
-			return err
-		}
-		resp.Body.Close()
 	}
 	return nil
 }

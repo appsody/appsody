@@ -44,7 +44,7 @@ func RunAppsodyCmdExec(args []string, workingDir string) (string, error) {
 		return "", err
 	}
 	defer func() {
-		// replace the original working directory when this funciton completes
+		// replace the original working directory when this function completes
 		err := os.Chdir(execDir)
 		if err != nil {
 			log.Fatal(err)
@@ -56,7 +56,7 @@ func RunAppsodyCmdExec(args []string, workingDir string) (string, error) {
 		return "", err
 	}
 
-	cmdArgs := []string{"go", "run", execDir + "/.."}
+	cmdArgs := []string{"go", "run", execDir + "/..", "-v"}
 	cmdArgs = append(cmdArgs, args...)
 	fmt.Println(cmdArgs)
 
@@ -189,11 +189,10 @@ func AddLocalFileRepo(repoName string, repoFilePath string) (string, func(), err
 	}
 	var repoURL string
 	if runtime.GOOS == "windows" {
-		repoURL = "file:///" + filepath.ToSlash(absPath)
-	} else {
-		repoURL = "file://" + absPath
+		// for windows, add a leading slash and convert to unix style slashes
+		absPath = "/" + filepath.ToSlash(absPath)
 	}
-
+	repoURL = "file://" + absPath
 	// add a new repo
 	_, err = RunAppsodyCmdExec([]string{"repo", "add", repoName, repoURL}, ".")
 	if err != nil {
