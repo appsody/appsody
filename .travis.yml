@@ -25,12 +25,15 @@ test-stage-template: &test-stage-template
     - cp appsody-controller ~/.appsody/
     - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
   script:
-    - systeminfo | findstr OS
+    - systeminfo #| findstr OS
     - docker version
     # - choco install docker-for-windows
-    - Powershell -Command '[Environment]::SetEnvironmentVariable("LCOW_SUPPORTED", "1", "Machine")'
-    - Powershell -Command 'Restart-Service Docker'
-    # - "& 'C:\Program Files\Docker\Docker\DockerCli.exe' -SwitchDaemon"
+    # Enable linux docker https://blog.docker.com/2017/09/docker-windows-server-1709/
+    # - Powershell -Command '[Environment]::SetEnvironmentVariable("LCOW_SUPPORTED", "1", "Machine")'
+    # - Powershell -Command 'Restart-Service Docker'
+    - dir "C:"
+    - dir "C:\Program Files\Docker\Docker\DockerCli.exe"
+    - \"C:\Program Files\Docker\Docker\DockerCli.exe\" -SwitchDaemon
     - docker pull appsody/nodejs-express:0.2
       
 jobs:
