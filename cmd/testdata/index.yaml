@@ -65,6 +65,6 @@ projects:
     maintainers:
     - me
     urls:
-    - https://github.com/appsody/stacks/releases/download/0.0.0-alpha/incubator.nodejs-express.starters.simple.tar.gz
+    - https://github.com/appsody/stacks/releases/download/0.0.1/incubator.nodejs-express.starters.simple.tar.gz
     version: 0.8.0
   
