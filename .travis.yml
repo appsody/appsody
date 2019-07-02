@@ -1,8 +1,8 @@
 language: go
+services: docker
 
 go:
   - 1.12.x
-
 
 go_import_path: github.com/appsody/appsody
 
@@ -26,6 +26,7 @@ test-stage-template: &test-stage-template
     - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
   script:
     - docker version
+    - docker pull appsody/nodejs-express:0.2
       
 jobs:
   include:
@@ -42,6 +43,7 @@ jobs:
     - <<: *test-stage-template
       name: Test on Windows
       os: windows
+      dist: 1803-containers
     - name: Deploy Release
       stage: deploy
       os: linux
