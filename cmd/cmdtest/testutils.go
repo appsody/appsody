@@ -66,11 +66,9 @@ func RunAppsodyCmdExec(args []string, workingDir string) (string, error) {
 		return "", err
 	}
 	defer func() {
-		fmt.Println("DEFER Closing outReader")
-		outReader.Close()
-		fmt.Println("DEFER Closing outWriter")
+		// Make sure to close the writer first or this will hang on Windows
 		outWriter.Close()
-		fmt.Println("DEFER done closing")
+		outReader.Close()
 	}()
 	execCmd.Stdout = outWriter
 	execCmd.Stderr = outWriter
@@ -95,13 +93,8 @@ func RunAppsodyCmdExec(args []string, workingDir string) (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Waiting for exec")
 	err = execCmd.Wait()
-	fmt.Println("Closing outReader")
-	outReader.Close()
-	fmt.Println("Closing outWriter")
-	outWriter.Close()
-	fmt.Println("Done closing")
+
 	return outBuffer.String(), err
 }
 
