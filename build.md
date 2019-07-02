@@ -5,6 +5,7 @@ Prerequisites:
 
 * docker is installed and running
 * wget is installed
+* go is installed
 
 After setting the `GOPATH` env var correctly, just run `make <action...>` from the command line, within the same directory where `Makefile` resides. For example `make package clean` will run the `package` and then the `clean` actions.
 
