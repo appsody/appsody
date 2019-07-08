@@ -28,15 +28,15 @@ test-stage-template: &test-stage-template
     - systeminfo #| findstr OS
     - docker version
     - Powershell -Command "Stop-Service docker"
-    - docker version
+    # - docker version
     # - Powershell -Command Get-VM # does not work, must not have administrator
     #- Powershell -Command Get-ChildItem -Path Env:\
     - choco install docker-desktop
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
-    - '"\Program Files\Docker\Docker\Docker for Windows.exe"'
+    - 'start /b "\Program Files\Docker\Docker\Docker for Windows.exe"'
+    - sleep 60
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" ps'
-    - sleep 60
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" ps'
     # - Powershell -Command refreshenv
