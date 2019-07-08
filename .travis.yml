@@ -28,9 +28,12 @@ test-stage-template: &test-stage-template
   script:
     - systeminfo #| findstr OS
     - docker version
+    - Powershell -Command "Stop-Service docker"
+    - net stop docker
+    - docker version
     # - Powershell -Command Get-VM # does not work, must not have administrator
     #- Powershell -Command Get-ChildItem -Path Env:\
-    - choco install docker-for-windows
+    - choco install docker-desktop
     - docker version
     # Enable linux docker https://blog.docker.com/2017/09/docker-windows-server-1709/
     # - Powershell -Command "Import-Module PackageManagement"
