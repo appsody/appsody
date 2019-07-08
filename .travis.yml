@@ -32,8 +32,8 @@ test-stage-template: &test-stage-template
     # - Powershell -Command Get-VM # does not work, must not have administrator
     #- Powershell -Command Get-ChildItem -Path Env:\
     - choco install docker-desktop
-    - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
-    - 'start /b "\Program Files\Docker\Docker\Docker for Windows.exe"'
+    #- '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
+    - '"\Program Files\Docker\Docker\Docker for Windows.exe" &'
     - sleep 60
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" ps'
