@@ -32,6 +32,8 @@ test-stage-template: &test-stage-template
     #- Powershell -Command Get-ChildItem -Path Env:\
     # - choco install docker-for-windows
     # Enable linux docker https://blog.docker.com/2017/09/docker-windows-server-1709/
+    - Powershell -Command "Import-Module PackageManagement"
+    - Powershell -Command "Import-Module PowerShellGet"
     - Powershell -Command "Uninstall-Package -Name docker -ProviderName DockerProvider"
     - Powershell -Command "Install-Module DockerProvider"
     - Powershell -Command "Install-Package Docker -ProviderName DockerProvider -RequiredVersion preview"
