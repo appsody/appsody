@@ -33,8 +33,6 @@ test-stage-template: &test-stage-template
     #- Powershell -Command Get-ChildItem -Path Env:\
     - choco install docker-desktop
     - Powershell -Command refreshenv
-    - Powershell -Command Update-SessionEnvironment
-    - docker version
     # Enable linux docker https://blog.docker.com/2017/09/docker-windows-server-1709/
     # - Powershell -Command "Import-Module PackageManagement"
     # - Powershell -Command "Import-Module PowerShellGet"
@@ -45,15 +43,15 @@ test-stage-template: &test-stage-template
     # - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_SUPPORTED', '1', 'Machine')"
     # - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
     # - Powershell -Command Restart-Service Docker
-    # - Powershell -Command Docker version
-    # - Powershell -Command Docker pull appsody/nodejs-express:0.2
+    - Powershell -Command Docker version
+    - Powershell -Command Docker pull appsody/nodejs-express:0.2
     # - cd
     # - dir
     # - cd "\Program Files\Docker"
     # - dir
     # - dockerd.exe -SwitchDaemon
     # - docker.exe -SwitchDaemon
-    - cd "\Program Files\Docker\"
+    - cd "\Program Files\Docker"
     - dir
     - cd "Docker"
     - dir
