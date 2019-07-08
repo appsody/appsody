@@ -27,6 +27,9 @@ test-stage-template: &test-stage-template
   script:
     - systeminfo #| findstr OS
     - docker version
+    - Powershell -Command Get-VM
+    - cd "\Program Files\Linux Containers"
+    - dir
     - Powershell -Command Get-ChildItem -Path Env:\
     # - choco install docker-for-windows
     # Enable linux docker https://blog.docker.com/2017/09/docker-windows-server-1709/
