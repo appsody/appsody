@@ -32,13 +32,13 @@ test-stage-template: &test-stage-template
     # - Powershell -Command Get-VM # does not work, must not have administrator
     #- Powershell -Command Get-ChildItem -Path Env:\
     - choco install docker-desktop
-    - "\Program Files\Docker\Docker\resources\bin\docker.exe" version
-    - "\Program Files\Docker\Docker\Docker for Windows.exe"
-    - "\Program Files\Docker\Docker\resources\bin\docker.exe" version
-    - "\Program Files\Docker\Docker\resources\bin\docker.exe" ps
+    - \"\Program Files\Docker\Docker\resources\bin\docker.exe" version
+    - \"\Program Files\Docker\Docker\Docker for Windows.exe"
+    - \"\Program Files\Docker\Docker\resources\bin\docker.exe" version
+    - \"\Program Files\Docker\Docker\resources\bin\docker.exe" ps
     - timeout /t 60
-    - "\Program Files\Docker\Docker\resources\bin\docker.exe" version
-    - "\Program Files\Docker\Docker\resources\bin\docker.exe" ps
+    - \"\Program Files\Docker\Docker\resources\bin\docker.exe" version
+    - \"\Program Files\Docker\Docker\resources\bin\docker.exe" ps
     # - Powershell -Command refreshenv
     # Enable linux docker https://blog.docker.com/2017/09/docker-windows-server-1709/
     # - Powershell -Command "Import-Module PackageManagement"
@@ -62,9 +62,9 @@ test-stage-template: &test-stage-template
     - dir
     - cd "Docker"
     - dir
-    - "\Program Files\Docker\Docker\resources\bin\docker.exe" pull appsody/nodejs-express:0.2
-    - "\Program Files\Docker\Docker\DockerCli.exe" -SwitchDaemon
-    - "\Program Files\Docker\Docker\resources\bin\docker.exe" pull appsody/nodejs-express:0.2
+    - \"\Program Files\Docker\Docker\resources\bin\docker.exe" pull appsody/nodejs-express:0.2
+    - \"\Program Files\Docker\Docker\DockerCli.exe" -SwitchDaemon
+    - \"\Program Files\Docker\Docker\resources\bin\docker.exe" pull appsody/nodejs-express:0.2
     # - docker pull appsody/nodejs-express:0.2
       
 jobs:
