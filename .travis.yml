@@ -27,16 +27,20 @@ test-stage-template: &test-stage-template
   script:
     - systeminfo #| findstr OS
     - docker version
+    - Powershell -Command 'Get-Command *-Service'
     # - choco install docker-for-windows
     # Enable linux docker https://blog.docker.com/2017/09/docker-windows-server-1709/
     # - Powershell -Command '[Environment]::SetEnvironmentVariable("LCOW_SUPPORTED", "1", "Machine")'
     # - Powershell -Command 'Restart-Service Docker'
+    - Powershell -Command 'Docker version'
+    - Powershell -Command 'Docker pull appsody/nodejs-express:0.2'
     - cd
     - dir
     - cd "\Program Files\Docker"
     - dir
-    - dir "C:\Program Files\Docker\Docker\DockerCli.exe"
-    - \"C:\Program Files\Docker\Docker\DockerCli.exe\" -SwitchDaemon
+    - dockerd.exe -SwitchDaemon
+    - docker.exe -SwitchDaemon
+    #- \"C:\Program Files\Docker\Docker\DockerCli.exe\" -SwitchDaemon
     - docker pull appsody/nodejs-express:0.2
       
 jobs:
