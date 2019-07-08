@@ -34,6 +34,7 @@ test-stage-template: &test-stage-template
     # - Powershell -Command Get-VM # does not work, must not have administrator
     #- Powershell -Command Get-ChildItem -Path Env:\
     - choco install docker-desktop
+    - refreshenv
     - docker version
     # Enable linux docker https://blog.docker.com/2017/09/docker-windows-server-1709/
     # - Powershell -Command "Import-Module PackageManagement"
@@ -53,7 +54,9 @@ test-stage-template: &test-stage-template
     # - dir
     # - dockerd.exe -SwitchDaemon
     # - docker.exe -SwitchDaemon
-    #- \"C:\Program Files\Docker\Docker\DockerCli.exe\" -SwitchDaemon
+    - cd "\Program Files\Docker\Docker\"
+    - dir
+    - DockerCli.exe -SwitchDaemon
     - docker pull appsody/nodejs-express:0.2
       
 jobs:
