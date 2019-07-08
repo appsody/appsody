@@ -34,7 +34,7 @@ test-stage-template: &test-stage-template
     - choco install docker-desktop
     #- '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
     - '"\Program Files\Docker\Docker\Docker for Windows.exe" &'
-    - sleep 60
+    - sleep 300
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" ps'
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
