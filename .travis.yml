@@ -28,17 +28,16 @@ test-stage-template: &test-stage-template
   script:
     - systeminfo #| findstr OS
     - docker version
-    - Powershell -Command Get-VM
-    - cd "\Program Files\Linux Containers"
-    - dir
-    - Powershell -Command Get-ChildItem -Path Env:\
+    # - Powershell -Command Get-VM # does not work, must not have administrator
+    #- Powershell -Command Get-ChildItem -Path Env:\
     # - choco install docker-for-windows
     # Enable linux docker https://blog.docker.com/2017/09/docker-windows-server-1709/
-    - Powershell -Command "[Environment]::GetEnvironmentVariable('Path', 'Machine')"
+    - Powershell -Command "Uninstall-Package -Name docker -ProviderName DockerProvider"
+    - Powershell -Command "Install-Module DockerProvider"
+    - Powershell -Command "Install-Package Docker -ProviderName DockerProvider -RequiredVersion preview"
     - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
     - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_SUPPORTED', '1', 'Machine')"
     - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
-    - Powershell -Command Get-ChildItem -Path Env:\
     - Powershell -Command Restart-Service Docker
     - Powershell -Command Docker version
     - Powershell -Command Docker pull appsody/nodejs-express:0.2
