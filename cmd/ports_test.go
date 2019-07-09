@@ -68,7 +68,7 @@ func TestPortMap(t *testing.T) {
 
 	// use this mechanism so that we can wait long enough for the code to run
 	timeCheckFrequency := 2 // in seconds
-	timeCheckTimeout := 60  // in seconds
+	timeCheckTimeout := 120 // in seconds
 	timeCheckOK := false
 	timeCheckWait := 0
 	for !(timeCheckOK || timeCheckWait >= timeCheckTimeout) {
@@ -125,7 +125,7 @@ func TestPublishAll(t *testing.T) {
 
 	// use this mechanism so that we can wait long enough for the code to run
 	timeCheckFrequency := 2 // in seconds
-	timeCheckTimeout := 60  // in seconds
+	timeCheckTimeout := 120 // in seconds
 	timeCheckOK := false
 	timeCheckWait := 0
 	for !(timeCheckOK || timeCheckWait >= timeCheckTimeout) {
@@ -165,7 +165,6 @@ func TestRunWithNetwork(t *testing.T) {
 	}
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
-
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
@@ -181,7 +180,7 @@ func TestRunWithNetwork(t *testing.T) {
 
 	// use this mechanism so that we can wait long enough for the code to run
 	timeCheckFrequency := 2 // in seconds
-	timeCheckTimeout := 60  // in seconds
+	timeCheckTimeout := 120 // in seconds
 	timeCheckOK := false
 	timeCheckWait := 0
 	for !(timeCheckOK || timeCheckWait >= timeCheckTimeout) {
