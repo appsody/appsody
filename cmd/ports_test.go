@@ -120,7 +120,7 @@ func TestRunWithNetwork(t *testing.T) {
 	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--network", "noSuchNetwork", "--publish-all", "--dryrun"}, projectDir)
 
 	if !strings.Contains(runOutput, "--network noSuchNetwork") {
-		t.Fatal("--networkis not found in output as: --network noSuchNetwork")
+		t.Fatal("--network is not found in output as: --network noSuchNetwork")
 
 	}
 }
