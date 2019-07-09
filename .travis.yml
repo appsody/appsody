@@ -33,8 +33,11 @@ test-stage-template: &test-stage-template
     #- Powershell -Command Get-ChildItem -Path Env:\
     - choco install docker-desktop
     #- '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
-    - '"\Program Files\Docker\Docker\Docker for Windows.exe" &'
-    - sleep 300
+    # - '"\Program Files\Docker\Docker\Docker for Windows.exe" &'
+    - cd "\Program Files\Docker\Docker\resources\bin"
+    - dir
+    - '"\Program Files\Docker\Docker\resources\bin\dockerd.exe" --experimental'
+    - sleep 60
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" ps'
     - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
