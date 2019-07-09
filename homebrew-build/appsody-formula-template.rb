@@ -2,13 +2,9 @@ class Appsody < Formula
   desc "The Appsody command-line interface"
   homepage "https://github.com/appsody/appsody#readme"
   url "https://github.com/REPO_NAME/releases/download/RELEASE_TAG/FILE_PREFIX-VERSION_NUMBER.tar.gz"
-  version "VERSION_NUMBER"
+  # version "VERSION_NUMBER"
   sha256 "SHA_256"
-#  url "https://github.com/appsody/appsody/archive/master.zip",
-#      :tag      => "master"
-#      :revision => "b5d4f876f4bfe294b70c092210613e30eceb0dc4"
-#  head "git@github.com:appsody/appsody.git"
-#  bottle do
+
   def install
     bin.install "appsody"
     bin.install "appsody-controller"
@@ -33,7 +29,7 @@ class Appsody < Formula
       rescue
         retval=false
       end
-    rescue Exception => e
+    rescue => e
       $stdout.reopen(original_stdout)
       $stderr.reopen(original_stderr)
       raise e
@@ -41,7 +37,7 @@ class Appsody < Formula
       $stdout.reopen(original_stdout)
       $stderr.reopen(original_stderr)
     end
-    return retval
+    retval
   end
 
   test do
