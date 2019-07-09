@@ -17,7 +17,6 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
-	"time"
 
 	"os"
 	"testing"
@@ -51,38 +50,7 @@ func TestPortMap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// appsody run
-	runChannel := make(chan error)
-	go func() {
-
-		runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--dryrun", "--publish", "3100:3000", "--publish", "4100:4000", "--publish", "9230:9229"}, projectDir)
-
-	}()
-	// defer the appsody stop to close the docker container
-	defer func() {
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
-		if err != nil {
-			log.Printf("Ignoring error running appsody stop: %s", err)
-		}
-	}()
-
-	// use this mechanism so that we can wait long enough for the code to run
-	timeCheckFrequency := 2 // in seconds
-	timeCheckTimeout := 120 // in seconds
-	timeCheckOK := false
-	timeCheckWait := 0
-	for !(timeCheckOK || timeCheckWait >= timeCheckTimeout) {
-		select {
-		case err = <-runChannel:
-			// appsody run exited, probably with an error
-			t.Logf("appsody run quit unexpectedly: %s", err)
-
-		case <-time.After(time.Duration(timeCheckFrequency) * time.Second):
-			timeCheckOK = true
-			t.Log("Test time elapsed")
-
-		}
-	}
+	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--dryrun", "--publish", "3100:3000", "--publish", "4100:4000", "--publish", "9230:9229"}, projectDir)
 	if !strings.Contains(runOutput, "docker[run --rm -p 3100:3000 -p 4100:4000 -p 9230:9229") {
 
 		t.Fatal("Ports are not correctly specified as: -p 3100:3000 -p 4100:4000 -p 9230:9229")
@@ -116,30 +84,8 @@ func TestPublishAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runChannel := make(chan error)
-	go func() {
-		// appsody run
-		runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--publish-all", "--dryrun"}, projectDir)
+	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--publish-all", "--dryrun"}, projectDir)
 
-	}()
-
-	// use this mechanism so that we can wait long enough for the code to run
-	timeCheckFrequency := 2 // in seconds
-	timeCheckTimeout := 120 // in seconds
-	timeCheckOK := false
-	timeCheckWait := 0
-	for !(timeCheckOK || timeCheckWait >= timeCheckTimeout) {
-		select {
-		case err = <-runChannel:
-			// appsody run exited, probably with an error
-			t.Logf("appsody run quit unexpectedly: %s", err)
-
-		case <-time.After(time.Duration(timeCheckFrequency) * time.Second):
-			timeCheckOK = true
-			t.Log("Test time elapsed")
-
-		}
-	}
 	if !strings.Contains(runOutput, "docker[run --rm -P") {
 		t.Fatal("publish all is not found in output as: docker[run --rm -P")
 
@@ -171,29 +117,8 @@ func TestRunWithNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// appsody run
-	runChannel := make(chan error)
-	go func() {
-		runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--network", "noSuchNetwork", "--publish-all", "--dryrun"}, projectDir)
+	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--network", "noSuchNetwork", "--publish-all", "--dryrun"}, projectDir)
 
-	}()
-
-	// use this mechanism so that we can wait long enough for the code to run
-	timeCheckFrequency := 2 // in seconds
-	timeCheckTimeout := 120 // in seconds
-	timeCheckOK := false
-	timeCheckWait := 0
-	for !(timeCheckOK || timeCheckWait >= timeCheckTimeout) {
-		select {
-		case err = <-runChannel:
-			timeCheckOK = true
-			t.Log("appsody run completed with err, ignoring: ", err)
-		case <-time.After(time.Duration(timeCheckFrequency) * time.Second):
-			timeCheckOK = true
-			t.Log("Test time elapsed")
-
-		}
-	}
 	if !strings.Contains(runOutput, "--network noSuchNetwork") {
 		t.Fatal("--networkis not found in output as: --network noSuchNetwork")
 
