@@ -14,7 +14,6 @@
 package cmd_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"strings"
@@ -84,8 +83,6 @@ func TestPortMap(t *testing.T) {
 
 		}
 	}
-	fmt.Println("performing check with runOutput:", runOutput)
-
 	if !strings.Contains(runOutput, "docker[run --rm -p 3100:3000 -p 4100:4000 -p 9230:9229") {
 
 		t.Fatal("Ports are not correctly specified as: -p 3100:3000 -p 4100:4000 -p 9230:9229")
