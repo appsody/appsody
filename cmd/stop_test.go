@@ -97,7 +97,7 @@ func TestStopWithoutName(t *testing.T) {
 	}
 
 	if !healthCheckOK {
-		t.Errorf("Did not recieve an OK health check within %d seconds.", healthCheckTimeout)
+		t.Errorf("Did not receive an OK health check within %d seconds.", healthCheckTimeout)
 	}
 
 }
@@ -167,6 +167,6 @@ func TestStopWithName(t *testing.T) {
 	}
 
 	if !healthCheckOK {
-		t.Errorf("Did not recieve an OK health check within %d seconds.", healthCheckTimeout)
+		t.Errorf("Did not receive an OK health check within %d seconds.", healthCheckTimeout)
 	}
 }
