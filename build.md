@@ -3,6 +3,7 @@
 
 Prerequisites:
 
+* go version 1.12 or higher is installed and in the path
 * docker is installed and running
 * wget is installed
 

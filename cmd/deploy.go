@@ -94,7 +94,13 @@ service in your local cluster.`,
 		if err != nil {
 			Error.log("Failed to deploy to your Kubernetes cluster: ", err)
 		} else {
-			Info.log("Deployment succeeded - check the Kubernetes pods for progress.")
+			Info.log("Deployment succeeded.")
+			url, err := KubeGetRouteURL(serviceName)
+			if err != nil {
+				Error.log("Failed to find deployed service in your Kubernetes cluster: ", err)
+			} else {
+				Info.log("Your deployed service is available at the following URL: ", url)
+			}
 		}
 	},
 }

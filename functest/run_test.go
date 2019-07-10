@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package cmd_test
+package functest
 
 import (
 	"io/ioutil"
@@ -27,7 +27,7 @@ import (
 
 func TestRun(t *testing.T) {
 	// first add the test repo index
-	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "testdata/index.yaml")
+	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,6 +91,6 @@ func TestRun(t *testing.T) {
 	}
 
 	if !healthCheckOK {
-		t.Errorf("Did not recieve an OK health check within %d seconds.", healthCheckTimeout)
+		t.Errorf("Did not receive an OK health check within %d seconds.", healthCheckTimeout)
 	}
 }
