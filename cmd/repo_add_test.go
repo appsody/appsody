@@ -66,7 +66,7 @@ var repoAddErrorTests = []struct {
 	{"No args", nil, "you must specify repository name and URL"},
 	{"One arg", []string{"reponame"}, "you must specify repository name and URL"},
 	{"No url scheme", []string{"test", "localhost"}, "unsupported protocol scheme"},
-	{"Non-existing url", []string{"test", "http://localhost/doesnotexist"}, "connection refused"},
+	{"Non-existing url", []string{"test", "http://localhost/doesnotexist"}, "refused"},
 }
 
 func TestRepoAddErrors(t *testing.T) {

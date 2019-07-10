@@ -15,12 +15,10 @@
 package cmd
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 // initCmd represents the init command
@@ -38,19 +36,10 @@ var addCmd = &cobra.Command{
 		if dryrun {
 			Info.logf("Dry Run - Skipping appsody repo add repository Name: %s, URL: %s", repoName, repoURL)
 		} else {
-			var indexBuffer, err = downloadIndex(repoURL)
+			var _, err = downloadIndex(repoURL)
 			if err != nil {
-				log.Fatalf("Failed to verify repository location err   #%v ", err)
-			}
-			yamlFile, err := ioutil.ReadAll(indexBuffer)
-			if err != nil {
-				log.Fatalf("Failed to read from repository location err   #%v ", err)
-			}
-
-			var index RepoIndex
-			err = yaml.Unmarshal(yamlFile, &index)
-			if err != nil {
-				log.Fatalf("Failed to format index from repository location: %v", err)
+				Error.log(err)
+				os.Exit(1)
 			}
 
 			var newEntry = RepositoryEntry{
