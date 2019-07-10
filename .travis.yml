@@ -34,14 +34,20 @@ test-stage-template: &test-stage-template
     - choco install docker-desktop
     #- '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
     # - '"\Program Files\Docker\Docker\Docker for Windows.exe" &'
-    - cd "\Program Files\Docker\Docker\resources\bin"
+    - cd "\ProgramData"
     - dir
-    - '"\Program Files\Docker\Docker\resources\bin\dockerd.exe" --experimental'
-    - sleep 60
-    - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
-    - '"\Program Files\Docker\Docker\resources\bin\docker.exe" ps'
-    - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
-    - '"\Program Files\Docker\Docker\resources\bin\docker.exe" ps'
+    - cd docker\config
+    - dir
+    - type daemon.json
+    - 'configfile =@"{"experimental":true}"@'
+    - 'configfile|Out-File -FilePath c:\Programdata\docker\config\daemon.json -Encoding ascii -Force'
+    - 
+    # - '"\Program Files\Docker\Docker\resources\bin\dockerd.exe" --experimental'
+    # - sleep 60
+    # - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
+    # - '"\Program Files\Docker\Docker\resources\bin\docker.exe" ps'
+    # - '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
+    # - '"\Program Files\Docker\Docker\resources\bin\docker.exe" ps'
     # - Powershell -Command refreshenv
     # Enable linux docker https://blog.docker.com/2017/09/docker-windows-server-1709/
     # - Powershell -Command "Import-Module PackageManagement"
@@ -52,7 +58,7 @@ test-stage-template: &test-stage-template
     # - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
     # - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_SUPPORTED', '1', 'Machine')"
     # - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
-    # - Powershell -Command Restart-Service Docker
+    - Powershell -Command Restart-Service Docker
     - Powershell -Command Docker version
     - Powershell -Command Docker pull appsody/nodejs-express:0.2
     # - cd
@@ -61,24 +67,24 @@ test-stage-template: &test-stage-template
     # - dir
     # - dockerd.exe -SwitchDaemon
     # - docker.exe -SwitchDaemon
-    - cd "\Program Files\Docker"
-    - dir
-    - cd "Docker"
-    - dir
-    - '"\Program Files\Docker\Docker\resources\bin\docker.exe" pull appsody/nodejs-express:0.2'
-    - '"\Program Files\Docker\Docker\DockerCli.exe" -SwitchDaemon'
-    - '"\Program Files\Docker\Docker\resources\bin\docker.exe" pull appsody/nodejs-express:0.2'
-    # - docker pull appsody/nodejs-express:0.2
+    # - cd "\Program Files\Docker"
+    # - dir
+    # - cd "Docker"
+    # - dir
+    # - '"\Program Files\Docker\Docker\resources\bin\docker.exe" pull appsody/nodejs-express:0.2'
+    # - '"\Program Files\Docker\Docker\DockerCli.exe" -SwitchDaemon'
+    # - '"\Program Files\Docker\Docker\resources\bin\docker.exe" pull appsody/nodejs-express:0.2'
+    - docker pull appsody/nodejs-express:0.2
       
 jobs:
   include:
-    - name: Lint
-      stage: lint
-      os: linux
-      script: make lint
-    - <<: *test-stage-template
-      name: Test on Linux
-      os: linux
+    # - name: Lint
+    #   stage: lint
+    #   os: linux
+    #   script: make lint
+    # - <<: *test-stage-template
+    #   name: Test on Linux
+    #   os: linux
     # - <<: *test-stage-template
     #   name: Test on MacOS
     #   os: osx
