@@ -26,6 +26,15 @@ import (
 
 var runOutput string
 
+func writeTestConfigFile(t *testing.T, projectDir string) {
+	configData := []byte("stack: appsody/nodejs-express:0.2")
+	configFile := filepath.Join(projectDir, ".appsody-config.yaml")
+	err := ioutil.WriteFile(configFile, configData, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // test port mapping in dry run mode
 func TestPortMap(t *testing.T) {
 
@@ -36,13 +45,7 @@ func TestPortMap(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-
-	configData := []byte("stack: appsody/nodejs-express:0.2")
-	configFile := filepath.Join(projectDir, ".appsody-config.yaml")
-	err = ioutil.WriteFile(configFile, configData, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
+	writeTestConfigFile(t, projectDir)
 
 	log.Println("Created project dir: " + projectDir)
 
@@ -66,12 +69,7 @@ func TestPublishAll(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-	configData := []byte("stack: appsody/nodejs-express:0.2")
-	configFile := filepath.Join(projectDir, ".appsody-config.yaml")
-	err = ioutil.WriteFile(configFile, configData, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
+	writeTestConfigFile(t, projectDir)
 
 	log.Println("Created project dir: " + projectDir)
 	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--publish-all", "--dryrun"}, projectDir)
@@ -94,13 +92,8 @@ func TestRunWithNetwork(t *testing.T) {
 	}
 
 	defer os.RemoveAll(projectDir)
+	writeTestConfigFile(t, projectDir)
 
-	configData := []byte("stack: appsody/nodejs-express:0.2")
-	configFile := filepath.Join(projectDir, ".appsody-config.yaml")
-	err = ioutil.WriteFile(configFile, configData, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
 	log.Println("Created project dir: " + projectDir)
 
 	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--network", "noSuchNetwork", "--publish-all", "--dryrun"}, projectDir)
