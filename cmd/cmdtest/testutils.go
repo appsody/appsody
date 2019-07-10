@@ -209,3 +209,48 @@ func AddLocalFileRepo(repoName string, repoFilePath string) (string, func(), err
 
 	return repoURL, cleanupFunc, err
 }
+
+// RunDockerCmdExec runs the docker command with the given args in a new process
+// The stdout and stderr are captured, printed, and returned
+// args will be passed to the docker command
+// workingDir will be the directory the command runs in
+func RunDockerCmdExec(args []string) (string, error) {
+
+	cmdArgs := []string{"docker"}
+	cmdArgs = append(cmdArgs, args...)
+	fmt.Println(cmdArgs)
+
+	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	outReader, outWriter, err := os.Pipe()
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		// Make sure to close the writer first or this will hang on Windows
+		outWriter.Close()
+		outReader.Close()
+	}()
+	execCmd.Stdout = outWriter
+	execCmd.Stderr = outWriter
+	outScanner := bufio.NewScanner(outReader)
+	var outBuffer bytes.Buffer
+	go func() {
+		for outScanner.Scan() {
+			out := outScanner.Bytes()
+			outBuffer.Write(out)
+			outBuffer.WriteByte('\n')
+			fmt.Println(string(out))
+		}
+	}()
+
+	err = execCmd.Start()
+	if err != nil {
+		return "", err
+	}
+
+	// replace the original working directory when this function completes
+
+	err = execCmd.Wait()
+
+	return outBuffer.String(), err
+}
