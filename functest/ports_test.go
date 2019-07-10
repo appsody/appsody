@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package cmd_test
+package functest
 
 import (
 	"io/ioutil"
@@ -61,12 +61,6 @@ func TestPublishAll(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-	// first add the test repo index
-	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "testdata/index.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cleanup()
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
@@ -94,12 +88,6 @@ func TestRunWithNetwork(t *testing.T) {
 	}
 
 	defer os.RemoveAll(projectDir)
-	// first add the test repo index
-	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "testdata/index.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cleanup()
 
 	log.Println("Created project dir: " + projectDir)
 
