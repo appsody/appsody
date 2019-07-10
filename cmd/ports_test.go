@@ -24,8 +24,6 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-var runOutput string
-
 func writeTestConfigFile(t *testing.T, projectDir string) {
 	configData := []byte("stack: appsody/nodejs-express:0.2")
 	configFile := filepath.Join(projectDir, ".appsody-config.yaml")
@@ -38,7 +36,7 @@ func writeTestConfigFile(t *testing.T, projectDir string) {
 // test port mapping in dry run mode
 func TestPortMap(t *testing.T) {
 
-	runOutput = ""
+	var runOutput = ""
 	// create a temporary dir to create the project and run the test
 	projectDir, err := ioutil.TempDir("", "appsody-ports-test")
 	if err != nil {
@@ -61,7 +59,7 @@ func TestPortMap(t *testing.T) {
 // This test tests the setting of --publish-all in dry run mode
 func TestPublishAll(t *testing.T) {
 
-	runOutput = ""
+	var runOutput = ""
 
 	// create a temporary dir to create the project and run the test
 	projectDir, err := ioutil.TempDir("", "appsody-publish-all-test")
@@ -84,7 +82,7 @@ func TestPublishAll(t *testing.T) {
 // This test tests the setting of --network
 func TestRunWithNetwork(t *testing.T) {
 
-	runOutput = ""
+	var runOutput = ""
 	// create a temporary dir to create the project and run the test
 	projectDir, err := ioutil.TempDir("", "appsody-network-test")
 	if err != nil {
