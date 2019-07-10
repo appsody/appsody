@@ -16,7 +16,6 @@ stages:
   - name: lint
   - name: test
   - name: deploy
-    if: branch = master AND tag IS present
 
 install-controller: &install-controller
   install:
