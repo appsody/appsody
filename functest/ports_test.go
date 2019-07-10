@@ -17,21 +17,11 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
-
-func writeTestConfigFile(t *testing.T, projectDir string) {
-	configData := []byte("stack: appsody/nodejs-express:0.2")
-	configFile := filepath.Join(projectDir, ".appsody-config.yaml")
-	err := ioutil.WriteFile(configFile, configData, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
 
 // test port mapping in dry run mode
 func TestPortMap(t *testing.T) {
@@ -43,10 +33,14 @@ func TestPortMap(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-	writeTestConfigFile(t, projectDir)
 
 	log.Println("Created project dir: " + projectDir)
 
+	// appsody init nodejs-express
+	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--dryrun", "--publish", "3100:3000", "--publish", "4100:4000", "--publish", "9230:9229"}, projectDir)
 	if !strings.Contains(runOutput, "docker[run --rm -p 3100:3000 -p 4100:4000 -p 9230:9229") {
 
@@ -67,9 +61,19 @@ func TestPublishAll(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-	writeTestConfigFile(t, projectDir)
-
+	// first add the test repo index
+	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "testdata/index.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
 	log.Println("Created project dir: " + projectDir)
+
+	// appsody init nodejs-express
+	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--publish-all", "--dryrun"}, projectDir)
 
 	if !strings.Contains(runOutput, "docker[run --rm -P") {
@@ -90,10 +94,20 @@ func TestRunWithNetwork(t *testing.T) {
 	}
 
 	defer os.RemoveAll(projectDir)
-	writeTestConfigFile(t, projectDir)
+	// first add the test repo index
+	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "testdata/index.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
 
 	log.Println("Created project dir: " + projectDir)
 
+	// appsody init nodejs-express
+	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--network", "noSuchNetwork", "--publish-all", "--dryrun"}, projectDir)
 
 	if !strings.Contains(runOutput, "--network noSuchNetwork") {
