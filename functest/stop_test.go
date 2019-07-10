@@ -11,9 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package cmd_test
+package functest
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -28,7 +29,7 @@ import (
 
 func TestStopWithoutName(t *testing.T) {
 	// first add the test repo index
-	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "testdata/index.yaml")
+	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +57,7 @@ func TestStopWithoutName(t *testing.T) {
 
 	// defer the appsody stop to close the docker container
 	defer func() {
-
+		fmt.Println("calling docker stop")
 		stopOutput, errStop := cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
 
 		//docker[stop appsody-stop-test
@@ -67,6 +68,20 @@ func TestStopWithoutName(t *testing.T) {
 			log.Printf("Ignoring error running appsody stop: %s", errStop)
 
 		}
+		fmt.Println("calling docker ps")
+		pathElements := strings.Split(projectDir, "/")
+		containerName := pathElements[len(pathElements)-1]
+		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName + "-dev"}, projectDir)
+		fmt.Println("docker output", dockerOutput)
+		if dockerErr != nil {
+			log.Print("Ignoring error running docker ps -q -f name=appsody-stop-test-dev", dockerErr)
+
+		}
+		if dockerOutput != "" {
+			t.Fatal("docker container appsody-stop-test-dev was found and should have been stopped")
+
+		}
+
 	}()
 	healthCheckFrequency := 2 // in seconds
 	healthCheckTimeout := 60  // in seconds
@@ -128,7 +143,7 @@ func TestStopWithName(t *testing.T) {
 	// defer the appsody stop to close the docker container
 
 	defer func() {
-
+		fmt.Println("about to run stop for with name")
 		stopOutput, errStop := cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", "testStopContainer"}, projectDir)
 		if !strings.Contains(stopOutput, "docker[stop testStopContainer") {
 			t.Fatal("docker stop command not present for container testStopContainer")
@@ -137,6 +152,17 @@ func TestStopWithName(t *testing.T) {
 			log.Printf("Ignoring error running appsody stop: %s", errStop)
 
 		}
+		fmt.Println("about to do docker ps")
+		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=testStopContainer"}, projectDir)
+		if dockerErr != nil {
+			log.Print("Ignoring error running docker ps -q -f name=testStopContainer", dockerErr)
+
+		}
+		if dockerOutput != "" {
+			t.Fatal("docker container appsody-stop-test-dev was found and should have been stopped")
+
+		}
+
 	}()
 	healthCheckFrequency := 2 // in seconds
 	healthCheckTimeout := 60  // in seconds
