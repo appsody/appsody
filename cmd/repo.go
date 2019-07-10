@@ -314,6 +314,15 @@ func (r *RepositoryFile) Has(name string) bool {
 	return false
 }
 
+func (r *RepositoryFile) HasURL(url string) bool {
+	for _, rf := range r.Repositories {
+		if rf.URL == url {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *RepositoryFile) Remove(name string) {
 	for index, rf := range r.Repositories {
 		if rf.Name == name {
