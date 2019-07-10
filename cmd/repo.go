@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/gosuri/uitable"
@@ -165,62 +165,90 @@ func ensureConfig() {
 
 }
 
-func downloadIndex(href string) (*bytes.Buffer, error) {
-	buf := bytes.NewBuffer(nil)
+func downloadFile(href string, writer io.Writer) error {
 
 	// allow file:// scheme
 	t := &http.Transport{}
-	t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
+	if runtime.GOOS == "windows" {
+		// For Windows, remove the root url. It seems to work fine with an empty string.
+		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("")))
+	} else {
+		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
+	}
+
 	httpClient := &http.Client{Transport: t}
 
-	Debug.log("Downloading appsody repository index from ", href)
 	req, err := http.NewRequest("GET", href, nil)
 	if err != nil {
-		return buf, err
+		return err
 	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return buf, err
+		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return buf, fmt.Errorf("Failed to fetch %s : %s", href, resp.Status)
+		buf, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			Debug.log("Could not read contents of response body: ", err)
+		} else {
+			Debug.logf("Contents http response:\n%s", buf)
+		}
+		resp.Body.Close()
+		return fmt.Errorf("%s response trying to download %s", resp.Status, href)
 	}
 
-	_, err = io.Copy(buf, resp.Body)
+	_, err = io.Copy(writer, resp.Body)
+	if err != nil {
+		return fmt.Errorf("Could not copy http response body to writer: %s", err)
+	}
 	resp.Body.Close()
-	return buf, err
+	return nil
 }
 
-func (index *RepoIndex) getIndex() *RepoIndex {
+func downloadIndex(url string) (*RepoIndex, error) {
+	Debug.log("Downloading appsody repository index from ", url)
+	indexBuffer := bytes.NewBuffer(nil)
+	err := downloadFile(url, indexBuffer)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get repository index: %s", err)
+	}
+
+	yamlFile, err := ioutil.ReadAll(indexBuffer)
+	if err != nil {
+		return nil, fmt.Errorf("Could not read buffer into byte array")
+	}
+	var index RepoIndex
+	err = yaml.Unmarshal(yamlFile, &index)
+	if err != nil {
+		Debug.logf("Contents of downloaded index from %s\n%s", url, yamlFile)
+		return nil, fmt.Errorf("Repository index formatting error: %s", err)
+	}
+	return &index, nil
+}
+
+func (index *RepoIndex) getIndex() error {
 	var repos RepositoryFile
 	repos.getRepos()
 
-	var masterIndex *RepoIndex
 	for _, value := range repos.Repositories {
-		indexBuffer, err := downloadIndex(value.URL)
+		repoIndex, err := downloadIndex(value.URL)
 		if err != nil {
-			log.Printf("yamlFile.Get err   #%v ", err)
+			Error.log(err)
+			os.Exit(1)
 		}
-
-		yamlFile, err := ioutil.ReadAll(indexBuffer)
-		if err != nil {
-			log.Printf("yamlFile.Get err   #%v ", err)
+		if index.Projects == nil {
+			index.APIVersion = repoIndex.APIVersion
+			index.Generated = repoIndex.Generated
+			index.Projects = make(map[string]ProjectVersions)
 		}
-		err = yaml.Unmarshal(yamlFile, index)
-		if err != nil {
-			log.Fatalf("Unmarshal: %v", err)
-		}
-		if masterIndex == nil {
-			masterIndex = index
-		} else {
-			for name, project := range index.Projects {
-				masterIndex.Projects[name] = project
-			}
+		for name, project := range repoIndex.Projects {
+			index.Projects[name] = project
 		}
 	}
 
-	return masterIndex
+	return nil
 }
 
 func (index *RepoIndex) listProjects() string {
