@@ -34,9 +34,7 @@ test-stage-template: &test-stage-template
     - choco install docker-desktop
     #- '"\Program Files\Docker\Docker\resources\bin\docker.exe" version'
     # - '"\Program Files\Docker\Docker\Docker for Windows.exe" &'
-    - cd "\ProgramData"
-    - dir
-    - cd docker\config
+    - cd "\ProgramData\docker\config"
     - dir
     - type daemon.json
     - 'configfile =@"{"experimental":true}"@'
