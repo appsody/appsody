@@ -71,14 +71,14 @@ func TestStopWithoutName(t *testing.T) {
 		fmt.Println("calling docker ps")
 		pathElements := strings.Split(projectDir, "/")
 		containerName := pathElements[len(pathElements)-1]
-		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName + "-dev"}, projectDir)
+		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName + "-dev"})
 		fmt.Println("docker output", dockerOutput)
 		if dockerErr != nil {
 			log.Print("Ignoring error running docker ps -q -f name=appsody-stop-test-dev", dockerErr)
 
 		}
 		if dockerOutput != "" {
-			t.Fatal("docker container appsody-stop-test-dev was found and should have been stopped")
+			t.Fatal("docker container " + containerName + " was found and should have been stopped")
 
 		}
 
@@ -153,13 +153,13 @@ func TestStopWithName(t *testing.T) {
 
 		}
 		fmt.Println("about to do docker ps")
-		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=testStopContainer"}, projectDir)
+		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=testStopContainer"})
 		if dockerErr != nil {
 			log.Print("Ignoring error running docker ps -q -f name=testStopContainer", dockerErr)
 
 		}
 		if dockerOutput != "" {
-			t.Fatal("docker container appsody-stop-test-dev was found and should have been stopped")
+			t.Fatal("docker container testStopContainer was found and should have been stopped")
 
 		}
 

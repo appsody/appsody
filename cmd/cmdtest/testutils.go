@@ -214,23 +214,7 @@ func AddLocalFileRepo(repoName string, repoFilePath string) (string, func(), err
 // The stdout and stderr are captured, printed, and returned
 // args will be passed to the docker command
 // workingDir will be the directory the command runs in
-func RunDockerCmdExec(args []string, workingDir string) (string, error) {
-	execDir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		// replace the original working directory when this function completes
-		err := os.Chdir(execDir)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	// set the working directory
-	if err := os.Chdir(workingDir); err != nil {
-		return "", err
-	}
+func RunDockerCmdExec(args []string) (string, error) {
 
 	cmdArgs := []string{"docker"}
 	cmdArgs = append(cmdArgs, args...)
@@ -265,10 +249,7 @@ func RunDockerCmdExec(args []string, workingDir string) (string, error) {
 	}
 
 	// replace the original working directory when this function completes
-	err = os.Chdir(execDir)
-	if err != nil {
-		log.Fatal(err)
-	}
+
 	err = execCmd.Wait()
 
 	return outBuffer.String(), err

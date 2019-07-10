@@ -15,9 +15,7 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -30,13 +28,7 @@ var stopCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		Info.log("Stopping development environment")
-		projectDir := getProjectDir()
-		imageName := fmt.Sprintf("%s-dev", filepath.Base(projectDir))
-		if containerName == "" {
-			dockerStop(imageName)
-		} else {
-			dockerStop(containerName)
-		}
+		dockerStop(containerName)
 		//dockerRemove(imageName) is not needed due to --rm flag
 		os.Exit(1)
 	},
