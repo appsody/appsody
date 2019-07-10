@@ -6,4 +6,7 @@ install: skip
 script: 
   - systeminfo
   - docker version
+  - docker pull hello-world
   - docker run hello-world
+  - docker pull appsody/nodejs-express:0.2
+  - docker run appsody/nodejs-express:0.2
