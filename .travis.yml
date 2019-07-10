@@ -1,6 +1,9 @@
-language: minimal
+language: bash
 os: windows
 services: docker
 
 install: skip
-script: docker run hello-world
+script: 
+  - systeminfo
+  - docker version
+  - docker run hello-world
