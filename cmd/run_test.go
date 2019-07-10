@@ -14,8 +14,8 @@
 package cmd_test
 
 import (
+	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 
@@ -39,7 +39,7 @@ func TestRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-	log.Println("Created project dir: " + projectDir)
+	fmt.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
@@ -58,7 +58,7 @@ func TestRun(t *testing.T) {
 	defer func() {
 		_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
 		if err != nil {
-			log.Printf("Ignoring error running appsody stop: %s", err)
+			fmt.Printf("Ignoring error running appsody stop: %s", err)
 		}
 	}()
 
@@ -76,13 +76,13 @@ func TestRun(t *testing.T) {
 			healthCheckWait += healthCheckFrequency
 			resp, err := http.Get("http://localhost:3000/health")
 			if err != nil {
-				log.Printf("Health check error. Ignore and retry: %s", err)
+				fmt.Printf("Health check error. Ignore and retry: %s", err)
 			} else {
 				resp.Body.Close()
 				if resp.StatusCode != 200 {
-					log.Printf("Health check response code %d. Ignore and retry.", resp.StatusCode)
+					fmt.Printf("Health check response code %d. Ignore and retry.", resp.StatusCode)
 				} else {
-					log.Printf("Health check OK")
+					fmt.Printf("Health check OK")
 					// may want to check body
 					healthCheckOK = true
 				}
