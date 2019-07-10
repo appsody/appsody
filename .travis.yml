@@ -3,40 +3,65 @@ language: go
 go:
   - 1.12.x
 
-os:
-  - linux
-  # travis enterprise doesn't support osx or windows
-  # - osx
-  # - windows
-
 go_import_path: github.com/appsody/appsody
 
 services:
   - docker
 
-install:
-  - wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
-  - chmod +x appsody-controller
-  - mkdir ~/.appsody
-  - cp appsody-controller ~/.appsody/
+# skip the default language's install and script steps, we implement job stages instead
+install: skip
+script: skip
 
-script:
-  - make lint
-  - make test
+stages:
+  - name: lint
+  - name: test
+  - name: deploy
+    if: branch = master AND tag IS present
+
+install-controller: &install-controller
+  install:
+      - wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
+      - chmod +x appsody-controller
+      - mkdir ~/.appsody
+      - cp appsody-controller ~/.appsody/
+      - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
+
+test-template: &test-template
+  stage: test
+  <<: *install-controller
+  script: make test
 
 
-# note before_deploy will run before each deploy provider
-before_deploy:
-  - make VERSION=${TRAVIS_TAG}  package
-  - make deploy
-
-deploy:
-  provider: releases
-  skip_cleanup: true
-  api_key:
-    secure: gtGyAu3m2v26KtkzQu4ljkLGLGKpCJAak0cO00zlvDvEGxwqmiH7yytG8uoAOise8Fp/1pF5YXrhpw6I7+WN1s8k+GJyCKoLG60wf9ODF4BR+9vGiwOfObs91yAfKz4oA/zzGG2eLdD59Y4VoRgY46OzsmGDbw9Zf34r+xGQ3fdrQCYbLItJzLwX/GEfWGBtVmJVb+BIuFrZ0UF1zTswC8+TkPDj/u+Pnc5bMXUqH7gUz2wrVdDc873EJjILB6U8iMIrFrKshr1CQ/C4JTJh7l6xiCJ5NS8Ik40jYrVfytMHo9cC93VkUnl1fNJuBo7kRQAbek1Jp7gmsfX1BQzmXp6p+VpgQmealqDWa+b25VhBS7T0Bz3nZvktAdRE6kbpVYgbS/YpDEQWNLaMreezd9taYjDFz+k3PlNCsMqPGfyU4jV1VViHuyFJvBuIt3JlHOm3mF/bNIdfDLVtkugl/etBoyITD0Gths+xNh997ctB9diGhlwmu3VkMEo173aEtYjpNPLQrkAFtA0476xLIJroPb4R2KlO31iC5tpUU9Ge/65ZUPaMaDIgR8kcLGmKvAdNwdDonZguT8Q/XlEPpn0MCmKbZcX2/G3l3+Sc2YN7EHeH1t7gGbQAjzHzsQCHLCCbL2p8X/AJzf6vQJRI1kEEs9QFwLg7vBjjT2n6Nzg=
-  file: package/*
-  file_glob: true
-  on:
-    tags: true
-    repo: appsody/appsody
+jobs:
+  include:
+    - name: Lint
+      stage: lint
+      os: linux
+      script: make lint
+    - <<: *test-template
+      name: Full Test on Linux
+      os: linux
+    - <<: *test-template
+      name: Unit Test on MacOS
+      os: osx
+      script: make unittest
+    - <<: *test-template
+      name: Unit Test on Windows
+      os: windows
+      script: make unittest
+    - name: Deploy Release
+      stage: deploy
+      os: linux
+      script:
+        - make VERSION=${TRAVIS_TAG}  package
+        - make deploy
+      deploy:
+        provider: releases
+        skip_cleanup: true
+        api_key:
+          secure: gtGyAu3m2v26KtkzQu4ljkLGLGKpCJAak0cO00zlvDvEGxwqmiH7yytG8uoAOise8Fp/1pF5YXrhpw6I7+WN1s8k+GJyCKoLG60wf9ODF4BR+9vGiwOfObs91yAfKz4oA/zzGG2eLdD59Y4VoRgY46OzsmGDbw9Zf34r+xGQ3fdrQCYbLItJzLwX/GEfWGBtVmJVb+BIuFrZ0UF1zTswC8+TkPDj/u+Pnc5bMXUqH7gUz2wrVdDc873EJjILB6U8iMIrFrKshr1CQ/C4JTJh7l6xiCJ5NS8Ik40jYrVfytMHo9cC93VkUnl1fNJuBo7kRQAbek1Jp7gmsfX1BQzmXp6p+VpgQmealqDWa+b25VhBS7T0Bz3nZvktAdRE6kbpVYgbS/YpDEQWNLaMreezd9taYjDFz+k3PlNCsMqPGfyU4jV1VViHuyFJvBuIt3JlHOm3mF/bNIdfDLVtkugl/etBoyITD0Gths+xNh997ctB9diGhlwmu3VkMEo173aEtYjpNPLQrkAFtA0476xLIJroPb4R2KlO31iC5tpUU9Ge/65ZUPaMaDIgR8kcLGmKvAdNwdDonZguT8Q/XlEPpn0MCmKbZcX2/G3l3+Sc2YN7EHeH1t7gGbQAjzHzsQCHLCCbL2p8X/AJzf6vQJRI1kEEs9QFwLg7vBjjT2n6Nzg=
+        file: package/*
+        file_glob: true
+        on:
+          branch: master
+          tags: true
