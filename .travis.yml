@@ -8,8 +8,10 @@ script:
   - docker version
   - cd "\ProgramData\docker\config"
   - dir
+  - echo { "experimental":true } > daemon.json
+  - dir
   - type daemon.json
   - Powershell -Command Restart-Service Docker
-  - Powershell -Command Docker version
+  - docker version
   - docker pull alpine
   - docker pull appsody/nodejs-express:0.2
