@@ -6,6 +6,12 @@ install: skip
 script: 
   - systeminfo
   - docker version
+  - cd %HOMEPATH%\.docker
+  - dir
+  - - Powershell -Command Get-Content -Path config.json
+  - 'echo { \"experimental\": true } > config.json'
+  - dir
+  - Powershell -Command Get-Content -Path config.json
   - cd "\ProgramData\docker\config"
   - 'echo { \"experimental\": true } > daemon.json'
   - dir
