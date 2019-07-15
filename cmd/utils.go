@@ -227,7 +227,7 @@ func getProjectConfig() ProjectConfig {
 }
 func getProjectName() string {
 	projectDir := getProjectDir()
-	projectName := filepath.Base(projectDir)
+	projectName := strings.ToLower(filepath.Base(projectDir))
 	return projectName
 }
 func execAndListen(command string, args []string, logger appsodylogger) (*exec.Cmd, error) {
