@@ -6,9 +6,14 @@ install: skip
 script: 
   - systeminfo
   - docker version
-  - cd %HOMEPATH%\.docker
+  - cd %HOMEPATH%
   - dir
-  - - Powershell -Command Get-Content -Path config.json
+  - cd .docker
+  - dir
+  - mkdir .docker
+  - cd .docker
+  - dir
+  - Powershell -Command Get-Content -Path config.json
   - 'echo { \"experimental\": true } > config.json'
   - dir
   - Powershell -Command Get-Content -Path config.json
@@ -17,7 +22,10 @@ script:
   - dir
   - Powershell -Command Get-Content -Path daemon.json
   # - Powershell -Command [Environment]::SetEnvironmentVariable("LCOW_SUPPORTED", "1", "Machine")
+  # - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_SUPPORTED', '1', 'Machine')"
+  - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
   - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_SUPPORTED', '1', 'Machine')"
+  - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
   - Powershell -Command Restart-Service Docker
   - docker version
   - docker pull alpine
