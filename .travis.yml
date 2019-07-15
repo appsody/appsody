@@ -10,7 +10,8 @@ script:
   - dir
   - 'echo { "experimental": true } > daemon.json'
   - dir
-  - 'type daemon.json'
+  - Powershell -Command Get-Content -Path .\daemon.json
+  - docker version
   # - Powershell -Command [Environment]::SetEnvironmentVariable("LCOW_SUPPORTED", "1", "Machine")
   # - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_SUPPORTED', '1', 'Machine')"
   - Powershell -Command Restart-Service Docker
