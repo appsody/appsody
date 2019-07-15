@@ -8,9 +8,9 @@ script:
   - docker version
   - cd "\ProgramData\docker\config"
   - dir
-  - echo { "experimental":true } > daemon.json
+  - echo { "experimental": true } > daemon.json
   - dir
-  - type daemon.json
+  - cat daemon.json
   - Powershell -Command Restart-Service Docker
   - docker version
   - docker pull alpine
