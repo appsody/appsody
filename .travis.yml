@@ -8,9 +8,11 @@ script:
   - docker version
   - cd "\ProgramData\docker\config"
   - dir
-  - echo { "experimental": true } > daemon.json
+  - 'echo { "experimental": true } > daemon.json'
   - dir
-  - cat daemon.json
+  - 'type daemon.json'
+  # - Powershell -Command [Environment]::SetEnvironmentVariable("LCOW_SUPPORTED", "1", "Machine")
+  # - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_SUPPORTED', '1', 'Machine')"
   - Powershell -Command Restart-Service Docker
   - docker version
   - docker pull alpine
