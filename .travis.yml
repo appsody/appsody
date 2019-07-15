@@ -6,5 +6,10 @@ install: skip
 script: 
   - systeminfo
   - docker version
+  - cd "\ProgramData\docker\config"
+  - dir
+  - type daemon.json
+  - Powershell -Command Restart-Service Docker
+  - Powershell -Command Docker version
   - docker pull alpine
   - docker pull appsody/nodejs-express:0.2
