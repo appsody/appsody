@@ -24,7 +24,7 @@ import (
 var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the local Appsody environment for your project",
-	Long:  ``,
+	Long:  `If no name flag is specified the value used is "directory-name-dev". By specifying the --name flag the corresponding development container will be stopped.  The value of name is either "project-dir-dev" or the name specified in "appsody run".  You can find the list of running docker containers with the commmand: "docker container ls".  See the NAMES Column.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		Info.log("Stopping development environment")
