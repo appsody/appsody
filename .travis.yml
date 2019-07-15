@@ -6,10 +6,8 @@ install: skip
 script: 
   - systeminfo
   - docker version
-  - Powershell -Command Restart-Service Docker
   - cd "\ProgramData\docker\config"
-  - dir
-  - 'echo { "experimental": true } > daemon.json'
+  - 'echo { \"experimental\": true } > daemon.json'
   - dir
   - Powershell -Command Get-Content -Path daemon.json
   - docker version
