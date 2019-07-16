@@ -6,6 +6,7 @@ install: skip
 script: 
   - systeminfo
   - docker version
+  - docker info
   # - cd $HOME
   # - dir
   # - cd ~
@@ -32,5 +33,6 @@ script:
   - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
   - Powershell -Command Restart-Service Docker
   - docker version
+  - docker info
   - docker pull --platform linux alpine
   - docker pull --platform linux appsody/nodejs-express:0.2
