@@ -6,14 +6,16 @@ install: skip
 script: 
   - systeminfo
   - docker version
-  - cd $HOME
+  - cd \Users\travis
   - dir
-  - cd ~
-  - dir
-  - cd
-  - dir
-  - cd .docker
-  - dir
+  # - cd $HOME
+  # - dir
+  # - cd ~
+  # - dir
+  # - cd
+  # - dir
+  # - cd .docker
+  # - dir
   - mkdir .docker
   - cd .docker
   - dir
