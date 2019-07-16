@@ -38,7 +38,7 @@ script:
   - cd "\Program Files"
   - mkdir "Linux Containers"
   - cd "Linux Containers"
-  - wget https://github.com/linuxkit/lcow/releases/download/v4.14.35-v0.3.9/release.zip
+  - wget https://github.com/linuxkit/lcow/files/1482864/release.zip
   - unzip release.zip
   - dir
   # - Powershell -Command Expand-Archive release.zip -DestinationPath \"C:\Program Files\Linux Containers\.\"
