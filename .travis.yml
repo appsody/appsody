@@ -6,7 +6,7 @@ install: skip
 script: 
   - systeminfo
   - docker version
-  - cd \Users\travis
+  - cd \Users\\travis
   - dir
   # - cd $HOME
   # - dir
