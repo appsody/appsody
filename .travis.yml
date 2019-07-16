@@ -6,7 +6,7 @@ install: skip
 script: 
   - systeminfo
   - docker version
-  - cd %HOMEPATH%
+  - Powershell -Command cd ~
   - dir
   - cd .docker
   - dir
