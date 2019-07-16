@@ -28,18 +28,23 @@ script:
   - Powershell -Command Get-Content -Path daemon.json
   # - Powershell -Command [Environment]::SetEnvironmentVariable("LCOW_SUPPORTED", "1", "Machine")
   # - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_SUPPORTED', '1', 'Machine')"
-  - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
+  # - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
   - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_SUPPORTED', '1', 'Machine')"
-  - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
+  # - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
   # - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_API_PLATFORM_IF_OMITTED', 'linux', 'Machine')"
-  - Powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12"
+  # - Powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12"
   # - Powershell -Command Invoke-WebRequest -UseBasicParsing -OutFile release.zip https://github.com/linuxkit/lcow/files/1482864/release.zip
-  - Powershell -Command Invoke-WebRequest -OutFile release.zip -Uri https://github.com/linuxkit/lcow/releases/download/v4.14.35-v0.3.9/release.zip
+  # - Powershell -Command Invoke-WebRequest -OutFile release.zip -Uri https://github.com/linuxkit/lcow/releases/download/v4.14.35-v0.3.9/release.zip
+  - cd "\Program Files"
+  - mkdir "Linux Containers"
+  - cd "Linux Containers"
   - wget https://github.com/linuxkit/lcow/releases/download/v4.14.35-v0.3.9/release.zip
-  - Powershell -Command Expand-Archive release.zip -DestinationPath \"C:\Program Files\Linux Containers\.\"
-  - Powershell -Command Restart-Service Docker
-  - cd "\Program Files\Linux Containers"
+  - unzip release.zip
   - dir
+  # - Powershell -Command Expand-Archive release.zip -DestinationPath \"C:\Program Files\Linux Containers\.\"
+  - Powershell -Command Restart-Service Docker
+  # - cd "\Program Files\Linux Containers"
+  # - dir
   - docker version
   - docker info
   - docker pull --platform linux alpine
