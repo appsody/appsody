@@ -31,7 +31,11 @@ script:
   - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
   - Powershell -Command "[Environment]::SetEnvironmentVariable('LCOW_SUPPORTED', '1', 'Machine')"
   - Powershell -Command "[Environment]::GetEnvironmentVariable('LCOW_SUPPORTED', 'Machine')"
+  - Powershell -Command Invoke-WebRequest -UseBasicParsing -OutFile release.zip https://github.com/linuxkit/lcow/files/1482864/release.zip
+  - Powershell -Command Expand-Archive release.zip -DestinationPath \"C:\Program Files\Linux Containers\.\"
   - Powershell -Command Restart-Service Docker
+  - cd "\Program Files\Linux Containers"
+  - dir
   - docker version
   - docker info
   - docker pull --platform linux alpine
