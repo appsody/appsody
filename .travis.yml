@@ -6,7 +6,11 @@ install: skip
 script: 
   - systeminfo
   - docker version
-  - Powershell -Command cd ~
+  - cd $HOME
+  - dir
+  - cd ~
+  - dir
+  - cd
   - dir
   - cd .docker
   - dir
