@@ -1,6 +1,6 @@
 class Appsody < Formula
   desc "The Appsody command-line interface"
-  homepage "https://github.com/appsody/appsody#readme"
+  homepage "https://www.appsody.dev"
   url "https://github.com/REPO_NAME/releases/download/RELEASE_TAG/FILE_PREFIX-VERSION_NUMBER.tar.gz"
   # version "VERSION_NUMBER"
   sha256 "SHA_256"
