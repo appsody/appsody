@@ -14,13 +14,8 @@ script:
   # - cd ~
   # - dir
   - cd
-  - dir
-  # - cd .docker
-  # - dir
   - mkdir .docker
   - cd .docker
-  - dir
-  - Powershell -Command Get-Content -Path config.json
   - 'echo { \"experimental\": true } > config.json'
   - dir
   - Powershell -Command Get-Content -Path config.json
@@ -50,4 +45,4 @@ script:
   - docker version
   - docker info
   - docker run --platform linux --isolation=hyperv alpine
-  - docker run --platform linux --isolation=hyperv appsody/nodejs-express:0.2
+  - docker run --platform linux appsody/nodejs-express:0.2
