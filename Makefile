@@ -1,6 +1,8 @@
 .DEFAULT_GOAL := help
 
 #### Constant variables
+# use -count=1 to disable cache and -p=1 to stream output live
+GO_TEST_COMMAND := go test -v -count=1 -p=1
 # Set a default VERSION only if it is not already set
 VERSION ?= 0.0.0
 COMMAND := appsody
@@ -29,9 +31,16 @@ package_binary = $(COMMAND)$(BINARY_EXT_$(os))
 all: lint test package ## Run lint, test, build, and package
 
 .PHONY: test
-test: ## Run the automated tests
-# use -count=1 to disable cache
-	go test -v -count=1 ./cmd
+test: ## Run the all the automated tests
+	$(GO_TEST_COMMAND) ./...
+
+.PHONY: unittest
+unittest: ## Run the automated unit tests
+	$(GO_TEST_COMMAND) ./cmd
+
+.PHONY: functest
+functest: ## Run the automated functional tests
+	$(GO_TEST_COMMAND) ./functest
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT_BINARY) ## Run the static code analyzers

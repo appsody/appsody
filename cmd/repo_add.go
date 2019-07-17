@@ -15,12 +15,11 @@
 package cmd
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
+	"regexp"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 // initCmd represents the init command
@@ -35,32 +34,41 @@ var addCmd = &cobra.Command{
 		}
 		var repoName = args[0]
 		var repoURL = args[1]
+
+		if len(repoName) > 50 {
+			Error.log("Invalid repository name. The <name> must be less than 50 characters.")
+			os.Exit(1)
+		}
+		match, _ := regexp.MatchString("^[a-zA-Z0-9\\-_]{1,50}$", repoName)
+		if !match {
+			Error.log("Invalid repository name. The <name> may only contain digits, numbers, dashes '-', and underscores '_'.")
+			os.Exit(1)
+		}
+
+		var repoFile RepositoryFile
+		repoFile.getRepos()
+		if repoFile.Has(repoName) {
+			Error.logf("A repository with the name '%s' already exists.", repoName)
+			os.Exit(1)
+		}
+		if repoFile.HasURL(repoURL) {
+			Error.logf("A repository with the URL '%s' already exists.", repoURL)
+			os.Exit(1)
+		}
+		_, err := downloadIndex(repoURL)
+		if err != nil {
+			Error.log(err)
+			os.Exit(1)
+		}
+
 		if dryrun {
 			Info.logf("Dry Run - Skipping appsody repo add repository Name: %s, URL: %s", repoName, repoURL)
 		} else {
-			var indexBuffer, err = downloadIndex(repoURL)
-			if err != nil {
-				log.Fatalf("Failed to verify repository location err   #%v ", err)
-			}
-			yamlFile, err := ioutil.ReadAll(indexBuffer)
-			if err != nil {
-				log.Fatalf("Failed to read from repository location err   #%v ", err)
-			}
-
-			var index RepoIndex
-			err = yaml.Unmarshal(yamlFile, &index)
-			if err != nil {
-				log.Fatalf("Failed to format index from repository location: %v", err)
-			}
-
 			var newEntry = RepositoryEntry{
 				Name: repoName,
 				URL:  repoURL,
 			}
 
-			// Need to check to see if it already exists under a different name?
-			var repoFile RepositoryFile
-			repoFile.getRepos()
 			repoFile.Add(&newEntry)
 			err = repoFile.WriteFile(getRepoFileLocation())
 			if err != nil {
