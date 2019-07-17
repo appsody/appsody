@@ -10,7 +10,7 @@ projects:
     - Microprofile
     - Maven
     - Open Liberty
-    name: java-microprofile
+    name: A Java Microprofile Stack
     maintainers:
     - neeraj.laad@gmail.com
     urls:
