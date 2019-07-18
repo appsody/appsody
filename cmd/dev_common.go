@@ -38,25 +38,45 @@ var ports []string
 var publishAllPorts bool
 var dockerNetwork string
 
+var nameFlags *flag.FlagSet
 var commonFlags *flag.FlagSet
 
-func addDevCommonFlags(cmd *cobra.Command) {
-	if commonFlags == nil {
+func buildCommonFlags() {
+
+	if commonFlags == nil || nameFlags == nil {
 		commonFlags = flag.NewFlagSet("", flag.ContinueOnError)
+		nameFlags = flag.NewFlagSet("", flag.ContinueOnError)
 		curDir, err := os.Getwd()
 		if err != nil {
 			Error.log("Error getting current directory ", err)
 			os.Exit(1)
 		}
+
 		defaultName := filepath.Base(curDir) + "-dev"
+		nameFlags.StringVar(&containerName, "name", defaultName, "Assign a name to your development container.")
 		defaultDepsVolume := filepath.Base(curDir) + "-deps"
 		commonFlags.StringVar(&dockerNetwork, "network", "", "Specify the network for docker to use.")
-		commonFlags.StringVar(&containerName, "name", defaultName, "Assign a name to your development container.")
 		commonFlags.StringVar(&depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 		commonFlags.StringArrayVarP(&ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
 		commonFlags.BoolVarP(&publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
+
 	}
+
+}
+
+func addNameFlags(cmd *cobra.Command) {
+
+	buildCommonFlags()
+	cmd.PersistentFlags().AddFlagSet(nameFlags)
+
+}
+
+func addDevCommonFlags(cmd *cobra.Command) {
+
+	buildCommonFlags()
+	addNameFlags(cmd)
 	cmd.PersistentFlags().AddFlagSet(commonFlags)
+
 }
 
 func commonCmd(cmd *cobra.Command, args []string, mode string) {

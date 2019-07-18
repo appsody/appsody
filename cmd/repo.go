@@ -254,9 +254,9 @@ func (index *RepoIndex) getIndex() error {
 func (index *RepoIndex) listProjects() string {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("NAME", "VERSION", "DESCRIPTION")
-	for _, value := range index.Projects {
-		table.AddRow(value[0].Name, value[0].Version, value[0].Description)
+	table.AddRow("ID", "VERSION", "DESCRIPTION")
+	for id, value := range index.Projects {
+		table.AddRow(id, value[0].Version, value[0].Description)
 	}
 
 	return table.String()
@@ -308,6 +308,15 @@ func (r *RepositoryFile) Add(re ...*RepositoryEntry) {
 func (r *RepositoryFile) Has(name string) bool {
 	for _, rf := range r.Repositories {
 		if rf.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *RepositoryFile) HasURL(url string) bool {
+	for _, rf := range r.Repositories {
+		if rf.URL == url {
 			return true
 		}
 	}

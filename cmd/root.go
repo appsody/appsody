@@ -70,7 +70,7 @@ func init() {
 		cobra.OnInitialize(ensureConfig)
 	}
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.appsody.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.appsody/.appsody.yaml)")
 	// Added for logging
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Turns on debug output and logging to a file in $HOME/.appsody/logs")
 

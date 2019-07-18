@@ -32,20 +32,24 @@ var buildCmd = &cobra.Command{
 
 		extractCmd.Run(cmd, args)
 
-		projectDir := getProjectDir()
-		projectName := filepath.Base(projectDir)
+		projectName := getProjectName()
 		extractDir := filepath.Join(getHome(), "extract", projectName)
 		dockerfile := filepath.Join(extractDir, "Dockerfile")
-
+		buildImage := projectName //Lowercased
+		// If a tag is specified, change the buildImage
+		if tag != "" {
+			buildImage = tag
+		}
 		cmdName := "docker"
-		cmdArgs := []string{"build", "-t", projectName, "-f", dockerfile, extractDir}
+		cmdArgs := []string{"build", "-t", buildImage, "-f", dockerfile, extractDir}
 		execAndWait(cmdName, cmdArgs, DockerLog)
 		if !dryrun {
-			Info.log("Built docker image ", projectName)
+			Info.log("Built docker image ", buildImage)
 		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(buildCmd)
+	buildCmd.PersistentFlags().StringVarP(&tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 }
