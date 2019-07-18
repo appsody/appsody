@@ -72,7 +72,7 @@ setup the local dev environment.`,
 			projectType := args[0]
 
 			if len(index.Projects[projectType]) < 1 {
-				Error.logf("Could not find a stack with the name %s. Run `appsody list` to see the available stacks or -h for help.", projectType)
+				Error.logf("Could not find a stack with the id \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType)
 				os.Exit(1)
 			}
 			var projectName = index.Projects[projectType][0].URLs[0]

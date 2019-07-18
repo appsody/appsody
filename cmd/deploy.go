@@ -31,7 +31,7 @@ var deployCmd = &cobra.Command{
 generates a KNative serving deployment manifest (yaml) file, and deploys your image as a KNative
 service in your local cluster.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Extract code and build the image
+		// Extract code and build the image - and tags it if -t is specified
 		buildCmd.Run(cmd, args)
 		//Generate the KNative yaml
 		//Get the container port first
@@ -58,21 +58,22 @@ service in your local cluster.`,
 		knativeTempl := getKNativeTemplate()
 		//Get the project name and make it the KNative service name
 		serviceName := getProjectName()
-		//Deploy image name is also project name
-		deployImage := getProjectName()
-
+		//Retrieve the project name and lowercase it
+		projectName := getProjectName()
+		deployImage := projectName // if not tagged, this is the deploy image name
+		if tag != "" {
+			deployImage = tag //Otherwise, it's the tag
+		}
 		// We're not pushing to a repository, so we need to use dev.local for Knative to be able to find it
 		if !push {
-			tag = "dev.local/" + deployImage
-		}
-		//Tagging the image if necessary and using the tag as the deployImage for KNative
-		if tag != "" {
-			err = DockerTag(deployImage, tag)
+			localtag := "dev.local/" + projectName
+			// Tagging the image using the tag as the deployImage for KNative
+			err = DockerTag(deployImage, localtag)
 			if err != nil {
 				Error.log("Tagging the image failed - exiting. Error: ", err)
 				os.Exit(1)
 			}
-			deployImage = tag
+			deployImage = localtag // And forcing deployimage to be localtag
 		}
 		//Generating the KNative yaml file
 		Debug.logf("Calling GenKnativeYaml with parms: %s %d %s %s \n", knativeTempl, port, serviceName, deployImage)
