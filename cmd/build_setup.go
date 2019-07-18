@@ -50,8 +50,9 @@ var setupCmd = &cobra.Command{
 		}
 		url := fmt.Sprintf("%s/v1/namespaces/default/githubsource/", tektonServer)
 
-		projectDir := getProjectDir()
-		projectName := filepath.Base(projectDir)
+		// projectDir := getProjectDir()
+		// projectName := filepath.Base(projectDir)
+		projectName := getProjectName()
 
 		// Setup JSON payload for use with the Tekton server
 		var jsonStr = fmt.Sprintf(`{"name":"%s", "gitrepositoryurl":"%s","accesstoken":"github-secret","pipeline":"appsody-build-pipeline"}`, projectName, gitProject)
