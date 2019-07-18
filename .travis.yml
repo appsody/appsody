@@ -44,5 +44,6 @@ script:
   # - dir
   - docker version
   - docker info
-  - docker run --platform linux --isolation=hyperv alpine
+  - docker pull --platform linux appsody/nodejs-express:0.2
   - docker run --platform linux appsody/nodejs-express:0.2
+  - docker run --platform linux --isolation=hyperv appsody/nodejs-express:0.2
