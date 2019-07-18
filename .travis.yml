@@ -7,8 +7,8 @@ script:
   - systeminfo
   - docker version
   - docker info
-  - Powershell -Command "Enable-WindowsOptionalFeature -Online -FeatureName containers –All"
-  - Powershell -Command "Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V –All"
+  # - Powershell -Command "Enable-WindowsOptionalFeature -Online -FeatureName containers –All"
+  # - Powershell -Command "Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V –All"
   # - cd $HOME
   # - dir
   # - cd ~
