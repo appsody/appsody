@@ -34,7 +34,7 @@ PHONY: install-controller
 install-controller: ## Get the controller and install it
 	wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
 	chmod +x appsody-controller
-	mkdir ~/.appsody
+	mkdir -p ~/.appsody
 	cp appsody-controller ~/.appsody/ 
 
 .PHONY: test
