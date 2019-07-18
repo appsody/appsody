@@ -254,9 +254,9 @@ func (index *RepoIndex) getIndex() error {
 func (index *RepoIndex) listProjects() string {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("NAME", "VERSION", "DESCRIPTION")
-	for _, value := range index.Projects {
-		table.AddRow(value[0].Name, value[0].Version, value[0].Description)
+	table.AddRow("ID", "VERSION", "DESCRIPTION")
+	for id, value := range index.Projects {
+		table.AddRow(id, value[0].Version, value[0].Description)
 	}
 
 	return table.String()
