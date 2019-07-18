@@ -20,12 +20,9 @@ stages:
 
 install-controller: &install-controller
   install:
-      - wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
-      - chmod +x appsody-controller
-      - mkdir ~/.appsody
-      - cp appsody-controller ~/.appsody/
       - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
-
+      - make install-controller
+      
 test-template: &test-template
   stage: test
   <<: *install-controller
