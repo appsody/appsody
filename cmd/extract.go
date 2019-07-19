@@ -171,11 +171,12 @@ in preparation to build the final docker image.`,
 func init() {
 	rootCmd.AddCommand(extractCmd)
 	extractCmd.PersistentFlags().StringVar(&targetDir, "target-dir", "", "Directory path to place the extracted files. This dir must not exist, it will be created.")
-	curDir, err := os.Getwd()
-	if err != nil {
-		Error.log("Error getting current directory ", err)
-		os.Exit(1)
-	}
-	defaultName := filepath.Base(curDir) + "-extract"
+	// curDir, err := os.Getwd()
+	// if err != nil {
+	//		Error.log("Error getting current directory ", err)
+	//	os.Exit(1)
+	//}
+	//defaultName := filepath.Base(curDir) + "-extract"
+	defaultName := getProjectName() + "-extract"
 	extractCmd.PersistentFlags().StringVar(&extractContainerName, "name", defaultName, "Assign a name to your development container.")
 }

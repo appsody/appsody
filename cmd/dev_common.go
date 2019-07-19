@@ -42,19 +42,20 @@ var nameFlags *flag.FlagSet
 var commonFlags *flag.FlagSet
 
 func buildCommonFlags() {
-
 	if commonFlags == nil || nameFlags == nil {
 		commonFlags = flag.NewFlagSet("", flag.ContinueOnError)
 		nameFlags = flag.NewFlagSet("", flag.ContinueOnError)
-		curDir, err := os.Getwd()
-		if err != nil {
-			Error.log("Error getting current directory ", err)
-			os.Exit(1)
-		}
+		//curDir, err := os.Getwd()
+		//if err != nil {
+		//	Error.log("Error getting current directory ", err)
+		//	os.Exit(1)
+		//}
 
-		defaultName := filepath.Base(curDir) + "-dev"
+		//defaultName := filepath.Base(curDir) + "-dev"
+		defaultName := getProjectName() + "-dev"
 		nameFlags.StringVar(&containerName, "name", defaultName, "Assign a name to your development container.")
-		defaultDepsVolume := filepath.Base(curDir) + "-deps"
+		//defaultDepsVolume := filepath.Base(curDir) + "-deps"
+		defaultDepsVolume := getProjectName() + "-deps"
 		commonFlags.StringVar(&dockerNetwork, "network", "", "Specify the network for docker to use.")
 		commonFlags.StringVar(&depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 		commonFlags.StringArrayVarP(&ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")

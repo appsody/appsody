@@ -226,9 +226,12 @@ func getProjectConfig() ProjectConfig {
 	return *projectConfig
 }
 func getProjectName() string {
-	projectDir := getProjectDir()
-	projectName := strings.ToLower(filepath.Base(projectDir))
-	return projectName
+	if !isHelpCommand() {
+		projectDir := getProjectDir()
+		projectName := strings.ToLower(filepath.Base(projectDir))
+		return projectName
+	}
+	return ""
 }
 func execAndListen(command string, args []string, logger appsodylogger) (*exec.Cmd, error) {
 	return execAndListenWithWorkDir(command, args, logger, workDirNotSet) // no workdir
