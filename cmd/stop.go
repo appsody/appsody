@@ -23,8 +23,13 @@ import (
 // stopCmd represents the stop command
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Stop the local Appsody environment for your project",
-	Long:  ``,
+	Short: "Stops the local Appsody docker container for your project",
+	Long: `Stop the local Appsody docker container for your project.
+
+Stops the docker container specified by the --name flag. 
+If --name is not specified, the container name is determined from the current working directory (see default below).
+To see a list of all your running docker containers, run the command "docker ps". The name is in the last column.`,
+
 	Run: func(cmd *cobra.Command, args []string) {
 
 		Info.log("Stopping development environment")
