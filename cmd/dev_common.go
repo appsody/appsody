@@ -53,9 +53,9 @@ func buildCommonFlags() {
 		}
 
 		defaultName := filepath.Base(curDir) + "-dev"
-		nameFlags.StringVar(&containerName, "name", defaultName, "Assign a name to your development container.")
+		nameFlags.StringVar(&containerName, "name", defaultName, "Name of the docker development container.")
 		defaultDepsVolume := filepath.Base(curDir) + "-deps"
-		commonFlags.StringVar(&dockerNetwork, "network", "", "Specify the network for docker to use.")
+		commonFlags.StringVar(&dockerNetwork, "network", "", "Network for docker to use.")
 		commonFlags.StringVar(&depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 		commonFlags.StringArrayVarP(&ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
 		commonFlags.BoolVarP(&publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
