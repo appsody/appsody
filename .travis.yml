@@ -28,7 +28,6 @@ test-template: &test-template
   <<: *install-controller
   script: make test
 
-
 jobs:
   include:
     - name: Lint
