@@ -156,10 +156,9 @@ in preparation to build the final docker image.`,
 			if dryrun {
 				Info.log("Dry Run - Skip moving ", extractDir, " to ", targetDir)
 			} else {
-				Debug.log("Moving ", extractDir, " to ", targetDir)
-				err = os.Rename(extractDir, targetDir)
+				err = MoveDir(extractDir, targetDir)
 				if err != nil {
-					Error.log("Could not move ", extractDir, " to ", targetDir, " ", err)
+					Error.log("Extract failed when moving ", extractDir, " to ", targetDir, " ", err)
 					os.Exit(1)
 				}
 				Info.log("Project extracted to ", targetDir)
