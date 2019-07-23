@@ -50,12 +50,21 @@ func buildCommonFlags() {
 		//	Error.log("Error getting current directory ", err)
 		//	os.Exit(1)
 		//}
+		projectName, perr := getProjectName()
 
+		if perr != nil {
+			if pmsg, ok := perr.(*NotAnAppsodyProject); ok {
+				Debug.log("Not a valid Appsody project - continuing: ", perr)
+				projectName = ""
+			} else {
+				Error.log("Error occurred retrieving project name... exiting: ", pmsg)
+			}
+		}
 		//defaultName := filepath.Base(curDir) + "-dev"
-		defaultName := getProjectName() + "-dev"
+		defaultName := projectName + "-dev"
 		nameFlags.StringVar(&containerName, "name", defaultName, "Assign a name to your development container.")
 		//defaultDepsVolume := filepath.Base(curDir) + "-deps"
-		defaultDepsVolume := getProjectName() + "-deps"
+		defaultDepsVolume := projectName + "-deps"
 		commonFlags.StringVar(&dockerNetwork, "network", "", "Specify the network for docker to use.")
 		commonFlags.StringVar(&depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 		commonFlags.StringArrayVarP(&ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
@@ -81,13 +90,17 @@ func addDevCommonFlags(cmd *cobra.Command) {
 }
 
 func commonCmd(cmd *cobra.Command, args []string, mode string) {
-
+	projectDir, perr := getProjectDir()
+	if perr != nil {
+		Error.log("The current directory is not a valid appsody project. Run appsody init <stack> to create one: ", perr)
+		os.Exit(1)
+	}
+	projectConfig := getProjectConfig()
 	err := CheckPrereqs()
 	if err != nil {
 		Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
-	projectConfig := getProjectConfig()
-	projectDir := getProjectDir()
+
 	platformDefinition := projectConfig.Platform
 	Debug.log("Stack image: ", platformDefinition)
 	Debug.log("Project directory: ", projectDir)

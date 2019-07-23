@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -32,7 +33,11 @@ var buildCmd = &cobra.Command{
 
 		extractCmd.Run(cmd, args)
 
-		projectName := getProjectName()
+		projectName, perr := getProjectName()
+		if perr != nil {
+			Error.log("Not a valid Appsody project: ", perr)
+			os.Exit(1)
+		}
 		extractDir := filepath.Join(getHome(), "extract", projectName)
 		dockerfile := filepath.Join(extractDir, "Dockerfile")
 		buildImage := projectName //Lowercased

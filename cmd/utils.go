@@ -34,6 +34,10 @@ type ProjectConfig struct {
 	Platform string
 }
 
+type NotAnAppsodyProject string
+
+func (e NotAnAppsodyProject) Error() string { return string(e) }
+
 var (
 	ConfigFile = ".appsody-config.yaml"
 )
@@ -131,7 +135,11 @@ func getVolumeArgs() []string {
 		homeDir = homeDirOverride
 		homeDirOverridden = true
 	}
-	projectDir := getProjectDir()
+	projectDir, perr := getProjectDir()
+	if perr != nil {
+		Error.log("The current directory is not a valid appsody project. Run appsody init <stack> to create one: ", perr)
+		os.Exit(1)
+	}
 	projectDirOverride := os.Getenv("APPSODY_MOUNT_PROJECT")
 	projectDirOverridden := false
 	if projectDirOverride != "" {
@@ -186,31 +194,36 @@ func mountExistsLocally(mount string) bool {
 	return fileExists
 }
 
-func getProjectDir() string {
+func getProjectDir() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		Error.log("Error getting current directory ", err)
-		os.Exit(1)
+		return "", err
 	}
 	appsodyConfig := filepath.Join(dir, ConfigFile)
 	projectDir, err := exists(appsodyConfig)
 	if err != nil {
 		Error.log(err)
-		os.Exit(1)
+		return "", err
 	}
 	if !projectDir {
 
-		Error.log("Current dir is not an appsody project. " +
-			"Run `appsody init <stack>` to setup an appsody project. Run `appsody list` to see the available stacks.")
-
-		os.Exit(1)
+		Debug.log("Current dir is not an appsody project.")
+		// +
+		// "Run `appsody init <stack>` to setup an appsody project. Run `appsody list` to see the available stacks.")
+		var e NotAnAppsodyProject = "The current directory is not a valid appsody project."
+		return "", &e
 	}
-	return dir
+	return dir, nil
 }
 
 func getProjectConfig() ProjectConfig {
 	if projectConfig == nil {
-		dir := getProjectDir()
+		dir, perr := getProjectDir()
+		if perr != nil {
+			Error.log("The current directory is not a valid appsody project. Run appsody init <stack> to create one: ", perr)
+			os.Exit(1)
+		}
 		appsodyConfig := filepath.Join(dir, ConfigFile)
 		viper.SetConfigFile(appsodyConfig)
 		Debug.log("Project config file set to: ", appsodyConfig)
@@ -225,13 +238,13 @@ func getProjectConfig() ProjectConfig {
 	}
 	return *projectConfig
 }
-func getProjectName() string {
-	if !isHelpCommand() {
-		projectDir := getProjectDir()
-		projectName := strings.ToLower(filepath.Base(projectDir))
-		return projectName
+func getProjectName() (string, error) {
+	projectDir, err := getProjectDir()
+	if err != nil {
+		return "", err
 	}
-	return ""
+	projectName := strings.ToLower(filepath.Base(projectDir))
+	return projectName, nil
 }
 func execAndListen(command string, args []string, logger appsodylogger) (*exec.Cmd, error) {
 	return execAndListenWithWorkDir(command, args, logger, workDirNotSet) // no workdir

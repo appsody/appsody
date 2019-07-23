@@ -32,6 +32,14 @@ var extractCmd = &cobra.Command{
 	Long: `This copies the full project, stack plus app, into a local directory
 in preparation to build the final docker image.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// Make sure we are in an Appsody project
+		projectDir, perr := getProjectDir()
+
+		if perr != nil {
+			Error.log("The current directory is not a valid appsody project. Run appsody init <stack> to create one: ", perr)
+			os.Exit(1)
+		}
+		projectConfig := getProjectConfig()
 		Info.log("Extracting project from development environment")
 
 		if targetDir != "" {
@@ -58,9 +66,6 @@ in preparation to build the final docker image.`,
 				os.Exit(1)
 			}
 		}
-
-		projectConfig := getProjectConfig()
-		projectDir := getProjectDir()
 
 		extractDir := filepath.Join(getHome(), "extract")
 		extractDirExists, err := exists(extractDir)
@@ -177,6 +182,16 @@ func init() {
 	//	os.Exit(1)
 	//}
 	//defaultName := filepath.Base(curDir) + "-extract"
-	defaultName := getProjectName() + "-extract"
+	projectName, perr := getProjectName()
+
+	if perr != nil {
+		if pmsg, ok := perr.(*NotAnAppsodyProject); ok {
+			Debug.log("Not a valid Appsody project - continuing: ", perr)
+			projectName = ""
+		} else {
+			Error.log("Error occurred retrieving project name... exiting: ", pmsg)
+		}
+	}
+	defaultName := projectName + "-extract"
 	extractCmd.PersistentFlags().StringVar(&extractContainerName, "name", defaultName, "Assign a name to your development container.")
 }

@@ -33,7 +33,11 @@ var deleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// projectDir := getProjectDir()
 		// projectName := filepath.Base(projectDir)
-		projectName := getProjectName()
+		projectName, perr := getProjectName()
+		if perr != nil {
+			Error.log("Not a valid Appsody project: ", perr)
+			os.Exit(1)
+		}
 		tektonServer := cliConfig.GetString("tektonserver")
 		if tektonServer == "" {
 			Error.log("No target Tekton server specified in the configuration.")

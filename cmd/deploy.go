@@ -56,10 +56,15 @@ service in your local cluster.`,
 		}
 		//Get the KNative template file
 		knativeTempl := getKNativeTemplate()
-		//Get the project name and make it the KNative service name
-		serviceName := getProjectName()
+
 		//Retrieve the project name and lowercase it
-		projectName := getProjectName()
+		projectName, perr := getProjectName()
+		if perr != nil {
+			Error.log("Not a valid Appsody project: ", perr)
+			os.Exit(1)
+		}
+		//Get the project name and make it the KNative service name
+		serviceName := projectName
 		deployImage := projectName // if not tagged, this is the deploy image name
 		if tag != "" {
 			deployImage = tag //Otherwise, it's the tag
