@@ -303,6 +303,58 @@ func CopyFile(source string, dest string) error {
 	return nil
 }
 
+// MoveDir moves a directory to another directory, even if they are on different partitions
+func MoveDir(fromDir string, toDir string) error {
+	Debug.log("Moving ", fromDir, " to ", toDir)
+	// Let's try os.Rename first
+	err := os.Rename(fromDir, toDir)
+	if err == nil {
+		// We did it - returning
+		//Error.log("Could not move ", extractDir, " to ", targetDir, " ", err)
+		return nil
+	}
+	// If we are here, we need to use copy
+	Debug.log("os.Rename did not work to move directories... attempting copy. From dir:", fromDir, " target dir: ", toDir)
+	err = copyDir(fromDir, toDir)
+	if err != nil {
+		Error.log("Could not move ", fromDir, " to ", toDir)
+		return err
+	}
+	return nil
+}
+
+func copyDir(fromDir string, toDir string) error {
+	_, err := os.Stat(fromDir)
+	if err != nil {
+		Error.logf("Cannot find source directory %s to copy", fromDir)
+		return err
+	}
+
+	var execCmd string
+	var execArgs = []string{fromDir, toDir}
+
+	if runtime.GOOS == "windows" {
+		execCmd = "CMD"
+		winArgs := []string{"/C", "XCOPY", "/I", "/E", "/H", "/K"}
+		execArgs = append(winArgs[0:], execArgs...)
+
+	} else {
+		execCmd = "cp"
+		bashArgs := []string{"-rf"}
+		execArgs = append(bashArgs[0:], execArgs...)
+	}
+	Debug.log("About to run: ", execCmd, execArgs)
+	copyCmd := exec.Command(execCmd, execArgs...)
+	cmdOutput, cmdErr := copyCmd.Output()
+	_, err = os.Stat(toDir)
+	if err != nil {
+		Error.logf("Could not copy %s to %s - output of copy command %s %s\n", fromDir, toDir, cmdOutput, cmdErr)
+		return errors.New("Error in copy: " + cmdErr.Error())
+	}
+	Debug.logf("Directory copy of %s to %s was successful \n", fromDir, toDir)
+	return nil
+}
+
 // CheckPrereqs checks the prerequisites to run the CLI
 func CheckPrereqs() error {
 	dockerCmd := "docker"
