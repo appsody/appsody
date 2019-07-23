@@ -137,7 +137,7 @@ func getVolumeArgs() []string {
 	}
 	projectDir, perr := getProjectDir()
 	if perr != nil {
-		Error.log("The current directory is not a valid appsody project. Run appsody init <stack> to create one: ", perr)
+		Error.log(perr)
 		os.Exit(1)
 	}
 	projectDirOverride := os.Getenv("APPSODY_MOUNT_PROJECT")
@@ -197,7 +197,7 @@ func mountExistsLocally(mount string) bool {
 func getProjectDir() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		Error.log("Error getting current directory ", err)
+		Error.log("Error getting current directory: ", err)
 		return "", err
 	}
 	appsodyConfig := filepath.Join(dir, ConfigFile)
@@ -211,7 +211,7 @@ func getProjectDir() (string, error) {
 		Debug.log("Current dir is not an appsody project.")
 		// +
 		// "Run `appsody init <stack>` to setup an appsody project. Run `appsody list` to see the available stacks.")
-		var e NotAnAppsodyProject = "The current directory is not a valid appsody project."
+		var e NotAnAppsodyProject = "The current directory is not a valid appsody project. Run `appsody init <stack>` to create one. Run `appsody list` to see the available stacks."
 		return "", &e
 	}
 	return dir, nil
@@ -241,7 +241,7 @@ func getProjectConfig() ProjectConfig {
 func getProjectName() (string, error) {
 	projectDir, err := getProjectDir()
 	if err != nil {
-		return "", err
+		return "my-project", err
 	}
 	projectName := strings.ToLower(filepath.Base(projectDir))
 	return projectName, nil

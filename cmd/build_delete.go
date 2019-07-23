@@ -35,7 +35,7 @@ var deleteCmd = &cobra.Command{
 		// projectName := filepath.Base(projectDir)
 		projectName, perr := getProjectName()
 		if perr != nil {
-			Error.log("Not a valid Appsody project: ", perr)
+			Error.log(perr)
 			os.Exit(1)
 		}
 		tektonServer := cliConfig.GetString("tektonserver")

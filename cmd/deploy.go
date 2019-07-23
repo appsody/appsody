@@ -60,7 +60,7 @@ service in your local cluster.`,
 		//Retrieve the project name and lowercase it
 		projectName, perr := getProjectName()
 		if perr != nil {
-			Error.log("Not a valid Appsody project: ", perr)
+			Error.log(perr)
 			os.Exit(1)
 		}
 		//Get the project name and make it the KNative service name

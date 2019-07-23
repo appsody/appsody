@@ -149,7 +149,7 @@ func install() {
 	Info.log("Setting up the development environment")
 	projectDir, perr := getProjectDir()
 	if perr != nil {
-		Error.log("The current directory is not a valid appsody project. Run appsody init <stack> to create one: ", perr)
+		Error.log(perr)
 		os.Exit(1)
 	}
 	platformDefinition := getProjectConfig().Platform

@@ -53,7 +53,7 @@ var setupCmd = &cobra.Command{
 		// projectName := filepath.Base(projectDir)
 		projectName, perr := getProjectName()
 		if perr != nil {
-			Error.log("Not a valid Appsody project: ", perr)
+			Error.log(perr)
 			os.Exit(1)
 		}
 		// Setup JSON payload for use with the Tekton server

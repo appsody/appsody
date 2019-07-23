@@ -36,7 +36,7 @@ in preparation to build the final docker image.`,
 		projectDir, perr := getProjectDir()
 
 		if perr != nil {
-			Error.log("The current directory is not a valid appsody project. Run appsody init <stack> to create one: ", perr)
+			Error.log(perr)
 			os.Exit(1)
 		}
 		projectConfig := getProjectConfig()
@@ -186,10 +186,10 @@ func init() {
 
 	if perr != nil {
 		if pmsg, ok := perr.(*NotAnAppsodyProject); ok {
-			Debug.log("Not a valid Appsody project - continuing: ", perr)
-			projectName = ""
+			Debug.log("Cannot retrieve the project name - continuing: ", perr)
 		} else {
 			Error.log("Error occurred retrieving project name... exiting: ", pmsg)
+			os.Exit(1)
 		}
 	}
 	defaultName := projectName + "-extract"

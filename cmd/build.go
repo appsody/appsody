@@ -35,7 +35,7 @@ var buildCmd = &cobra.Command{
 
 		projectName, perr := getProjectName()
 		if perr != nil {
-			Error.log("Not a valid Appsody project: ", perr)
+			Error.log(perr)
 			os.Exit(1)
 		}
 		extractDir := filepath.Join(getHome(), "extract", projectName)
