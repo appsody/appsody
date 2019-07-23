@@ -168,7 +168,10 @@ func ensureConfig() {
 func downloadFile(href string, writer io.Writer) error {
 
 	// allow file:// scheme
-	t := &http.Transport{}
+	t := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+	}
+	Debug.log("Proxy function for HTTP transport set to: ", &t.Proxy)
 	if runtime.GOOS == "windows" {
 		// For Windows, remove the root url. It seems to work fine with an empty string.
 		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("")))
@@ -187,6 +190,7 @@ func downloadFile(href string, writer io.Writer) error {
 	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		buf, err := ioutil.ReadAll(resp.Body)
