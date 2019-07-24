@@ -34,7 +34,8 @@ all: lint test package ## Run lint, test, build, and package
 
 .PHONY: test
 test: ## Run the all the automated tests
-	$(GO_TEST_COMMAND_WITH_ENV)
+	export APPSODY_MOUNT_CONTROLLER=~/.appsody/appsody-controller
+	$(GO_TEST_COMMAND) ./...
 
 .PHONY: unittest
 unittest: ## Run the automated unit tests
@@ -42,7 +43,8 @@ unittest: ## Run the automated unit tests
 
 .PHONY: functest
 functest: ## Run the automated functional tests
-	$(GO_FUNC_TEST_COMMAND_WITH_ENV) 
+	export APPSODY_MOUNT_CONTROLLER=~/.appsody/appsody-controller
+	$(GO_TEST_COMMAND) ./functest
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT_BINARY) ## Run the static code analyzers
