@@ -17,7 +17,7 @@ BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder
 CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/0.2.1
-APPSODY_MOUNT_CONTROLLER := ~/.appsody/appsody-controller
+
 
 #### Dynamic variables. These change depending on the target name.
 # Gets the current os from the target name, e.g. the 'build-linux' target will result in os = 'linux'
@@ -33,6 +33,7 @@ all: lint test package ## Run lint, test, build, and package
 
 .PHONY: test
 test: ## Run the all the automated tests
+    cp ~/.appsody/appsody-controller .
 	$(GO_TEST_COMMAND) ./...
 
 .PHONY: unittest
@@ -41,6 +42,7 @@ unittest: ## Run the automated unit tests
 
 .PHONY: functest
 functest: ## Run the automated functional tests
+	cp ~/.appsody/appsody-controller .
 	$(GO_TEST_COMMAND) ./functest
 
 .PHONY: lint
