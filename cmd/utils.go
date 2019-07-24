@@ -34,6 +34,10 @@ type ProjectConfig struct {
 	Platform string
 }
 
+type NotAnAppsodyProject string
+
+func (e NotAnAppsodyProject) Error() string { return string(e) }
+
 var (
 	ConfigFile = ".appsody-config.yaml"
 )
@@ -131,7 +135,11 @@ func getVolumeArgs() []string {
 		homeDir = homeDirOverride
 		homeDirOverridden = true
 	}
-	projectDir := getProjectDir()
+	projectDir, perr := getProjectDir()
+	if perr != nil {
+		Error.log(perr)
+		os.Exit(1)
+	}
 	projectDirOverride := os.Getenv("APPSODY_MOUNT_PROJECT")
 	projectDirOverridden := false
 	if projectDirOverride != "" {
@@ -186,31 +194,36 @@ func mountExistsLocally(mount string) bool {
 	return fileExists
 }
 
-func getProjectDir() string {
+func getProjectDir() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		Error.log("Error getting current directory ", err)
-		os.Exit(1)
+		Error.log("Error getting current directory: ", err)
+		return "", err
 	}
 	appsodyConfig := filepath.Join(dir, ConfigFile)
 	projectDir, err := exists(appsodyConfig)
 	if err != nil {
 		Error.log(err)
-		os.Exit(1)
+		return "", err
 	}
 	if !projectDir {
 
-		Error.log("Current dir is not an appsody project. " +
-			"Run `appsody init <stack>` to setup an appsody project. Run `appsody list` to see the available stacks.")
-
-		os.Exit(1)
+		Debug.log("Current dir is not an appsody project.")
+		// +
+		// "Run `appsody init <stack>` to setup an appsody project. Run `appsody list` to see the available stacks.")
+		var e NotAnAppsodyProject = "The current directory is not a valid appsody project. Run `appsody init <stack>` to create one. Run `appsody list` to see the available stacks."
+		return "", &e
 	}
-	return dir
+	return dir, nil
 }
 
 func getProjectConfig() ProjectConfig {
 	if projectConfig == nil {
-		dir := getProjectDir()
+		dir, perr := getProjectDir()
+		if perr != nil {
+			Error.log("The current directory is not a valid appsody project. Run appsody init <stack> to create one: ", perr)
+			os.Exit(1)
+		}
 		appsodyConfig := filepath.Join(dir, ConfigFile)
 		viper.SetConfigFile(appsodyConfig)
 		Debug.log("Project config file set to: ", appsodyConfig)
@@ -225,10 +238,13 @@ func getProjectConfig() ProjectConfig {
 	}
 	return *projectConfig
 }
-func getProjectName() string {
-	projectDir := getProjectDir()
+func getProjectName() (string, error) {
+	projectDir, err := getProjectDir()
+	if err != nil {
+		return "my-project", err
+	}
 	projectName := strings.ToLower(filepath.Base(projectDir))
-	return projectName
+	return projectName, nil
 }
 func execAndListen(command string, args []string, logger appsodylogger) (*exec.Cmd, error) {
 	return execAndListenWithWorkDir(command, args, logger, workDirNotSet) // no workdir
@@ -284,6 +300,58 @@ func CopyFile(source string, dest string) error {
 		return errors.New("Error in copy: " + cmdErr.Error())
 	}
 	Debug.logf("Copy of %s to %s was successful \n", source, dest)
+	return nil
+}
+
+// MoveDir moves a directory to another directory, even if they are on different partitions
+func MoveDir(fromDir string, toDir string) error {
+	Debug.log("Moving ", fromDir, " to ", toDir)
+	// Let's try os.Rename first
+	err := os.Rename(fromDir, toDir)
+	if err == nil {
+		// We did it - returning
+		//Error.log("Could not move ", extractDir, " to ", targetDir, " ", err)
+		return nil
+	}
+	// If we are here, we need to use copy
+	Debug.log("os.Rename did not work to move directories... attempting copy. From dir:", fromDir, " target dir: ", toDir)
+	err = copyDir(fromDir, toDir)
+	if err != nil {
+		Error.log("Could not move ", fromDir, " to ", toDir)
+		return err
+	}
+	return nil
+}
+
+func copyDir(fromDir string, toDir string) error {
+	_, err := os.Stat(fromDir)
+	if err != nil {
+		Error.logf("Cannot find source directory %s to copy", fromDir)
+		return err
+	}
+
+	var execCmd string
+	var execArgs = []string{fromDir, toDir}
+
+	if runtime.GOOS == "windows" {
+		execCmd = "CMD"
+		winArgs := []string{"/C", "XCOPY", "/I", "/E", "/H", "/K"}
+		execArgs = append(winArgs[0:], execArgs...)
+
+	} else {
+		execCmd = "cp"
+		bashArgs := []string{"-rf"}
+		execArgs = append(bashArgs[0:], execArgs...)
+	}
+	Debug.log("About to run: ", execCmd, execArgs)
+	copyCmd := exec.Command(execCmd, execArgs...)
+	cmdOutput, cmdErr := copyCmd.Output()
+	_, err = os.Stat(toDir)
+	if err != nil {
+		Error.logf("Could not copy %s to %s - output of copy command %s %s\n", fromDir, toDir, cmdOutput, cmdErr)
+		return errors.New("Error in copy: " + cmdErr.Error())
+	}
+	Debug.logf("Directory copy of %s to %s was successful \n", fromDir, toDir)
 	return nil
 }
 

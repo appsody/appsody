@@ -32,6 +32,14 @@ var extractCmd = &cobra.Command{
 	Long: `This copies the full project, stack plus app, into a local directory
 in preparation to build the final docker image.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// Make sure we are in an Appsody project
+		projectDir, perr := getProjectDir()
+
+		if perr != nil {
+			Error.log(perr)
+			os.Exit(1)
+		}
+		projectConfig := getProjectConfig()
 		Info.log("Extracting project from development environment")
 
 		if targetDir != "" {
@@ -58,9 +66,6 @@ in preparation to build the final docker image.`,
 				os.Exit(1)
 			}
 		}
-
-		projectConfig := getProjectConfig()
-		projectDir := getProjectDir()
 
 		extractDir := filepath.Join(getHome(), "extract")
 		extractDirExists, err := exists(extractDir)
@@ -156,10 +161,9 @@ in preparation to build the final docker image.`,
 			if dryrun {
 				Info.log("Dry Run - Skip moving ", extractDir, " to ", targetDir)
 			} else {
-				Debug.log("Moving ", extractDir, " to ", targetDir)
-				err = os.Rename(extractDir, targetDir)
+				err = MoveDir(extractDir, targetDir)
 				if err != nil {
-					Error.log("Could not move ", extractDir, " to ", targetDir, " ", err)
+					Error.log("Extract failed when moving ", extractDir, " to ", targetDir, " ", err)
 					os.Exit(1)
 				}
 				Info.log("Project extracted to ", targetDir)
@@ -171,11 +175,22 @@ in preparation to build the final docker image.`,
 func init() {
 	rootCmd.AddCommand(extractCmd)
 	extractCmd.PersistentFlags().StringVar(&targetDir, "target-dir", "", "Directory path to place the extracted files. This dir must not exist, it will be created.")
-	curDir, err := os.Getwd()
-	if err != nil {
-		Error.log("Error getting current directory ", err)
-		os.Exit(1)
+	// curDir, err := os.Getwd()
+	// if err != nil {
+	//		Error.log("Error getting current directory ", err)
+	//	os.Exit(1)
+	//}
+	//defaultName := filepath.Base(curDir) + "-extract"
+	projectName, perr := getProjectName()
+
+	if perr != nil {
+		if pmsg, ok := perr.(*NotAnAppsodyProject); ok {
+			Debug.log("Cannot retrieve the project name - continuing: ", perr)
+		} else {
+			Error.log("Error occurred retrieving project name... exiting: ", pmsg)
+			os.Exit(1)
+		}
 	}
-	defaultName := filepath.Base(curDir) + "-extract"
+	defaultName := projectName + "-extract"
 	extractCmd.PersistentFlags().StringVar(&extractContainerName, "name", defaultName, "Assign a name to your development container.")
 }

@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -32,8 +31,13 @@ var deleteCmd = &cobra.Command{
 	Short:  "Delete a Githook and build pipeline for your Appsody project",
 	Long:   `This allows you to delete a Githook for your Appsody project.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		projectDir := getProjectDir()
-		projectName := filepath.Base(projectDir)
+		// projectDir := getProjectDir()
+		// projectName := filepath.Base(projectDir)
+		projectName, perr := getProjectName()
+		if perr != nil {
+			Error.log(perr)
+			os.Exit(1)
+		}
 		tektonServer := cliConfig.GetString("tektonserver")
 		if tektonServer == "" {
 			Error.log("No target Tekton server specified in the configuration.")

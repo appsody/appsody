@@ -147,7 +147,11 @@ func init() {
 //Runs the .appsody-init.sh/bat files if necessary
 func install() {
 	Info.log("Setting up the development environment")
-	projectDir := getProjectDir()
+	projectDir, perr := getProjectDir()
+	if perr != nil {
+		Error.log(perr)
+		os.Exit(1)
+	}
 	platformDefinition := getProjectConfig().Platform
 
 	Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
