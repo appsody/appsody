@@ -129,7 +129,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 		//if _, err := os.Stat(destController); os.IsNotExist(err) {
 		// Always copy it from the executable dir
 		//Retrieving the path of the binaries appsody and appsody-controller
-		Debug.log("Didn't find the controller in .appsody - copying from the binary directory...")
+		//Debug.log("Didn't find the controller in .appsody - copying from the binary directory...")
 		executable, _ := os.Executable()
 		binaryLocation, err := filepath.Abs(filepath.Dir(executable))
 		Debug.log("Binary location ", binaryLocation)
