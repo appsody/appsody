@@ -123,40 +123,40 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 	if destController != "" {
 		Debug.log("Overriding appsody-controller mount with APPSODY_MOUNT_CONTROLLER env variable: ", destController)
 	} else {
-		// Check to see if the appsody-controller exists in the Home dir
+		// Copy the controller from the installation directory to the home (.appsody)
 		destController = filepath.Join(getHome(), "appsody-controller")
-		Debug.log("Attempting to load the controller from ", destController)
-		if _, err := os.Stat(destController); os.IsNotExist(err) {
-			// it does not exist, so copy it from the executable dir
-			//Retrieving the path of the binaries appsody and appsody-controller
-			Debug.log("Didn't find the controller in .appsody - copying from the binary directory...")
-			executable, _ := os.Executable()
-			binaryLocation, err := filepath.Abs(filepath.Dir(executable))
-			Debug.log("Binary location ", binaryLocation)
-			if err != nil {
-				Error.log("Fatal error - can't retrieve the binary path... exiting.")
+		// Debug.log("Attempting to load the controller from ", destController)
+		//if _, err := os.Stat(destController); os.IsNotExist(err) {
+		// Always copy it from the executable dir
+		//Retrieving the path of the binaries appsody and appsody-controller
+		Debug.log("Didn't find the controller in .appsody - copying from the binary directory...")
+		executable, _ := os.Executable()
+		binaryLocation, err := filepath.Abs(filepath.Dir(executable))
+		Debug.log("Binary location ", binaryLocation)
+		if err != nil {
+			Error.log("Fatal error - can't retrieve the binary path... exiting.")
+			os.Exit(1)
+		}
+		//Construct the appsody-controller mount
+		sourceController := filepath.Join(binaryLocation, "appsody-controller")
+		if dryrun {
+			Info.logf("Dry Run - Skipping copy of controller binary from %s to %s", sourceController, destController)
+		} else {
+			Debug.log("Attempting to copy the source controller from: ", sourceController)
+			//Copy the controller from the binary location to $HOME/.appsody
+			copyError := CopyFile(sourceController, destController)
+			if copyError != nil {
+				Error.log("Cannot retrieve controller - exiting: ", copyError)
 				os.Exit(1)
 			}
-			//Construct the appsody-controller mount
-			sourceController := filepath.Join(binaryLocation, "appsody-controller")
-			if dryrun {
-				Info.logf("Dry Run - Skipping copy of controller binary from %s to %s", sourceController, destController)
-			} else {
-				Debug.log("Attempting to copy the source controller from: ", sourceController)
-				//Copy the controller from the binary location to $HOME/.appsody
-				copyError := CopyFile(sourceController, destController)
-				if copyError != nil {
-					Error.log("Cannot retrieve controller - exiting: ", copyError)
-					os.Exit(1)
-				}
-				// Making the controller executable in case CopyFile loses permissions
-				chmodErr := os.Chmod(destController, 0755)
-				if chmodErr != nil {
-					Error.log("Cannot make the controller  executable - exiting: ", chmodErr)
-					os.Exit(1)
-				}
+			// Making the controller executable in case CopyFile loses permissions
+			chmodErr := os.Chmod(destController, 0755)
+			if chmodErr != nil {
+				Error.log("Cannot make the controller  executable - exiting: ", chmodErr)
+				os.Exit(1)
 			}
 		}
+		//} Used to close the "if controller does not exist"
 	}
 	controllerMount := destController + ":/appsody/appsody-controller"
 	Debug.log("Adding controller to volume mounts: ", controllerMount)
