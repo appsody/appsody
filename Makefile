@@ -17,6 +17,7 @@ BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder
 CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/0.2.1
+APPSODY_MOUNT_CONTROLLER := ~/.appsody/appsody-controller
 
 #### Dynamic variables. These change depending on the target name.
 # Gets the current os from the target name, e.g. the 'build-linux' target will result in os = 'linux'
