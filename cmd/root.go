@@ -28,6 +28,8 @@ import (
 	//  homedir "github.com/mitchellh/go-homedir"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -53,8 +55,10 @@ func homeDir() string {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "appsody",
-	Short: "Appsody CLI",
+	Use:           "appsody",
+	SilenceErrors: true,
+	SilenceUsage:  true,
+	Short:         "Appsody CLI",
 	Long: `The Appsody command-line tool (CLI) enables the rapid development of cloud native applications.
 
 Complete documentation is available at https://appsody.dev`,
@@ -131,6 +135,9 @@ func Execute(version string) {
 }
 
 type appsodylogger string
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
 
 // define the logging levels
 var (
@@ -145,21 +152,31 @@ var (
 
 func (l appsodylogger) log(args ...interface{}) {
 	msgString := fmt.Sprint(args...)
-	l.internalLog(msgString)
+	l.internalLog(msgString, args...)
 }
 
 func (l appsodylogger) logf(fmtString string, args ...interface{}) {
 	msgString := fmt.Sprintf(fmtString, args...)
-	l.internalLog(msgString)
+	l.internalLog(msgString, args...)
 }
 
-func (l appsodylogger) internalLog(msgString string) {
+func (l appsodylogger) internalLog(msgString string, args ...interface{}) {
 	if l == Debug && !verbose {
 		return
 	}
 
 	if verbose || l != Info {
 		msgString = "[" + string(l) + "] " + msgString
+	}
+
+	// if verbose and any of the args are of type error, print the stack traces
+	if verbose {
+		for _, arg := range args {
+			st, ok := arg.(stackTracer)
+			if ok {
+				msgString = fmt.Sprintf("%s\n\n%s%+v", msgString, st, st.StackTrace())
+			}
+		}
 	}
 
 	// Print to console
