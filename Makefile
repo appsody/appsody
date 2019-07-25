@@ -11,6 +11,8 @@ PACKAGE_PATH := $(PWD)/package
 GO_PATH := $(shell go env GOPATH)
 GOLANGCI_LINT_BINARY := $(GO_PATH)/bin/golangci-lint
 GOLANGCI_LINT_VERSION := v1.16.0
+DEP_BINARY := $(GO_PATH)/bin/dep
+DEP_RELEASE_TAG := v0.5.4
 BINARY_EXT_linux :=
 BINARY_EXT_darwin :=
 BINARY_EXT_windows := .exe
@@ -82,11 +84,20 @@ $(GOLANGCI_LINT_BINARY):
 	# see https://github.com/golangci/golangci-lint
 	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(GO_PATH)/bin $(GOLANGCI_LINT_VERSION)
 
+# not PHONY, installs deps if it doesn't exist
+$(DEP_BINARY):
+	curl https://raw.githubusercontent.com/golang/dep/master/install.sh | DEP_RELEASE_TAG=$(DEP_RELEASE_TAG) sh
+
+.PHONY: ensure
+ensure: $(DEP_BINARY)
+	$(DEP_BINARY) ensure
+
 .PHONY: clean
 clean: ## Removes existing build artifacts in order to get a fresh build
 	rm -rf $(BUILD_PATH)
 	rm -rf $(PACKAGE_PATH)
 	rm -f $(GOLANGCI_LINT_BINARY)
+	rm -f $(DEP_BINARY)
 	go clean
 
 .PHONY: build
