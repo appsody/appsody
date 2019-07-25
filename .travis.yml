@@ -20,7 +20,7 @@ stages:
 
 install-controller: &install-controller
   install:
-      - wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
+      - wget https://github.com/appsody/controller/releases/download/0.2.2/appsody-controller
       - chmod +x appsody-controller
       - mkdir ~/.appsody
       - cp appsody-controller ~/.appsody/
