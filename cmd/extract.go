@@ -32,9 +32,7 @@ var extractCmd = &cobra.Command{
 	Long: `This copies the full project, stack plus app, into a local directory
 in preparation to build the final docker image.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Make sure we are in an Appsody project
-		projectDir, perr := getProjectDir()
-
+		projectName, perr := getProjectName()
 		if perr != nil {
 			Error.log(perr)
 			os.Exit(1)
@@ -85,7 +83,7 @@ in preparation to build the final docker image.`,
 				}
 			}
 		}
-		extractDir = filepath.Join(extractDir, filepath.Base(projectDir))
+		extractDir = filepath.Join(extractDir, projectName)
 		extractDirExists, err = exists(extractDir)
 		if err != nil {
 			Error.log("Error checking directory: ", err)
