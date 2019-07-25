@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/gosuri/uitable"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
@@ -216,7 +217,7 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	indexBuffer := bytes.NewBuffer(nil)
 	err := downloadFile(url, indexBuffer)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get repository index: %s", err)
+		return nil, errors.Errorf("Failed to get repository index: %s", err)
 	}
 
 	yamlFile, err := ioutil.ReadAll(indexBuffer)

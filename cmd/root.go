@@ -163,21 +163,31 @@ func (l appsodylogger) logE(err error) {
 }
 func (l appsodylogger) log(args ...interface{}) {
 	msgString := fmt.Sprint(args...)
-	l.internalLog(msgString)
+	l.internalLog(msgString, args...)
 }
 
 func (l appsodylogger) logf(fmtString string, args ...interface{}) {
 	msgString := fmt.Sprintf(fmtString, args...)
-	l.internalLog(msgString)
+	l.internalLog(msgString, args...)
 }
 
-func (l appsodylogger) internalLog(msgString string) {
+func (l appsodylogger) internalLog(msgString string, args ...interface{}) {
 	if l == Debug && !verbose {
 		return
 	}
 
 	if verbose || l != Info {
 		msgString = "[" + string(l) + "] " + msgString
+	}
+
+	// if verbose and any of the args are of type error, print the stack traces
+	if verbose {
+		for _, arg := range args {
+			st, ok := arg.(stackTracer)
+			if ok {
+				msgString = fmt.Sprintf("%s\n\n%s%+v", msgString, st, st.StackTrace())
+			}
+		}
 	}
 
 	// Print to console
