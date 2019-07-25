@@ -36,7 +36,7 @@ var addCmd = &cobra.Command{
 		var repoURL = args[1]
 
 		if len(repoName) > 50 {
-			return errors.New("Invalid repository name. The <name> must be less than 50 characters")
+			return errors.Errorf("Invalid repository name. The <name> must be less than 50 characters")
 
 		}
 		match, _ := regexp.MatchString("^[a-zA-Z0-9\\-_]{1,50}$", repoName)
