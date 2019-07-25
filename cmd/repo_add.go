@@ -15,9 +15,9 @@
 package cmd
 
 import (
-	"log"
-	"os"
 	"regexp"
+
+	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 )
@@ -27,38 +27,38 @@ var addCmd = &cobra.Command{
 	Use:   "add <name> <url>",
 	Short: "Add an Appsody repository",
 	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 2 {
-			Error.log("Error, you must specify repository name and URL")
-			os.Exit(1)
+
+			return errors.New("Error, you must specify repository name and URL")
 		}
 		var repoName = args[0]
 		var repoURL = args[1]
 
 		if len(repoName) > 50 {
-			Error.log("Invalid repository name. The <name> must be less than 50 characters.")
-			os.Exit(1)
+			return errors.New("Invalid repository name. The <name> must be less than 50 characters")
+
 		}
 		match, _ := regexp.MatchString("^[a-zA-Z0-9\\-_]{1,50}$", repoName)
 		if !match {
-			Error.log("Invalid repository name. The <name> may only contain digits, numbers, dashes '-', and underscores '_'.")
-			os.Exit(1)
+			return errors.Errorf("Invalid repository name. The <name> may only contain digits, numbers, dashes '-', and underscores '_'.")
+
 		}
 
 		var repoFile RepositoryFile
 		repoFile.getRepos()
 		if repoFile.Has(repoName) {
-			Error.logf("A repository with the name '%s' already exists.", repoName)
-			os.Exit(1)
+			return errors.Errorf("A repository with the name '%s' already exists.", repoName)
+
 		}
 		if repoFile.HasURL(repoURL) {
-			Error.logf("A repository with the URL '%s' already exists.", repoURL)
-			os.Exit(1)
+			return errors.Errorf("A repository with the URL '%s' already exists.", repoURL)
+
 		}
 		_, err := downloadIndex(repoURL)
 		if err != nil {
-			Error.log(err)
-			os.Exit(1)
+
+			return err
 		}
 
 		if dryrun {
@@ -72,9 +72,10 @@ var addCmd = &cobra.Command{
 			repoFile.Add(&newEntry)
 			err = repoFile.WriteFile(getRepoFileLocation())
 			if err != nil {
-				log.Fatalf("Failed to write file to repository location: %v", err)
+				return errors.Errorf("Failed to write file to repository location: %v", err)
 			}
 		}
+		return nil
 	},
 }
 

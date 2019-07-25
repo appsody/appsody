@@ -28,6 +28,8 @@ import (
 	//  homedir "github.com/mitchellh/go-homedir"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -53,8 +55,10 @@ func homeDir() string {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "appsody",
-	Short: "Appsody CLI",
+	Use:           "appsody",
+	SilenceErrors: true,
+	SilenceUsage:  true,
+	Short:         "Appsody CLI",
 	Long: `The Appsody command-line tool (CLI) enables the rapid development of cloud native applications.
 
 Complete documentation is available at https://appsody.dev`,
@@ -125,12 +129,15 @@ func Execute(version string) {
 	VERSION = version
 
 	if err := rootCmd.Execute(); err != nil {
-		Error.log(err)
+		Error.logE(err)
 		os.Exit(1)
 	}
 }
 
 type appsodylogger string
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
 
 // define the logging levels
 var (
@@ -143,6 +150,17 @@ var (
 	DockerLog  appsodylogger = "Docker"
 )
 
+func (l appsodylogger) logE(err error) {
+	//msgString := fmt.Sprint(args...)
+	if verbose && klogInitialized {
+
+		st := err.(stackTracer).StackTrace()
+
+		klog.InfoDepth(2, st[0:2])
+		klog.Flush()
+	}
+	l.log(err)
+}
 func (l appsodylogger) log(args ...interface{}) {
 	msgString := fmt.Sprint(args...)
 	l.internalLog(msgString)
