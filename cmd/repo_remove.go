@@ -15,9 +15,7 @@
 package cmd
 
 import (
-	"log"
-	"os"
-
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -26,10 +24,10 @@ var removeCmd = &cobra.Command{
 	Use:   "remove <name>",
 	Short: "Remove a configured Appsody repository",
 	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			Error.log("Error, you must specify repository name")
-			os.Exit(1)
+			return errors.Errorf("Error, you must specify repository name")
+
 		}
 		var repoName = args[0]
 
@@ -45,9 +43,11 @@ var removeCmd = &cobra.Command{
 			}
 			err := repoFile.WriteFile(getRepoFileLocation())
 			if err != nil {
-				log.Fatalf("Failed to write file repository location: %v", err)
+
+				return errors.Errorf("Failed to write file repository location: %v", err)
 			}
 		}
+		return nil
 	},
 }
 
