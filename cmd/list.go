@@ -15,8 +15,7 @@
 package cmd
 
 import (
-	"os"
-
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -25,15 +24,16 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List the Appsody stacks available to init",
 	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		var index RepoIndex
 		err := index.getIndex()
 		if err != nil {
-			Error.log("Could not read index: ", err)
-			os.Exit(1)
+			return errors.Errorf("Could not read index: %v", err)
+
 		}
 		Info.log("\n", index.listProjects())
+		return nil
 	},
 }
 
