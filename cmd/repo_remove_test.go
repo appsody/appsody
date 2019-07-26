@@ -11,33 +11,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-package cmd
+package cmd_test
 
 import (
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
+	"strings"
+	"testing"
+
+	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-// listCmd represents the list command
-var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List the Appsody stacks available to init",
-	Long:  ``,
-	RunE: func(cmd *cobra.Command, args []string) error {
+func TestRepoRemoveError(t *testing.T) {
 
-		var index RepoIndex
-		err := index.getIndex()
-		if err != nil {
-			return errors.Errorf("Could not read index: %v", err)
+	args := []string{"repo", "remove"}
+	output, _ := cmdtest.RunAppsodyCmdExec(args, ".")
 
-		}
-		Info.log("\n", index.listProjects())
-		return nil
-	},
-}
+	if !strings.Contains(output, "Error, you must specify repository name") {
+		t.Error("String \"Error, you must specify repository name\" not found in output")
 
-func init() {
-	rootCmd.AddCommand(listCmd)
+	} else {
+		t.Log("Found the correct error string")
+	}
 
 }

@@ -14,12 +14,12 @@
 package cmd
 
 import (
-	"errors"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 	flag "github.com/spf13/pflag"
@@ -79,15 +79,16 @@ func generateDoc(commandDocFile string) error {
 var docsCmd = &cobra.Command{
 	Use:    "docs",
 	Hidden: true,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		Debug.log("Running appsody docs command.")
 		err := generateDoc(docFile)
 		if err != nil {
-			Error.log("appsody docs command failed with error: ", err)
-			os.Exit(1)
+			return errors.Errorf("appsody docs command failed with error: %v", err)
+
 		}
 		Debug.log("appsody docs command completed successfully.")
+		return nil
 	},
 }
 
