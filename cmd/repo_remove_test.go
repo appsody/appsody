@@ -23,12 +23,13 @@ import (
 func TestRepoRemoveError(t *testing.T) {
 
 	args := []string{"repo", "remove"}
-	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
-	if err != nil {
-		t.Fatal(err)
-	}
+	output, _ := cmdtest.RunAppsodyCmdExec(args, ".")
+
 	if !strings.Contains(output, "Error, you must specify repository name") {
 		t.Error("String \"Error, you must specify repository name\" not found in output")
+
+	} else {
+		t.Log("Found the correct error string")
 	}
 
 }
