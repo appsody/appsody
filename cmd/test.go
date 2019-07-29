@@ -20,10 +20,10 @@ var testCmd = &cobra.Command{
 	Use:   "test",
 	Short: "Test your project in the local Appsody environment",
 	Long:  `This starts a docker container for your project and runs your test in it.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		Info.log("Running test environment")
-		commonCmd(cmd, args, "test")
+		return commonCmd(cmd, args, "test")
 	},
 }
 
