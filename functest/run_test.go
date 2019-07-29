@@ -131,3 +131,61 @@ func TestRun(t *testing.T) {
 
 	}
 }
+
+func TestRunSimple(t *testing.T) {
+
+	// split the appsodyStack env variable
+	stackRaw := strings.Split(appsodyStacks, ",")
+
+	// loop through the stacks
+	for i := range stackRaw {
+		// fmt.Println("stackRaw is: ", stackRaw[i])
+
+		// split out the stage and stack
+		stageStack := strings.Split(stackRaw[i], "/")
+		// stage := stageStack[0]
+		stack := stageStack[1]
+		// fmt.Println("stage is: ", stage)
+		// fmt.Println("stack is: ", stack)
+		// first add the test repo index
+
+		fmt.Println("***Testing stack: ", stack, "***")
+
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		//defer cleanup()
+
+		// create a temporary dir to create the project and run the test
+		projectDir, err := ioutil.TempDir("", "appsody-run-test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		//defer os.RemoveAll(projectDir)
+		fmt.Println("Created project dir: " + projectDir)
+
+		// appsody init nodejs-express
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stack}, projectDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// appsody run
+		runChannel := make(chan error)
+		go func() {
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"run"}, projectDir)
+			runChannel <- err
+		}()
+
+		cleanup()
+		os.RemoveAll(projectDir)
+		func() {
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
+			if err != nil {
+				fmt.Printf("Ignoring error running appsody stop: %s", err)
+			}
+		}()
+
+	}
+}
