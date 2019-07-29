@@ -36,10 +36,10 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run the local Appsody environment for your project",
 	Long:  `This starts a docker based continuous build environment for your project.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		Info.log("Running development environment...")
-		commonCmd(cmd, args, "run")
+		return commonCmd(cmd, args, "run")
 
 	},
 }
