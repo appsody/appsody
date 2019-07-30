@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -26,6 +25,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/pkg/errors"
 
 	flag "github.com/spf13/pflag"
 
@@ -56,7 +57,7 @@ func buildCommonFlags() {
 			if pmsg, ok := perr.(*NotAnAppsodyProject); ok {
 				Debug.log("Cannot retrieve the project name - continuing: ", perr)
 			} else {
-				Error.log("Error occurred retrieving project name... exiting: ", pmsg)
+				Error.logf("Error occurred retrieving project name... exiting: %s", pmsg)
 				os.Exit(1)
 			}
 		}
@@ -89,11 +90,11 @@ func addDevCommonFlags(cmd *cobra.Command) {
 
 }
 
-func commonCmd(cmd *cobra.Command, args []string, mode string) {
+func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	projectDir, perr := getProjectDir()
 	if perr != nil {
-		Error.log(perr)
-		os.Exit(1)
+		return perr
+
 	}
 	projectConfig := getProjectConfig()
 	err := CheckPrereqs()
@@ -134,8 +135,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 		binaryLocation, err := filepath.Abs(filepath.Dir(executable))
 		Debug.log("Binary location ", binaryLocation)
 		if err != nil {
-			Error.log("Fatal error - can't retrieve the binary path... exiting.")
-			os.Exit(1)
+			return errors.New("fatal error - can't retrieve the binary path... exiting")
 		}
 		//Construct the appsody-controller mount
 		sourceController := filepath.Join(binaryLocation, "appsody-controller")
@@ -146,14 +146,12 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 			//Copy the controller from the binary location to $HOME/.appsody
 			copyError := CopyFile(sourceController, destController)
 			if copyError != nil {
-				Error.log("Cannot retrieve controller - exiting: ", copyError)
-				os.Exit(1)
+				return errors.Errorf("Cannot retrieve controller - exiting: %v", copyError)
 			}
 			// Making the controller executable in case CopyFile loses permissions
 			chmodErr := os.Chmod(destController, 0755)
 			if chmodErr != nil {
-				Error.log("Cannot make the controller  executable - exiting: ", chmodErr)
-				os.Exit(1)
+				return errors.Errorf("Cannot make the controller  executable - exiting: %v", chmodErr)
 			}
 		}
 		//} Used to close the "if controller does not exist"
@@ -174,8 +172,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 	cmdArgs = []string{"run", "--rm"}
 	validPorts, portError := checkPortInput(ports)
 	if !validPorts {
-		Error.logf("Ports provided as input to the command are not valid: %v\n", portError)
-		os.Exit(1)
+		return errors.Errorf("Ports provided as input to the command are not valid: %v\n", portError)
 	}
 	cmdArgs = processPorts(cmdArgs)
 	cmdArgs = append(cmdArgs, "--name", containerName)
@@ -212,12 +209,12 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 
 			time.Sleep(60 * time.Second)
 		} else {
-			Error.logf("Error waiting in 'appsody %s' %s", mode, error)
+			return errors.Errorf("Error waiting in 'appsody %s' %s", mode, error)
 
-			os.Exit(1)
 		}
 
 	}
+	return nil
 
 }
 

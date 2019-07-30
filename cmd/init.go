@@ -17,7 +17,6 @@ package cmd
 import (
 	"archive/tar"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +52,7 @@ Use 'appsody list' to see the available stack options.
 
 Without the [stack] argument, this command must be run on an existing Appsody project and will only run the stack init script to
 setup the local dev environment.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var index RepoIndex
 
 		var proceedWithTemplate bool
@@ -64,44 +64,46 @@ setup the local dev environment.`,
 
 		err = index.getIndex()
 		if err != nil {
-			Error.log("Could not read index: ", err)
-			os.Exit(1)
+			return errors.Errorf("Could not read index: %v", err)
 		}
 		if len(args) >= 1 {
 
 			projectType := args[0]
 
 			if len(index.Projects[projectType]) < 1 {
-				Error.logf("Could not find a stack with the id \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType)
-				os.Exit(1)
+				return errors.Errorf("Could not find a stack with the id \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType)
+
 			}
 			var projectName = index.Projects[projectType][0].URLs[0]
 
 			// 1. Check for empty directory
 			dir, err := os.Getwd()
 			if err != nil {
-				Error.log("Error getting current directory ", err)
-				os.Exit(1)
+				return errors.Errorf("Error getting current directory %v", err)
 			}
 			appsodyConfigFile := filepath.Join(dir, ".appsody-config.yaml")
 
 			_, err = os.Stat(appsodyConfigFile)
 			if err == nil {
-				Error.log("Cannot run `appsody init <stack>` on an existing appsody project.")
-				os.Exit(1)
+				return errors.New("cannot run `appsody init <stack>` on an existing appsody project")
+
 			}
 
 			if noTemplate || overwrite {
 				proceedWithTemplate = true
 			} else {
-				proceedWithTemplate = isFileLaydownSafe(dir)
+				proceedWithTemplate, err = isFileLaydownSafe(dir)
+				if err != nil {
+					return err
+				}
 			}
 
 			if !overwrite && !proceedWithTemplate {
 				Error.log("Non-empty directory found with files which may conflict with the template project.")
 				Info.log("It is recommended that you run `appsody init <stack>` in an empty directory.")
 				Info.log("If you wish to proceed and possibly overwrite files in the current directory, try again with the --overwrite option.")
-				os.Exit(1)
+				return errors.New("non-empty directory found with files which may conflict with the template project")
+
 			}
 
 			Info.log("Running appsody init...")
@@ -110,8 +112,8 @@ setup the local dev environment.`,
 
 			err = downloadFileToDisk(projectName, filename)
 			if err != nil {
-				Error.log("Error downloading tar ", err)
-				os.Exit(1)
+				return errors.Errorf("Error downloading tar %v", err)
+
 			}
 			Info.log("Download complete. Extracting files from ", filename)
 			//if noTemplate
@@ -130,11 +132,16 @@ setup the local dev environment.`,
 				Info.log("It is recommended that you run `appsody init <stack>` in an empty directory.")
 				Info.log("If you wish to proceed and overwrite files in the current directory, try again with the --overwrite option.")
 				// this leave the tar file in the dir
-				os.Exit(1)
+				return errors.Errorf("Error extracting project template: %v", errUntar)
+
 			}
 		}
-		install()
+		err = install()
+		if err != nil {
+			return err
+		}
 		Info.log("Successfully initialized Appsody project")
+		return nil
 	},
 }
 
@@ -145,12 +152,12 @@ func init() {
 }
 
 //Runs the .appsody-init.sh/bat files if necessary
-func install() {
+func install() error {
 	Info.log("Setting up the development environment")
 	projectDir, perr := getProjectDir()
 	if perr != nil {
-		Error.log(perr)
-		os.Exit(1)
+		return errors.Errorf("%v", perr)
+
 	}
 	platformDefinition := getProjectConfig().Platform
 
@@ -166,6 +173,7 @@ func install() {
 		Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
 		os.Exit(0)
 	}
+	return nil
 }
 
 func downloadFileToDisk(url string, destFile string) error {
@@ -252,13 +260,13 @@ func untar(file string, noTemplate bool) error {
 	return nil
 }
 
-func isFileLaydownSafe(directory string) bool {
+func isFileLaydownSafe(directory string) (bool, error) {
 
 	safe := true
 	files, err := ioutil.ReadDir(directory)
 	if err != nil {
 		Error.logf("Can not read directory %s due to error: %v.", directory, err)
-		os.Exit(1)
+		return false, err
 
 	}
 	for _, f := range files {
@@ -276,7 +284,7 @@ func isFileLaydownSafe(directory string) bool {
 	} else {
 		Debug.log("It is not safe to extract the project template")
 	}
-	return safe
+	return safe, nil
 
 }
 

@@ -615,7 +615,7 @@ func KubeApply(fileToApply string) error {
 	kcmd := "kubectl"
 	kargs := []string{"apply", "-f", fileToApply}
 	if namespace != "" {
-		kargs = append(kargs, "--name", namespace)
+		kargs = append(kargs, "--namespace", namespace)
 	}
 
 	if dryrun {
@@ -639,7 +639,7 @@ func KubeGetRouteURL(service string) (url string, err error) {
 	kargs := append([]string{"get", "rt"}, service)
 	kargs = append(kargs, "-o", "jsonpath=\"{.status.url}\"")
 	if namespace != "" {
-		kargs = append(kargs, "--name", namespace)
+		kargs = append(kargs, "--namespace", namespace)
 	}
 
 	if dryrun {
