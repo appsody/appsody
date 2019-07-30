@@ -172,10 +172,11 @@ func TestRunSimple(t *testing.T) {
 		}
 
 		// appsody run
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"run"}, projectDir)
-		if err != nil {
-			t.Fatal(err)
-		}
+		runChannel := make(chan error)
+		go func() {
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"run"}, projectDir)
+			runChannel <- err
+		}()
 
 		cleanup()
 		os.RemoveAll(projectDir)
