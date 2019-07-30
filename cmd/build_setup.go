@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -31,21 +31,20 @@ var setupCmd = &cobra.Command{
 	Hidden: true,
 	Short:  "Setup a Githook and build pipeline for your Appsody project",
 	Long:   `This allows you to register a Githook for your Appsody project.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		// TODO: should we dynamically pick up the Git URL from the .git in the project?
 		// TODO: add validation of the supplied Git URL
 		if len(args) < 1 {
-			Error.log("Error, you must specify a Git project URL")
-			os.Exit(1)
+			return errors.New("error, you must specify a Git project URL")
+
 		}
 		gitProject := args[0]
 
 		// Use the "tektonserver" field from the config.
 		tektonServer := cliConfig.GetString("tektonserver")
 		if tektonServer == "" {
-			Error.log("No target Tekton server specified in the configuration.")
-			os.Exit(1)
+			return errors.New("no target Tekton server specified in the configuration")
 		}
 		url := fmt.Sprintf("%s/v1/namespaces/default/githubsource/", tektonServer)
 
@@ -53,8 +52,7 @@ var setupCmd = &cobra.Command{
 		// projectName := filepath.Base(projectDir)
 		projectName, perr := getProjectName()
 		if perr != nil {
-			Error.log(perr)
-			os.Exit(1)
+			return errors.Errorf("%v", perr)
 		}
 		// Setup JSON payload for use with the Tekton server
 		var jsonStr = fmt.Sprintf(`{"name":"%s", "gitrepositoryurl":"%s","accesstoken":"github-secret","pipeline":"appsody-build-pipeline"}`, projectName, gitProject)
@@ -68,22 +66,20 @@ var setupCmd = &cobra.Command{
 			Info.log("Making request to ", url)
 			resp, err := client.Do(req)
 			if err != nil {
-				Error.log(err)
-				os.Exit(1)
+				return errors.Errorf("%v", perr)
 			}
 			defer resp.Body.Close()
 			body, _ := ioutil.ReadAll(resp.Body)
 			bodyStr := string(body)
 
 			if resp.StatusCode >= 300 {
-				Error.log(resp.Status)
-				Error.log(string(bodyStr))
-				os.Exit(1)
-			} else {
-				Info.log(resp.Status)
-				Info.log(string(bodyStr))
+				return errors.Errorf("Bad Status Code: %s with message: %s", resp.Status, string(bodyStr))
 			}
+			Info.log(resp.Status)
+			Info.log(string(bodyStr))
+
 		}
+		return nil
 	},
 }
 
