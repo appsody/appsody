@@ -53,7 +53,7 @@ Use 'appsody list' to see the available stack options.
 Without the [stack] argument, this command must be run on an existing Appsody project and will only run the stack init script to
 setup the local dev environment.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var index RepoIndex
+		//var index RepoIndex
 
 		var proceedWithTemplate bool
 
@@ -62,18 +62,32 @@ setup the local dev environment.`,
 			Warning.logf("Failed to check prerequisites: %v\n", err)
 		}
 
-		err = index.getIndex()
+		//err = index.getIndex()
+		var repos RepositoryFile
+		indices, err := repos.GetIndices()
+
 		if err != nil {
-			return errors.Errorf("Could not read index: %v", err)
+			return errors.Errorf("Could not read indices: %v", err)
 		}
+		if len(indices) == 0 {
+			return errors.Errorf("Your stack repository is empty - please use `appsody repo add` to add a repository.")
+		}
+		var index *RepoIndex
+		var repoName string
 		if len(args) >= 1 {
 
 			projectType := args[0]
+			projectFound := false
 
-			if len(index.Projects[projectType]) < 1 {
-				return errors.Errorf("Could not find a stack with the id \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType)
-
+			for repoName, index = range indices {
+				if len(index.Projects[projectType]) >= 1 {
+					projectFound = true
+				}
 			}
+			if !projectFound {
+				return errors.Errorf("Could not find a stack with the id \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType)
+			}
+			Debug.log("Stack ", projectType, " found in repo ", repoName)
 			var projectName = index.Projects[projectType][0].URLs[0]
 
 			// 1. Check for empty directory

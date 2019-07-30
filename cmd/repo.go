@@ -37,6 +37,9 @@ type RepoIndex struct {
 	Projects   map[string]ProjectVersions `yaml:"projects"`
 }
 
+// RepoIndices maps repos to their RepoIndex (i.e. the projects in a repo)
+type RepoIndices map[string]*RepoIndex
+
 type ProjectVersions []*ProjectVersion
 
 type ProjectVersion struct {
@@ -233,27 +236,25 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	return &index, nil
 }
 
-func (index *RepoIndex) getIndex() error {
-	var repos RepositoryFile
-	repos.getRepos()
-
-	for _, value := range repos.Repositories {
-		repoIndex, err := downloadIndex(value.URL)
-		if err != nil {
-			Error.log(err)
-			os.Exit(1)
-		}
-		if index.Projects == nil {
-			index.APIVersion = repoIndex.APIVersion
-			index.Generated = repoIndex.Generated
-			index.Projects = make(map[string]ProjectVersions)
-		}
-		for name, project := range repoIndex.Projects {
-			index.Projects[name] = project
-		}
+func getIndex(URL string) (*RepoIndex, error) {
+	//var repos RepositoryFile
+	//repos.getRepos()
+	//Debug.log("Repository files: ", repos)
+	//for _, value := range repos.Repositories {
+	repoIndex, err := downloadIndex(URL)
+	if err != nil {
+		Error.log(err)
+		os.Exit(1)
 	}
-
-	return nil
+	//if index.Projects == nil {
+	//	index.APIVersion = repoIndex.APIVersion
+	//	index.Generated = repoIndex.Generated
+	//	index.Projects = make(map[string]ProjectVersions)
+	//}
+	//for name, project := range repoIndex.Projects {
+	//	index.Projects[name] = project
+	//}
+	return repoIndex, nil
 }
 
 func (index *RepoIndex) listProjects() string {
@@ -311,6 +312,7 @@ func (r *RepositoryFile) Add(re ...*RepositoryEntry) {
 }
 
 func (r *RepositoryFile) Has(name string) bool {
+	r.getRepos()
 	for _, rf := range r.Repositories {
 		if rf.Name == name {
 			return true
@@ -344,4 +346,17 @@ func (r *RepositoryFile) WriteFile(path string) error {
 		return err
 	}
 	return ioutil.WriteFile(path, data, 0644)
+}
+
+func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
+	r.getRepos()
+	indices := make(map[string]*RepoIndex)
+	for _, rf := range r.Repositories {
+		var index, err = getIndex(rf.URL)
+		if err != nil {
+			return indices, err
+		}
+		indices[rf.Name] = index
+	}
+	return indices, nil
 }

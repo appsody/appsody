@@ -26,13 +26,21 @@ var listCmd = &cobra.Command{
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		var index RepoIndex
-		err := index.getIndex()
-		if err != nil {
-			return errors.Errorf("Could not read index: %v", err)
+		//var index RepoIndex
 
+		var repos RepositoryFile
+		indices, err := repos.GetIndices()
+
+		//err := index.getIndex()
+		if err != nil {
+			return errors.Errorf("Could not read indices: %v", err)
 		}
-		Info.log("\n", index.listProjects())
+		if len(indices) != 0 {
+			for repoName, index := range indices {
+				Info.log("\n", "Repository: ", repoName)
+				Info.log(index.listProjects())
+			}
+		}
 		return nil
 	},
 }
