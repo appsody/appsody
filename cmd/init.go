@@ -401,7 +401,10 @@ func extractAndInitialize() error {
 		}
 		// set the --target-dir flag for extract
 		targetDir = workdir
-		extractCmd.Run(extractCmd, nil)
+		extractErr := extractCmd.RunE(extractCmd, nil)
+		if extractErr != nil {
+			return extractErr
+		}
 
 	} else {
 		Info.log("Dry Run skipping extract.")

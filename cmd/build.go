@@ -31,7 +31,10 @@ var buildCmd = &cobra.Command{
 		// 1. appsody Extract
 		// 2. docker build -t <project name> -f Dockerfile ./extracted
 
-		extractCmd.Run(cmd, args)
+		extractErr := extractCmd.RunE(cmd, args)
+		if extractErr != nil {
+			return extractErr
+		}
 
 		projectName, perr := getProjectName()
 		if perr != nil {
