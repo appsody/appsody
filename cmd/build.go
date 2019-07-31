@@ -49,7 +49,10 @@ var buildCmd = &cobra.Command{
 		}
 		cmdName := "docker"
 		cmdArgs := []string{"build", "-t", buildImage, "-f", dockerfile, extractDir}
-		execAndWait(cmdName, cmdArgs, DockerLog)
+		execError := execAndWait(cmdName, cmdArgs, DockerLog)
+		if execError != nil {
+			return execError
+		}
 		if !dryrun {
 			Info.log("Built docker image ", buildImage)
 		}

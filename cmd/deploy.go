@@ -34,7 +34,7 @@ service in your local cluster.`,
 		// Extract code and build the image - and tags it if -t is specified
 		buildErr := buildCmd.RunE(cmd, args)
 		if buildErr != nil {
-			return errors.Errorf("%v", buildErr)
+			return buildErr
 		}
 		//Generate the KNative yaml
 		//Get the container port first
@@ -42,7 +42,10 @@ service in your local cluster.`,
 		if err != nil {
 			//try and get the exposed ports and use the first one
 			Warning.log("Could not detect a container port (PORT env var).")
-			portsStr := getExposedPorts()
+			portsStr, portsErr := getExposedPorts()
+			if portsErr != nil {
+				return portsErr
+			}
 			if len(portsStr) == 0 {
 				//No ports exposed
 				Warning.log("This container exposes no ports. The service will not be accessible.")

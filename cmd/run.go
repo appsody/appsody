@@ -18,17 +18,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func dockerStop(imageName string) {
+func dockerStop(imageName string) error {
 	cmdName := "docker"
 	cmdArgs := []string{"stop", imageName}
-	execAndWait(cmdName, cmdArgs, Debug)
+	err := execAndWait(cmdName, cmdArgs, Debug)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func dockerRemove(imageName string) {
+func dockerRemove(imageName string) error {
 	cmdName := "docker"
 	//Added "-f" to force removal if container is still running or image has containers
 	cmdArgs := []string{"rm", imageName, "-f"}
-	execAndWait(cmdName, cmdArgs, Debug)
+	err := execAndWait(cmdName, cmdArgs, Debug)
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
 
 // runCmd represents the run command

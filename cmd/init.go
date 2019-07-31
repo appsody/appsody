@@ -159,7 +159,11 @@ func install() error {
 		return errors.Errorf("%v", perr)
 
 	}
-	platformDefinition := getProjectConfig().Platform
+	projectConfig, configErr := getProjectConfig()
+	if configErr != nil {
+		return configErr
+	}
+	platformDefinition := projectConfig.Platform
 
 	Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
@@ -372,7 +376,11 @@ func extractAndInitialize() error {
 	//Determine if we need to run extract
 	//We run it only if there is an initialization script to run locally
 	//Checking if the script is present on the image
-	stackImage := getProjectConfig().Platform
+	projectConfig, configErr := getProjectConfig()
+	if configErr != nil {
+		return configErr
+	}
+	stackImage := projectConfig.Platform
 	bashCmd := "find /project -type f -name " + scriptFileName
 	cmdOptions := []string{"--rm"}
 	Debug.log("Attempting to run ", bashCmd, " on image ", stackImage, " with options: ", cmdOptions)
@@ -401,9 +409,11 @@ func extractAndInitialize() error {
 		}
 		// set the --target-dir flag for extract
 		targetDir = workdir
-		extractErr := extractCmd.RunE(extractCmd, nil)
-		if extractErr != nil {
-			return extractErr
+
+		extractError := extractCmd.RunE(extractCmd, nil)
+		if extractError != nil {
+			return extractError
+
 		}
 
 	} else {
