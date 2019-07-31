@@ -96,7 +96,10 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		return perr
 
 	}
-	projectConfig := getProjectConfig()
+	projectConfig, configErr := getProjectConfig()
+	if configErr != nil {
+		return configErr
+	}
 	err := CheckPrereqs()
 	if err != nil {
 		Warning.logf("Failed to check prerequisites: %v\n", err)
@@ -108,11 +111,20 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 
 	var cmdName string
 	var cmdArgs []string
-	dockerPullImage(platformDefinition)
+	dockerPullErr := dockerPullImage(platformDefinition)
+	if dockerPullErr != nil {
+		return dockerPullErr
+	}
 
-	volumeMaps := getVolumeArgs()
+	volumeMaps, volumeErr := getVolumeArgs()
+	if volumeErr != nil {
+		return volumeErr
+	}
 	// Mount the APPSODY_DEPS cache volume if it exists
-	depsEnvVar := getEnvVar("APPSODY_DEPS")
+	depsEnvVar, envErr := getEnvVar("APPSODY_DEPS")
+	if envErr != nil {
+		return envErr
+	}
 	if depsEnvVar != "" {
 		depsMount := depsVolumeName + ":" + depsEnvVar
 		Debug.log("Adding dependency cache to volume mounts: ", depsMount)
@@ -164,7 +176,8 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		dockerStop(containerName)
+		err := dockerStop(containerName)
+		Error.log(err)
 		//dockerRemove(containerName) is not needed due to --rm flag
 		os.Exit(1)
 	}()
@@ -174,12 +187,20 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	if !validPorts {
 		return errors.Errorf("Ports provided as input to the command are not valid: %v\n", portError)
 	}
-	cmdArgs = processPorts(cmdArgs)
+	var portsErr error
+	cmdArgs, portsErr = processPorts(cmdArgs)
+	if portsErr != nil {
+		return portsErr
+	}
 	cmdArgs = append(cmdArgs, "--name", containerName)
 	if dockerNetwork != "" {
 		cmdArgs = append(cmdArgs, "--network", dockerNetwork)
 	}
-	if getEnvVarBool("APPSODY_USER_RUN_AS_LOCAL") && runtime.GOOS != "windows" {
+	runAsLocal, boolErr := getEnvVarBool("APPSODY_USER_RUN_AS_LOCAL")
+	if boolErr != nil {
+		return boolErr
+	}
+	if runAsLocal && runtime.GOOS != "windows" {
 		current, _ := user.Current()
 		cmdArgs = append(cmdArgs, "-u", fmt.Sprintf("%s:%s", current.Uid, current.Gid))
 		cmdArgs = append(cmdArgs, "-e", fmt.Sprintf("APPSODY_USER=%s", current.Uid), "-e", fmt.Sprintf("APPSODY_GROUP=%s", current.Gid))
@@ -218,15 +239,21 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 
 }
 
-func processPorts(cmdArgs []string) []string {
+func processPorts(cmdArgs []string) ([]string, error) {
 
 	var exposedPortsMapping []string
 
-	dockerExposedPorts := getExposedPorts()
+	dockerExposedPorts, portsErr := getExposedPorts()
+	if portsErr != nil {
+		return cmdArgs, portsErr
+	}
 	Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
 	// if the container port is not in the lised of exposed ports add it to the list
 
-	containerPort := getEnvVar("PORT")
+	containerPort, envErr := getEnvVar("PORT")
+	if envErr != nil {
+		return cmdArgs, envErr
+	}
 	containerPortIsExposed := false
 
 	Debug.log("Container port set to: ", containerPort)
@@ -275,7 +302,7 @@ func processPorts(cmdArgs []string) []string {
 	for k := 0; k < len(exposedPortsMapping); k++ {
 		cmdArgs = append(cmdArgs, "-p", exposedPortsMapping[k])
 	}
-	return cmdArgs
+	return cmdArgs, nil
 }
 func checkPortInput(publishedPorts []string) (bool, error) {
 	validPorts := true

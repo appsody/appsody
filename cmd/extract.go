@@ -37,7 +37,10 @@ in preparation to build the final docker image.`,
 		if perr != nil {
 			return errors.Errorf("%v", perr)
 		}
-		projectConfig := getProjectConfig()
+		projectConfig, projectErr := getProjectConfig()
+		if projectErr != nil {
+			return projectErr
+		}
 		Info.log("Extracting project from development environment")
 
 		if targetDir != "" {
@@ -94,12 +97,18 @@ in preparation to build the final docker image.`,
 
 		stackImage := projectConfig.Platform
 
-		dockerPullImage(stackImage)
+		dockerPullErr := dockerPullImage(stackImage)
+		if dockerPullErr != nil {
+			return dockerPullErr
+		}
 
 		containerProjectDir := "/project"
 		Debug.log("Container project dir: ", containerProjectDir)
 
-		volumeMaps := getVolumeArgs()
+		volumeMaps, volumeErr := getVolumeArgs()
+		if volumeErr != nil {
+			return volumeErr
+		}
 		cmdName := "docker"
 		var appDir string
 		cmdArgs := []string{"--name", extractContainerName}
@@ -115,7 +124,8 @@ in preparation to build the final docker image.`,
 			if err != nil {
 
 				Error.log("docker create command failed: ", err)
-				dockerRemove(extractContainerName)
+				removeErr := dockerRemove(extractContainerName)
+				Error.log("Error in dockerRemove", removeErr)
 				return err
 
 			}
@@ -133,7 +143,10 @@ in preparation to build the final docker image.`,
 			if err != nil {
 				Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage)
 
-				dockerRemove(extractContainerName)
+				removeErr := dockerRemove(extractContainerName)
+				if removeErr != nil {
+					Error.log("dockerRemove error ", removeErr)
+				}
 				return errors.Errorf("Error attempting to run copy command %s on image %s", bashCmd, stackImage)
 
 			}
@@ -144,11 +157,17 @@ in preparation to build the final docker image.`,
 		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
 		if err != nil {
 			Error.log("docker cp command failed: ", err)
-			dockerRemove(extractContainerName)
+			removeErr := dockerRemove(extractContainerName)
+			if removeErr != nil {
+				Error.log("dockerRemove error ", removeErr)
+			}
 			return errors.Errorf("docker cp command failed: %v", err)
 		}
 
-		dockerRemove(extractContainerName)
+		removeErr := dockerRemove(extractContainerName)
+		if removeErr != nil {
+			Error.log("dockerRemove error ", removeErr)
+		}
 		if targetDir == "" {
 			if !dryrun {
 				Info.log("Project extracted to ", extractDir)
