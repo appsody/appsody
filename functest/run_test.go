@@ -25,7 +25,7 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-var appsodyStacks = os.Getenv("APPSODY_STACKS")
+var stacksList = os.Getenv("STACKS_LIST")
 
 //var stack = flag.String("stack", "", "Stack to run tests on")
 
@@ -37,7 +37,7 @@ var appsodyStacks = os.Getenv("APPSODY_STACKS")
 func TestRun(t *testing.T) {
 
 	// split the appsodyStack env variable
-	stackRaw := strings.Split(appsodyStacks, ",")
+	stackRaw := strings.Split(stacksList, " ")
 
 	// loop through the stacks
 	for i := range stackRaw {
@@ -135,10 +135,11 @@ func TestRun(t *testing.T) {
 func TestRunSimple(t *testing.T) {
 
 	// split the appsodyStack env variable
-	stackRaw := strings.Split(appsodyStacks, ",")
+	stackRaw := strings.Split(stacksList, " ")
 
 	// loop through the stacks
 	for i := range stackRaw {
+
 		// fmt.Println("stackRaw is: ", stackRaw[i])
 
 		// split out the stage and stack
@@ -177,6 +178,103 @@ func TestRunSimple(t *testing.T) {
 			_, err = cmdtest.RunAppsodyCmdExec([]string{"run"}, projectDir)
 			runChannel <- err
 		}()
+
+		cleanup()
+		os.RemoveAll(projectDir)
+		func() {
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
+			if err != nil {
+				fmt.Printf("Ignoring error running appsody stop: %s", err)
+			}
+		}()
+
+	}
+}
+
+func TestParseRunOutput(t *testing.T) {
+
+	// split the appsodyStack env variable
+	stackRaw := strings.Split(stacksList, " ")
+
+	// loop through the stacks
+	for i := range stackRaw {
+		// fmt.Println("stackRaw is: ", stackRaw[i])
+
+		// split out the stage and stack
+		stageStack := strings.Split(stackRaw[i], "/")
+		// stage := stageStack[0]
+		stack := stageStack[1]
+		// fmt.Println("stage is: ", stage)
+		// fmt.Println("stack is: ", stack)
+		// first add the test repo index
+
+		fmt.Println("***Testing stack: ", stack, "***")
+
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		//defer cleanup()
+
+		// create a temporary dir to create the project and run the test
+		projectDir, err := ioutil.TempDir("", "appsody-run-test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		//defer os.RemoveAll(projectDir)
+		fmt.Println("Created project dir: " + projectDir)
+
+		// appsody init nodejs-express
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stack}, projectDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// appsody run
+		var runOutput string
+
+		runOutput, err = cmdtest.RunAppsodyCmdExec([]string{"run"}, projectDir)
+		//fmt.Println("### runOutput:", runOutput)
+
+		// defer the appsody stop to close the docker container
+		// defer func() {
+		// 	_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
+		// 	if err != nil {
+		// 		fmt.Printf("Ignoring error running appsody stop: %s", err)
+		// 	}
+		// }()
+		fmt.Println("### runOutput before for loop: ", runOutput)
+		healthCheckFrequency := 2 // in seconds
+		fmt.Println("### health")
+		healthCheckTimeout := 60 // in seconds
+		healthCheckWait := 0
+		healthCheckOK := false
+		for !(healthCheckOK || healthCheckWait >= healthCheckTimeout) {
+			fmt.Println("### For loop")
+			fmt.Println("### runOutput: ", runOutput)
+			select {
+			//case err = <-runChannel:
+			// appsody run exited, probably with an error
+			//t.Fatalf("appsody run quit unexpectedly: %s", err)
+			case <-time.After(time.Duration(healthCheckFrequency) * time.Second):
+				// check the health endpoint
+				healthCheckWait += healthCheckFrequency
+
+				if !strings.Contains(runOutput, "3000") {
+					fmt.Println("### Health check not found")
+					//t.Fatalf("Hello not found in the output")
+				} else {
+					fmt.Println("### Health check OK")
+					// may want to check body
+					healthCheckOK = true
+				}
+
+			}
+		}
+
+		if !healthCheckOK {
+			t.Errorf("Did not receive Hello within %d seconds.", healthCheckTimeout)
+		}
 
 		cleanup()
 		os.RemoveAll(projectDir)

@@ -26,9 +26,9 @@ import (
 func TestParser(t *testing.T) {
 	// test environment variable with stack info
 	// test environmet variable for stacks
-	fmt.Println("appsody_stacks is: ", appsodyStacks)
+	fmt.Println("stackList is: ", stacksList)
 
-	stackRaw := strings.Split(appsodyStacks, ",")
+	stackRaw := strings.Split(stacksList, " ")
 	// stackStack := strings.Split(stackRaw, "/")
 
 	for i := range stackRaw {
@@ -45,7 +45,7 @@ func TestParser(t *testing.T) {
 
 func TestDeploy(t *testing.T) {
 	// split the appsodyStack env variable
-	stackRaw := strings.Split(appsodyStacks, ",")
+	stackRaw := strings.Split(stacksList, " ")
 
 	// loop through the stacks
 	for i := range stackRaw {
