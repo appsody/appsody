@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -63,8 +64,9 @@ type RepositoryFile struct {
 }
 
 type RepositoryEntry struct {
-	Name string `yaml:"name"`
-	URL  string `yaml:"url"`
+	Name      string `yaml:"name"`
+	URL       string `yaml:"url"`
+	IsDefault bool   `yaml:"isdefault,omitempty"`
 }
 
 var (
@@ -130,9 +132,11 @@ func ensureConfig() {
 
 			repo := NewRepoFile()
 			repo.Add(&RepositoryEntry{
-				Name: "appsodyhub",
-				URL:  appsodyHubURL,
+				Name:      "appsodyhub",
+				URL:       appsodyHubURL,
+				IsDefault: true,
 			})
+
 			Debug.log("Creating ", repoFileLocation)
 			if err := repo.WriteFile(repoFileLocation); err != nil {
 				Error.logf("Error writing %s file: %s ", repoFileLocation, err)
@@ -267,6 +271,33 @@ func (index *RepoIndex) listProjects() string {
 
 	return table.String()
 }
+func (r *RepositoryFile) listProjects() (string, error) {
+	table := uitable.New()
+	table.MaxColWidth = 60
+	table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
+	indices, err := r.GetIndices()
+	rnd := rand.New(rand.NewSource(99))
+
+	//err := index.getIndex()
+	templates := [8]string{"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"}
+	if err != nil {
+		return "", errors.Errorf("Could not read indices: %v", err)
+	}
+	if len(indices) != 0 {
+		for repoName, index := range indices {
+			//Info.log("\n", "Repository: ", repoName)
+			for id, value := range index.Projects {
+				r1 := rnd.Intn(8)
+				r2 := rnd.Intn(8)
+				r3 := rnd.Intn(8)
+				rndTemplates := "*" + templates[r1] + ", " + templates[r2] + ", " + templates[r3]
+				table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
+			}
+		}
+	}
+
+	return table.String(), nil
+}
 
 func (r *RepositoryFile) getRepos() *RepositoryFile {
 	var repoFileLocation = getRepoFileLocation()
@@ -293,7 +324,11 @@ func (r *RepositoryFile) listRepos() string {
 	table.MaxColWidth = 120
 	table.AddRow("NAME", "URL")
 	for _, value := range r.Repositories {
-		table.AddRow(value.Name, value.URL)
+		var repoName string
+		if repoName = value.Name; repoName == r.GetDefaultRepoName() {
+			repoName = "*" + repoName
+		}
+		table.AddRow(repoName, value.URL)
 	}
 
 	return table.String()
@@ -328,6 +363,14 @@ func (r *RepositoryFile) HasURL(url string) bool {
 		}
 	}
 	return false
+}
+func (r *RepositoryFile) GetDefaultRepoName() string {
+	for _, rf := range r.Repositories {
+		if rf.IsDefault {
+			return rf.Name
+		}
+	}
+	return ""
 }
 
 func (r *RepositoryFile) Remove(name string) {

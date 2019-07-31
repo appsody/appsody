@@ -29,18 +29,11 @@ var listCmd = &cobra.Command{
 		//var index RepoIndex
 
 		var repos RepositoryFile
-		indices, err := repos.GetIndices()
-
-		//err := index.getIndex()
+		projects, err := repos.listProjects()
 		if err != nil {
-			return errors.Errorf("Could not read indices: %v", err)
+			return errors.Errorf("%v", err)
 		}
-		if len(indices) != 0 {
-			for repoName, index := range indices {
-				Info.log("\n", "Repository: ", repoName)
-				Info.log(index.listProjects())
-			}
-		}
+		Info.log("\n", projects)
 		return nil
 	},
 }

@@ -73,19 +73,19 @@ setup the local dev environment.`,
 			return errors.Errorf("Your stack repository is empty - please use `appsody repo add` to add a repository.")
 		}
 		var index *RepoIndex
-		var repoName string
+
 		if len(args) >= 1 {
 
-			projectType := args[0]
-			projectFound := false
+			projectParm := args[0]
 
-			for repoName, index = range indices {
-				if len(index.Projects[projectType]) >= 1 {
-					projectFound = true
-				}
+			repoName, projectType, err := parseProjectParm(projectParm)
+			if err != nil {
+				return err
 			}
-			if !projectFound {
-				return errors.Errorf("Could not find a stack with the id \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType)
+			Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
+			index = indices[repoName]
+			if len(index.Projects[projectType]) < 1 {
+				return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
 			}
 			Debug.log("Stack ", projectType, " found in repo ", repoName)
 			var projectName = index.Projects[projectType][0].URLs[0]
@@ -441,4 +441,27 @@ func extractAndInitialize() error {
 	}
 
 	return err
+}
+
+func parseProjectParm(projectParm string) (string, string, error) {
+	parms := strings.Split(projectParm, "/")
+	if len(parms) == 1 {
+		Debug.log("Non-fully qualified stack - retrieving default repo...")
+		var r RepositoryFile
+		r.getRepos()
+		return r.GetDefaultRepoName(), parms[0], nil
+	}
+
+	if len(parms) == 2 {
+		Debug.log("Fully qualified stack... determining repo...")
+		if len(parms[0]) == 0 || len(parms[1]) == 0 {
+			return parms[0], parms[1], errors.New("malformed project parameter - slash at the beginning or end should be removed")
+		}
+		return parms[0], parms[1], nil
+	}
+	if len(parms) > 2 {
+		return parms[0], parms[1], errors.New("malformed project parameter - too many slashes")
+	}
+
+	return "", "", errors.New("malformed project parameter - something unusual happened")
 }
