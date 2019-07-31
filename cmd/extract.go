@@ -33,6 +33,7 @@ var extractCmd = &cobra.Command{
 	Long: `This copies the full project, stack plus app, into a local directory
 in preparation to build the final docker image.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+
 		setupErr := setupConfig()
 		if setupErr != nil {
 			return setupErr
@@ -151,6 +152,7 @@ in preparation to build the final docker image.`,
 				if removeErr != nil {
 					Error.log("dockerRemove error ", removeErr)
 				}
+
 				return errors.Errorf("Error attempting to run copy command %s on image %s", bashCmd, stackImage)
 
 			}
@@ -161,6 +163,7 @@ in preparation to build the final docker image.`,
 		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
 		if err != nil {
 			Error.log("docker cp command failed: ", err)
+
 			removeErr := dockerRemove(extractContainerName)
 			if removeErr != nil {
 				Error.log("dockerRemove error ", removeErr)
