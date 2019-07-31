@@ -33,6 +33,10 @@ var extractCmd = &cobra.Command{
 	Long: `This copies the full project, stack plus app, into a local directory
 in preparation to build the final docker image.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
 		projectName, perr := getProjectName()
 		if perr != nil {
 			return errors.Errorf("%v", perr)

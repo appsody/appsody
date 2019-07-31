@@ -53,6 +53,10 @@ Use 'appsody list' to see the available stack options.
 Without the [stack] argument, this command must be run on an existing Appsody project and will only run the stack init script to
 setup the local dev environment.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
 		var index RepoIndex
 
 		var proceedWithTemplate bool

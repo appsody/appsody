@@ -25,7 +25,10 @@ var listCmd = &cobra.Command{
 	Short: "List the Appsody stacks available to init",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
 		var index RepoIndex
 		err := index.getIndex()
 		if err != nil {
