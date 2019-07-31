@@ -413,6 +413,7 @@ func extractAndInitialize() error {
 		extractError := extractCmd.RunE(extractCmd, nil)
 		if extractError != nil {
 			return extractError
+
 		}
 
 	} else {

@@ -122,7 +122,6 @@ in preparation to build the final docker image.`,
 			cmdArgs = append(cmdArgs, stackImage)
 			err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
 			if err != nil {
-
 				Error.log("docker create command failed: ", err)
 				removeErr := dockerRemove(extractContainerName)
 				Error.log("Error in dockerRemove", removeErr)
@@ -147,6 +146,7 @@ in preparation to build the final docker image.`,
 				if removeErr != nil {
 					Error.log("dockerRemove error ", removeErr)
 				}
+
 				return errors.Errorf("Error attempting to run copy command %s on image %s", bashCmd, stackImage)
 
 			}
@@ -157,6 +157,7 @@ in preparation to build the final docker image.`,
 		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
 		if err != nil {
 			Error.log("docker cp command failed: ", err)
+
 			removeErr := dockerRemove(extractContainerName)
 			if removeErr != nil {
 				Error.log("dockerRemove error ", removeErr)
