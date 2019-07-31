@@ -114,9 +114,8 @@ in preparation to build the final docker image.`,
 			err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
 			if err != nil {
 
-				Error.log("docker create command failed: ", err)
 				dockerRemove(extractContainerName)
-				return err
+				return errors.Errorf("docker create command failed: %v", err)
 
 			}
 			appDir = extractContainerName + ":" + containerProjectDir
