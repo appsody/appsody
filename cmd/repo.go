@@ -294,9 +294,21 @@ func (r *RepositoryFile) listProjects() (string, error) {
 				table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
 			}
 		}
+		return table.String(), nil
+	} else {
+		return "", errors.New("there are no repositories in your configuration")
 	}
-
-	return table.String(), nil
+}
+func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
+	if repo := r.GetRepo(repoName); repo != nil {
+		url := repo.URL
+		if index, err := getIndex(url); err != nil {
+			return "", err
+		} else {
+			return index.listProjects(), nil
+		}
+	}
+	return "", errors.New("cannot locate repository named " + repoName)
 }
 
 func (r *RepositoryFile) getRepos() *RepositoryFile {
@@ -354,6 +366,15 @@ func (r *RepositoryFile) Has(name string) bool {
 		}
 	}
 	return false
+}
+func (r *RepositoryFile) GetRepo(name string) *RepositoryEntry {
+	r.getRepos()
+	for _, rf := range r.Repositories {
+		if rf.Name == name {
+			return rf
+		}
+	}
+	return nil
 }
 
 func (r *RepositoryFile) HasURL(url string) bool {

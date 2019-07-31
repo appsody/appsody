@@ -21,19 +21,30 @@ import (
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
-	Use:   "list",
+	Use:   "list [repo]",
 	Short: "List the Appsody stacks available to init",
-	Long:  ``,
+	Long: `This command lists all the stacks available in your repositories, if you omit the 
+	optional [repo] parameter. If you specify the repository name [repo], only the stacks in that
+	repositories will be listed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
-		//var index RepoIndex
-
 		var repos RepositoryFile
-		projects, err := repos.listProjects()
-		if err != nil {
-			return errors.Errorf("%v", err)
+		//var index RepoIndex
+		if len(args) < 1 {
+			projects, err := repos.listProjects()
+			if err != nil {
+				return errors.Errorf("%v", err)
+			}
+			Info.log("\n", projects)
+			return nil
+		} else {
+			repoName := args[0]
+			repos.getRepos()
+			if repoProjects, err := repos.listRepoProjects(repoName); err != nil {
+				return err
+			} else {
+				Info.log("\n", repoProjects)
+			}
 		}
-		Info.log("\n", projects)
 		return nil
 	},
 }
