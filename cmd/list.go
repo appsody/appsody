@@ -39,17 +39,15 @@ var listCmd = &cobra.Command{
 				return errors.Errorf("%v", err)
 			}
 			Info.log("\n", projects)
-			return nil
 		} else {
 			repoName := args[0]
 			repos.getRepos()
 			if repoProjects, err := repos.listRepoProjects(repoName); err != nil {
 				return err
-			} else {
-				Info.log("\n", repoProjects)
 			}
-			return nil
+			Info.log("\n", repoProjects)
 		}
+		return nil
 	},
 }
 

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
+	//"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -258,12 +258,13 @@ func (index *RepoIndex) listProjects() string {
 func (r *RepositoryFile) listProjects() (string, error) {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
+	//table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
+	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
 	indices, err := r.GetIndices()
-	rnd := rand.New(rand.NewSource(99))
+	//rnd := rand.New(rand.NewSource(99))
 
 	//err := index.getIndex()
-	templates := [8]string{"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"}
+	//templates := [8]string{"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"}
 	if err != nil {
 		return "", errors.Errorf("Could not read indices: %v", err)
 	}
@@ -271,17 +272,18 @@ func (r *RepositoryFile) listProjects() (string, error) {
 		for repoName, index := range indices {
 			//Info.log("\n", "Repository: ", repoName)
 			for id, value := range index.Projects {
-				r1 := rnd.Intn(8)
-				r2 := rnd.Intn(8)
-				r3 := rnd.Intn(8)
-				rndTemplates := "*" + templates[r1] + ", " + templates[r2] + ", " + templates[r3]
-				table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
+				//r1 := rnd.Intn(8)
+				//r2 := rnd.Intn(8)
+				//r3 := rnd.Intn(8)
+				//rndTemplates := "*" + templates[r1] + ", " + templates[r2] + ", " + templates[r3]
+				//table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
+				table.AddRow(repoName, id, value[0].Version, value[0].Description)
 			}
 		}
 		return table.String(), nil
-	} else {
-		return "", errors.New("there are no repositories in your configuration")
 	}
+	return "", errors.New("there are no repositories in your configuration")
+
 }
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
