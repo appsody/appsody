@@ -33,7 +33,7 @@ func TestParser(t *testing.T) {
 	fmt.Println("appsodyStacks is: ", appsodyStacks)
 	fmt.Println("stacksList is: ", stacksList)
 
-	stackRaw := strings.Split(stacksList, " ")
+	stackRaw := strings.Split(appsodyStacks, " ")
 	// stackStack := strings.Split(stackRaw, "/")
 
 	for i := range stackRaw {
