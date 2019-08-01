@@ -91,6 +91,10 @@ func addDevCommonFlags(cmd *cobra.Command) {
 }
 
 func commonCmd(cmd *cobra.Command, args []string, mode string) error {
+	setupErr := setupConfig()
+	if setupErr != nil {
+		return setupErr
+	}
 	projectDir, perr := getProjectDir()
 	if perr != nil {
 		return perr

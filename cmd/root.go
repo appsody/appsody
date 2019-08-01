@@ -45,13 +45,13 @@ var (
 	klogInitialized = false
 )
 
-func homeDir() string {
+func homeDir() (string, error) {
 	home, err := homedir.Dir()
 	if err != nil {
-		Error.log(err)
-		os.Exit(1)
+		return "", errors.Errorf("%v", err)
+
 	}
-	return home
+	return home, nil
 }
 
 var rootCmd = &cobra.Command{
@@ -65,13 +65,25 @@ Complete documentation is available at https://appsody.dev`,
 	//Run: no run action for the root command
 }
 
+func setupConfig() error {
+	err := initConfig()
+	if err != nil {
+		return err
+	}
+	err = ensureConfig()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func init() {
 	// Don't run this on help commands
 	// TODO - instead of the isHelpCommand() check, we should delay the config init/ensure until we really need the config
 	if !isHelpCommand() {
 		cobra.OnInitialize(initLogging)
-		cobra.OnInitialize(initConfig)
-		cobra.OnInitialize(ensureConfig)
+		//cobra.OnInitialize(initConfig)
+		//cobra.OnInitialize(ensureConfig)
 	}
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.appsody/.appsody.yaml)")
@@ -97,11 +109,19 @@ func isHelpCommand() bool {
 	return false
 }
 
-func initConfig() {
-	Debug.log("Running with command line args: appsody ", strings.Join(os.Args[1:], " "))
-	cliConfig = viper.New()
+var initConfigRun = false
 
-	cliConfig.SetDefault("home", filepath.Join(homeDir(), ".appsody"))
+func initConfig() error {
+	Debug.log("Running with command line args: appsody ", strings.Join(os.Args[1:], " "))
+	if initConfigRun {
+		return nil
+	}
+	cliConfig = viper.New()
+	homeDirectory, dirErr := homeDir()
+	if dirErr != nil {
+		return dirErr
+	}
+	cliConfig.SetDefault("home", filepath.Join(homeDirectory, ".appsody"))
 	cliConfig.SetDefault("images", "index.docker.io")
 	cliConfig.SetDefault("tektonserver", "")
 	if cfgFile != "" {
@@ -119,6 +139,8 @@ func initConfig() {
 	// If a config file is found, read it in.
 	// Ignore errors, if the config isn't found, we will create a default later
 	_ = cliConfig.ReadInConfig()
+	initConfigRun = true
+	return nil
 }
 
 func getDefaultConfigFile() string {
@@ -196,8 +218,14 @@ func (l appsodylogger) internalLog(msgString string, args ...interface{}) {
 func initLogging() {
 
 	if verbose {
+		// this is an initizer method and currently you can not return an error from them
 
-		logDir := filepath.Join(homeDir(), ".appsody", "logs")
+		homeDirectory, dirErr := homeDir()
+		if dirErr != nil {
+			os.Exit(1)
+		}
+
+		logDir := filepath.Join(homeDirectory, ".appsody", "logs")
 
 		_, errPath := os.Stat(logDir)
 		if errPath != nil {
@@ -209,7 +237,7 @@ func initLogging() {
 
 		currentTimeValues := strings.Split(time.Now().Local().String(), " ")
 		fileName := strings.ReplaceAll("appsody"+currentTimeValues[0]+"T"+currentTimeValues[1]+".log", ":", "-")
-		pathString := filepath.Join(homeDir(), ".appsody", "logs", fileName)
+		pathString := filepath.Join(homeDirectory, ".appsody", "logs", fileName)
 		klogFlags := flag.NewFlagSet("klog", flag.ExitOnError)
 		klog.InitFlags(klogFlags)
 		_ = klogFlags.Set("v", "4")

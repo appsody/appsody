@@ -33,6 +33,10 @@ var deleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// projectDir := getProjectDir()
 		// projectName := filepath.Base(projectDir)
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
 		projectName, perr := getProjectName()
 		if perr != nil {
 			return errors.Errorf("%v", perr)
