@@ -56,7 +56,8 @@ type ProjectVersion struct {
 	Maintainers []interface{} `yaml:"maintainers"`
 	Icon        string        `yaml:"icon"`
 	Digest      string        `yaml:"digest"`
-	URLs        []string      `yaml:"urls"`
+	URLs        []string      `yaml:"urls"` //V1
+	Templates   []Template    `yaml:"templates,omitempty"`
 }
 
 type RepositoryFile struct {
@@ -69,6 +70,11 @@ type RepositoryEntry struct {
 	Name      string `yaml:"name"`
 	URL       string `yaml:"url"`
 	IsDefault bool   `yaml:"default,omitempty"`
+}
+
+type Template struct {
+	ID  string `yaml:id`
+	URL string `yaml:url`
 }
 
 var (
