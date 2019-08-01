@@ -45,7 +45,11 @@ var removeCmd = &cobra.Command{
 			Info.log("Dry Run - Skipping appsody repo remove ", repoName)
 		} else {
 			if repoFile.Has(repoName) {
-				repoFile.Remove(repoName)
+				if repoName != repoFile.GetDefaultRepoName() {
+					repoFile.Remove(repoName)
+				} else {
+					Error.log("You cannot remove the default repository " + repoName)
+				}
 			} else {
 				Error.log("Repository is not in configured list of repositories")
 			}

@@ -57,8 +57,11 @@ setup the local dev environment.`,
 		if setupErr != nil {
 			return setupErr
 		}
-		var index RepoIndex
-
+		//var index RepoIndex
+		var repos RepositoryFile
+		if _, err := repos.getRepos(); err != nil {
+			return err
+		}
 		var proceedWithTemplate bool
 
 		err := CheckPrereqs()
@@ -66,18 +69,32 @@ setup the local dev environment.`,
 			Warning.logf("Failed to check prerequisites: %v\n", err)
 		}
 
-		err = index.getIndex()
+		//err = index.getIndex()
+
+		indices, err := repos.GetIndices()
+
 		if err != nil {
-			return errors.Errorf("Could not read index: %v", err)
+			return errors.Errorf("Could not read indices: %v", err)
 		}
+		if len(indices) == 0 {
+			return errors.Errorf("Your stack repository is empty - please use `appsody repo add` to add a repository.")
+		}
+		var index *RepoIndex
+
 		if len(args) >= 1 {
 
-			projectType := args[0]
+			projectParm := args[0]
 
-			if len(index.Projects[projectType]) < 1 {
-				return errors.Errorf("Could not find a stack with the id \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType)
-
+			repoName, projectType, err := parseProjectParm(projectParm)
+			if err != nil {
+				return err
 			}
+			Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
+			index = indices[repoName]
+			if len(index.Projects[projectType]) < 1 {
+				return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
+			}
+			Debug.log("Stack ", projectType, " found in repo ", repoName)
 			var projectName = index.Projects[projectType][0].URLs[0]
 
 			// 1. Check for empty directory
@@ -443,4 +460,29 @@ func extractAndInitialize() error {
 	}
 
 	return err
+}
+
+func parseProjectParm(projectParm string) (string, string, error) {
+	parms := strings.Split(projectParm, "/")
+	if len(parms) == 1 {
+		Debug.log("Non-fully qualified stack - retrieving default repo...")
+		var r RepositoryFile
+		if _, err := r.getRepos(); err != nil {
+			return "", "", err
+		}
+		return r.GetDefaultRepoName(), parms[0], nil
+	}
+
+	if len(parms) == 2 {
+		Debug.log("Fully qualified stack... determining repo...")
+		if len(parms[0]) == 0 || len(parms[1]) == 0 {
+			return parms[0], parms[1], errors.New("malformed project parameter - slash at the beginning or end should be removed")
+		}
+		return parms[0], parms[1], nil
+	}
+	if len(parms) > 2 {
+		return parms[0], parms[1], errors.New("malformed project parameter - too many slashes")
+	}
+
+	return "", "", errors.New("malformed project parameter - something unusual happened")
 }
