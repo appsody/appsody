@@ -23,11 +23,19 @@ var repoListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List configured Appsody repositories",
 	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var repos RepositoryFile
-		repos.getRepos()
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
+		_, repoErr := repos.getRepos()
+		if repoErr != nil {
+			return repoErr
+		}
 		var repoList = repos.listRepos()
 		Info.log("\n", repoList)
+		return nil
 	},
 }
 

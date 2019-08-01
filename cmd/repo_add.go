@@ -32,6 +32,10 @@ var addCmd = &cobra.Command{
 
 			return errors.New("Error, you must specify repository name and URL")
 		}
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
 		var repoName = args[0]
 		var repoURL = args[1]
 
@@ -46,7 +50,11 @@ var addCmd = &cobra.Command{
 		}
 
 		var repoFile RepositoryFile
-		repoFile.getRepos()
+
+		_, repoErr := repoFile.getRepos()
+		if repoErr != nil {
+			return repoErr
+		}
 		if repoFile.Has(repoName) {
 			return errors.Errorf("A repository with the name '%s' already exists.", repoName)
 

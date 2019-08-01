@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	//"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,6 +37,9 @@ type RepoIndex struct {
 	Generated  time.Time                  `yaml:"generated"`
 	Projects   map[string]ProjectVersions `yaml:"projects"`
 }
+
+// RepoIndices maps repos to their RepoIndex (i.e. the projects in a repo)
+type RepoIndices map[string]*RepoIndex
 
 type ProjectVersions []*ProjectVersion
 
@@ -60,8 +64,9 @@ type RepositoryFile struct {
 }
 
 type RepositoryEntry struct {
-	Name string `yaml:"name"`
-	URL  string `yaml:"url"`
+	Name      string `yaml:"name"`
+	URL       string `yaml:"url"`
+	IsDefault bool   `yaml:"default,omitempty"`
 }
 
 var (
@@ -91,8 +96,13 @@ func init() {
 	rootCmd.AddCommand(repoCmd)
 }
 
+var ensureConfigRun = false
+
 // Locate or create config structure in $APPSODY_HOME
-func ensureConfig() {
+func ensureConfig() error {
+	if ensureConfigRun {
+		return nil
+	}
 	directories := []string{
 		getHome(),
 		getRepoDir(),
@@ -106,14 +116,14 @@ func ensureConfig() {
 			} else {
 				Debug.log("Creating ", p)
 				if err := os.MkdirAll(p, 0755); err != nil {
-					Error.logf("Could not create %s: %s", p, err)
-					os.Exit(1)
+					return errors.Errorf("Could not create %s: %s", p, err)
+
 				}
 			}
 
 		} else if !fi.IsDir() {
-			Error.logf("%s must be a directory", p)
-			os.Exit(1)
+			return errors.Errorf("%s must be a directory", p)
+
 		}
 	}
 
@@ -127,18 +137,18 @@ func ensureConfig() {
 
 			repo := NewRepoFile()
 			repo.Add(&RepositoryEntry{
-				Name: "appsodyhub",
-				URL:  appsodyHubURL,
+				Name:      "appsodyhub",
+				URL:       appsodyHubURL,
+				IsDefault: true,
 			})
+
 			Debug.log("Creating ", repoFileLocation)
 			if err := repo.WriteFile(repoFileLocation); err != nil {
-				Error.logf("Error writing %s file: %s ", repoFileLocation, err)
-				os.Exit(1)
+				return errors.Errorf("Error writing %s file: %s ", repoFileLocation, err)
 			}
 		}
 	} else if file.IsDir() {
-		Error.logf("%s must be a file, not a directory ", repoFileLocation)
-		os.Exit(1)
+		return errors.Errorf("%s must be a file, not a directory ", repoFileLocation)
 	}
 
 	defaultConfigFile := getDefaultConfigFile()
@@ -148,8 +158,8 @@ func ensureConfig() {
 		} else {
 			Debug.log("Creating ", defaultConfigFile)
 			if err := ioutil.WriteFile(defaultConfigFile, []byte{}, 0644); err != nil {
-				Error.logf("Error creating default config file %s", err)
-				os.Exit(1)
+				return errors.Errorf("Error creating default config file %s", err)
+
 			}
 		}
 	}
@@ -159,10 +169,12 @@ func ensureConfig() {
 	} else {
 		Debug.log("Writing config file ", defaultConfigFile)
 		if err := cliConfig.WriteConfig(); err != nil {
-			Error.logf("Writing default config file %s", err)
-			os.Exit(1)
+			return errors.Errorf("Writing default config file %s", err)
+
 		}
 	}
+	ensureConfigRun = true
+	return nil
 
 }
 
@@ -233,58 +245,75 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	return &index, nil
 }
 
-func (index *RepoIndex) getIndex() error {
-	var repos RepositoryFile
-	repos.getRepos()
-
-	for _, value := range repos.Repositories {
-		repoIndex, err := downloadIndex(value.URL)
-		if err != nil {
-			Error.log(err)
-			os.Exit(1)
-		}
-		if index.Projects == nil {
-			index.APIVersion = repoIndex.APIVersion
-			index.Generated = repoIndex.Generated
-			index.Projects = make(map[string]ProjectVersions)
-		}
-		for name, project := range repoIndex.Projects {
-			index.Projects[name] = project
-		}
-	}
-
-	return nil
-}
-
-func (index *RepoIndex) listProjects() string {
+func (index *RepoIndex) listProjects(repoName string) string {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("ID", "VERSION", "DESCRIPTION")
+	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
 	for id, value := range index.Projects {
-		table.AddRow(id, value[0].Version, value[0].Description)
+		table.AddRow(repoName, id, value[0].Version, value[0].Description)
 	}
 
 	return table.String()
 }
+func (r *RepositoryFile) listProjects() (string, error) {
+	table := uitable.New()
+	table.MaxColWidth = 60
+	//table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
+	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
+	indices, err := r.GetIndices()
+	//rnd := rand.New(rand.NewSource(99))
 
-func (r *RepositoryFile) getRepos() *RepositoryFile {
+	//err := index.getIndex()
+	//templates := [8]string{"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"}
+	if err != nil {
+		return "", errors.Errorf("Could not read indices: %v", err)
+	}
+	if len(indices) != 0 {
+		for repoName, index := range indices {
+			//Info.log("\n", "Repository: ", repoName)
+			for id, value := range index.Projects {
+				//r1 := rnd.Intn(8)
+				//r2 := rnd.Intn(8)
+				//r3 := rnd.Intn(8)
+				//rndTemplates := "*" + templates[r1] + ", " + templates[r2] + ", " + templates[r3]
+				//table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
+				table.AddRow(repoName, id, value[0].Version, value[0].Description)
+			}
+		}
+		return table.String(), nil
+	}
+	return "", errors.New("there are no repositories in your configuration")
+
+}
+func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
+	if repo := r.GetRepo(repoName); repo != nil {
+		url := repo.URL
+		index, err := downloadIndex(url)
+		if err != nil {
+			return "", err
+		}
+		return index.listProjects(repoName), nil
+	}
+	return "", errors.New("cannot locate repository named " + repoName)
+}
+
+func (r *RepositoryFile) getRepos() (*RepositoryFile, error) {
 	var repoFileLocation = getRepoFileLocation()
 	repoReader, err := ioutil.ReadFile(repoFileLocation)
 	if err != nil {
 		if os.IsNotExist(err) {
-			Error.logf("Repository file does not exist %s. Check to make sure appsody init has been run. ", repoFileLocation)
-			os.Exit(1)
-		} else {
-			Error.log("Failed reading repository file ", repoFileLocation)
-			os.Exit(1)
+			return nil, errors.Errorf("Repository file does not exist %s. Check to make sure appsody init has been run. ", repoFileLocation)
+
 		}
+		return nil, errors.Errorf("Failed reading repository file %s", repoFileLocation)
+
 	}
 	err = yaml.Unmarshal(repoReader, r)
 	if err != nil {
-		Error.log("Failed to parse repository file ", err)
-		os.Exit(1)
+		return nil, errors.Errorf("Failed to parse repository file %v", err)
+
 	}
-	return r
+	return r, nil
 }
 
 func (r *RepositoryFile) listRepos() string {
@@ -292,7 +321,11 @@ func (r *RepositoryFile) listRepos() string {
 	table.MaxColWidth = 120
 	table.AddRow("NAME", "URL")
 	for _, value := range r.Repositories {
-		table.AddRow(value.Name, value.URL)
+		var repoName string
+		if repoName = value.Name; repoName == r.GetDefaultRepoName() {
+			repoName = "*" + repoName
+		}
+		table.AddRow(repoName, value.URL)
 	}
 
 	return table.String()
@@ -311,12 +344,21 @@ func (r *RepositoryFile) Add(re ...*RepositoryEntry) {
 }
 
 func (r *RepositoryFile) Has(name string) bool {
+
 	for _, rf := range r.Repositories {
 		if rf.Name == name {
 			return true
 		}
 	}
 	return false
+}
+func (r *RepositoryFile) GetRepo(name string) *RepositoryEntry {
+	for _, rf := range r.Repositories {
+		if rf.Name == name {
+			return rf
+		}
+	}
+	return nil
 }
 
 func (r *RepositoryFile) HasURL(url string) bool {
@@ -326,6 +368,14 @@ func (r *RepositoryFile) HasURL(url string) bool {
 		}
 	}
 	return false
+}
+func (r *RepositoryFile) GetDefaultRepoName() string {
+	for _, rf := range r.Repositories {
+		if rf.IsDefault {
+			return rf.Name
+		}
+	}
+	return ""
 }
 
 func (r *RepositoryFile) Remove(name string) {
@@ -344,4 +394,17 @@ func (r *RepositoryFile) WriteFile(path string) error {
 		return err
 	}
 	return ioutil.WriteFile(path, data, 0644)
+}
+
+func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
+
+	indices := make(map[string]*RepoIndex)
+	for _, rf := range r.Repositories {
+		var index, err = downloadIndex(rf.URL)
+		if err != nil {
+			return indices, err
+		}
+		indices[rf.Name] = index
+	}
+	return indices, nil
 }

@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -31,13 +32,20 @@ var extractCmd = &cobra.Command{
 	Short: "Extract the stack and your Appsody project to a local directory",
 	Long: `This copies the full project, stack plus app, into a local directory
 in preparation to build the final docker image.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
 		projectName, perr := getProjectName()
 		if perr != nil {
-			Error.log(perr)
-			os.Exit(1)
+			return errors.Errorf("%v", perr)
 		}
-		projectConfig := getProjectConfig()
+		projectConfig, projectErr := getProjectConfig()
+		if projectErr != nil {
+			return projectErr
+		}
 		Info.log("Extracting project from development environment")
 
 		if targetDir != "" {
@@ -46,30 +54,26 @@ in preparation to build the final docker image.`,
 			Debug.log("Checking if target-dir exists: ", targetDir)
 			targetExists, err := exists(targetDir)
 			if err != nil {
-				Error.log("Error checking target directory: ", err)
-				os.Exit(1)
+				return errors.Errorf("Error checking target directory: %v", err)
 			}
 			if targetExists {
-				Error.log("Cannot extract to an existing target-dir: ", targetDir)
-				os.Exit(1)
+				return errors.Errorf("Cannot extract to an existing target-dir: %s", targetDir)
+
 			}
 			targetDirParent := filepath.Dir(targetDir)
 			targetDirParentExists, err := exists(targetDirParent)
 			if err != nil {
-				Error.log("Error checking directory: ", err)
-				os.Exit(1)
+				return errors.Errorf("Error checking directory: %v", err)
 			}
 			if !targetDirParentExists {
-				Error.log(targetDirParent, " does not exist")
-				os.Exit(1)
+				return errors.Errorf("%s does not exist", targetDirParent)
 			}
 		}
 
 		extractDir := filepath.Join(getHome(), "extract")
 		extractDirExists, err := exists(extractDir)
 		if err != nil {
-			Error.log("Error checking directory: ", err)
-			os.Exit(1)
+			return errors.Errorf("Error checking directory: %v", err)
 		}
 		if !extractDirExists {
 			if dryrun {
@@ -78,16 +82,14 @@ in preparation to build the final docker image.`,
 				Debug.log("Creating extract dir: ", extractDir)
 				err = os.MkdirAll(extractDir, os.ModePerm)
 				if err != nil {
-					Error.log("Error creating directories ", extractDir, " ", err)
-					os.Exit(1)
+					return errors.Errorf("Error creating directories %s %v", extractDir, err)
 				}
 			}
 		}
 		extractDir = filepath.Join(extractDir, projectName)
 		extractDirExists, err = exists(extractDir)
 		if err != nil {
-			Error.log("Error checking directory: ", err)
-			os.Exit(1)
+			return errors.Errorf("Error checking directory: %v", err)
 		}
 		if extractDirExists {
 			if dryrun {
@@ -100,11 +102,18 @@ in preparation to build the final docker image.`,
 
 		stackImage := projectConfig.Platform
 
-		dockerPullImage(stackImage)
+		dockerPullErr := dockerPullImage(stackImage)
+		if dockerPullErr != nil {
+			return dockerPullErr
+		}
 
 		containerProjectDir := "/project"
 		Debug.log("Container project dir: ", containerProjectDir)
-		volumeMaps := getVolumeArgs()
+
+		volumeMaps, volumeErr := getVolumeArgs()
+		if volumeErr != nil {
+			return volumeErr
+		}
 		cmdName := "docker"
 		var appDir string
 		cmdArgs := []string{"--name", extractContainerName}
@@ -117,11 +126,13 @@ in preparation to build the final docker image.`,
 			cmdArgs = append([]string{"create"}, cmdArgs...)
 			cmdArgs = append(cmdArgs, stackImage)
 			err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
-
 			if err != nil {
+
 				Error.log("docker create command failed: ", err)
-				dockerRemove(extractContainerName)
-				os.Exit(1)
+				removeErr := dockerRemove(extractContainerName)
+				Error.log("Error in dockerRemove", removeErr)
+				return err
+
 			}
 			appDir = extractContainerName + ":" + containerProjectDir
 
@@ -136,21 +147,34 @@ in preparation to build the final docker image.`,
 			_, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd)
 			if err != nil {
 				Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage)
-				dockerRemove(extractContainerName)
-				os.Exit(1)
+
+				removeErr := dockerRemove(extractContainerName)
+				if removeErr != nil {
+					Error.log("dockerRemove error ", removeErr)
+				}
+
+				return errors.Errorf("Error attempting to run copy command %s on image %s", bashCmd, stackImage)
+
 			}
 			//If everything went fine, we need to set the source project directory to /tmp/...
 			appDir = extractContainerName + ":" + filepath.Join("/tmp", containerProjectDir)
 		}
 		cmdArgs = []string{"cp", appDir, extractDir}
 		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
-
 		if err != nil {
 			Error.log("docker cp command failed: ", err)
-			dockerRemove(extractContainerName)
-			os.Exit(1)
+
+			removeErr := dockerRemove(extractContainerName)
+			if removeErr != nil {
+				Error.log("dockerRemove error ", removeErr)
+			}
+			return errors.Errorf("docker cp command failed: %v", err)
 		}
-		dockerRemove(extractContainerName)
+
+		removeErr := dockerRemove(extractContainerName)
+		if removeErr != nil {
+			Error.log("dockerRemove error ", removeErr)
+		}
 		if targetDir == "" {
 			if !dryrun {
 				Info.log("Project extracted to ", extractDir)
@@ -161,12 +185,13 @@ in preparation to build the final docker image.`,
 			} else {
 				err = MoveDir(extractDir, targetDir)
 				if err != nil {
-					Error.log("Extract failed when moving ", extractDir, " to ", targetDir, " ", err)
-					os.Exit(1)
+					return errors.Errorf("Extract failed when moving %s to %s %v", extractDir, targetDir, err)
+
 				}
 				Info.log("Project extracted to ", targetDir)
 			}
 		}
+		return nil
 	},
 }
 
