@@ -25,6 +25,8 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
+var stacksList = os.Getenv("STACKS-LIST")
+
 //var stacksList = os.Getenv("STACKS_LIST")
 
 //var stack = flag.String("stack", "", "Stack to run tests on")
