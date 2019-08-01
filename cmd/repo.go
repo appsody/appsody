@@ -46,7 +46,7 @@ type ProjectVersions []*ProjectVersion
 
 type ProjectVersion struct {
 	APIVersion  string        `yaml:"apiVersion"`
-	Id          string        `yaml:"id,omitempty"`
+	ID          string        `yaml:"id,omitempty"`
 	Created     time.Time     `yaml:"created"`
 	Name        string        `yaml:"name"`
 	Home        string        `yaml:"home"`
@@ -255,7 +255,7 @@ func (index *RepoIndex) listProjects(repoName string) string {
 		table.AddRow(repoName, id, value[0].Version, value[0].Description)
 	}
 	for _, value := range index.Stacks {
-		table.AddRow(repoName, value.Id, value.Version, value.Description)
+		table.AddRow(repoName, value.ID, value.Version, value.Description)
 	}
 	return table.String()
 }
@@ -284,7 +284,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 				table.AddRow(repoName, id, value[0].Version, value[0].Description)
 			}
 			for _, value := range index.Stacks {
-				table.AddRow(repoName, value.Id, value.Version, value.Description)
+				table.AddRow(repoName, value.ID, value.Version, value.Description)
 			}
 		}
 		return table.String(), nil
