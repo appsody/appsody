@@ -96,8 +96,13 @@ func init() {
 	rootCmd.AddCommand(repoCmd)
 }
 
+var ensureConfigRun = false
+
 // Locate or create config structure in $APPSODY_HOME
-func ensureConfig() {
+func ensureConfig() error {
+	if ensureConfigRun {
+		return nil
+	}
 	directories := []string{
 		getHome(),
 		getRepoDir(),
@@ -111,14 +116,14 @@ func ensureConfig() {
 			} else {
 				Debug.log("Creating ", p)
 				if err := os.MkdirAll(p, 0755); err != nil {
-					Error.logf("Could not create %s: %s", p, err)
-					os.Exit(1)
+					return errors.Errorf("Could not create %s: %s", p, err)
+
 				}
 			}
 
 		} else if !fi.IsDir() {
-			Error.logf("%s must be a directory", p)
-			os.Exit(1)
+			return errors.Errorf("%s must be a directory", p)
+
 		}
 	}
 
@@ -139,13 +144,11 @@ func ensureConfig() {
 
 			Debug.log("Creating ", repoFileLocation)
 			if err := repo.WriteFile(repoFileLocation); err != nil {
-				Error.logf("Error writing %s file: %s ", repoFileLocation, err)
-				os.Exit(1)
+				return errors.Errorf("Error writing %s file: %s ", repoFileLocation, err)
 			}
 		}
 	} else if file.IsDir() {
-		Error.logf("%s must be a file, not a directory ", repoFileLocation)
-		os.Exit(1)
+		return errors.Errorf("%s must be a file, not a directory ", repoFileLocation)
 	}
 
 	defaultConfigFile := getDefaultConfigFile()
@@ -155,8 +158,8 @@ func ensureConfig() {
 		} else {
 			Debug.log("Creating ", defaultConfigFile)
 			if err := ioutil.WriteFile(defaultConfigFile, []byte{}, 0644); err != nil {
-				Error.logf("Error creating default config file %s", err)
-				os.Exit(1)
+				return errors.Errorf("Error creating default config file %s", err)
+
 			}
 		}
 	}
@@ -166,10 +169,12 @@ func ensureConfig() {
 	} else {
 		Debug.log("Writing config file ", defaultConfigFile)
 		if err := cliConfig.WriteConfig(); err != nil {
-			Error.logf("Writing default config file %s", err)
-			os.Exit(1)
+			return errors.Errorf("Writing default config file %s", err)
+
 		}
 	}
+	ensureConfigRun = true
+	return nil
 
 }
 
@@ -240,27 +245,6 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	return &index, nil
 }
 
-func getIndex(URL string) (*RepoIndex, error) {
-	//var repos RepositoryFile
-	//repos.getRepos()
-	//Debug.log("Repository files: ", repos)
-	//for _, value := range repos.Repositories {
-	repoIndex, err := downloadIndex(URL)
-	if err != nil {
-		Error.log(err)
-		os.Exit(1)
-	}
-	//if index.Projects == nil {
-	//	index.APIVersion = repoIndex.APIVersion
-	//	index.Generated = repoIndex.Generated
-	//	index.Projects = make(map[string]ProjectVersions)
-	//}
-	//for name, project := range repoIndex.Projects {
-	//	index.Projects[name] = project
-	//}
-	return repoIndex, nil
-}
-
 func (index *RepoIndex) listProjects() string {
 	table := uitable.New()
 	table.MaxColWidth = 60
@@ -302,7 +286,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
-		if index, err := getIndex(url); err != nil {
+		if index, err := downloadIndex(url); err != nil {
 			return "", err
 		} else {
 			return index.listProjects(), nil
@@ -311,24 +295,23 @@ func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	return "", errors.New("cannot locate repository named " + repoName)
 }
 
-func (r *RepositoryFile) getRepos() *RepositoryFile {
+func (r *RepositoryFile) getRepos() (*RepositoryFile, error) {
 	var repoFileLocation = getRepoFileLocation()
 	repoReader, err := ioutil.ReadFile(repoFileLocation)
 	if err != nil {
 		if os.IsNotExist(err) {
-			Error.logf("Repository file does not exist %s. Check to make sure appsody init has been run. ", repoFileLocation)
-			os.Exit(1)
-		} else {
-			Error.log("Failed reading repository file ", repoFileLocation)
-			os.Exit(1)
+			return nil, errors.Errorf("Repository file does not exist %s. Check to make sure appsody init has been run. ", repoFileLocation)
+
 		}
+		return nil, errors.Errorf("Failed reading repository file %s", repoFileLocation)
+
 	}
 	err = yaml.Unmarshal(repoReader, r)
 	if err != nil {
-		Error.log("Failed to parse repository file ", err)
-		os.Exit(1)
+		return nil, errors.Errorf("Failed to parse repository file %v", err)
+
 	}
-	return r
+	return r, nil
 }
 
 func (r *RepositoryFile) listRepos() string {
@@ -416,7 +399,7 @@ func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
 	r.getRepos()
 	indices := make(map[string]*RepoIndex)
 	for _, rf := range r.Repositories {
-		var index, err = getIndex(rf.URL)
+		var index, err = downloadIndex(rf.URL)
 		if err != nil {
 			return indices, err
 		}

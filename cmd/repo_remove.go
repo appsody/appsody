@@ -30,10 +30,17 @@ var removeCmd = &cobra.Command{
 		if len(args) < 1 {
 			return errors.New("Error, you must specify repository name")
 		}
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
 		var repoName = args[0]
 
 		var repoFile RepositoryFile
-		repoFile.getRepos()
+		_, repoErr := repoFile.getRepos()
+		if repoErr != nil {
+			return repoErr
+		}
 		if dryrun {
 			Info.log("Dry Run - Skipping appsody repo remove ", repoName)
 		} else {
