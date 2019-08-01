@@ -25,7 +25,7 @@ import (
 )
 
 var stacksList = os.Getenv("STACKS_LIST")
-var appsodyStacks = os.Getenv("APPSODY_STACKS")
+var appsodyStacks = os.Getenv("NIXA")
 
 func TestParser(t *testing.T) {
 	// test environment variable with stack info
