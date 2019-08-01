@@ -66,7 +66,7 @@ type RepositoryFile struct {
 type RepositoryEntry struct {
 	Name      string `yaml:"name"`
 	URL       string `yaml:"url"`
-	IsDefault bool   `yaml:"isdefault,omitempty"`
+	IsDefault bool   `yaml:"default,omitempty"`
 }
 
 var (
@@ -344,7 +344,7 @@ func (r *RepositoryFile) Add(re ...*RepositoryEntry) {
 }
 
 func (r *RepositoryFile) Has(name string) bool {
-	r.getRepos()
+
 	for _, rf := range r.Repositories {
 		if rf.Name == name {
 			return true
@@ -353,7 +353,6 @@ func (r *RepositoryFile) Has(name string) bool {
 	return false
 }
 func (r *RepositoryFile) GetRepo(name string) *RepositoryEntry {
-	r.getRepos()
 	for _, rf := range r.Repositories {
 		if rf.Name == name {
 			return rf
@@ -398,7 +397,7 @@ func (r *RepositoryFile) WriteFile(path string) error {
 }
 
 func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
-	r.getRepos()
+
 	indices := make(map[string]*RepoIndex)
 	for _, rf := range r.Repositories {
 		var index, err = downloadIndex(rf.URL)

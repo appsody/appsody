@@ -28,9 +28,14 @@ var listCmd = &cobra.Command{
 	repositories will be listed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var repos RepositoryFile
+
 		setupErr := setupConfig()
 		if setupErr != nil {
 			return setupErr
+		}
+
+		if _, err := repos.getRepos(); err != nil {
+			return err
 		}
 		//var index RepoIndex
 		if len(args) < 1 {
@@ -41,7 +46,10 @@ var listCmd = &cobra.Command{
 			Info.log("\n", projects)
 		} else {
 			repoName := args[0]
-			repos.getRepos()
+			_, err := repos.getRepos()
+			if err != nil {
+				return err
+			}
 			repoProjects, err := repos.listRepoProjects(repoName)
 			if err != nil {
 				return err

@@ -58,7 +58,10 @@ setup the local dev environment.`,
 			return setupErr
 		}
 		//var index RepoIndex
-
+		var repos RepositoryFile
+		if _, err := repos.getRepos(); err != nil {
+			return err
+		}
 		var proceedWithTemplate bool
 
 		err := CheckPrereqs()
@@ -67,7 +70,7 @@ setup the local dev environment.`,
 		}
 
 		//err = index.getIndex()
-		var repos RepositoryFile
+
 		indices, err := repos.GetIndices()
 
 		if err != nil {
@@ -464,7 +467,9 @@ func parseProjectParm(projectParm string) (string, string, error) {
 	if len(parms) == 1 {
 		Debug.log("Non-fully qualified stack - retrieving default repo...")
 		var r RepositoryFile
-		r.getRepos()
+		if _, err := r.getRepos(); err != nil {
+			return "", "", err
+		}
 		return r.GetDefaultRepoName(), parms[0], nil
 	}
 
