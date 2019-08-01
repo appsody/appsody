@@ -245,12 +245,12 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	return &index, nil
 }
 
-func (index *RepoIndex) listProjects() string {
+func (index *RepoIndex) listProjects(repoName string) string {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("ID", "VERSION", "DESCRIPTION")
+	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
 	for id, value := range index.Projects {
-		table.AddRow(id, value[0].Version, value[0].Description)
+		table.AddRow(repoName, id, value[0].Version, value[0].Description)
 	}
 
 	return table.String()
@@ -288,11 +288,11 @@ func (r *RepositoryFile) listProjects() (string, error) {
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
-		if index, err := downloadIndex(url); err != nil {
+		index, err := downloadIndex(url)
+		if err != nil {
 			return "", err
-		} else {
-			return index.listProjects(), nil
 		}
+		return index.listProjects(repoName), nil
 	}
 	return "", errors.New("cannot locate repository named " + repoName)
 }

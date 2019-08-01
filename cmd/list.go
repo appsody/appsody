@@ -42,7 +42,8 @@ var listCmd = &cobra.Command{
 		} else {
 			repoName := args[0]
 			repos.getRepos()
-			if repoProjects, err := repos.listRepoProjects(repoName); err != nil {
+			repoProjects, err := repos.listRepoProjects(repoName)
+			if err != nil {
 				return err
 			}
 			Info.log("\n", repoProjects)
