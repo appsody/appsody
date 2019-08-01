@@ -24,13 +24,14 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
+var stacksList = os.Getenv("STACKS_LIST")
 var appsodyStacks = os.Getenv("APPSODY_STACKS")
 
 func TestParser(t *testing.T) {
 	// test environment variable with stack info
 	// test environmet variable for stacks
 	fmt.Println("appsodyStacks is: ", appsodyStacks)
-	fmt.Println("stackList is: ", stacksList)
+	fmt.Println("stacksList is: ", stacksList)
 
 	stackRaw := strings.Split(stacksList, " ")
 	// stackStack := strings.Split(stackRaw, "/")
