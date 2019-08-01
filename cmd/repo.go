@@ -36,6 +36,7 @@ type RepoIndex struct {
 	APIVersion string                     `yaml:"apiVersion"`
 	Generated  time.Time                  `yaml:"generated"`
 	Projects   map[string]ProjectVersions `yaml:"projects"`
+	Stacks     []ProjectVersion           `yaml:"stacks"`
 }
 
 // RepoIndices maps repos to their RepoIndex (i.e. the projects in a repo)
@@ -44,17 +45,19 @@ type RepoIndices map[string]*RepoIndex
 type ProjectVersions []*ProjectVersion
 
 type ProjectVersion struct {
-	APIVersion  string    `yaml:"apiVersion"`
-	Created     time.Time `yaml:"created"`
-	Name        string    `yaml:"name"`
-	Home        string    `yaml:"home"`
-	Version     string    `yaml:"version"`
-	Description string    `yaml:"description"`
-	Keywords    []string  `yaml:"keywords"`
-	Maintainers []string  `yaml:"maintainers"`
-	Icon        string    `yaml:"icon"`
-	Digest      string    `yaml:"digest"`
-	URLs        []string  `yaml:"urls"`
+	APIVersion  string        `yaml:"apiVersion"`
+	ID          string        `yaml:"id,omitempty"`
+	Created     time.Time     `yaml:"created"`
+	Name        string        `yaml:"name"`
+	Home        string        `yaml:"home"`
+	Version     string        `yaml:"version"`
+	Description string        `yaml:"description"`
+	Keywords    []string      `yaml:"keywords"`
+	Maintainers []interface{} `yaml:"maintainers"`
+	Icon        string        `yaml:"icon"`
+	Digest      string        `yaml:"digest"`
+	URLs        []string      `yaml:"urls"` //V1
+	Templates   []Template    `yaml:"templates,omitempty"`
 }
 
 type RepositoryFile struct {
@@ -67,6 +70,11 @@ type RepositoryEntry struct {
 	Name      string `yaml:"name"`
 	URL       string `yaml:"url"`
 	IsDefault bool   `yaml:"default,omitempty"`
+}
+
+type Template struct {
+	ID  string `yaml:"id"`
+	URL string `yaml:"url"`
 }
 
 var (
@@ -252,7 +260,9 @@ func (index *RepoIndex) listProjects(repoName string) string {
 	for id, value := range index.Projects {
 		table.AddRow(repoName, id, value[0].Version, value[0].Description)
 	}
-
+	for _, value := range index.Stacks {
+		table.AddRow(repoName, value.ID, value.Version, value.Description)
+	}
 	return table.String()
 }
 func (r *RepositoryFile) listProjects() (string, error) {
@@ -278,6 +288,9 @@ func (r *RepositoryFile) listProjects() (string, error) {
 				//rndTemplates := "*" + templates[r1] + ", " + templates[r2] + ", " + templates[r3]
 				//table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
 				table.AddRow(repoName, id, value[0].Version, value[0].Description)
+			}
+			for _, value := range index.Stacks {
+				table.AddRow(repoName, value.ID, value.Version, value.Description)
 			}
 		}
 		return table.String(), nil
