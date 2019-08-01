@@ -31,7 +31,7 @@ var listCmd = &cobra.Command{
 		setupErr := setupConfig()
 		if setupErr != nil {
 			return setupErr
-		}		
+		}
 		//var index RepoIndex
 		if len(args) < 1 {
 			projects, err := repos.listProjects()
@@ -48,9 +48,8 @@ var listCmd = &cobra.Command{
 			} else {
 				Info.log("\n", repoProjects)
 			}
-
-
-		return nil
+			return nil
+		}
 	},
 }
 

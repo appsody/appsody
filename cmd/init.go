@@ -57,7 +57,7 @@ setup the local dev environment.`,
 		if setupErr != nil {
 			return setupErr
 		}
-		var index RepoIndex
+		//var index RepoIndex
 
 		var proceedWithTemplate bool
 
