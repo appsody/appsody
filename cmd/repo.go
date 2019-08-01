@@ -73,8 +73,8 @@ type RepositoryEntry struct {
 }
 
 type Template struct {
-	ID  string `yaml:id`
-	URL string `yaml:url`
+	ID  string `yaml:"id"`
+	URL string `yaml:"url"`
 }
 
 var (
