@@ -25,7 +25,7 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-var stacksList = os.Getenv("STACKS-LIST")
+var stacksList = os.Getenv("STACKSLIST")
 
 //var stacksList = os.Getenv("STACKS_LIST")
 
