@@ -329,19 +329,23 @@ func (r *RepositoryFile) getRepos() (*RepositoryFile, error) {
 	return r, nil
 }
 
-func (r *RepositoryFile) listRepos() string {
+func (r *RepositoryFile) listRepos() (string, error) {
 	table := uitable.New()
 	table.MaxColWidth = 120
 	table.AddRow("NAME", "URL")
 	for _, value := range r.Repositories {
-		var repoName string
-		if repoName = value.Name; repoName == r.GetDefaultRepoName() {
+		repoName := value.Name
+		defaultRepoName, err := r.GetDefaultRepoName()
+		if err != nil {
+			return "", err
+		}
+		if repoName == defaultRepoName {
 			repoName = "*" + repoName
 		}
 		table.AddRow(repoName, value.URL)
 	}
 
-	return table.String()
+	return table.String(), nil
 }
 
 func NewRepoFile() *RepositoryFile {
@@ -382,13 +386,35 @@ func (r *RepositoryFile) HasURL(url string) bool {
 	}
 	return false
 }
-func (r *RepositoryFile) GetDefaultRepoName() string {
+func (r *RepositoryFile) GetDefaultRepoName() (string, error) {
+	// Check if there are any repos first
+	if len(r.Repositories) < 1 {
+		return "", errors.New("Your $HOME/.appsody/repository/repository.yaml contains no repositories!")
+	}
 	for _, rf := range r.Repositories {
 		if rf.IsDefault {
-			return rf.Name
+			return rf.Name, nil
 		}
 	}
-	return ""
+	// If we got this far, no default repo was found - this is likely to be a 0.2.8 or prior
+	// We'll set the default repo
+	// If there's only one repo - set it as default
+	// And if appsodyhub isn't there set the first one as default
+	var repoName string
+	if len(r.Repositories) == 1 || !r.Has("appsodyhub") {
+		r.Repositories[0].IsDefault = true
+		repoName = r.Repositories[0].Name
+	} else {
+		// If there's more than one, let's search for appsodyhub first
+		repo := r.GetRepo("appsodyhub")
+		repo.IsDefault = true
+		repoName = repo.Name
+	}
+	if err := r.WriteFile(getRepoFileLocation()); err != nil {
+		return "", err
+	}
+	Info.log("Your default repository is now set to ", repoName)
+	return repoName, nil
 }
 
 func (r *RepositoryFile) Remove(name string) {

@@ -89,8 +89,13 @@ setup the local dev environment.`,
 			if err != nil {
 				return err
 			}
+			if !repos.Has(repoName) {
+				return errors.Errorf("Repository %s is not in configured list of repositories", repoName)
+			}
+
 			Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
 			index = indices[repoName]
+
 			projectFound := false
 			stackFound := false
 
@@ -485,7 +490,11 @@ func parseProjectParm(projectParm string) (string, string, error) {
 		if _, err := r.getRepos(); err != nil {
 			return "", "", err
 		}
-		return r.GetDefaultRepoName(), parms[0], nil
+		if defaultRepoName, err := r.GetDefaultRepoName(); err != nil {
+			return "", parms[0], err
+		} else {
+			return defaultRepoName, parms[0], nil
+		}
 	}
 
 	if len(parms) == 2 {
