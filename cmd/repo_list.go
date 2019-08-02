@@ -33,7 +33,10 @@ var repoListCmd = &cobra.Command{
 		if repoErr != nil {
 			return repoErr
 		}
-		var repoList = repos.listRepos()
+		repoList, err := repos.listRepos()
+		if err != nil {
+			return err
+		}
 		Info.log("\n", repoList)
 		return nil
 	},
