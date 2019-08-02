@@ -489,11 +489,11 @@ func parseProjectParm(projectParm string) (string, string, error) {
 		if _, err := r.getRepos(); err != nil {
 			return "", "", err
 		}
-		if defaultRepoName, err := r.GetDefaultRepoName(); err != nil {
+		defaultRepoName, err := r.GetDefaultRepoName()
+		if err != nil {
 			return "", parms[0], err
-		} else {
-			return defaultRepoName, parms[0], nil
 		}
+		return defaultRepoName, parms[0], nil
 	}
 
 	if len(parms) == 2 {

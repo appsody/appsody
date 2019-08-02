@@ -389,7 +389,7 @@ func (r *RepositoryFile) HasURL(url string) bool {
 func (r *RepositoryFile) GetDefaultRepoName() (string, error) {
 	// Check if there are any repos first
 	if len(r.Repositories) < 1 {
-		return "", errors.New("Your $HOME/.appsody/repository/repository.yaml contains no repositories!")
+		return "", errors.New("your $HOME/.appsody/repository/repository.yaml contains no repositories")
 	}
 	for _, rf := range r.Repositories {
 		if rf.IsDefault {
