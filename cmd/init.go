@@ -95,7 +95,6 @@ setup the local dev environment.`,
 
 			Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
 			index = indices[repoName]
-
 			projectFound := false
 			stackFound := false
 
