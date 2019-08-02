@@ -82,7 +82,7 @@ setup the local dev environment.`,
 		var index *RepoIndex
 
 		if len(args) >= 1 {
-
+			var projectName string
 			projectParm := args[0]
 
 			repoName, projectType, err := parseProjectParm(projectParm)
@@ -91,12 +91,27 @@ setup the local dev environment.`,
 			}
 			Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
 			index = indices[repoName]
-			if len(index.Projects[projectType]) < 1 {
+			projectFound := false
+			stackFound := false
+
+			if len(index.Projects[projectType]) >= 1 { //V1 repos
+				projectFound = true
+				//return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
+				Debug.log("Project ", projectType, " found in repo ", repoName)
+				projectName = index.Projects[projectType][0].URLs[0]
+			}
+
+			for _, stack := range index.Stacks {
+				if stack.ID == projectType {
+					stackFound = true
+					Debug.log("Stack ", projectType, " found in repo ", repoName)
+					projectName = stack.Templates[0].URL
+				}
+			}
+
+			if !projectFound && !stackFound {
 				return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
 			}
-			Debug.log("Stack ", projectType, " found in repo ", repoName)
-			var projectName = index.Projects[projectType][0].URLs[0]
-
 			// 1. Check for empty directory
 			dir, err := os.Getwd()
 			if err != nil {

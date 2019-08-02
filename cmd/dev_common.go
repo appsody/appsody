@@ -181,7 +181,9 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	go func() {
 		<-c
 		err := dockerStop(containerName)
-		Error.log(err)
+		if err != nil {
+			Error.log(err)
+		}
 		//dockerRemove(containerName) is not needed due to --rm flag
 		os.Exit(1)
 	}()
