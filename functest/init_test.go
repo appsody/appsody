@@ -16,10 +16,12 @@ package functest
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
@@ -266,5 +268,102 @@ func appsodyResultsCheck(projectDir string, t *testing.T) {
 	shouldExist(packagejson, t)
 
 	shouldExist(packagejsonlock, t)
+
+}
+
+func TestInitV2WithDefaultRepoSpecified(t *testing.T) {
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-testDefaultRepo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.RemoveAll(projectDir)
+	log.Println("Created project dir: " + projectDir)
+
+	// appsody init nodejs-express
+	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "appsodyhub/nodejs"}, projectDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	appsodyResultsCheck(projectDir, t)
+}
+
+func TestInitV2WithNonDefaultRepoSpecified(t *testing.T) {
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-testNonDefaultRepo")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.RemoveAll(projectDir)
+	addRepoName := "incubator3"
+	_, cleanup, err := cmdtest.AddLocalFileRepo(addRepoName, "testdata/kabanero.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+
+	defer os.RemoveAll(projectDir)
+	log.Println("Created project dir: " + projectDir)
+
+	// appsody init nodejs-express
+	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "incubator3/nodejs"}, projectDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	appsodyResultsCheck(projectDir, t)
+}
+
+func TestInitV2WithBadStackSpecified(t *testing.T) {
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-testbadstack")
+	if err != nil {
+		t.Error(err)
+	}
+
+	defer os.RemoveAll(projectDir)
+	addRepoName := "BadStack"
+	_, cleanup, err := cmdtest.AddLocalFileRepo(addRepoName, "testdata/kabanero.yaml")
+	if err != nil {
+		t.Error(err)
+	}
+
+	defer cleanup()
+
+	log.Println("Created project dir: " + projectDir)
+
+	// appsody init nodejs-express
+	output, _ := cmdtest.RunAppsodyCmdExec([]string{"init", "BadStack/badnodejs-express"}, projectDir)
+	if !(strings.Contains(output, "Could not find a stack with the id")) {
+		t.Error("Should have flagged non existing stack")
+	}
+
+}
+
+func TestInitV2WithBadRepoSpecified(t *testing.T) {
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-testBadRepo")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.RemoveAll(projectDir)
+	addRepoName := "incubator4"
+	_, cleanup, err := cmdtest.AddLocalFileRepo(addRepoName, "testdata/kabanero.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+
+	log.Println("Created project dir: " + projectDir)
+
+	// appsody init nodejs-express
+	output, _ := cmdtest.RunAppsodyCmdExec([]string{"init", "BadRepo/nodejs-express"}, projectDir)
+
+	if !(strings.Contains(output, "is not in configured list of repositories")) {
+		fmt.Println("Bad repo not flagged")
+		t.Error("Bad repo not flagged")
+	}
 
 }
