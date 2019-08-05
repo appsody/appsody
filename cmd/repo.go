@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+
 	//"math/rand"
 	"net/http"
 	"os"
@@ -78,7 +79,7 @@ type Template struct {
 }
 
 var (
-	appsodyHubURL = "https://raw.githubusercontent.com/appsody/stacks/master/index.yaml"
+	appsodyHubURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
 )
 
 // repoCmd represents the repo command
