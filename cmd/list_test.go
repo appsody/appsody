@@ -48,7 +48,7 @@ func TestListV2(t *testing.T) {
 	var err error
 	var output string
 	var cleanup func()
-	output, err = cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
+	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
 
 	_, cleanup, err = cmdtest.AddLocalFileRepo("incubatortest", "../cmd/testdata/kabanero.yaml")
 	if err != nil {
@@ -56,20 +56,20 @@ func TestListV2(t *testing.T) {
 	}
 	defer cleanup()
 
-	output, err = cmdtest.RunAppsodyCmdExec([]string{"list", "incubatortest"}, ".")
+	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list", "incubatortest"}, ".")
 
 	if !(strings.Contains(output, "nodejs") && strings.Contains(output, "incubatortest")) {
 		t.Error("list command should contain id 'nodejs'")
 	}
 
 	// test the current default hub
-	output, err = cmdtest.RunAppsodyCmdExec([]string{"list", "appsodyhub"}, ".")
+	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list", "appsodyhub"}, ".")
 
 	if !strings.Contains(output, "java-microprofile") {
 		t.Error("list command should contain id 'java-microprofile'")
 	}
 
-	output, err = cmdtest.RunAppsodyCmdExec([]string{"list", "appsodyhub"}, ".")
+	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list", "appsodyhub"}, ".")
 
 	// we expect 2 instances
 	if !(strings.Count(output, "java-microprofile") == 1) {
