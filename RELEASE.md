@@ -20,7 +20,7 @@ The Appsody CLI is made available by creating a tagged GitHub release
     * appsody-x.y.z-1.x86_64.rpm
     * appsody-x.y.z-darwin-amd64.tar
     * appsody-x.y.z-linux-amd64.tar
-    * appsody-x.y.z-windows.tar
+    * appsody-x.y.z-windows.tar.gz
     * appsody-homebrew-x.y.z.tar.gz
     * appsody.rb
     * appsody_x.y.z_amd64.deb
