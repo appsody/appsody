@@ -1,0 +1,34 @@
+apiVersion: v2
+stacks:
+  - id: nodejs
+    name: Node.js
+    version: 0.2.1
+    description: Runtime for Node.js applications
+    license: Apache-2.0
+    maintainers:
+      - name: Chris Bailey
+        email: cnbailey@gmail.com
+        github-id: seabaylea
+      - name: Neeraj Laad
+        email: neeraj.laad@gmail.com
+        github-id: neeraj-laad
+    default-template: simple
+    default_image: nodejs-ubi
+    default_pipeline: default
+    default_dashboard: default
+    templates:
+      - id: simple
+        url: https://github.com/appsody/stacks/releases/download/nodejs-v0.2.2/incubator.nodejs.templates.simple.tar.gz
+        pipelines:
+      - id: default
+        url: https://github.com//releases/latest/download/incubator.nodejs.pipeline.default.tar.gz
+      - id: openshift
+        url: https://github.com//releases/latest/download/incubator.nodejs.pipeline.openshift.tar.gz
+    dashboards:
+      - id: default
+        url: https://github.com//releases/latest/download/incubator.nodejs.dashboard.default.tar.gz
+    images:
+      - id: nodejs
+        image: appsody/nodejs:0.2
+      - id: nodejs_ubi
+        image: kabanero/nodejs:0.1

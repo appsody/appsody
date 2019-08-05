@@ -41,3 +41,52 @@ func TestList(t *testing.T) {
 		t.Error("list command should contain id 'java-microprofile'")
 	}
 }
+
+// test the v2 list functionality
+func TestListV2(t *testing.T) {
+	// first add the test repo index
+	var err error
+	var output string
+	var cleanup func()
+	output, err = cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
+
+	_, cleanup, err = cmdtest.AddLocalFileRepo("incubatortest", "../cmd/testdata/kabanero.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+
+	output, err = cmdtest.RunAppsodyCmdExec([]string{"list", "incubatortest"}, ".")
+
+	if !(strings.Contains(output, "nodejs") && strings.Contains(output, "incubatortest")) {
+		t.Error("list command should contain id 'nodejs'")
+	}
+
+	// test the current default hub
+	output, err = cmdtest.RunAppsodyCmdExec([]string{"list", "appsodyhub"}, ".")
+
+	if !strings.Contains(output, "java-microprofile") {
+		t.Error("list command should contain id 'java-microprofile'")
+	}
+
+	output, err = cmdtest.RunAppsodyCmdExec([]string{"list", "appsodyhub"}, ".")
+
+	// we expect 2 instances
+	if !(strings.Count(output, "java-microprofile") == 1) {
+		t.Error("list command should contain id 'java-microprofile'")
+	}
+	output, err = cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
+
+	// we expect 2 instances
+	if !(strings.Contains(output, "java-microprofile") && (strings.Count(output, "nodejs ") == 2)) {
+		t.Error("list command should contain id 'java-microprofile and 2 nodejs '")
+	}
+
+	// test the current default hub
+	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list", "nonexisting"}, ".")
+
+	if !(strings.Contains(output, "cannot locate repository ")) {
+		t.Error("Failed to flag non-existing repo")
+	}
+
+}
