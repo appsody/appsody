@@ -427,6 +427,26 @@ func (r *RepositoryFile) Remove(name string) {
 	}
 }
 
+func (r *RepositoryFile) SetDefaultRepoName(name string, defaultRepoName string) (string, error){
+	var repoName string
+	for index, rf := range r.Repositories {
+		//set current default repo to false
+		if rf.Name == defaultRepoName {
+			r.Repositories[index].IsDefault = false
+		}
+		//set new default repo
+		if rf.Name == name {
+			r.Repositories[index].IsDefault = true
+			repoName = rf.Name 
+		}
+	}
+	if err := r.WriteFile(getRepoFileLocation()); err != nil {
+		return "", err
+	}
+	Info.log("Your default repository is now set to ", repoName)
+	return repoName, nil
+}
+
 func (r *RepositoryFile) WriteFile(path string) error {
 	data, err := yaml.Marshal(r)
 	if err != nil {
