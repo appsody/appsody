@@ -50,9 +50,12 @@ var setDefaultCmd = &cobra.Command{
 					return err
 				}
 				if repoName != defaultRepoName {
-					repoFile.SetDefaultRepoName(repoName, defaultRepoName)
+					_, repoFileErr := repoFile.SetDefaultRepoName(repoName, defaultRepoName)
+					if repoFileErr != nil {
+						return repoFileErr
+					}
 				} else {
-					Error.log("Your default repository has already been set to " + repoName)
+					Info.log("Your default repository has already been set to " + repoName)
 				}
 			} else {
 				Error.log("Repository is not in configured list of repositories")
