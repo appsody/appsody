@@ -1,0 +1,28 @@
+apiVersion: v2
+stacks:
+  - id: nodejs-functions
+    name: Node.js Functions
+    version: 0.1.0
+    description: Serverless runtime for Node.js functions
+    license: Apache-2.0
+    maintainers:
+      - name: Chris Bailey
+        email: cnbailey@gmail.com
+        github-id: seabaylea
+    default-template: simple
+    templates:
+      - id: simple
+        url: https://github.com/appsody/stacks/releases/download/nodejs-functions-v0.1.0/experimental.nodejs-functions.templates.simple.tar.gz
+  - id: quarkus
+    name: Quarkus
+    version: 0.1.0
+    description: Quarkus runtime for running Java applications
+    license: Apache-2.0
+    maintainers:
+      - name: Paul Robinson
+        email: probinso@redhat.com
+        github-id: paulrobinson
+    default-template: default
+    templates:
+      - id: default
+        url: https://github.com/appsody/stacks/releases/download/quarkus-v0.1.0/experimental.quarkus.templates.default.tar.gz
