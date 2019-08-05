@@ -48,8 +48,6 @@ func TestListV2(t *testing.T) {
 	var err error
 	var output string
 	var cleanup func()
-	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
-
 	_, cleanup, err = cmdtest.AddLocalFileRepo("incubatortest", "../cmd/testdata/kabanero.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +73,7 @@ func TestListV2(t *testing.T) {
 	if !(strings.Count(output, "java-microprofile") == 1) {
 		t.Error("list command should contain id 'java-microprofile'")
 	}
-	output, err = cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
+	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
 
 	// we expect 2 instances
 	if !(strings.Contains(output, "java-microprofile") && (strings.Count(output, "nodejs ") == 2)) {
