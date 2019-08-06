@@ -87,6 +87,9 @@ var (
 var (
 	appsodyHubURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
 )
+var (
+	experimentalRepositoryURL = "https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml"
+)
 
 // repoCmd represents the repo command
 var repoCmd = &cobra.Command{
@@ -156,7 +159,10 @@ func ensureConfig() error {
 				URL:       appsodyHubURL,
 				IsDefault: true,
 			})
-
+			repo.Add(&RepositoryEntry{
+				Name: "experimental",
+				URL:  experimentalRepositoryURL,
+			})
 			Debug.log("Creating ", repoFileLocation)
 			if err := repo.WriteFile(repoFileLocation); err != nil {
 				return errors.Errorf("Error writing %s file: %s ", repoFileLocation, err)
