@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strings"
 
 	//"math/rand"
 	"net/http"
@@ -77,6 +78,11 @@ type Template struct {
 	ID  string `yaml:"id"`
 	URL string `yaml:"url"`
 }
+
+var unsupportedRepos []string
+var (
+	supportedIndexAPIVersion = "v2"
+)
 
 var (
 	appsodyHubURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
@@ -281,6 +287,10 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	}
 	if len(indices) != 0 {
 		for repoName, index := range indices {
+			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+				Debug.log("Adding unspported repoistory", repoName)
+				unsupportedRepos = append(unsupportedRepos, repoName)
+			}
 			//Info.log("\n", "Repository: ", repoName)
 			for id, value := range index.Projects {
 				//r1 := rnd.Intn(8)
