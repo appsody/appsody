@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -63,10 +64,13 @@ var addCmd = &cobra.Command{
 			return errors.Errorf("A repository with the URL '%s' already exists.", repoURL)
 
 		}
-		_, err := downloadIndex(repoURL)
+		index, err := downloadIndex(repoURL)
 		if err != nil {
 
 			return err
+		}
+		if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+			Warning.log("The repository " + repoName + " contains an APIVersion in its .yaml file more recent than the current Appsody CLI supports(" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
 		}
 
 		if dryrun {

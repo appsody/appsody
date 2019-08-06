@@ -41,12 +41,12 @@ var whiteListDotFiles = []string{"git", "project", "DS_Store", "classpath", "fac
 // initCmd represents the init command
 
 var initCmd = &cobra.Command{
-	Use:   "init [stack]",
+	Use:   "init [stack] or [repository]/[stack]",
 	Short: "Initialize an Appsody project with a stack and template app",
 	Long: `This creates a new Appsody project in a local directory or sets up the local dev environment of an existing Appsody project.
 
-With the [stack] argument, this command will setup a new Appsody project. It will create an Appsody stack config file, unzip a template app, and
-run the stack init script to setup the local dev environment. It is typically run on an empty directory and may fail
+If the [repository] is not specified the default repository will be used.
+With the [stack] or [repository]/[stack] argument, this command will setup a new Appsody project. It will create an Appsody stack config file, unzip a template app, and run the stack init script to setup the local dev environment. It is typically run on an empty directory and may fail
 if files already exist. See the --overwrite and --no-template options for more details.
 Use 'appsody list' to see the available stack options.
 
@@ -97,7 +97,9 @@ setup the local dev environment.`,
 			index = indices[repoName]
 			projectFound := false
 			stackFound := false
-
+			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+				Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
+			}
 			if len(index.Projects[projectType]) >= 1 { //V1 repos
 				projectFound = true
 				//return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)

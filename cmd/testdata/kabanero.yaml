@@ -1,4 +1,4 @@
-apiVersion: v2
+apiVersion: v4
 stacks:
   - id: nodejs
     name: Node.js
@@ -18,7 +18,7 @@ stacks:
     default_dashboard: default
     templates:
       - id: simple
-        url: https://github.com//releases/latest/download/incubator.nodejs.simple.tar.gz
+        url: https://github.com/appsody/stacks/releases/download/nodejs-v0.2.2/incubator.nodejs.templates.simple.tar.gz
     pipelines:
       - id: default
         url: https://github.com//releases/latest/download/incubator.nodejs.pipeline.default.tar.gz
