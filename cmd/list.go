@@ -23,7 +23,7 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list [repository]",
 	Short: "List the Appsody stacks available to init",
-	Long:  `This command lists all the stacks available in your repositories. If you omit the  optional [repository] parameter, the stacks for all the repositories are listed. If you specify the repository name [repository], only the stacks in that repository will be listed.  An asterisk denotes the default repository.`,
+	Long:  `This command lists all the stacks available in your repositories. If you omit the  optional [repository] parameter, the stacks for all the repositories are listed. If you specify the repository name [repository], only the stacks in that repository will be listed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var repos RepositoryFile
 
