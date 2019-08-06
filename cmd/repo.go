@@ -288,10 +288,10 @@ func (r *RepositoryFile) listProjects() (string, error) {
 				//r3 := rnd.Intn(8)
 				//rndTemplates := "*" + templates[r1] + ", " + templates[r2] + ", " + templates[r3]
 				//table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
-				table.AddRow(repoName, id, value[0].Version, value[0].Description)
+				table.AddRow(repoName, id, value[0].Version, truncate(value[0].Description,80))
 			}
 			for _, value := range index.Stacks {
-				table.AddRow(repoName, value.ID, value.Version, value.Description)
+				table.AddRow(repoName, value.ID, value.Version, truncate(value.Description,80))
 			}
 		}
 		return table.String(), nil
@@ -299,6 +299,15 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	return "", errors.New("there are no repositories in your configuration")
 
 }
+
+func truncate(s string, i int) string {
+	desc := s
+	if len(s) > i{
+		desc = s[0:i] + "..."
+	}
+	return desc
+}
+
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
