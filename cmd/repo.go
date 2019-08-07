@@ -331,8 +331,8 @@ func sortStack(stackArray [50][50]string) (sortedArray [50][50]string) {
 	var x int
 	var z int
 	var y int
-	var swappedRepo bool = true
-	var swappedStack bool = true
+	var swappedRepo = true
+	var swappedStack = true
 
 	for swappedRepo {
 		swappedRepo = false
@@ -368,7 +368,7 @@ func sortStack(stackArray [50][50]string) (sortedArray [50][50]string) {
 func sortRepo(stackArray [50][50]string) (sortedArray [50][50]string) {
 	var k int
 	var x int
-	var swapped bool = true
+	var swapped = true
 
 	for swapped {
 		swapped = false
