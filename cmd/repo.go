@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strings"
+
 	//"math/rand"
 	"net/http"
 	"os"
@@ -77,8 +79,16 @@ type Template struct {
 	URL string `yaml:"url"`
 }
 
+var unsupportedRepos []string
 var (
-	appsodyHubURL = "https://raw.githubusercontent.com/appsody/stacks/master/index.yaml"
+	supportedIndexAPIVersion = "v2"
+)
+
+var (
+	appsodyHubURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
+)
+var (
+	experimentalRepositoryURL = "https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml"
 )
 
 // repoCmd represents the repo command
@@ -149,7 +159,10 @@ func ensureConfig() error {
 				URL:       appsodyHubURL,
 				IsDefault: true,
 			})
-
+			repo.Add(&RepositoryEntry{
+				Name: "experimental",
+				URL:  experimentalRepositoryURL,
+			})
 			Debug.log("Creating ", repoFileLocation)
 			if err := repo.WriteFile(repoFileLocation); err != nil {
 				return errors.Errorf("Error writing %s file: %s ", repoFileLocation, err)
@@ -271,6 +284,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	//table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
 	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
 	indices, err := r.GetIndices()
+	var stackArray [50][50]string
 	//rnd := rand.New(rand.NewSource(99))
 
 	//err := index.getIndex()
@@ -279,18 +293,31 @@ func (r *RepositoryFile) listProjects() (string, error) {
 		return "", errors.Errorf("Could not read indices: %v", err)
 	}
 	if len(indices) != 0 {
+		var i int
 		for repoName, index := range indices {
+			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+				Debug.log("Adding unspported repoistory", repoName)
+				unsupportedRepos = append(unsupportedRepos, repoName)
+			}
 			//Info.log("\n", "Repository: ", repoName)
 			for id, value := range index.Projects {
+				stackArray[i][0] = repoName
+				stackArray[i][1] = id
+				stackArray[i][2] = value[0].Version
+				stackArray[i][3] = value[0].Description
 				//r1 := rnd.Intn(8)
 				//r2 := rnd.Intn(8)
 				//r3 := rnd.Intn(8)
 				//rndTemplates := "*" + templates[r1] + ", " + templates[r2] + ", " + templates[r3]
 				//table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
-				table.AddRow(repoName, id, value[0].Version, value[0].Description)
+				i++
 			}
-			for _, value := range index.Stacks {
-				table.AddRow(repoName, value.ID, value.Version, value.Description)
+		}
+		var sortedList [50][50]string = sortStack(stackArray)
+		var j int
+		for j = 0; j < len(sortedList); j++ {
+			if sortedList[j][1] != "" {
+				table.AddRow(sortedList[j][0], sortedList[j][1], sortedList[j][2], truncate(sortedList[j][3], 80))
 			}
 		}
 		return table.String(), nil
@@ -298,6 +325,79 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	return "", errors.New("there are no repositories in your configuration")
 
 }
+
+func sortStack(stackArray [50][50]string) (sortedArray [50][50]string) {
+	var k int
+	var x int
+	var z int
+	var y int
+	var swappedRepo bool
+	var swappedStack bool
+
+	swappedRepo = true
+	swappedStack = true
+
+	for swappedRepo {
+		swappedRepo = false
+		for k = 1; k < len(stackArray); k++ {
+			if stackArray[k-1][0] > stackArray[k][0] {
+				for x = 0; x < 5; x++ {
+					stackArray[k-1][x], stackArray[k][x] = stackArray[k][x], stackArray[k-1][x]
+				}
+				swappedRepo = true
+			}
+		}
+	}
+
+	for swappedStack {
+		swappedStack = false
+		for z = 1; z < len(stackArray); z++ {
+			if stackArray[z-1][0] == stackArray[z][0] {
+				if stackArray[z-1][1] > stackArray[z][1] {
+					for y = 0; y < 5; y++ {
+						stackArray[z-1][y], stackArray[z][y] = stackArray[z][y], stackArray[z-1][y]
+					}
+					swappedStack = true
+				}
+			}
+		}
+	}
+
+	sortedArray = stackArray
+
+	return sortedArray
+}
+
+func sortRepo(stackArray [50][50]string) (sortedArray [50][50]string) {
+	var k int
+	var x int
+	var swapped bool
+	swapped = true
+
+	for swapped {
+		swapped = false
+		for k = 1; k < len(stackArray); k++ {
+			if stackArray[k-1][0] > stackArray[k][0] {
+				for x = 0; x < 2; x++ {
+					stackArray[k-1][x], stackArray[k][x] = stackArray[k][x], stackArray[k-1][x]
+				}
+				swapped = true
+			}
+		}
+	}
+	sortedArray = stackArray
+
+	return sortedArray
+}
+
+func truncate(s string, i int) string {
+	desc := s
+	if len(s) > i {
+		desc = s[0:i] + "..."
+	}
+	return desc
+}
+
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
@@ -332,6 +432,8 @@ func (r *RepositoryFile) getRepos() (*RepositoryFile, error) {
 func (r *RepositoryFile) listRepos() (string, error) {
 	table := uitable.New()
 	table.MaxColWidth = 120
+	var repoArray [50][50]string
+	var i int
 	table.AddRow("NAME", "URL")
 	for _, value := range r.Repositories {
 		repoName := value.Name
@@ -342,7 +444,17 @@ func (r *RepositoryFile) listRepos() (string, error) {
 		if repoName == defaultRepoName {
 			repoName = "*" + repoName
 		}
-		table.AddRow(repoName, value.URL)
+
+		repoArray[i][0] = repoName
+		repoArray[i][1] = value.URL
+		i++
+	}
+	var sortedRepo [50][50]string = sortRepo(repoArray)
+	var j int
+	for j = 0; j < len(sortedRepo); j++ {
+		if sortedRepo[j][0] != "" {
+			table.AddRow(sortedRepo[j][0], sortedRepo[j][1])
+		}
 	}
 
 	return table.String(), nil
@@ -425,6 +537,26 @@ func (r *RepositoryFile) Remove(name string) {
 			return
 		}
 	}
+}
+
+func (r *RepositoryFile) SetDefaultRepoName(name string, defaultRepoName string) (string, error) {
+	var repoName string
+	for index, rf := range r.Repositories {
+		//set current default repo to false
+		if rf.Name == defaultRepoName {
+			r.Repositories[index].IsDefault = false
+		}
+		//set new default repo
+		if rf.Name == name {
+			r.Repositories[index].IsDefault = true
+			repoName = rf.Name
+		}
+	}
+	if err := r.WriteFile(getRepoFileLocation()); err != nil {
+		return "", err
+	}
+	Info.log("Your default repository is now set to ", repoName)
+	return repoName, nil
 }
 
 func (r *RepositoryFile) WriteFile(path string) error {
