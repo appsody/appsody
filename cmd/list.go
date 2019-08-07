@@ -21,11 +21,9 @@ import (
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
-	Use:   "list [repo]",
+	Use:   "list [repository]",
 	Short: "List the Appsody stacks available to init",
-	Long: `This command lists all the stacks available in your repositories, if you omit the 
-	optional [repo] parameter. If you specify the repository name [repo], only the stacks in that
-	repositories will be listed.`,
+	Long:  `This command lists all the stacks available in your repositories. If you omit the  optional [repository] parameter, the stacks for all the repositories are listed. If you specify the repository name [repository], only the stacks in that repositories will be listed.  An asterisk denotes the default repository.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var repos RepositoryFile
 
@@ -43,6 +41,9 @@ var listCmd = &cobra.Command{
 			if err != nil {
 				return errors.Errorf("%v", err)
 			}
+			if len(unsupportedRepos) > 0 {
+				Warning.log("The following repositories .yaml have an  APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", unsupportedRepos)
+			}
 			Info.log("\n", projects)
 		} else {
 			repoName := args[0]
@@ -54,8 +55,13 @@ var listCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
+			if len(unsupportedRepos) > 0 {
+				Warning.log("The following repositories are of APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", unsupportedRepos)
+			}
+
 			Info.log("\n", repoProjects)
 		}
+
 		return nil
 	},
 }

@@ -56,7 +56,7 @@ var bashCompletionCmd = &cobra.Command{
 			"# To install on macOS\n" +
 			"# 1. brew install bash-completion\n" +
 			"# 2. Make sure to update your ~/.bash_profile as instructed\n" +
-			"# 3. appsody completion > /usr/local/etc/bash_completion.d/appsdy\n"
+			"# 3. appsody completion > /usr/local/etc/bash_completion.d/appsody\n"
 		extra := "flags=()\n" + spaceTab +
 			"kdl=\"$((appsody list) | awk -F ' ' '{print $1}')\"\n" +
 			spaceTab + "arr=($kdl)\n" + spaceTab + "len=${#arr[@]}\n" +
