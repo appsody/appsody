@@ -313,7 +313,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 				i++
 			}
 		}
-		var sortedList [50][50]string = sortStack(stackArray)
+		var sortedList = sortStack(stackArray)
 		var j int
 		for j = 0; j < len(sortedList); j++ {
 			if sortedList[j][1] != "" {
@@ -331,11 +331,8 @@ func sortStack(stackArray [50][50]string) (sortedArray [50][50]string) {
 	var x int
 	var z int
 	var y int
-	var swappedRepo bool
-	var swappedStack bool
-
-	swappedRepo = true
-	swappedStack = true
+	var swappedRepo bool = true
+	var swappedStack bool = true
 
 	for swappedRepo {
 		swappedRepo = false
@@ -371,8 +368,7 @@ func sortStack(stackArray [50][50]string) (sortedArray [50][50]string) {
 func sortRepo(stackArray [50][50]string) (sortedArray [50][50]string) {
 	var k int
 	var x int
-	var swapped bool
-	swapped = true
+	var swapped bool = true
 
 	for swapped {
 		swapped = false
@@ -449,7 +445,7 @@ func (r *RepositoryFile) listRepos() (string, error) {
 		repoArray[i][1] = value.URL
 		i++
 	}
-	var sortedRepo [50][50]string = sortRepo(repoArray)
+	var sortedRepo = sortRepo(repoArray)
 	var j int
 	for j = 0; j < len(sortedRepo); j++ {
 		if sortedRepo[j][0] != "" {
