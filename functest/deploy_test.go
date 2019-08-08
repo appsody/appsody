@@ -95,6 +95,12 @@ func TestDeploy(t *testing.T) {
 		log.Println("Created project dir: " + projectDir)
 
 		// appsody init nodejs-express
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"list"}, projectDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// appsody init nodejs-express
 		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
 		if err != nil {
 			t.Fatal(err)

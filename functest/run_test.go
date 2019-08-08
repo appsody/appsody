@@ -26,11 +26,11 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-var stacksList = os.Getenv("STACKSLIST")
+//var stacksList = os.Getenv("STACKSLIST")
 
 //var stacksList = ""
 
-//var stacksList = "incubator/java-microprofile experimental/quarkus incubator/nodejs experimental/nodejs-functions"
+var stacksList = "incubator/java-microprofile experimental/quarkus incubator/nodejs experimental/nodejs-functions"
 
 //var stack = flag.String("stack", "", "Stack to run tests on")
 
