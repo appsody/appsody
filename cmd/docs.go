@@ -95,15 +95,19 @@ var docsCmd = &cobra.Command{
 }
 
 func appendChildren(commandArray []*cobra.Command, cmd *cobra.Command) []*cobra.Command {
-	if !cmd.Hidden {
+
+	if !cmd.Hidden && cmd.Name() != "help" {
 		commandArray = append(commandArray, cmd)
 		for _, value := range cmd.Commands() {
 
-			commandArray = append(commandArray, value)
+			if !value.Hidden && value.Name() != "help" {
+				commandArray = append(commandArray, value)
+			}
 
 			for _, childValue := range value.Commands() {
-
-				commandArray = appendChildren(commandArray, childValue)
+				if !childValue.Hidden && childValue.Name() != "help" {
+					commandArray = appendChildren(commandArray, childValue)
+				}
 			}
 
 		}
