@@ -28,6 +28,10 @@ func TestParser(t *testing.T) {
 	// test environment variable with stack info
 	// test environmet variable for stacks
 	fmt.Println("stacksList is: ", stacksList)
+	if stacksList == "" {
+		log.Println("stacksList is empty, exiting test...")
+		return
+	}
 
 	// replace incubator with appsodyhub to match current naming convention for repos
 	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
@@ -51,6 +55,11 @@ func TestParser(t *testing.T) {
 func TestDeploy(t *testing.T) {
 
 	fmt.Println("stacksList is: ", stacksList)
+
+	if stacksList == "" {
+		log.Println("stacksList is empty, exiting test...")
+		return
+	}
 
 	// replace incubator with appsodyhub to match current naming convention for repos
 	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
