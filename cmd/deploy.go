@@ -15,9 +15,9 @@
 package cmd
 
 import (
-	"os"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -30,16 +30,22 @@ var deployCmd = &cobra.Command{
 	Long: `This command extracts the code from your project, builds a local Docker image for deployment,
 generates a KNative serving deployment manifest (yaml) file, and deploys your image as a KNative
 service in your local cluster.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		// Extract code and build the image - and tags it if -t is specified
-		buildCmd.Run(cmd, args)
+		buildErr := buildCmd.RunE(cmd, args)
+		if buildErr != nil {
+			return buildErr
+		}
 		//Generate the KNative yaml
 		//Get the container port first
 		port, err := getEnvVarInt("PORT")
 		if err != nil {
 			//try and get the exposed ports and use the first one
 			Warning.log("Could not detect a container port (PORT env var).")
-			portsStr := getExposedPorts()
+			portsStr, portsErr := getExposedPorts()
+			if portsErr != nil {
+				return portsErr
+			}
 			if len(portsStr) == 0 {
 				//No ports exposed
 				Warning.log("This container exposes no ports. The service will not be accessible.")
@@ -56,10 +62,14 @@ service in your local cluster.`,
 		}
 		//Get the KNative template file
 		knativeTempl := getKNativeTemplate()
-		//Get the project name and make it the KNative service name
-		serviceName := getProjectName()
+
 		//Retrieve the project name and lowercase it
-		projectName := getProjectName()
+		projectName, perr := getProjectName()
+		if perr != nil {
+			return errors.Errorf("%v", perr)
+		}
+		//Get the project name and make it the KNative service name
+		serviceName := projectName
 		deployImage := projectName // if not tagged, this is the deploy image name
 		if tag != "" {
 			deployImage = tag //Otherwise, it's the tag
@@ -70,8 +80,7 @@ service in your local cluster.`,
 			// Tagging the image using the tag as the deployImage for KNative
 			err = DockerTag(deployImage, localtag)
 			if err != nil {
-				Error.log("Tagging the image failed - exiting. Error: ", err)
-				os.Exit(1)
+				return errors.Errorf("Tagging the image failed - exiting. Error: %v", err)
 			}
 			deployImage = localtag // And forcing deployimage to be localtag
 		}
@@ -79,30 +88,29 @@ service in your local cluster.`,
 		Debug.logf("Calling GenKnativeYaml with parms: %s %d %s %s \n", knativeTempl, port, serviceName, deployImage)
 		yamlFileName, err := GenKnativeYaml(knativeTempl, port, serviceName, deployImage, push)
 		if err != nil {
-			Error.log("Could not generate the KNative YAML file: ", err)
-			os.Exit(1)
+			return errors.Errorf("Could not generate the KNative YAML file: %v", err)
 		}
 		Info.log("Generated KNative serving deploy file: ", yamlFileName)
 		// Pushing the docker image if necessary
 		if push {
 			err = DockerPush(deployImage)
 			if err != nil {
-				Error.log("Could not push the docker image - exiting. Error: ", err)
+				return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
 			}
 		}
 		err = KubeApply(yamlFileName)
 		// Performing the kubectl apply
 		if err != nil {
-			Error.log("Failed to deploy to your Kubernetes cluster: ", err)
-		} else {
-			Info.log("Deployment succeeded.")
-			url, err := KubeGetRouteURL(serviceName)
-			if err != nil {
-				Error.log("Failed to find deployed service in your Kubernetes cluster: ", err)
-			} else {
-				Info.log("Your deployed service is available at the following URL: ", url)
-			}
+			return errors.Errorf("Failed to deploy to your Kubernetes cluster: %v", err)
 		}
+		Info.log("Deployment succeeded.")
+		url, err := KubeGetRouteURL(serviceName)
+		if err != nil {
+			return errors.Errorf("Failed to find deployed service in your Kubernetes cluster: %v", err)
+		}
+		Info.log("Your deployed service is available at the following URL: ", url)
+
+		return nil
 	},
 }
 

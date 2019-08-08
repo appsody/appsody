@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -26,6 +25,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/pkg/errors"
 
 	flag "github.com/spf13/pflag"
 
@@ -42,20 +43,30 @@ var nameFlags *flag.FlagSet
 var commonFlags *flag.FlagSet
 
 func buildCommonFlags() {
-
 	if commonFlags == nil || nameFlags == nil {
 		commonFlags = flag.NewFlagSet("", flag.ContinueOnError)
 		nameFlags = flag.NewFlagSet("", flag.ContinueOnError)
-		curDir, err := os.Getwd()
-		if err != nil {
-			Error.log("Error getting current directory ", err)
-			os.Exit(1)
-		}
+		//curDir, err := os.Getwd()
+		//if err != nil {
+		//	Error.log("Error getting current directory ", err)
+		//	os.Exit(1)
+		//}
+		projectName, perr := getProjectName()
 
-		defaultName := filepath.Base(curDir) + "-dev"
-		nameFlags.StringVar(&containerName, "name", defaultName, "Name of the docker development container.")
-		defaultDepsVolume := filepath.Base(curDir) + "-deps"
-		commonFlags.StringVar(&dockerNetwork, "network", "", "Network for docker to use.")
+		if perr != nil {
+			if pmsg, ok := perr.(*NotAnAppsodyProject); ok {
+				Debug.log("Cannot retrieve the project name - continuing: ", perr)
+			} else {
+				Error.logf("Error occurred retrieving project name... exiting: %s", pmsg)
+				os.Exit(1)
+			}
+		}
+		//defaultName := filepath.Base(curDir) + "-dev"
+		defaultName := projectName + "-dev"
+		nameFlags.StringVar(&containerName, "name", defaultName, "Assign a name to your development container.")
+		//defaultDepsVolume := filepath.Base(curDir) + "-deps"
+		defaultDepsVolume := projectName + "-deps"
+		commonFlags.StringVar(&dockerNetwork, "network", "", "Specify the network for docker to use.")
 		commonFlags.StringVar(&depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 		commonFlags.StringArrayVarP(&ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
 		commonFlags.BoolVarP(&publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
@@ -79,25 +90,45 @@ func addDevCommonFlags(cmd *cobra.Command) {
 
 }
 
-func commonCmd(cmd *cobra.Command, args []string, mode string) {
+func commonCmd(cmd *cobra.Command, args []string, mode string) error {
+	setupErr := setupConfig()
+	if setupErr != nil {
+		return setupErr
+	}
+	projectDir, perr := getProjectDir()
+	if perr != nil {
+		return perr
 
+	}
+	projectConfig, configErr := getProjectConfig()
+	if configErr != nil {
+		return configErr
+	}
 	err := CheckPrereqs()
 	if err != nil {
 		Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
-	projectConfig := getProjectConfig()
-	projectDir := getProjectDir()
+
 	platformDefinition := projectConfig.Platform
 	Debug.log("Stack image: ", platformDefinition)
 	Debug.log("Project directory: ", projectDir)
 
 	var cmdName string
 	var cmdArgs []string
-	dockerPullImage(platformDefinition)
+	dockerPullErr := dockerPullImage(platformDefinition)
+	if dockerPullErr != nil {
+		return dockerPullErr
+	}
 
-	volumeMaps := getVolumeArgs()
+	volumeMaps, volumeErr := getVolumeArgs()
+	if volumeErr != nil {
+		return volumeErr
+	}
 	// Mount the APPSODY_DEPS cache volume if it exists
-	depsEnvVar := getEnvVar("APPSODY_DEPS")
+	depsEnvVar, envErr := getEnvVar("APPSODY_DEPS")
+	if envErr != nil {
+		return envErr
+	}
 	if depsEnvVar != "" {
 		depsMount := depsVolumeName + ":" + depsEnvVar
 		Debug.log("Adding dependency cache to volume mounts: ", depsMount)
@@ -109,40 +140,37 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 	if destController != "" {
 		Debug.log("Overriding appsody-controller mount with APPSODY_MOUNT_CONTROLLER env variable: ", destController)
 	} else {
-		// Check to see if the appsody-controller exists in the Home dir
+		// Copy the controller from the installation directory to the home (.appsody)
 		destController = filepath.Join(getHome(), "appsody-controller")
-		Debug.log("Attempting to load the controller from ", destController)
-		if _, err := os.Stat(destController); os.IsNotExist(err) {
-			// it does not exist, so copy it from the executable dir
-			//Retrieving the path of the binaries appsody and appsody-controller
-			Debug.log("Didn't find the controller in .appsody - copying from the binary directory...")
-			executable, _ := os.Executable()
-			binaryLocation, err := filepath.Abs(filepath.Dir(executable))
-			Debug.log("Binary location ", binaryLocation)
-			if err != nil {
-				Error.log("Fatal error - can't retrieve the binary path... exiting.")
-				os.Exit(1)
+		// Debug.log("Attempting to load the controller from ", destController)
+		//if _, err := os.Stat(destController); os.IsNotExist(err) {
+		// Always copy it from the executable dir
+		//Retrieving the path of the binaries appsody and appsody-controller
+		//Debug.log("Didn't find the controller in .appsody - copying from the binary directory...")
+		executable, _ := os.Executable()
+		binaryLocation, err := filepath.Abs(filepath.Dir(executable))
+		Debug.log("Binary location ", binaryLocation)
+		if err != nil {
+			return errors.New("fatal error - can't retrieve the binary path... exiting")
+		}
+		//Construct the appsody-controller mount
+		sourceController := filepath.Join(binaryLocation, "appsody-controller")
+		if dryrun {
+			Info.logf("Dry Run - Skipping copy of controller binary from %s to %s", sourceController, destController)
+		} else {
+			Debug.log("Attempting to copy the source controller from: ", sourceController)
+			//Copy the controller from the binary location to $HOME/.appsody
+			copyError := CopyFile(sourceController, destController)
+			if copyError != nil {
+				return errors.Errorf("Cannot retrieve controller - exiting: %v", copyError)
 			}
-			//Construct the appsody-controller mount
-			sourceController := filepath.Join(binaryLocation, "appsody-controller")
-			if dryrun {
-				Info.logf("Dry Run - Skipping copy of controller binary from %s to %s", sourceController, destController)
-			} else {
-				Debug.log("Attempting to copy the source controller from: ", sourceController)
-				//Copy the controller from the binary location to $HOME/.appsody
-				copyError := CopyFile(sourceController, destController)
-				if copyError != nil {
-					Error.log("Cannot retrieve controller - exiting: ", copyError)
-					os.Exit(1)
-				}
-				// Making the controller executable in case CopyFile loses permissions
-				chmodErr := os.Chmod(destController, 0755)
-				if chmodErr != nil {
-					Error.log("Cannot make the controller  executable - exiting: ", chmodErr)
-					os.Exit(1)
-				}
+			// Making the controller executable in case CopyFile loses permissions
+			chmodErr := os.Chmod(destController, 0755)
+			if chmodErr != nil {
+				return errors.Errorf("Cannot make the controller  executable - exiting: %v", chmodErr)
 			}
 		}
+		//} Used to close the "if controller does not exist"
 	}
 	controllerMount := destController + ":/appsody/appsody-controller"
 	Debug.log("Adding controller to volume mounts: ", controllerMount)
@@ -152,7 +180,10 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		dockerStop(containerName)
+		err := dockerStop(containerName)
+		if err != nil {
+			Error.log(err)
+		}
 		//dockerRemove(containerName) is not needed due to --rm flag
 		os.Exit(1)
 	}()
@@ -160,15 +191,22 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 	cmdArgs = []string{"run", "--rm"}
 	validPorts, portError := checkPortInput(ports)
 	if !validPorts {
-		Error.logf("Ports provided as input to the command are not valid: %v\n", portError)
-		os.Exit(1)
+		return errors.Errorf("Ports provided as input to the command are not valid: %v\n", portError)
 	}
-	cmdArgs = processPorts(cmdArgs)
+	var portsErr error
+	cmdArgs, portsErr = processPorts(cmdArgs)
+	if portsErr != nil {
+		return portsErr
+	}
 	cmdArgs = append(cmdArgs, "--name", containerName)
 	if dockerNetwork != "" {
 		cmdArgs = append(cmdArgs, "--network", dockerNetwork)
 	}
-	if getEnvVarBool("APPSODY_USER_RUN_AS_LOCAL") && runtime.GOOS != "windows" {
+	runAsLocal, boolErr := getEnvVarBool("APPSODY_USER_RUN_AS_LOCAL")
+	if boolErr != nil {
+		return boolErr
+	}
+	if runAsLocal && runtime.GOOS != "windows" {
 		current, _ := user.Current()
 		cmdArgs = append(cmdArgs, "-u", fmt.Sprintf("%s:%s", current.Uid, current.Gid))
 		cmdArgs = append(cmdArgs, "-e", fmt.Sprintf("APPSODY_USER=%s", current.Uid), "-e", fmt.Sprintf("APPSODY_GROUP=%s", current.Gid))
@@ -198,24 +236,30 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) {
 
 			time.Sleep(60 * time.Second)
 		} else {
-			Error.logf("Error waiting in 'appsody %s' %s", mode, error)
+			return errors.Errorf("Error waiting in 'appsody %s' %s", mode, error)
 
-			os.Exit(1)
 		}
 
 	}
+	return nil
 
 }
 
-func processPorts(cmdArgs []string) []string {
+func processPorts(cmdArgs []string) ([]string, error) {
 
 	var exposedPortsMapping []string
 
-	dockerExposedPorts := getExposedPorts()
+	dockerExposedPorts, portsErr := getExposedPorts()
+	if portsErr != nil {
+		return cmdArgs, portsErr
+	}
 	Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
 	// if the container port is not in the lised of exposed ports add it to the list
 
-	containerPort := getEnvVar("PORT")
+	containerPort, envErr := getEnvVar("PORT")
+	if envErr != nil {
+		return cmdArgs, envErr
+	}
 	containerPortIsExposed := false
 
 	Debug.log("Container port set to: ", containerPort)
@@ -264,7 +308,7 @@ func processPorts(cmdArgs []string) []string {
 	for k := 0; k < len(exposedPortsMapping); k++ {
 		cmdArgs = append(cmdArgs, "-p", exposedPortsMapping[k])
 	}
-	return cmdArgs
+	return cmdArgs, nil
 }
 func checkPortInput(publishedPorts []string) (bool, error) {
 	validPorts := true

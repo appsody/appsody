@@ -18,9 +18,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -31,13 +30,22 @@ var deleteCmd = &cobra.Command{
 	Hidden: true,
 	Short:  "Delete a Githook and build pipeline for your Appsody project",
 	Long:   `This allows you to delete a Githook for your Appsody project.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		projectDir := getProjectDir()
-		projectName := filepath.Base(projectDir)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// projectDir := getProjectDir()
+		// projectName := filepath.Base(projectDir)
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
+		projectName, perr := getProjectName()
+		if perr != nil {
+			return errors.Errorf("%v", perr)
+
+		}
 		tektonServer := cliConfig.GetString("tektonserver")
 		if tektonServer == "" {
-			Error.log("No target Tekton server specified in the configuration.")
-			os.Exit(1)
+			return errors.New("no target Tekton server specified in the configuration")
+
 		}
 		url := fmt.Sprintf("%s/v1/namespaces/default/githubsource/%s", tektonServer, projectName)
 		if dryrun {
@@ -50,22 +58,22 @@ var deleteCmd = &cobra.Command{
 			Info.log("Making request to ", url)
 			resp, err := client.Do(req)
 			if err != nil {
-				Error.log(err)
-				os.Exit(1)
+				return errors.Errorf("%v", err)
+
 			}
 			defer resp.Body.Close()
 			body, _ := ioutil.ReadAll(resp.Body)
 			bodyStr := string(body)
 
 			if resp.StatusCode >= 300 {
-				Error.log(resp.Status)
-				Error.log(string(bodyStr))
-				os.Exit(1)
-			} else {
-				Info.log(resp.Status)
-				Info.log(string(bodyStr))
+
+				return errors.Errorf("Bad Status Code: %s with message: %s", resp.Status, string(bodyStr))
 			}
+			Info.log(resp.Status)
+			Info.log(string(bodyStr))
+
 		}
+		return nil
 	},
 }
 

@@ -15,8 +15,6 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 )
 
@@ -30,12 +28,16 @@ Stops the docker container specified by the --name flag.
 If --name is not specified, the container name is determined from the current working directory (see default below).
 To see a list of all your running docker containers, run the command "docker ps". The name is in the last column.`,
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		Info.log("Stopping development environment")
-		dockerStop(containerName)
+		err := dockerStop(containerName)
+		if err != nil {
+			return err
+		}
 		//dockerRemove(imageName) is not needed due to --rm flag
-		os.Exit(1)
+		//os.Exit(1)
+		return nil
 	},
 }
 

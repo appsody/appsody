@@ -14,12 +14,12 @@
 package cmd
 
 import (
-	"errors"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 	flag "github.com/spf13/pflag"
@@ -48,8 +48,7 @@ func generateDoc(commandDocFile string) error {
 	}
 
 	defer docFile.Close()
-
-	preAmble := "---\ntitle: CLI Reference\npath: /docs/using-appsody/cli-commands\nsection: Using Appsody\n---\n# Appsody CLI\n"
+	preAmble := "---\ntitle: CLI Reference\npath: /docs/using-appsody/cli-commands\n---\n# Appsody CLI\n"
 	preAmbleBytes := []byte(preAmble)
 	_, preambleErr := docFile.Write(preAmbleBytes)
 	if preambleErr != nil {
@@ -62,7 +61,9 @@ func generateDoc(commandDocFile string) error {
 		newbase := strings.ReplaceAll(base, "_", "-")
 		return "#" + newbase
 	}
-	commandArray := []*cobra.Command{rootCmd, buildCmd, bashCompletionCmd, debugCmd, deployCmd, extractCmd, initCmd, listCmd, repoCmd, addCmd, repoListCmd, removeCmd, runCmd, stopCmd, testCmd, versionCmd}
+
+	var commandArray = []*cobra.Command{}
+	commandArray = appendChildren(commandArray, rootCmd)
 	for _, cmd := range commandArray {
 
 		markdownGenErr := doc.GenMarkdownCustom(cmd, docFile, linkHandler)
@@ -80,16 +81,38 @@ func generateDoc(commandDocFile string) error {
 var docsCmd = &cobra.Command{
 	Use:    "docs",
 	Hidden: true,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		Debug.log("Running appsody docs command.")
 		err := generateDoc(docFile)
 		if err != nil {
-			Error.log("appsody docs command failed with error: ", err)
-			os.Exit(1)
+			return errors.Errorf("appsody docs command failed with error: %v", err)
+
 		}
 		Debug.log("appsody docs command completed successfully.")
+		return nil
 	},
+}
+
+func appendChildren(commandArray []*cobra.Command, cmd *cobra.Command) []*cobra.Command {
+
+	if !cmd.Hidden && cmd.Name() != "help" {
+		commandArray = append(commandArray, cmd)
+		for _, value := range cmd.Commands() {
+
+			if !value.Hidden && value.Name() != "help" {
+				commandArray = append(commandArray, value)
+			}
+
+			for _, childValue := range value.Commands() {
+				if !childValue.Hidden && childValue.Name() != "help" {
+					commandArray = appendChildren(commandArray, childValue)
+				}
+			}
+
+		}
+	}
+	return commandArray
 }
 
 var docFile string

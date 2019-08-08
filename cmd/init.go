@@ -17,7 +17,6 @@ package cmd
 import (
 	"archive/tar"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -41,20 +41,27 @@ var whiteListDotFiles = []string{"git", "project", "DS_Store", "classpath", "fac
 // initCmd represents the init command
 
 var initCmd = &cobra.Command{
-	Use:   "init [stack]",
+	Use:   "init [stack] or [repository]/[stack]",
 	Short: "Initialize an Appsody project with a stack and template app",
 	Long: `This creates a new Appsody project in a local directory or sets up the local dev environment of an existing Appsody project.
 
-With the [stack] argument, this command will setup a new Appsody project. It will create an Appsody stack config file, unzip a template app, and
-run the stack init script to setup the local dev environment. It is typically run on an empty directory and may fail
+If the [repository] is not specified the default repository will be used.
+With the [stack] or [repository]/[stack] argument, this command will setup a new Appsody project. It will create an Appsody stack config file, unzip a template app, and run the stack init script to setup the local dev environment. It is typically run on an empty directory and may fail
 if files already exist. See the --overwrite and --no-template options for more details.
 Use 'appsody list' to see the available stack options.
 
 Without the [stack] argument, this command must be run on an existing Appsody project and will only run the stack init script to
 setup the local dev environment.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		var index RepoIndex
-
+	RunE: func(cmd *cobra.Command, args []string) error {
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
+		//var index RepoIndex
+		var repos RepositoryFile
+		if _, err := repos.getRepos(); err != nil {
+			return err
+		}
 		var proceedWithTemplate bool
 
 		err := CheckPrereqs()
@@ -62,46 +69,83 @@ setup the local dev environment.`,
 			Warning.logf("Failed to check prerequisites: %v\n", err)
 		}
 
-		err = index.getIndex()
+		//err = index.getIndex()
+
+		indices, err := repos.GetIndices()
+
 		if err != nil {
-			Error.log("Could not read index: ", err)
-			os.Exit(1)
+			return errors.Errorf("Could not read indices: %v", err)
 		}
+		if len(indices) == 0 {
+			return errors.Errorf("Your stack repository is empty - please use `appsody repo add` to add a repository.")
+		}
+		var index *RepoIndex
+
 		if len(args) >= 1 {
+			var projectName string
+			projectParm := args[0]
 
-			projectType := args[0]
-
-			if len(index.Projects[projectType]) < 1 {
-				Error.logf("Could not find a stack with the id \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType)
-				os.Exit(1)
+			repoName, projectType, err := parseProjectParm(projectParm)
+			if err != nil {
+				return err
 			}
-			var projectName = index.Projects[projectType][0].URLs[0]
+			if !repos.Has(repoName) {
+				return errors.Errorf("Repository %s is not in configured list of repositories", repoName)
+			}
 
+			Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
+			index = indices[repoName]
+			projectFound := false
+			stackFound := false
+			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+				Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
+			}
+			if len(index.Projects[projectType]) >= 1 { //V1 repos
+				projectFound = true
+				//return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
+				Debug.log("Project ", projectType, " found in repo ", repoName)
+				projectName = index.Projects[projectType][0].URLs[0]
+			}
+
+			for _, stack := range index.Stacks {
+				if stack.ID == projectType {
+					stackFound = true
+					Debug.log("Stack ", projectType, " found in repo ", repoName)
+					projectName = stack.Templates[0].URL
+				}
+			}
+
+			if !projectFound && !stackFound {
+				return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
+			}
 			// 1. Check for empty directory
 			dir, err := os.Getwd()
 			if err != nil {
-				Error.log("Error getting current directory ", err)
-				os.Exit(1)
+				return errors.Errorf("Error getting current directory %v", err)
 			}
 			appsodyConfigFile := filepath.Join(dir, ".appsody-config.yaml")
 
 			_, err = os.Stat(appsodyConfigFile)
 			if err == nil {
-				Error.log("Cannot run `appsody init <stack>` on an existing appsody project.")
-				os.Exit(1)
+				return errors.New("cannot run `appsody init <stack>` on an existing appsody project")
+
 			}
 
 			if noTemplate || overwrite {
 				proceedWithTemplate = true
 			} else {
-				proceedWithTemplate = isFileLaydownSafe(dir)
+				proceedWithTemplate, err = isFileLaydownSafe(dir)
+				if err != nil {
+					return err
+				}
 			}
 
 			if !overwrite && !proceedWithTemplate {
 				Error.log("Non-empty directory found with files which may conflict with the template project.")
 				Info.log("It is recommended that you run `appsody init <stack>` in an empty directory.")
 				Info.log("If you wish to proceed and possibly overwrite files in the current directory, try again with the --overwrite option.")
-				os.Exit(1)
+				return errors.New("non-empty directory found with files which may conflict with the template project")
+
 			}
 
 			Info.log("Running appsody init...")
@@ -110,8 +154,8 @@ setup the local dev environment.`,
 
 			err = downloadFileToDisk(projectName, filename)
 			if err != nil {
-				Error.log("Error downloading tar ", err)
-				os.Exit(1)
+				return errors.Errorf("Error downloading tar %v", err)
+
 			}
 			Info.log("Download complete. Extracting files from ", filename)
 			//if noTemplate
@@ -130,11 +174,16 @@ setup the local dev environment.`,
 				Info.log("It is recommended that you run `appsody init <stack>` in an empty directory.")
 				Info.log("If you wish to proceed and overwrite files in the current directory, try again with the --overwrite option.")
 				// this leave the tar file in the dir
-				os.Exit(1)
+				return errors.Errorf("Error extracting project template: %v", errUntar)
+
 			}
 		}
-		install()
+		err = install()
+		if err != nil {
+			return err
+		}
 		Info.log("Successfully initialized Appsody project")
+		return nil
 	},
 }
 
@@ -145,10 +194,18 @@ func init() {
 }
 
 //Runs the .appsody-init.sh/bat files if necessary
-func install() {
+func install() error {
 	Info.log("Setting up the development environment")
-	projectDir := getProjectDir()
-	platformDefinition := getProjectConfig().Platform
+	projectDir, perr := getProjectDir()
+	if perr != nil {
+		return errors.Errorf("%v", perr)
+
+	}
+	projectConfig, configErr := getProjectConfig()
+	if configErr != nil {
+		return configErr
+	}
+	platformDefinition := projectConfig.Platform
 
 	Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
@@ -162,6 +219,7 @@ func install() {
 		Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
 		os.Exit(0)
 	}
+	return nil
 }
 
 func downloadFileToDisk(url string, destFile string) error {
@@ -248,13 +306,13 @@ func untar(file string, noTemplate bool) error {
 	return nil
 }
 
-func isFileLaydownSafe(directory string) bool {
+func isFileLaydownSafe(directory string) (bool, error) {
 
 	safe := true
 	files, err := ioutil.ReadDir(directory)
 	if err != nil {
 		Error.logf("Can not read directory %s due to error: %v.", directory, err)
-		os.Exit(1)
+		return false, err
 
 	}
 	for _, f := range files {
@@ -272,7 +330,7 @@ func isFileLaydownSafe(directory string) bool {
 	} else {
 		Debug.log("It is not safe to extract the project template")
 	}
-	return safe
+	return safe, nil
 
 }
 
@@ -360,7 +418,11 @@ func extractAndInitialize() error {
 	//Determine if we need to run extract
 	//We run it only if there is an initialization script to run locally
 	//Checking if the script is present on the image
-	stackImage := getProjectConfig().Platform
+	projectConfig, configErr := getProjectConfig()
+	if configErr != nil {
+		return configErr
+	}
+	stackImage := projectConfig.Platform
 	bashCmd := "find /project -type f -name " + scriptFileName
 	cmdOptions := []string{"--rm"}
 	Debug.log("Attempting to run ", bashCmd, " on image ", stackImage, " with options: ", cmdOptions)
@@ -389,7 +451,11 @@ func extractAndInitialize() error {
 		}
 		// set the --target-dir flag for extract
 		targetDir = workdir
-		extractCmd.Run(extractCmd, nil)
+
+		extractError := extractCmd.RunE(extractCmd, nil)
+		if extractError != nil {
+			return extractError
+		}
 
 	} else {
 		Info.log("Dry Run skipping extract.")
@@ -415,4 +481,33 @@ func extractAndInitialize() error {
 	}
 
 	return err
+}
+
+func parseProjectParm(projectParm string) (string, string, error) {
+	parms := strings.Split(projectParm, "/")
+	if len(parms) == 1 {
+		Debug.log("Non-fully qualified stack - retrieving default repo...")
+		var r RepositoryFile
+		if _, err := r.getRepos(); err != nil {
+			return "", "", err
+		}
+		defaultRepoName, err := r.GetDefaultRepoName()
+		if err != nil {
+			return "", parms[0], err
+		}
+		return defaultRepoName, parms[0], nil
+	}
+
+	if len(parms) == 2 {
+		Debug.log("Fully qualified stack... determining repo...")
+		if len(parms[0]) == 0 || len(parms[1]) == 0 {
+			return parms[0], parms[1], errors.New("malformed project parameter - slash at the beginning or end should be removed")
+		}
+		return parms[0], parms[1], nil
+	}
+	if len(parms) > 2 {
+		return parms[0], parms[1], errors.New("malformed project parameter - too many slashes")
+	}
+
+	return "", "", errors.New("malformed project parameter - something unusual happened")
 }

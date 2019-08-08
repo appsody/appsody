@@ -22,13 +22,13 @@ import (
 )
 
 // initCmd represents the init command
-var removeCmd = &cobra.Command{
-	Use:   "remove <name>",
-	Short: "Remove a configured Appsody repository",
+var setDefaultCmd = &cobra.Command{
+	Use:   "set-default <name>",
+	Short: "Set desired default repository",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			return errors.New("Error, you must specify repository name")
+			return errors.New("Error, you must specify desired default repository")
 		}
 		setupErr := setupConfig()
 		if setupErr != nil {
@@ -42,7 +42,7 @@ var removeCmd = &cobra.Command{
 			return repoErr
 		}
 		if dryrun {
-			Info.log("Dry Run - Skipping appsody repo remove ", repoName)
+			Info.log("Dry Run - Skipping appsody repo set-default ", repoName)
 		} else {
 			if repoFile.Has(repoName) {
 				defaultRepoName, err := repoFile.GetDefaultRepoName()
@@ -50,9 +50,12 @@ var removeCmd = &cobra.Command{
 					return err
 				}
 				if repoName != defaultRepoName {
-					repoFile.Remove(repoName)
+					_, repoFileErr := repoFile.SetDefaultRepoName(repoName, defaultRepoName)
+					if repoFileErr != nil {
+						return repoFileErr
+					}
 				} else {
-					Error.log("You cannot remove the default repository " + repoName)
+					Info.log("Your default repository has already been set to " + repoName)
 				}
 			} else {
 				Error.log("Repository is not in configured list of repositories")
@@ -67,6 +70,6 @@ var removeCmd = &cobra.Command{
 }
 
 func init() {
-	repoCmd.AddCommand(removeCmd)
+	repoCmd.AddCommand(setDefaultCmd)
 
 }

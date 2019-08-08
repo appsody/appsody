@@ -11,24 +11,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package cmd
+package cmd_test
 
-import "github.com/spf13/cobra"
+import (
+	"strings"
+	"testing"
 
-// testCmd represents the test command
-var testCmd = &cobra.Command{
-	Use:   "test",
-	Short: "Test your project in the local Appsody environment",
-	Long:  `This starts a docker container for your project and runs your test in it.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	"github.com/appsody/appsody/cmd/cmdtest"
+)
 
-		Info.log("Running test environment")
-		return commonCmd(cmd, args, "test")
-	},
-}
+func TestRepoRemoveError(t *testing.T) {
 
-func init() {
-	rootCmd.AddCommand(testCmd)
-	addDevCommonFlags(testCmd)
+	args := []string{"repo", "remove"}
+	output, _ := cmdtest.RunAppsodyCmdExec(args, ".")
+
+	if !strings.Contains(output, "Error, you must specify repository name") {
+		t.Error("String \"Error, you must specify repository name\" not found in output")
+
+	} else {
+		t.Log("Found the correct error string")
+	}
 
 }

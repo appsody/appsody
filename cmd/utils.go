@@ -16,7 +16,6 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -26,6 +25,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
@@ -33,6 +34,10 @@ import (
 type ProjectConfig struct {
 	Platform string
 }
+
+type NotAnAppsodyProject string
+
+func (e NotAnAppsodyProject) Error() string { return string(e) }
 
 var (
 	ConfigFile = ".appsody-config.yaml"
@@ -54,25 +59,32 @@ func exists(path string) (bool, error) {
 	return true, err
 }
 
-func getEnvVar(searchEnvVar string) string {
+func getEnvVar(searchEnvVar string) (string, error) {
 	// TODO cache this so the docker inspect command only runs once per cli invocation
 	var data []map[string]interface{}
-	imageName := getProjectConfig().Platform
-	dockerPullImage(imageName)
+	projectConfig, projectConfigErr := getProjectConfig()
+	if projectConfigErr != nil {
+		return "", projectConfigErr
+	}
+	imageName := projectConfig.Platform
+	dockerPullErr := dockerPullImage(imageName)
+	if dockerPullErr != nil {
+		return "", dockerPullErr
+	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
 	inspectOut, inspectErr := inspectCmd.Output()
 	if inspectErr != nil {
-		Error.log("Could not inspect the image: ", inspectErr)
-		os.Exit(1)
+		return "", errors.Errorf("Could not inspect the image: %v", inspectErr)
+
 	}
 
 	err := json.Unmarshal([]byte(inspectOut), &data)
 	if err != nil {
-		Error.log("Error unmarshaling data from inspect command - exiting...")
-		os.Exit(1)
+		return "", errors.New("error unmarshaling data from inspect command - exiting")
+
 	}
 	config := data[0]["Config"].(map[string]interface{})
 
@@ -95,18 +107,24 @@ func getEnvVar(searchEnvVar string) string {
 		Debug.log("Could not find env var: ", searchEnvVar)
 		envVarValue = ""
 	}
-	return envVarValue
+	return envVarValue, nil
 
 }
 
-func getEnvVarBool(searchEnvVar string) bool {
-	strVal := getEnvVar(searchEnvVar)
-	return strings.Compare(strings.TrimSpace(strings.ToUpper(strVal)), "TRUE") == 0
+func getEnvVarBool(searchEnvVar string) (bool, error) {
+	strVal, envErr := getEnvVar(searchEnvVar)
+	if envErr != nil {
+		return false, envErr
+	}
+	return strings.Compare(strings.TrimSpace(strings.ToUpper(strVal)), "TRUE") == 0, nil
 }
 
 func getEnvVarInt(searchEnvVar string) (int, error) {
 
-	strVal := getEnvVar(searchEnvVar)
+	strVal, envErr := getEnvVar(searchEnvVar)
+	if envErr != nil {
+		return 0, envErr
+	}
 	intVal, err := strconv.Atoi(strVal)
 	if err != nil {
 		return 0, err
@@ -115,12 +133,15 @@ func getEnvVarInt(searchEnvVar string) (int, error) {
 
 }
 
-func getVolumeArgs() []string {
+func getVolumeArgs() ([]string, error) {
 	volumeArgs := []string{}
-	stackMounts := getEnvVar("APPSODY_MOUNTS")
+	stackMounts, envErr := getEnvVar("APPSODY_MOUNTS")
+	if envErr != nil {
+		return nil, envErr
+	}
 	if stackMounts == "" {
 		Warning.log("The stack image does not contain APPSODY_MOUNTS")
-		return volumeArgs
+		return volumeArgs, nil
 	}
 	stackMountList := strings.Split(stackMounts, ";")
 	homeDir := UserHomeDir()
@@ -131,7 +152,11 @@ func getVolumeArgs() []string {
 		homeDir = homeDirOverride
 		homeDirOverridden = true
 	}
-	projectDir := getProjectDir()
+	projectDir, perr := getProjectDir()
+	if perr != nil {
+		return volumeArgs, perr
+
+	}
 	projectDirOverride := os.Getenv("APPSODY_MOUNT_PROJECT")
 	projectDirOverridden := false
 	if projectDirOverride != "" {
@@ -164,7 +189,7 @@ func getVolumeArgs() []string {
 		volumeArgs = append(volumeArgs, "-v", mappedMount)
 	}
 	Debug.log("Mapped mount args: ", volumeArgs)
-	return volumeArgs
+	return volumeArgs, nil
 }
 
 func mountExistsLocally(mount string) bool {
@@ -186,49 +211,59 @@ func mountExistsLocally(mount string) bool {
 	return fileExists
 }
 
-func getProjectDir() string {
+func getProjectDir() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		Error.log("Error getting current directory ", err)
-		os.Exit(1)
+		Error.log("Error getting current directory: ", err)
+		return "", err
 	}
 	appsodyConfig := filepath.Join(dir, ConfigFile)
 	projectDir, err := exists(appsodyConfig)
 	if err != nil {
 		Error.log(err)
-		os.Exit(1)
+		return "", err
 	}
 	if !projectDir {
 
-		Error.log("Current dir is not an appsody project. " +
-			"Run `appsody init <stack>` to setup an appsody project. Run `appsody list` to see the available stacks.")
-
-		os.Exit(1)
+		Debug.log("Current dir is not an appsody project.")
+		// +
+		// "Run `appsody init <stack>` to setup an appsody project. Run `appsody list` to see the available stacks.")
+		var e NotAnAppsodyProject = "The current directory is not a valid appsody project. Run `appsody init <stack>` to create one. Run `appsody list` to see the available stacks."
+		return "", &e
 	}
-	return dir
+	return dir, nil
 }
 
-func getProjectConfig() ProjectConfig {
+func getProjectConfig() (ProjectConfig, error) {
 	if projectConfig == nil {
-		dir := getProjectDir()
+		dir, perr := getProjectDir()
+		if perr != nil {
+			var tempProjectConfig ProjectConfig
+			return tempProjectConfig, errors.Errorf("The current directory is not a valid appsody project. Run appsody init <stack> to create one: %v", perr)
+
+		}
 		appsodyConfig := filepath.Join(dir, ConfigFile)
 		viper.SetConfigFile(appsodyConfig)
 		Debug.log("Project config file set to: ", appsodyConfig)
 		err := viper.ReadInConfig()
 		if err != nil {
-			Error.log("Error reading project config ", err)
-			os.Exit(1)
+			var tempProjectConfig ProjectConfig
+			return tempProjectConfig, errors.Errorf("Error reading project config %v", err)
+
 		}
 		stack := viper.GetString("stack")
 		Debug.log("Project stack from config file: ", stack)
 		projectConfig = &ProjectConfig{stack}
 	}
-	return *projectConfig
+	return *projectConfig, nil
 }
-func getProjectName() string {
-	projectDir := getProjectDir()
+func getProjectName() (string, error) {
+	projectDir, err := getProjectDir()
+	if err != nil {
+		return "my-project", err
+	}
 	projectName := strings.ToLower(filepath.Base(projectDir))
-	return projectName
+	return projectName, nil
 }
 func execAndListen(command string, args []string, logger appsodylogger) (*exec.Cmd, error) {
 	return execAndListenWithWorkDir(command, args, logger, workDirNotSet) // no workdir
@@ -238,22 +273,23 @@ func execAndListenWithWorkDir(command string, args []string, logger appsodylogge
 
 	cmd, err := execAndListenWithWorkDirReturnErr(command, args, logger, workdir)
 	if err != nil {
-		os.Exit(1)
+		return cmd, err
 	}
 	return cmd, nil
 
 }
-func execAndWait(command string, args []string, logger appsodylogger) {
+func execAndWait(command string, args []string, logger appsodylogger) error {
 
-	execAndWaitWithWorkDir(command, args, logger, workDirNotSet)
+	return execAndWaitWithWorkDir(command, args, logger, workDirNotSet)
 }
-func execAndWaitWithWorkDir(command string, args []string, logger appsodylogger, workdir string) {
+func execAndWaitWithWorkDir(command string, args []string, logger appsodylogger, workdir string) error {
 
 	err := execAndWaitWithWorkDirReturnErr(command, args, logger, workdir)
 	if err != nil {
-		Error.log("Error running ", command, " command: ", err)
-		os.Exit(1)
+		return errors.Errorf("Error running %s command: %v", command, err)
+
 	}
+	return nil
 
 }
 
@@ -287,6 +323,58 @@ func CopyFile(source string, dest string) error {
 	return nil
 }
 
+// MoveDir moves a directory to another directory, even if they are on different partitions
+func MoveDir(fromDir string, toDir string) error {
+	Debug.log("Moving ", fromDir, " to ", toDir)
+	// Let's try os.Rename first
+	err := os.Rename(fromDir, toDir)
+	if err == nil {
+		// We did it - returning
+		//Error.log("Could not move ", extractDir, " to ", targetDir, " ", err)
+		return nil
+	}
+	// If we are here, we need to use copy
+	Debug.log("os.Rename did not work to move directories... attempting copy. From dir:", fromDir, " target dir: ", toDir)
+	err = copyDir(fromDir, toDir)
+	if err != nil {
+		Error.log("Could not move ", fromDir, " to ", toDir)
+		return err
+	}
+	return nil
+}
+
+func copyDir(fromDir string, toDir string) error {
+	_, err := os.Stat(fromDir)
+	if err != nil {
+		Error.logf("Cannot find source directory %s to copy", fromDir)
+		return err
+	}
+
+	var execCmd string
+	var execArgs = []string{fromDir, toDir}
+
+	if runtime.GOOS == "windows" {
+		execCmd = "CMD"
+		winArgs := []string{"/C", "XCOPY", "/I", "/E", "/H", "/K"}
+		execArgs = append(winArgs[0:], execArgs...)
+
+	} else {
+		execCmd = "cp"
+		bashArgs := []string{"-rf"}
+		execArgs = append(bashArgs[0:], execArgs...)
+	}
+	Debug.log("About to run: ", execCmd, execArgs)
+	copyCmd := exec.Command(execCmd, execArgs...)
+	cmdOutput, cmdErr := copyCmd.Output()
+	_, err = os.Stat(toDir)
+	if err != nil {
+		Error.logf("Could not copy %s to %s - output of copy command %s %s\n", fromDir, toDir, cmdOutput, cmdErr)
+		return errors.New("Error in copy: " + cmdErr.Error())
+	}
+	Debug.logf("Directory copy of %s to %s was successful \n", fromDir, toDir)
+	return nil
+}
+
 // CheckPrereqs checks the prerequisites to run the CLI
 func CheckPrereqs() error {
 	dockerCmd := "docker"
@@ -310,26 +398,31 @@ func UserHomeDir() string {
 	return homeDir
 }
 
-func getExposedPorts() []string {
+func getExposedPorts() ([]string, error) {
 	// TODO cache this so the docker inspect command only runs once per cli invocation
 	var data []map[string]interface{}
 	var portValues []string
-	imageName := getProjectConfig().Platform
-	dockerPullImage(imageName)
+	projectConfig, projectConfigErr := getProjectConfig()
+	if projectConfigErr != nil {
+		return nil, projectConfigErr
+	}
+	imageName := projectConfig.Platform
+	dockerPullErr := dockerPullImage(imageName)
+	if dockerPullErr != nil {
+		return nil, dockerPullErr
+	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
 	inspectOut, inspectErr := inspectCmd.Output()
 	if inspectErr != nil {
-		Error.log("Could not inspect the image: ", inspectErr)
-		os.Exit(1)
+		return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
 	}
 
 	err := json.Unmarshal([]byte(inspectOut), &data)
 	if err != nil {
-		Error.log("Error unmarshaling data from inspect command - exiting...")
-		os.Exit(1)
+		return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 	}
 
 	config := data[0]["Config"].(map[string]interface{})
@@ -343,7 +436,7 @@ func getExposedPorts() []string {
 		}
 
 	}
-	return portValues
+	return portValues, nil
 
 }
 
@@ -523,7 +616,10 @@ func DockerPush(imageToPush string) error {
 func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput string, err error) {
 	cmdName := "docker"
 	var cmdArgs []string
-	dockerPullImage(image)
+	dockerPullErr := dockerPullImage(image)
+	if dockerPullErr != nil {
+		return "", dockerPullErr
+	}
 	if len(options) >= 0 {
 		cmdArgs = append([]string{"run"}, options...)
 	} else {
@@ -547,7 +643,7 @@ func KubeApply(fileToApply string) error {
 	kcmd := "kubectl"
 	kargs := []string{"apply", "-f", fileToApply}
 	if namespace != "" {
-		kargs = append(kargs, "--name", namespace)
+		kargs = append(kargs, "--namespace", namespace)
 	}
 
 	if dryrun {
@@ -571,7 +667,7 @@ func KubeGetRouteURL(service string) (url string, err error) {
 	kargs := append([]string{"get", "rt"}, service)
 	kargs = append(kargs, "-o", "jsonpath=\"{.status.url}\"")
 	if namespace != "" {
-		kargs = append(kargs, "--name", namespace)
+		kargs = append(kargs, "--namespace", namespace)
 	}
 
 	if dryrun {
@@ -627,12 +723,12 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 //dockerPullImage
 // pulls docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
-func dockerPullImage(imageToPull string) {
+func dockerPullImage(imageToPull string) error {
 
 	Debug.logf("%s image pulled status: %t", imageToPull, imagePulled[imageToPull])
 	if imagePulled[imageToPull] {
 		Debug.log("Image has been pulled already: ", imageToPull)
-		return
+		return nil
 	}
 	imagePulled[imageToPull] = true
 
@@ -656,15 +752,15 @@ func dockerPullImage(imageToPull string) {
 				localImageFound = checkDockerImageExistsLocally(imageToPull)
 			}
 			if !localImageFound {
-				Error.log("Could not find the image either in docker hub or locally: ", imageToPull)
-				os.Exit(1)
+				return errors.Errorf("Could not find the image either in docker hub or locally: %s", imageToPull)
+
 			}
 		}
 	}
 	if localImageFound {
 		Info.log("Using local cache for image ", imageToPull)
 	}
-
+	return nil
 }
 
 func execAndListenWithWorkDirReturnErr(command string, args []string, logger appsodylogger, workdir string) (*exec.Cmd, error) {

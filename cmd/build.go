@@ -17,6 +17,7 @@ package cmd
 import (
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -25,14 +26,20 @@ var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Locally build a docker image of your appsody project",
 	Long:  `This allows you to build a local Docker image from your Appsody project. Extract is run before the docker build.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		// This needs to do:
 		// 1. appsody Extract
 		// 2. docker build -t <project name> -f Dockerfile ./extracted
 
-		extractCmd.Run(cmd, args)
+		extractErr := extractCmd.RunE(cmd, args)
+		if extractErr != nil {
+			return extractErr
+		}
 
-		projectName := getProjectName()
+		projectName, perr := getProjectName()
+		if perr != nil {
+			return errors.Errorf("%v", perr)
+		}
 		extractDir := filepath.Join(getHome(), "extract", projectName)
 		dockerfile := filepath.Join(extractDir, "Dockerfile")
 		buildImage := projectName //Lowercased
@@ -42,10 +49,14 @@ var buildCmd = &cobra.Command{
 		}
 		cmdName := "docker"
 		cmdArgs := []string{"build", "-t", buildImage, "-f", dockerfile, extractDir}
-		execAndWait(cmdName, cmdArgs, DockerLog)
+		execError := execAndWait(cmdName, cmdArgs, DockerLog)
+		if execError != nil {
+			return execError
+		}
 		if !dryrun {
 			Info.log("Built docker image ", buildImage)
 		}
+		return nil
 	},
 }
 
