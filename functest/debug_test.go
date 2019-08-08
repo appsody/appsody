@@ -24,34 +24,7 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestParser(t *testing.T) {
-	// test parsing environment variable with stack info
-	fmt.Println("stacksList is: ", stacksList)
-	if stacksList == "" {
-		log.Println("stacksList is empty, exiting test...")
-		return
-	}
-
-	// replace incubator with appsodyhub to match current naming convention for repos
-	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
-	fmt.Println("new stacksList is: ", stacksList)
-
-	stackRaw := strings.Split(stacksList, " ")
-	// stackStack := strings.Split(stackRaw, "/")
-
-	for i := range stackRaw {
-		fmt.Println("stackRaw is: ", stackRaw[i])
-		// stageStack := strings.Split(stackRaw[i], "/")
-		// stage := stageStack[0]
-		// stack := stageStack[1]
-		// fmt.Println("stage is: ", stage)
-		// fmt.Println("stack is: ", stack)
-
-	}
-
-}
-
-func TestDeploy(t *testing.T) {
+func TestDebugSimple(t *testing.T) {
 
 	log.Println("stacksList is: ", stacksList)
 
@@ -79,7 +52,7 @@ func TestDeploy(t *testing.T) {
 		}
 
 		// create a temporary dir to create the project and run the test
-		projectDir, err := ioutil.TempDir("", "appsody-deploy-test")
+		projectDir, err := ioutil.TempDir("", "appsody-debug-test")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,18 +66,21 @@ func TestDeploy(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// appsody deploy
+		// appsody debug
 		runChannel := make(chan error)
 		go func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"deploy", "-t", "testdeploy/testimage", "--dryrun"}, projectDir)
-			log.Println("Running appsody deploy...")
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"debug"}, projectDir)
 			runChannel <- err
 		}()
 
-		// cleanup tasks
 		cleanup()
 		os.RemoveAll(projectDir)
+		func() {
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
+			if err != nil {
+				fmt.Printf("Ignoring error running appsody stop: %s", err)
+			}
+		}()
 
 	}
-
 }

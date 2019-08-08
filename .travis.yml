@@ -22,6 +22,7 @@ install-controller: &install-controller
   install:
       - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
       - make install-controller
+      - export STACKSLIST=incubator/nodejs #set stacks to test for the tests that use this env var
       
 test-template: &test-template
   stage: test
