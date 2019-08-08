@@ -16,6 +16,7 @@ package functest
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -27,7 +28,7 @@ import (
 
 var stacksList = os.Getenv("STACKSLIST")
 
-//var stacksList = os.Getenv("STACKS_LIST")
+//var stacksList = "incubator/java-microprofile experimental/quarkus incubator/nodejs experimental/nodejs-functions"
 
 //var stack = flag.String("stack", "", "Stack to run tests on")
 
@@ -38,6 +39,9 @@ var stacksList = os.Getenv("STACKSLIST")
 } */
 func TestRun(t *testing.T) {
 
+	// replace incubator with appsodyhub to match current naming convention for repos
+	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
+
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
 
@@ -46,14 +50,14 @@ func TestRun(t *testing.T) {
 		// fmt.Println("stackRaw is: ", stackRaw[i])
 
 		// split out the stage and stack
-		stageStack := strings.Split(stackRaw[i], "/")
+		// stageStack := strings.Split(stackRaw[i], "/")
 		// stage := stageStack[0]
-		stack := stageStack[1]
+		// stack := stageStack[1]
 		// fmt.Println("stage is: ", stage)
 		// fmt.Println("stack is: ", stack)
 		// first add the test repo index
 
-		fmt.Println("***Testing stack: ", stack, "***")
+		fmt.Println("***Testing stack: ", stackRaw[i], "***")
 
 		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
 		if err != nil {
@@ -70,7 +74,7 @@ func TestRun(t *testing.T) {
 		fmt.Println("Created project dir: " + projectDir)
 
 		// appsody init nodejs-express
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stack}, projectDir)
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -152,7 +156,10 @@ func TestRunSimple(t *testing.T) {
 		// fmt.Println("stack is: ", stack)
 		// first add the test repo index
 
-		fmt.Println("***Testing stack: ", stack, "***")
+		//stackRaw = strings.Replace(stackRaw, "incubator", "appsodyhub", -1)
+		fmt.Println("stackRaw is: ", stackRaw)
+
+		fmt.Println("***Testing stack: ", stackRaw, "***")
 
 		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
 		if err != nil {
@@ -166,7 +173,7 @@ func TestRunSimple(t *testing.T) {
 			t.Fatal(err)
 		}
 		//defer os.RemoveAll(projectDir)
-		fmt.Println("Created project dir: " + projectDir)
+		log.Println("Created project dir: " + projectDir)
 
 		// appsody init nodejs-express
 		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stack}, projectDir)

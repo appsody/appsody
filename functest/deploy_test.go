@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 	"testing"
 
@@ -28,22 +29,32 @@ func TestParser(t *testing.T) {
 	// test environmet variable for stacks
 	fmt.Println("stacksList is: ", stacksList)
 
+	// replace incubator with appsodyhub to match current naming convention for repos
+	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
+	fmt.Println("new stacksList is: ", stacksList)
+
 	stackRaw := strings.Split(stacksList, " ")
 	// stackStack := strings.Split(stackRaw, "/")
 
 	for i := range stackRaw {
 		fmt.Println("stackRaw is: ", stackRaw[i])
-		stageStack := strings.Split(stackRaw[i], "/")
-		stage := stageStack[0]
-		stack := stageStack[1]
-		fmt.Println("stage is: ", stage)
-		fmt.Println("stack is: ", stack)
+		// stageStack := strings.Split(stackRaw[i], "/")
+		// stage := stageStack[0]
+		// stack := stageStack[1]
+		// fmt.Println("stage is: ", stage)
+		// fmt.Println("stack is: ", stack)
 
 	}
 
 }
 
 func TestDeploy(t *testing.T) {
+
+	fmt.Println("stacksList is: ", stacksList)
+
+	// replace incubator with appsodyhub to match current naming convention for repos
+	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
+	fmt.Println("new stacksList is: ", stacksList)
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
 
@@ -52,13 +63,13 @@ func TestDeploy(t *testing.T) {
 		// fmt.Println("stackRaw is: ", stackRaw[i])
 
 		// split out the stage and stack
-		stageStack := strings.Split(stackRaw[i], "/")
+		// stageStack := strings.Split(stackRaw[i], "/")
 		// stage := stageStack[0]
-		stack := stageStack[1]
+		//stack := stageStack[1]
 		// fmt.Println("stage is: ", stage)
 		// fmt.Println("stack is: ", stack)
 
-		fmt.Println("***Testing stack: ", stack, "***")
+		log.Println("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
 		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
@@ -75,7 +86,7 @@ func TestDeploy(t *testing.T) {
 		log.Println("Created project dir: " + projectDir)
 
 		// appsody init nodejs-express
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stack}, projectDir)
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,10 +95,12 @@ func TestDeploy(t *testing.T) {
 		runChannel := make(chan error)
 		go func() {
 			_, err = cmdtest.RunAppsodyCmdExec([]string{"deploy", "-t", "testdeploy/testimage", "--dryrun"}, projectDir)
+			log.Println("Running appsody deploy...")
 			runChannel <- err
 		}()
 
 		cleanup()
+		os.RemoveAll(projectDir)
 
 	}
 
