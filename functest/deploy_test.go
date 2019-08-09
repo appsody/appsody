@@ -24,8 +24,9 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
+// Test parsing environment variable with stack info
 func TestParser(t *testing.T) {
-	// test parsing environment variable with stack info
+
 	fmt.Println("stacksList is: ", stacksList)
 	if stacksList == "" {
 		log.Println("stacksList is empty, exiting test...")
@@ -37,10 +38,14 @@ func TestParser(t *testing.T) {
 	fmt.Println("new stacksList is: ", stacksList)
 
 	stackRaw := strings.Split(stacksList, " ")
+
+	// we don't need to split the repo and stack anymore...
 	// stackStack := strings.Split(stackRaw, "/")
 
 	for i := range stackRaw {
 		fmt.Println("stackRaw is: ", stackRaw[i])
+
+		// code to sepearate the repos and stacks...
 		// stageStack := strings.Split(stackRaw[i], "/")
 		// stage := stageStack[0]
 		// stack := stageStack[1]
@@ -51,7 +56,8 @@ func TestParser(t *testing.T) {
 
 }
 
-func TestDeploy(t *testing.T) {
+// Simple test for appsody deploy command. A future enhancement would be to configure a valid deployment environment
+func TestDeploySimple(t *testing.T) {
 
 	log.Println("stacksList is: ", stacksList)
 
@@ -104,7 +110,5 @@ func TestDeploy(t *testing.T) {
 		// cleanup tasks
 		cleanup()
 		os.RemoveAll(projectDir)
-
 	}
-
 }

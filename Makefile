@@ -33,7 +33,6 @@ all: lint test package ## Run lint, test, build, and package
 PHONY: install-controller
 install-controller: ## Get the controller and install it
 	wget $(CONTROLLER_BASE_URL)/appsody-controller
-	# wget https://github.com/appsody/controller/releases/download/0.2.1/appsody-controller
 	chmod +x appsody-controller
 	mkdir -p ~/.appsody
 	cp appsody-controller ~/.appsody/ 

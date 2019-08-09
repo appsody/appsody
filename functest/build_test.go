@@ -14,7 +14,6 @@
 package functest
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -24,8 +23,8 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-// Simple test for appsody test command. A future enhancement would be to verify the test output
-func TestTestSimple(t *testing.T) {
+// Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
+func TestBuildSimple(t *testing.T) {
 
 	log.Println("stacksList is: ", stacksList)
 
@@ -67,20 +66,14 @@ func TestTestSimple(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// appsody test
+		// appsody build
 		runChannel := make(chan error)
 		go func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"test"}, projectDir)
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"build"}, projectDir)
 			runChannel <- err
 		}()
 
-		// stop and cleanup
-		func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
-			if err != nil {
-				fmt.Printf("Ignoring error running appsody stop: %s", err)
-			}
-		}()
+		// clean up
 		cleanup()
 		os.RemoveAll(projectDir)
 	}

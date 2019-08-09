@@ -27,12 +27,12 @@ import (
 )
 
 // get the STACKSLIST environment variable
+// for testing locally we need to set the stacksList manually
+//var stacksList = ""
+//var stacksList = "incubator/java-microprofile incubator/nodejs experimental/nodejs-functions"
 var stacksList = os.Getenv("STACKSLIST")
 
-//var stacksList = ""
-
-//var stacksList = "incubator/java-microprofile incubator/nodejs experimental/nodejs-functions"
-
+// Test appsody run of the nodejs-express stack and check the http://localhost:3000/health endpoint
 func TestRun(t *testing.T) {
 	// first add the test repo index
 	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
@@ -103,6 +103,7 @@ func TestRun(t *testing.T) {
 	}
 }
 
+// Simple test for appsody run command. A future enhancement would be to verify the endpoint or console output if there is no web endpoint
 func TestRunSimple(t *testing.T) {
 
 	log.Println("stacksList is: ", stacksList)
@@ -152,8 +153,7 @@ func TestRunSimple(t *testing.T) {
 			runChannel <- err
 		}()
 
-		cleanup()
-		os.RemoveAll(projectDir)
+		// stop and clean up after the run
 		func() {
 			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
 			if err != nil {
@@ -161,5 +161,7 @@ func TestRunSimple(t *testing.T) {
 			}
 		}()
 
+		cleanup()
+		os.RemoveAll(projectDir)
 	}
 }

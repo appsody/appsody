@@ -24,6 +24,7 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
+// Simple test for appsody debug command. A future enhancement would be to verify the debug output
 func TestDebugSimple(t *testing.T) {
 
 	log.Println("stacksList is: ", stacksList)
@@ -73,14 +74,14 @@ func TestDebugSimple(t *testing.T) {
 			runChannel <- err
 		}()
 
-		cleanup()
-		os.RemoveAll(projectDir)
+		// stop and cleanup
 		func() {
 			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
 			if err != nil {
 				fmt.Printf("Ignoring error running appsody stop: %s", err)
 			}
 		}()
-
+		cleanup()
+		os.RemoveAll(projectDir)
 	}
 }
