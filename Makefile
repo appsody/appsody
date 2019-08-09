@@ -30,6 +30,13 @@ package_binary = $(COMMAND)$(BINARY_EXT_$(os))
 .PHONY: all
 all: lint test package ## Run lint, test, build, and package
 
+PHONY: install-controller
+install-controller: ## Get the controller and install it
+	wget $(CONTROLLER_BASE_URL)/appsody-controller
+	chmod +x appsody-controller
+	mkdir -p ~/.appsody
+	cp appsody-controller ~/.appsody/ 
+
 .PHONY: test
 test: ## Run the all the automated tests
 	$(GO_TEST_COMMAND) ./...
