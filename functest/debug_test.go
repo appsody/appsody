@@ -24,40 +24,8 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-// Test parsing environment variable with stack info
-func TestParser(t *testing.T) {
-
-	fmt.Println("stacksList is: ", stacksList)
-	if stacksList == "" {
-		log.Println("stacksList is empty, exiting test...")
-		return
-	}
-
-	// replace incubator with appsodyhub to match current naming convention for repos
-	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
-	fmt.Println("new stacksList is: ", stacksList)
-
-	stackRaw := strings.Split(stacksList, " ")
-
-	// we don't need to split the repo and stack anymore...
-	// stackStack := strings.Split(stackRaw, "/")
-
-	for i := range stackRaw {
-		fmt.Println("stackRaw is: ", stackRaw[i])
-
-		// code to sepearate the repos and stacks...
-		// stageStack := strings.Split(stackRaw[i], "/")
-		// stage := stageStack[0]
-		// stack := stageStack[1]
-		// fmt.Println("stage is: ", stage)
-		// fmt.Println("stack is: ", stack)
-
-	}
-
-}
-
-// Simple test for appsody deploy command. A future enhancement would be to configure a valid deployment environment
-func TestDeploySimple(t *testing.T) {
+// Simple test for appsody debug command. A future enhancement would be to verify the debug output
+func TestDebugSimple(t *testing.T) {
 
 	log.Println("stacksList is: ", stacksList)
 
@@ -85,7 +53,7 @@ func TestDeploySimple(t *testing.T) {
 		}
 
 		// create a temporary dir to create the project and run the test
-		projectDir, err := ioutil.TempDir("", "appsody-deploy-simple-test")
+		projectDir, err := ioutil.TempDir("", "appsody-debug-simple-test")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -99,15 +67,20 @@ func TestDeploySimple(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// appsody deploy
+		// appsody debug
 		runChannel := make(chan error)
 		go func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"deploy", "-t", "testdeploy/testimage", "--dryrun"}, projectDir)
-			log.Println("Running appsody deploy...")
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"debug"}, projectDir)
 			runChannel <- err
 		}()
 
-		// cleanup tasks
+		// stop and cleanup
+		func() {
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
+			if err != nil {
+				fmt.Printf("Ignoring error running appsody stop: %s", err)
+			}
+		}()
 		cleanup()
 		os.RemoveAll(projectDir)
 	}
