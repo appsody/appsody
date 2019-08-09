@@ -153,21 +153,37 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		if err != nil {
 			return errors.New("fatal error - can't retrieve the binary path... exiting")
 		}
-		//Construct the appsody-controller mount
-		sourceController := filepath.Join(binaryLocation, "appsody-controller")
-		if dryrun {
-			Info.logf("Dry Run - Skipping copy of controller binary from %s to %s", sourceController, destController)
-		} else {
-			Debug.log("Attempting to copy the source controller from: ", sourceController)
-			//Copy the controller from the binary location to $HOME/.appsody
-			copyError := CopyFile(sourceController, destController)
-			if copyError != nil {
-				return errors.Errorf("Cannot retrieve controller - exiting: %v", copyError)
-			}
-			// Making the controller executable in case CopyFile loses permissions
-			chmodErr := os.Chmod(destController, 0755)
-			if chmodErr != nil {
-				return errors.Errorf("Cannot make the controller  executable - exiting: %v", chmodErr)
+		controllerExists, existsErr := exists(destController)
+		if existsErr != nil {
+			return existsErr
+		}
+		Debug.log("appsody-controller exists: ", controllerExists)
+
+		checksum, checksumErr := checksum256TestFile(filepath.Join(binaryLocation, "appsody-controller"), destController)
+		Debug.log("checksum returned: ", controllerExists)
+		if checksumErr != nil {
+			return checksumErr
+		}
+		// if the controller doesn't exist
+		if !controllerExists || (controllerExists && !checksum) {
+			Debug.log("Replacing Controller")
+
+			//Construct the appsody-controller mount
+			sourceController := filepath.Join(binaryLocation, "appsody-controller")
+			if dryrun {
+				Info.logf("Dry Run - Skipping copy of controller binary from %s to %s", sourceController, destController)
+			} else {
+				Debug.log("Attempting to copy the source controller from: ", sourceController)
+				//Copy the controller from the binary location to $HOME/.appsody
+				copyError := CopyFile(sourceController, destController)
+				if copyError != nil {
+					return errors.Errorf("Cannot retrieve controller - exiting: %v", copyError)
+				}
+				// Making the controller executable in case CopyFile loses permissions
+				chmodErr := os.Chmod(destController, 0755)
+				if chmodErr != nil {
+					return errors.Errorf("Cannot make the controller  executable - exiting: %v", chmodErr)
+				}
 			}
 		}
 		//} Used to close the "if controller does not exist"
