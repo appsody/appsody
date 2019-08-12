@@ -92,11 +92,16 @@ setup the local dev environment.`,
 			if !repos.Has(repoName) {
 				return errors.Errorf("Repository %s is not in configured list of repositories", repoName)
 			}
+			var templateName string = ""
+			if len(args) >= 2 {
+				templateName = args[1]
+			}
 
 			Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
 			index = indices[repoName]
 			projectFound := false
 			stackFound := false
+
 			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 				Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
 			}
@@ -104,20 +109,32 @@ setup the local dev environment.`,
 				projectFound = true
 				//return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
 				Debug.log("Project ", projectType, " found in repo ", repoName)
+
+				// need to check template name vs default?
 				projectName = index.Projects[projectType][0].URLs[0]
 			}
-
 			for _, stack := range index.Stacks {
 				if stack.ID == projectType {
 					stackFound = true
+					fmt.Println("stack found")
 					Debug.log("Stack ", projectType, " found in repo ", repoName)
-					projectName = stack.Templates[0].URL
+					if templateName == "" {
+						templateName = stack.DefaultTemplate
+					}
+					URL := findTemplateURL(stack, templateName)
+					fmt.Println("URL is: " + URL)
+					projectName = URL
 				}
 			}
-
 			if !projectFound && !stackFound {
 				return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
 			}
+			fmt.Println("template not found check")
+			if projectName == "" {
+				return errors.Errorf("Could not find a template with stack id \"%s\" in repository \"%s\" with template \"%s\". Run `appsody list` to see the available stacks and templates or -h for help.", projectType, repoName, templateName)
+
+			}
+
 			// 1. Check for empty directory
 			dir, err := os.Getwd()
 			if err != nil {

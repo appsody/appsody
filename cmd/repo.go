@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sort"
 	"strings"
 
 	//"math/rand"
@@ -34,6 +35,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type Stack struct {
+	repoName    string
+	ID          string
+	Version     string
+	Description string
+	Templates   string
+}
+
 type RepoIndex struct {
 	APIVersion string                     `yaml:"apiVersion"`
 	Generated  time.Time                  `yaml:"generated"`
@@ -47,20 +56,28 @@ type RepoIndices map[string]*RepoIndex
 type ProjectVersions []*ProjectVersion
 
 type ProjectVersion struct {
-	APIVersion  string        `yaml:"apiVersion"`
-	ID          string        `yaml:"id,omitempty"`
-	Created     time.Time     `yaml:"created"`
-	Name        string        `yaml:"name"`
-	Home        string        `yaml:"home"`
-	Version     string        `yaml:"version"`
-	Description string        `yaml:"description"`
-	Keywords    []string      `yaml:"keywords"`
-	Maintainers []interface{} `yaml:"maintainers"`
-	Icon        string        `yaml:"icon"`
-	Digest      string        `yaml:"digest"`
-	URLs        []string      `yaml:"urls"` //V1
-	Templates   []Template    `yaml:"templates,omitempty"`
+	APIVersion      string        `yaml:"apiVersion"`
+	ID              string        `yaml:"id,omitempty"`
+	Created         time.Time     `yaml:"created"`
+	Name            string        `yaml:"name"`
+	Home            string        `yaml:"home"`
+	Version         string        `yaml:"version"`
+	Description     string        `yaml:"description"`
+	Keywords        []string      `yaml:"keywords"`
+	Maintainers     []interface{} `yaml:"maintainers"`
+	Icon            string        `yaml:"icon"`
+	Digest          string        `yaml:"digest"`
+	URLs            []string      `yaml:"urls"` //V1
+	Templates       []Template    `yaml:"templates,omitempty"`
+	DefaultTemplate string        `yaml:"default-template"`
 }
+
+/*
+  appsody list stack
+  if it is a V1 stack then we can use the default-template
+ table.AddRow (value.DefaultTemplate,stack.Version,value.Description)//no description in template
+
+*/
 
 type RepositoryFile struct {
 	APIVersion   string             `yaml:"apiVersion"`
@@ -77,6 +94,18 @@ type RepositoryEntry struct {
 type Template struct {
 	ID  string `yaml:"id"`
 	URL string `yaml:"url"`
+}
+
+func findTemplateURL(projectVersion ProjectVersion, templateName string) string {
+	templates := projectVersion.Templates
+
+	for _, value := range templates {
+		if value.ID == templateName {
+			return value.URL
+		}
+
+	}
+	return ""
 }
 
 var unsupportedRepos []string
@@ -266,56 +295,27 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	return &index, nil
 }
 
-func (index *RepoIndex) listProjects(repoName string) string {
+func (index *RepoIndex) listProjects(repoName string) (string, error) {
+	var Stacks = []Stack{}
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
-	for id, value := range index.Projects {
-		table.AddRow(repoName, id, value[0].Version, value[0].Description)
+	table.Wrap = true
+	if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+		Debug.log("Adding unsupported repoistory", repoName)
+		unsupportedRepos = append(unsupportedRepos, repoName)
 	}
-	for _, value := range index.Stacks {
-		table.AddRow(repoName, value.ID, value.Version, value.Description)
-	}
-	return table.String()
-}
-func (r *RepositoryFile) listProjects() (string, error) {
-	table := uitable.New()
-	table.MaxColWidth = 60
-	//table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
-	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
-	indices, err := r.GetIndices()
-	//rnd := rand.New(rand.NewSource(99))
+	table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
 
-	//err := index.getIndex()
-	//templates := [8]string{"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"}
+	Stacks, err := index.buildStacksFromIndex(repoName, Stacks)
 	if err != nil {
-		return "", errors.Errorf("Could not read indices: %v", err)
+		return "", err
 	}
-	if len(indices) != 0 {
-		for repoName, index := range indices {
-			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
-				Debug.log("Adding unspported repoistory", repoName)
-				unsupportedRepos = append(unsupportedRepos, repoName)
-			}
-			//Info.log("\n", "Repository: ", repoName)
-			for id, value := range index.Projects {
-				//r1 := rnd.Intn(8)
-				//r2 := rnd.Intn(8)
-				//r3 := rnd.Intn(8)
-				//rndTemplates := "*" + templates[r1] + ", " + templates[r2] + ", " + templates[r3]
-				//table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
-				table.AddRow(repoName, id, value[0].Version, truncate(value[0].Description, 80))
-			}
-			for _, value := range index.Stacks {
-				table.AddRow(repoName, value.ID, value.Version, truncate(value.Description, 80))
-			}
-		}
-		return table.String(), nil
-	}
-	return "", errors.New("there are no repositories in your configuration")
 
+	for _, value := range Stacks {
+		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, truncate(value.Description, 80))
+	}
+	return table.String(), nil
 }
-
 func truncate(s string, i int) string {
 	desc := s
 	if len(s) > i {
@@ -323,7 +323,6 @@ func truncate(s string, i int) string {
 	}
 	return desc
 }
-
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
@@ -331,7 +330,11 @@ func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return index.listProjects(repoName), nil
+		tableString, err := index.listProjects(repoName)
+		if err != nil {
+			return "", err
+		}
+		return tableString, nil
 	}
 	return "", errors.New("cannot locate repository named " + repoName)
 }
@@ -356,6 +359,7 @@ func (r *RepositoryFile) getRepos() (*RepositoryFile, error) {
 }
 
 func (r *RepositoryFile) listRepos() (string, error) {
+	var entries = []RepositoryEntry{}
 	table := uitable.New()
 	table.MaxColWidth = 120
 	table.AddRow("NAME", "URL")
@@ -368,7 +372,12 @@ func (r *RepositoryFile) listRepos() (string, error) {
 		if repoName == defaultRepoName {
 			repoName = "*" + repoName
 		}
-		table.AddRow(repoName, value.URL)
+		entries = append(entries, RepositoryEntry{repoName, value.URL, value.IsDefault})
+
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
+	for _, value := range entries {
+		table.AddRow(value.Name, value.URL)
 	}
 
 	return table.String(), nil
@@ -492,4 +501,88 @@ func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
 		indices[rf.Name] = index
 	}
 	return indices, nil
+}
+func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([]Stack, error) {
+
+	for id, value := range index.Projects {
+
+		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, "*" + value[0].DefaultTemplate})
+	}
+	for _, value := range index.Stacks {
+		Templates := value.Templates
+
+		templatesString := ""
+		if value.Templates != nil {
+			sort.Slice(Templates, func(i, j int) bool { return Templates[i].ID < Templates[j].ID })
+
+			for _, template := range Templates {
+				templateString := ""
+				if template.ID == value.DefaultTemplate {
+					templateString = "*" + template.ID
+				} else {
+					templateString = template.ID
+				}
+				if templatesString != "" {
+					templatesString = templatesString + ", " + templateString
+				} else {
+					templatesString = templateString
+				}
+
+			}
+		} else {
+			templatesString = value.DefaultTemplate
+		}
+		templatesString += ", extrastring1, extrastring2, extrastring3, extrastring4, extrastring5, extractstring6, exrtrastring7s"
+
+		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, templatesString})
+	}
+
+	sort.Slice(Stacks, func(i, j int) bool {
+		if Stacks[i].repoName < Stacks[j].repoName {
+			return true
+		}
+		if Stacks[i].repoName == Stacks[j].repoName && Stacks[i].ID < Stacks[j].ID {
+			return true
+
+		}
+		return false
+	})
+
+	return Stacks, nil
+}
+
+func (r *RepositoryFile) listProjects() (string, error) {
+	var Stacks = []Stack{}
+	table := uitable.New()
+	table.MaxColWidth = 60
+	table.Wrap = true
+	table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
+	indices, err := r.GetIndices()
+
+	if err != nil {
+		return "", errors.Errorf("Could not read indices: %v", err)
+	}
+	if len(indices) != 0 {
+		for repoName, index := range indices {
+
+			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+				Debug.log("Adding unsupported repoistory", repoName)
+				unsupportedRepos = append(unsupportedRepos, repoName)
+			}
+
+			var errStack error
+			Stacks, errStack = index.buildStacksFromIndex(repoName, Stacks)
+			if errStack != nil {
+				return "", errStack
+			}
+
+		}
+
+	} else {
+		return "", errors.New("there are no repositories in your configuration")
+	}
+	for _, value := range Stacks {
+		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, truncate(value.Description, 80))
+	}
+	return table.String(), nil
 }
