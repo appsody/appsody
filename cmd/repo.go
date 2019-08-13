@@ -72,13 +72,6 @@ type ProjectVersion struct {
 	DefaultTemplate string        `yaml:"default-template"`
 }
 
-/*
-  appsody list stack
-  if it is a V1 stack then we can use the default-template
- table.AddRow (value.DefaultTemplate,stack.Version,value.Description)//no description in template
-
-*/
-
 type RepositoryFile struct {
 	APIVersion   string             `yaml:"apiVersion"`
 	Generated    time.Time          `yaml:"generated"`
