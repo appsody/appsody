@@ -304,7 +304,7 @@ func (index *RepoIndex) listProjects(repoName string) (string, error) {
 		Debug.log("Adding unsupported repoistory", repoName)
 		unsupportedRepos = append(unsupportedRepos, repoName)
 	}
-	table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
+	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
 
 	Stacks, err := index.buildStacksFromIndex(repoName, Stacks)
 	if err != nil {
@@ -312,7 +312,7 @@ func (index *RepoIndex) listProjects(repoName string) (string, error) {
 	}
 
 	for _, value := range Stacks {
-		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, truncate(value.Description, 80))
+		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
 	}
 	return table.String(), nil
 }
@@ -532,7 +532,6 @@ func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([
 		} else {
 			templatesString = value.DefaultTemplate
 		}
-		templatesString += ", extrastring1, extrastring2, extrastring3, extrastring4, extrastring5, extractstring6, exrtrastring7s"
 
 		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, templatesString})
 	}
@@ -556,7 +555,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.Wrap = true
-	table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
+	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
 	indices, err := r.GetIndices()
 
 	if err != nil {
@@ -582,7 +581,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 		return "", errors.New("there are no repositories in your configuration")
 	}
 	for _, value := range Stacks {
-		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, truncate(value.Description, 80))
+		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
 	}
 	return table.String(), nil
 }
