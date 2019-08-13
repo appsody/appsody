@@ -316,13 +316,7 @@ func (index *RepoIndex) listProjects(repoName string) (string, error) {
 	}
 	return table.String(), nil
 }
-func truncate(s string, i int) string {
-	desc := s
-	if len(s) > i {
-		desc = s[0:i] + "..."
-	}
-	return desc
-}
+
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
