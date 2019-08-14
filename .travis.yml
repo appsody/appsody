@@ -20,17 +20,16 @@ stages:
 
 install-controller: &install-controller
   install:
-      - wget https://github.com/appsody/controller/releases/download/0.2.2/appsody-controller
-      - chmod +x appsody-controller
-      - mkdir ~/.appsody
-      - cp appsody-controller ~/.appsody/
       - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
-
+      - make install-controller
+      # manually set the list of stacks to test
+      # the stacks repo will generate their own list of stacks that have changed and should be tested
+      - export STACKSLIST=incubator/nodejs
+      
 test-template: &test-template
   stage: test
   <<: *install-controller
   script: make test
-
 
 jobs:
   include:
