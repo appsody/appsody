@@ -253,6 +253,12 @@ func getProjectConfig() (ProjectConfig, error) {
 		}
 		stack := viper.GetString("stack")
 		Debug.log("Project stack from config file: ", stack)
+		imageRepo := cliConfig.GetString("images")
+		Debug.log("Image repository set to: ", imageRepo)
+		if imageRepo != "index.docker.io" {
+			stack = imageRepo + "/" + stack
+		}
+		Debug.log("Pulling stack image as: ", stack)
 		projectConfig = &ProjectConfig{stack}
 	}
 	return *projectConfig, nil
