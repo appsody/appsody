@@ -309,7 +309,6 @@ func (index *RepoIndex) listProjects(repoName string) (string, error) {
 	}
 	return table.String(), nil
 }
-
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
