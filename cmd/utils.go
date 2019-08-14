@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"io"
 	"io/ioutil"
 	"os"
@@ -835,34 +836,32 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 	return err
 }
 
-func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
-	var checkValue bool
-	fmt.Println("Checksum 256")
-	fmt.Println("oldFile", oldFileName)
-	fmt.Println("newFile", newFileName)
-
-	oldFile, err := os.Open(oldFileName)
+func createChecksumHash(fileName string) (hash.Hash, error) {
+	Debug.log("Checksum oldFile", fileName)
+	newFile, err := os.Open(fileName)
 	if err != nil {
-		return false, errors.Errorf("File open failed for %s controller binary: %v", oldFileName, err)
-
-	}
-	defer oldFile.Close()
-
-	oldSha256 := sha256.New()
-	if _, err := io.Copy(oldSha256, oldFile); err != nil {
-		return false, errors.Errorf("sha256 copy failed for %s controller binary %v", oldFileName, err)
-	}
-
-	newFile, err := os.Open(newFileName)
-	if err != nil {
-		return false, errors.Errorf("File open failed for %s controller binary: %v", newFileName, err)
+		return nil, errors.Errorf("File open failed for %s controller binary: %v", fileName, err)
 
 	}
 	defer newFile.Close()
 
-	newSha256 := sha256.New()
-	if _, err := io.Copy(newSha256, newFile); err != nil {
-		return false, errors.Errorf("sha256 copy failed for %s controller binary %v", newFileName, err)
+	computedSha256 := sha256.New()
+	if _, err := io.Copy(computedSha256, newFile); err != nil {
+		return nil, errors.Errorf("sha256 copy failed for %s controller binary %v", fileName, err)
+	}
+	return computedSha256, nil
+}
+
+func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
+	var checkValue bool
+
+	oldSha256, errOld := createChecksumHash(oldFileName)
+	if errOld != nil {
+		return false, errOld
+	}
+	newSha256, errNew := createChecksumHash(newFileName)
+	if errNew != nil {
+		return false, nil
 	}
 	Debug.logf("%x\n", oldSha256.Sum(nil))
 	Debug.logf("%x\n", newSha256.Sum(nil))
