@@ -297,6 +297,7 @@ func (index *RepoIndex) listProjects(repoName string) (string, error) {
 		Debug.log("Adding unsupported repoistory", repoName)
 		unsupportedRepos = append(unsupportedRepos, repoName)
 	}
+
 	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
 
 	Stacks, err := index.buildStacksFromIndex(repoName, Stacks)
@@ -309,7 +310,6 @@ func (index *RepoIndex) listProjects(repoName string) (string, error) {
 	}
 	return table.String(), nil
 }
-
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
@@ -542,6 +542,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.Wrap = true
+
 	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
 	indices, err := r.GetIndices()
 
@@ -568,6 +569,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 		return "", errors.New("there are no repositories in your configuration")
 	}
 	for _, value := range Stacks {
+
 		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
 	}
 	return table.String(), nil
