@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sort"
 	"strings"
 
 	//"math/rand"
@@ -34,6 +35,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type Stack struct {
+	repoName    string
+	ID          string
+	Version     string
+	Description string
+}
+
 type RepoIndex struct {
 	APIVersion string                     `yaml:"apiVersion"`
 	Generated  time.Time                  `yaml:"generated"`
@@ -47,19 +55,20 @@ type RepoIndices map[string]*RepoIndex
 type ProjectVersions []*ProjectVersion
 
 type ProjectVersion struct {
-	APIVersion  string        `yaml:"apiVersion"`
-	ID          string        `yaml:"id,omitempty"`
-	Created     time.Time     `yaml:"created"`
-	Name        string        `yaml:"name"`
-	Home        string        `yaml:"home"`
-	Version     string        `yaml:"version"`
-	Description string        `yaml:"description"`
-	Keywords    []string      `yaml:"keywords"`
-	Maintainers []interface{} `yaml:"maintainers"`
-	Icon        string        `yaml:"icon"`
-	Digest      string        `yaml:"digest"`
-	URLs        []string      `yaml:"urls"` //V1
-	Templates   []Template    `yaml:"templates,omitempty"`
+	APIVersion      string        `yaml:"apiVersion"`
+	ID              string        `yaml:"id,omitempty"`
+	Created         time.Time     `yaml:"created"`
+	Name            string        `yaml:"name"`
+	Home            string        `yaml:"home"`
+	Version         string        `yaml:"version"`
+	Description     string        `yaml:"description"`
+	Keywords        []string      `yaml:"keywords"`
+	Maintainers     []interface{} `yaml:"maintainers"`
+	Icon            string        `yaml:"icon"`
+	Digest          string        `yaml:"digest"`
+	URLs            []string      `yaml:"urls"` //V1
+	Templates       []Template    `yaml:"templates,omitempty"`
+	DefaultTemplate string        `yaml:"default-template"`
 }
 
 type RepositoryFile struct {
@@ -266,126 +275,29 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	return &index, nil
 }
 
-func (index *RepoIndex) listProjects(repoName string) string {
+func (index *RepoIndex) listProjects(repoName string) (string, error) {
+	var Stacks = []Stack{}
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
-	for id, value := range index.Projects {
-		table.AddRow(repoName, id, value[0].Version, value[0].Description)
+	table.Wrap = true
+	if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+		Debug.log("Adding unsupported repoistory", repoName)
+		unsupportedRepos = append(unsupportedRepos, repoName)
 	}
-	for _, value := range index.Stacks {
-		table.AddRow(repoName, value.ID, value.Version, value.Description)
-	}
-	return table.String()
-}
-func (r *RepositoryFile) listProjects() (string, error) {
-	table := uitable.New()
-	table.MaxColWidth = 60
 	//table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
-	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
-	indices, err := r.GetIndices()
-	var stackArray [50][50]string
-	//rnd := rand.New(rand.NewSource(99))
+	table.AddRow("REPO", "ID", "VERSION ", "DESCRIPTION")
 
-	//err := index.getIndex()
-	//templates := [8]string{"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"}
+	Stacks, err := index.buildStacksFromIndex(repoName, Stacks)
 	if err != nil {
-		return "", errors.Errorf("Could not read indices: %v", err)
+		return "", err
 	}
-	if len(indices) != 0 {
-		var i int
-		for repoName, index := range indices {
-			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
-				Debug.log("Adding unspported repoistory", repoName)
-				unsupportedRepos = append(unsupportedRepos, repoName)
-			}
-			//Info.log("\n", "Repository: ", repoName)
-			for id, value := range index.Projects {
-				stackArray[i][0] = repoName
-				stackArray[i][1] = id
-				stackArray[i][2] = value[0].Version
-				stackArray[i][3] = value[0].Description
-				//r1 := rnd.Intn(8)
-				//r2 := rnd.Intn(8)
-				//r3 := rnd.Intn(8)
-				//rndTemplates := "*" + templates[r1] + ", " + templates[r2] + ", " + templates[r3]
-				//table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
-				i++
-			}
-		}
-		var sortedList = sortStack(stackArray)
-		var j int
-		for j = 0; j < len(sortedList); j++ {
-			if sortedList[j][1] != "" {
-				table.AddRow(sortedList[j][0], sortedList[j][1], sortedList[j][2], truncate(sortedList[j][3], 80))
-			}
-		}
-		return table.String(), nil
-	}
-	return "", errors.New("there are no repositories in your configuration")
 
+	for _, value := range Stacks {
+		table.AddRow(value.repoName, value.ID, value.Version, truncate(value.Description, 80))
+
+	}
+	return table.String(), nil
 }
-
-func sortStack(stackArray [50][50]string) (sortedArray [50][50]string) {
-	var k int
-	var x int
-	var z int
-	var y int
-	var swappedRepo = true
-	var swappedStack = true
-
-	for swappedRepo {
-		swappedRepo = false
-		for k = 1; k < len(stackArray); k++ {
-			if stackArray[k-1][0] > stackArray[k][0] {
-				for x = 0; x < 5; x++ {
-					stackArray[k-1][x], stackArray[k][x] = stackArray[k][x], stackArray[k-1][x]
-				}
-				swappedRepo = true
-			}
-		}
-	}
-
-	for swappedStack {
-		swappedStack = false
-		for z = 1; z < len(stackArray); z++ {
-			if stackArray[z-1][0] == stackArray[z][0] {
-				if stackArray[z-1][1] > stackArray[z][1] {
-					for y = 0; y < 5; y++ {
-						stackArray[z-1][y], stackArray[z][y] = stackArray[z][y], stackArray[z-1][y]
-					}
-					swappedStack = true
-				}
-			}
-		}
-	}
-
-	sortedArray = stackArray
-
-	return sortedArray
-}
-
-func sortRepo(stackArray [50][50]string) (sortedArray [50][50]string) {
-	var k int
-	var x int
-	var swapped = true
-
-	for swapped {
-		swapped = false
-		for k = 1; k < len(stackArray); k++ {
-			if stackArray[k-1][0] > stackArray[k][0] {
-				for x = 0; x < 2; x++ {
-					stackArray[k-1][x], stackArray[k][x] = stackArray[k][x], stackArray[k-1][x]
-				}
-				swapped = true
-			}
-		}
-	}
-	sortedArray = stackArray
-
-	return sortedArray
-}
-
 func truncate(s string, i int) string {
 	desc := s
 	if len(s) > i {
@@ -393,7 +305,6 @@ func truncate(s string, i int) string {
 	}
 	return desc
 }
-
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
@@ -401,7 +312,11 @@ func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return index.listProjects(repoName), nil
+		tableString, err := index.listProjects(repoName)
+		if err != nil {
+			return "", err
+		}
+		return tableString, nil
 	}
 	return "", errors.New("cannot locate repository named " + repoName)
 }
@@ -426,10 +341,9 @@ func (r *RepositoryFile) getRepos() (*RepositoryFile, error) {
 }
 
 func (r *RepositoryFile) listRepos() (string, error) {
+	var entries = []RepositoryEntry{}
 	table := uitable.New()
 	table.MaxColWidth = 120
-	var repoArray [50][50]string
-	var i int
 	table.AddRow("NAME", "URL")
 	for _, value := range r.Repositories {
 		repoName := value.Name
@@ -440,17 +354,12 @@ func (r *RepositoryFile) listRepos() (string, error) {
 		if repoName == defaultRepoName {
 			repoName = "*" + repoName
 		}
+		entries = append(entries, RepositoryEntry{repoName, value.URL, value.IsDefault})
 
-		repoArray[i][0] = repoName
-		repoArray[i][1] = value.URL
-		i++
 	}
-	var sortedRepo = sortRepo(repoArray)
-	var j int
-	for j = 0; j < len(sortedRepo); j++ {
-		if sortedRepo[j][0] != "" {
-			table.AddRow(sortedRepo[j][0], sortedRepo[j][1])
-		}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
+	for _, value := range entries {
+		table.AddRow(value.Name, value.URL)
 	}
 
 	return table.String(), nil
@@ -574,4 +483,68 @@ func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
 		indices[rf.Name] = index
 	}
 	return indices, nil
+}
+func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([]Stack, error) {
+
+	for id, value := range index.Projects {
+
+		//	Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, "*" + value[0].DefaultTemplate})
+		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description})
+
+	}
+	for _, value := range index.Stacks {
+		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description})
+
+	}
+
+	sort.Slice(Stacks, func(i, j int) bool {
+		if Stacks[i].repoName < Stacks[j].repoName {
+			return true
+		}
+		if Stacks[i].repoName == Stacks[j].repoName && Stacks[i].ID < Stacks[j].ID {
+			return true
+
+		}
+		return false
+	})
+
+	return Stacks, nil
+}
+
+func (r *RepositoryFile) listProjects() (string, error) {
+	var Stacks = []Stack{}
+	table := uitable.New()
+	table.MaxColWidth = 60
+	table.Wrap = true
+	table.AddRow("REPO", "ID", "VERSION ", "DESCRIPTION")
+
+	indices, err := r.GetIndices()
+
+	if err != nil {
+		return "", errors.Errorf("Could not read indices: %v", err)
+	}
+	if len(indices) != 0 {
+		for repoName, index := range indices {
+
+			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+				Debug.log("Adding unsupported repoistory", repoName)
+				unsupportedRepos = append(unsupportedRepos, repoName)
+			}
+
+			var errStack error
+			Stacks, errStack = index.buildStacksFromIndex(repoName, Stacks)
+			if errStack != nil {
+				return "", errStack
+			}
+
+		}
+
+	} else {
+		return "", errors.New("there are no repositories in your configuration")
+	}
+	for _, value := range Stacks {
+		table.AddRow(value.repoName, value.ID, value.Version, truncate(value.Description, 80))
+
+	}
+	return table.String(), nil
 }
