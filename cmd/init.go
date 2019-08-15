@@ -95,8 +95,8 @@ setup the local dev environment.`,
 			if !repos.Has(repoName) {
 				return errors.Errorf("Repository %s is not in configured list of repositories", repoName)
 			}
-			var templateName string = ""
-			var inputTemplateName string = ""
+			var templateName string
+			var inputTemplateName string
 			if len(args) >= 2 {
 
 				inputTemplateName = args[1]

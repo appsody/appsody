@@ -478,7 +478,7 @@ func TestNoTemplateAndSimple(t *testing.T) {
 
 	// appsody init nodejs-express
 	var output string
-	output, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "simple", "--no-template"}, projectDir)
+	output, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "simple", "--no-template"}, projectDir)
 	if !strings.Contains(output, "with both a template and --no-template") {
 		t.Error("Correct error message not given")
 	}
