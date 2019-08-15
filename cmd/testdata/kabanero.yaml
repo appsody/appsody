@@ -19,6 +19,8 @@ stacks:
     templates:
       - id: simple
         url: https://github.com/appsody/stacks/releases/download/nodejs-v0.2.2/incubator.nodejs.templates.simple.tar.gz
+      - id: in-image
+        url: image:/path/test.tgz
     pipelines:
       - id: default
         url: https://github.com//releases/latest/download/incubator.nodejs.pipeline.default.tar.gz

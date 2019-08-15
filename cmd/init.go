@@ -85,7 +85,10 @@ setup the local dev environment.`,
 		var index *RepoIndex
 
 		if len(args) >= 1 {
-			var projectName string
+			var templateURL string = ""
+			var stackImage string = ""
+			var templateName string = "none"
+
 			projectParm := args[0]
 
 			repoName, projectType, err := parseProjectParm(projectParm)
@@ -95,18 +98,19 @@ setup the local dev environment.`,
 			if !repos.Has(repoName) {
 				return errors.Errorf("Repository %s is not in configured list of repositories", repoName)
 			}
-			var templateName string
-			var inputTemplateName string
 			if len(args) >= 2 {
 
-				inputTemplateName = args[1]
+				inputTemplateName := args[1]
+
+				if noTemplate && !(inputTemplateName == "none") {
+					return errors.Errorf("cannot specify `appsody init <stack> <template>` with both a template and --no-template")
+				}
+
 				if inputTemplateName == "none" {
 					noTemplate = true
 				}
-
+				templateName = inputTemplateName
 			}
-
-			templateName = inputTemplateName // so we can keep track
 
 			Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
 			index = indices[repoName]
@@ -122,30 +126,29 @@ setup the local dev environment.`,
 				Debug.log("Project ", projectType, " found in repo ", repoName)
 
 				// need to check template name vs default?
-				projectName = index.Projects[projectType][0].URLs[0]
+				templateURL = index.Projects[projectType][0].URLs[0]
 			}
 			for _, stack := range index.Stacks {
 				if stack.ID == projectType {
 					stackFound = true
-					Debug.log("Stack ", projectType, " found in repo ", repoName)
-					URL := ""
-					if templateName == "" || templateName == "none" {
-						templateName = stack.DefaultTemplate
-						if templateName == "" {
-							return errors.Errorf("Cannot proceed, no template or \"none\" was specified and there is no default template.")
-						}
-					}
-					URL = findTemplateURL(stack, templateName)
+					stackImage = stack.Image
+					Debug.log("Stack ", projectType, " found in repo ", repoName, " using image ", stackImage)
 
-					projectName = URL
+					if templateName == "none" {
+						templateName = stack.DefaultTemplate
+					}
+					if templateName == "" {
+						return errors.Errorf("Cannot proceed, no template or \"none\" was specified and there is no default template.")
+					}
+					templateURL = findTemplateURL(stack, templateName)
 				}
 			}
 			if !projectFound && !stackFound {
 				return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
 			}
-
-			if projectName == "" && inputTemplateName != "none" {
-				return errors.Errorf("Could not find a template \"%s\" for stack id \"%s\" in repository \"%s\"", templateName, projectType, repoName)
+			Debug.log("template ", templateName, " has URL ", templateURL)
+			if templateURL == "" {
+				return errors.Errorf("Could not find template \"%s\" for \"%s\" stack in repository \"%s\"", templateName, projectType, repoName)
 			}
 
 			// 1. Check for empty directory
@@ -158,13 +161,6 @@ setup the local dev environment.`,
 			_, err = os.Stat(appsodyConfigFile)
 			if err == nil {
 				return errors.New("cannot run `appsody init <stack>` on an existing appsody project")
-
-			}
-
-			if noTemplate && !(inputTemplateName == "" || inputTemplateName == "none") {
-
-				return errors.Errorf("cannot specify `appsody init <stack> <template>` with both a template and --no-template")
-
 			}
 
 			if noTemplate || overwrite {
@@ -181,24 +177,29 @@ setup the local dev environment.`,
 				Info.log("It is recommended that you run `appsody init <stack>` in an empty directory.")
 				Info.log("If you wish to proceed and possibly overwrite files in the current directory, try again with the --overwrite option.")
 				return errors.New("non-empty directory found with files which may conflict with the template project")
-
 			}
 
 			Info.log("Running appsody init...")
-			Info.logf("Downloading %s template project from %s", projectType, projectName)
 			filename := projectType + ".tar.gz"
 
-			err = downloadFileToDisk(projectName, filename)
+			if strings.HasPrefix(templateURL, "image:") {
+				if stackImage == "" {
+					return errors.New("An 'image:' template URL was specified without a defined stack image attribute")
+				}
+				Info.logf("Extracting %s template project from %s", projectType, stackImage)
+				err = downloadFileFromImage(stackImage, templateURL[6:], filename)
+			} else {
+				Info.logf("Downloading %s template project from %s", projectType, templateURL)
+				err = downloadFileToDisk(templateURL, filename)
+			}
 			if err != nil {
 				return errors.Errorf("Error downloading tar %v", err)
-
 			}
 			Info.log("Download complete. Extracting files from ", filename)
-			//if noTemplate
-			errUntar := untar(filename, noTemplate)
 
+			errUntar := untar(filename, noTemplate)
 			if dryrun {
-				Info.logf("Dry Run - Skipping remove of temporary file for project type: %s project name: %s", projectType, projectName)
+				Info.logf("Dry Run - Skipping remove of temporary file for project type: %s project name: %s", projectType, templateURL)
 			} else {
 				err = os.Remove(filename)
 				if err != nil {
@@ -275,6 +276,29 @@ func downloadFileToDisk(url string, destFile string) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func downloadFileFromImage(stackImage string, templatePath string, destFile string) error {
+	if dryrun {
+		Info.logf("Dry Run -Skipping download of url: %s to destination %s", templatePath, destFile)
+	} else {
+		// remove image: prefix
+		// fully qualify destination filepath
+		path, err := filepath.Abs(".")
+		if err != nil {
+			return err
+		}
+
+		options := []string{"--rm", fmt.Sprintf("-iv%s:/host-volume", path)}
+		cmd := fmt.Sprintf("chown $(id -u):$(id -g) %s; cp -a %s /host-volume/%s", templatePath, templatePath, destFile)
+
+		_, err = DockerRunBashCmd(options, stackImage, cmd)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
