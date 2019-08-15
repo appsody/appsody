@@ -15,8 +15,12 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"hash"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -836,4 +840,40 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 		}
 	}
 	return err
+}
+
+func createChecksumHash(fileName string) (hash.Hash, error) {
+	Debug.log("Checksum oldFile", fileName)
+	newFile, err := os.Open(fileName)
+	if err != nil {
+		return nil, errors.Errorf("File open failed for %s controller binary: %v", fileName, err)
+
+	}
+	defer newFile.Close()
+
+	computedSha256 := sha256.New()
+	if _, err := io.Copy(computedSha256, newFile); err != nil {
+		return nil, errors.Errorf("sha256 copy failed for %s controller binary %v", fileName, err)
+	}
+	return computedSha256, nil
+}
+
+func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
+	var checkValue bool
+
+	oldSha256, errOld := createChecksumHash(oldFileName)
+	if errOld != nil {
+		return false, errOld
+	}
+	newSha256, errNew := createChecksumHash(newFileName)
+	if errNew != nil {
+		return false, nil
+	}
+	Debug.logf("%x\n", oldSha256.Sum(nil))
+	Debug.logf("%x\n", newSha256.Sum(nil))
+	checkValue = bytes.Equal(oldSha256.Sum(nil), newSha256.Sum(nil))
+
+	Debug.log("Checksum returned", checkValue)
+
+	return checkValue, nil
 }
