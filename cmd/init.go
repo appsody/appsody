@@ -46,7 +46,7 @@ var initCmd = &cobra.Command{
 	Long: `This creates a new Appsody project in a local directory or sets up the local dev environment of an existing Appsody project.
 
 If the [repository] is not specified the default repository will be used. If no [template] is specified, the default template will be used.
-With the [stack] or [repository]/[stack] [template] arguments, this command will setup a new Appsody project. It will create an Appsody stack config file, unzip a template app, and run the stack init script to setup the local dev environment. It is typically run on an empty directory and may fail
+With the [stack], [repository]/[stack], [stack] [template] or [repository]/[stack] [template] arguments, this command will setup a new Appsody project. It will create an Appsody stack config file, unzip a template app, and run the stack init script to setup the local dev environment. It is typically run on an empty directory and may fail
 if files already exist. See the --overwrite and --no-template options for more details.
 Use 'appsody list' to see the available stack options.
 
@@ -56,6 +56,9 @@ setup the local dev environment.`,
 		setupErr := setupConfig()
 		if setupErr != nil {
 			return setupErr
+		}
+		if noTemplate {
+			Warning.log("The --no-template flag has been deprecated")
 		}
 		//var index RepoIndex
 		var repos RepositoryFile
@@ -93,9 +96,17 @@ setup the local dev environment.`,
 				return errors.Errorf("Repository %s is not in configured list of repositories", repoName)
 			}
 			var templateName string = ""
+			var inputTemplateName string = ""
 			if len(args) >= 2 {
-				templateName = args[1]
+
+				inputTemplateName = args[1]
+				if inputTemplateName == "none" {
+					noTemplate = true
+				}
+
 			}
+
+			templateName = inputTemplateName // so we can keep track
 
 			Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
 			index = indices[repoName]
@@ -116,23 +127,22 @@ setup the local dev environment.`,
 			for _, stack := range index.Stacks {
 				if stack.ID == projectType {
 					stackFound = true
-					fmt.Println("stack found")
 					Debug.log("Stack ", projectType, " found in repo ", repoName)
-					if templateName == "" {
+					URL := ""
+					if templateName == "" || templateName == "none" {
 						templateName = stack.DefaultTemplate
 					}
-					URL := findTemplateURL(stack, templateName)
-					fmt.Println("URL is: " + URL)
+					URL = findTemplateURL(stack, templateName)
+
 					projectName = URL
 				}
 			}
 			if !projectFound && !stackFound {
 				return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
 			}
-			fmt.Println("template not found check")
-			if projectName == "" {
-				return errors.Errorf("Could not find a template with stack id \"%s\" in repository \"%s\" with template \"%s\". Run `appsody list` to see the available stacks and templates or -h for help.", projectType, repoName, templateName)
 
+			if projectName == "" && inputTemplateName != "none" {
+				return errors.Errorf("Could not find a template \"%s\" for stack id \"%s\" in repository \"%s\"", templateName, projectType, repoName)
 			}
 
 			// 1. Check for empty directory
@@ -145,6 +155,12 @@ setup the local dev environment.`,
 			_, err = os.Stat(appsodyConfigFile)
 			if err == nil {
 				return errors.New("cannot run `appsody init <stack>` on an existing appsody project")
+
+			}
+
+			if noTemplate && !(inputTemplateName == "" || inputTemplateName == "none") {
+
+				return errors.Errorf("cannot specify `appsody init <stack> <template>` with both a template and --no-template")
 
 			}
 
@@ -194,6 +210,7 @@ setup the local dev environment.`,
 				return errors.Errorf("Error extracting project template: %v", errUntar)
 
 			}
+
 		}
 		err = install()
 		if err != nil {
@@ -207,7 +224,7 @@ setup the local dev environment.`,
 func init() {
 	rootCmd.AddCommand(initCmd)
 	initCmd.PersistentFlags().BoolVar(&overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.")
-	initCmd.PersistentFlags().BoolVar(&noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project.")
+	initCmd.PersistentFlags().BoolVar(&noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
 }
 
 //Runs the .appsody-init.sh/bat files if necessary

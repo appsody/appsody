@@ -497,29 +497,25 @@ func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([
 	for _, value := range index.Stacks {
 		Templates := value.Templates
 
-		templatesString := ""
+		templatesListString := ""
 		if value.Templates != nil {
 			sort.Slice(Templates, func(i, j int) bool { return Templates[i].ID < Templates[j].ID })
 
 			for _, template := range Templates {
-				templateString := ""
+				defaultMarker := ""
 				if template.ID == value.DefaultTemplate {
-					templateString = "*" + template.ID
-				} else {
-					templateString = template.ID
+					defaultMarker = "*"
 				}
-				if templatesString != "" {
-					templatesString = templatesString + ", " + templateString
+				if templatesListString != "" {
+					templatesListString += ", " + defaultMarker + template.ID
 				} else {
-					templatesString = templateString
+					templatesListString = defaultMarker + template.ID
 				}
 
 			}
-		} else {
-			templatesString = value.DefaultTemplate
 		}
 
-		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, templatesString})
+		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, templatesListString})
 	}
 
 	sort.Slice(Stacks, func(i, j int) bool {
@@ -541,6 +537,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.Wrap = true
+
 	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
 	indices, err := r.GetIndices()
 
@@ -567,6 +564,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 		return "", errors.New("there are no repositories in your configuration")
 	}
 	for _, value := range Stacks {
+
 		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
 	}
 	return table.String(), nil
