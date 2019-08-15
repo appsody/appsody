@@ -403,3 +403,83 @@ func TestInitV2WithNoRepoSpecifiedTemplateDefault(t *testing.T) {
 
 	appsodyResultsCheck(projectDir, t)
 }
+func TestNone(t *testing.T) {
+
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-none-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	packagejson := filepath.Join(projectDir, "package.json")
+	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+
+	defer os.RemoveAll(projectDir)
+
+	// appsody init nodejs-express
+	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "none"}, projectDir)
+
+	shouldNotExist(packagejson, t)
+	shouldNotExist(packagejsonlock, t)
+
+}
+
+func TestNoneAndNoTemplate(t *testing.T) {
+
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-none-and-no-template-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	packagejson := filepath.Join(projectDir, "package.json")
+	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+
+	defer os.RemoveAll(projectDir)
+
+	// appsody init nodejs-express
+	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "none", "--no-template"}, projectDir)
+
+	shouldNotExist(packagejson, t)
+	shouldNotExist(packagejsonlock, t)
+
+}
+
+func TestNoTemplateOnly(t *testing.T) {
+
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-no-template-only-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	packagejson := filepath.Join(projectDir, "package.json")
+	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+
+	defer os.RemoveAll(projectDir)
+
+	// appsody init nodejs-express
+	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "--no-template"}, projectDir)
+
+	shouldNotExist(packagejson, t)
+	shouldNotExist(packagejsonlock, t)
+
+}
+
+func TestNoTemplateAndSimple(t *testing.T) {
+
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-no-template-only-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.RemoveAll(projectDir)
+
+	// appsody init nodejs-express
+	var output string
+	output, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "simple", "--no-template"}, projectDir)
+	if !strings.Contains(output, "with both a template and --no-template") {
+		t.Error("Correct error message not given")
+	}
+}
