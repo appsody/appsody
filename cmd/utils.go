@@ -137,6 +137,18 @@ func getEnvVarInt(searchEnvVar string) (int, error) {
 
 }
 
+func getExtractDir() (string, error) {
+	extractDir, envErr := getEnvVar("APPSODY_PROJECT_DIR")
+	if envErr != nil {
+		return "", envErr
+	}
+	if extractDir == "" {
+		Warning.log("The stack image does not contain APPSODY_PROJECT_DIR. Using /project")
+		return "/project", nil
+	}
+	return extractDir, nil
+}
+
 func getVolumeArgs() ([]string, error) {
 	volumeArgs := []string{}
 	stackMounts, envErr := getEnvVar("APPSODY_MOUNTS")
