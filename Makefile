@@ -16,7 +16,10 @@ BINARY_EXT_darwin :=
 BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder
-CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/0.2.2
+CONTROLLER_VERSION :=0.2.2
+CONTROLLER_BASE_HOST := https://github.com/
+CONTROLLER_BASE_PATH :=/controller/releases/download/$(CONTROLLER_VERSION)
+CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/$(CONTROLLER_VERSION)
 
 #### Dynamic variables. These change depending on the target name.
 # Gets the current os from the target name, e.g. the 'build-linux' target will result in os = 'linux'
@@ -31,12 +34,19 @@ package_binary = $(COMMAND)$(BINARY_EXT_$(os))
 all: lint test package ## Run lint, test, build, and package
 
 PHONY: install-controller
-install-controller: ## Get the controller and install it
-	wget $(CONTROLLER_BASE_URL)/appsody-controller
+install-controller:  ## Get the controller and install it
+ifeq (,$(wildcard ~/.appsody/appsody-controller))
+ifndef GH_ORG
+	echo "GH_ORG not set using 'appsody' release of controller" 
+	wget $(CONTROLLER_BASE_HOST)appsody$(CONTROLLER_BASE_PATH)/appsody-controller
+else
+	echo "GH_ORG is set: $(GH_ORG)"
+	wget $(CONTROLLER_BASE_HOST)$(GH_ORG)$(CONTROLLER_BASE_PATH)/appsody-controller	
+endif	
 	chmod +x appsody-controller
 	mkdir -p ~/.appsody
 	cp appsody-controller ~/.appsody/ 
-
+endif	
 .PHONY: test
 test: ## Run the all the automated tests
 	$(GO_TEST_COMMAND) ./...
@@ -45,8 +55,10 @@ test: ## Run the all the automated tests
 unittest: ## Run the automated unit tests
 	$(GO_TEST_COMMAND) ./cmd
 
+.PHONY: download-controller
+
 .PHONY: functest
-functest: ## Run the automated functional tests
+functest: install-controller  ## Run the automated functional tests
 	$(GO_TEST_COMMAND) ./functest
 
 .PHONY: lint
