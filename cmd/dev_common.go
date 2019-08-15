@@ -159,13 +159,18 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		}
 		Debug.log("appsody-controller exists: ", controllerExists)
 
-		checksum, checksumErr := checksum256TestFile(filepath.Join(binaryLocation, "appsody-controller"), destController)
-		Debug.log("checksum returned: ", controllerExists)
-		if checksumErr != nil {
-			return checksumErr
+		checksumMatch := false
+		if controllerExists {
+			var checksumMatchErr error
+			checksumMatch, checksumMatchErr = checksum256TestFile(filepath.Join(binaryLocation, "appsody-controller"), destController)
+			Debug.log("checksum returned: ", controllerExists)
+			if checksumMatchErr != nil {
+				return checksumMatchErr
+			}
 		}
 		// if the controller doesn't exist
-		if !controllerExists || (controllerExists && !checksum) {
+		if !controllerExists || (controllerExists && !checksumMatch) {
+
 			Debug.log("Replacing Controller")
 
 			//Construct the appsody-controller mount
