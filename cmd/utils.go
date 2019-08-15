@@ -70,20 +70,28 @@ func exists(path string) (bool, error) {
 	return true, err
 }
 
-func getEnvVar(searchEnvVar string) (string, error) {
-	// TODO cache this so the docker inspect command only runs once per cli invocation
-	var data []map[string]interface{}
+func getEnvVar(searchEnvVar string, buildah bool) (string, error) {
+	// TODO cache this so the buildah / docker inspect command only runs once per cli invocation
+
+	// Docker and Buildah produce slightly different output
+	// for `inspect` command. Array of maps vs. maps
+	var dataBuildah map[string]interface{}
+	var dataDocker []map[string]interface{}
 	projectConfig, projectConfigErr := getProjectConfig()
 	if projectConfigErr != nil {
 		return "", projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	dockerPullErr := dockerPullImage(imageName)
-	if dockerPullErr != nil {
-		return "", dockerPullErr
+	containerPullErrs := containerPullImage(imageName, buildah)
+	if containerPullErrs != nil {
+		return "", containerPullErrs
 	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
+	if buildah {
+		cmdName = "buildah"
+		cmdArgs = []string{"inspect", "--format={{.Config}}", imageName}
+	}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
 	inspectOut, inspectErr := inspectCmd.Output()
@@ -92,14 +100,26 @@ func getEnvVar(searchEnvVar string) (string, error) {
 
 	}
 
-	err := json.Unmarshal([]byte(inspectOut), &data)
-	if err != nil {
-		return "", errors.New("error unmarshaling data from inspect command - exiting")
+	var err error
+	var envVars []interface{}
+	if buildah {
+		err = json.Unmarshal([]byte(inspectOut), &dataBuildah)
+		if err != nil {
+			return "", errors.New("error unmarshaling data from inspect command - exiting")
+		}
+		config := dataBuildah["config"].(map[string]interface{})
+		envVars = config["Env"].([]interface{})
 
+	} else {
+		err = json.Unmarshal([]byte(inspectOut), &dataDocker)
+		if err != nil {
+			return "", errors.New("error unmarshaling data from inspect command - exiting")
+
+		}
+		config := dataDocker[0]["Config"].(map[string]interface{})
+
+		envVars = config["Env"].([]interface{})
 	}
-	config := data[0]["Config"].(map[string]interface{})
-
-	envVars := config["Env"].([]interface{})
 
 	Debug.log("Number of environment variables in stack image: ", len(envVars))
 	Debug.log("All environment variables in stack image: ", envVars)
@@ -123,7 +143,7 @@ func getEnvVar(searchEnvVar string) (string, error) {
 }
 
 func getEnvVarBool(searchEnvVar string) (bool, error) {
-	strVal, envErr := getEnvVar(searchEnvVar)
+	strVal, envErr := getEnvVar(searchEnvVar, false)
 	if envErr != nil {
 		return false, envErr
 	}
@@ -132,7 +152,7 @@ func getEnvVarBool(searchEnvVar string) (bool, error) {
 
 func getEnvVarInt(searchEnvVar string) (int, error) {
 
-	strVal, envErr := getEnvVar(searchEnvVar)
+	strVal, envErr := getEnvVar(searchEnvVar, false)
 	if envErr != nil {
 		return 0, envErr
 	}
@@ -144,8 +164,8 @@ func getEnvVarInt(searchEnvVar string) (int, error) {
 
 }
 
-func getExtractDir() (string, error) {
-	extractDir, envErr := getEnvVar("APPSODY_PROJECT_DIR")
+func getExtractDir(buildah bool) (string, error) {
+	extractDir, envErr := getEnvVar("APPSODY_PROJECT_DIR", buildah)
 	if envErr != nil {
 		return "", envErr
 	}
@@ -156,9 +176,9 @@ func getExtractDir() (string, error) {
 	return extractDir, nil
 }
 
-func getVolumeArgs() ([]string, error) {
+func getVolumeArgs(buildah bool) ([]string, error) {
 	volumeArgs := []string{}
-	stackMounts, envErr := getEnvVar("APPSODY_MOUNTS")
+	stackMounts, envErr := getEnvVar("APPSODY_MOUNTS", buildah)
 	if envErr != nil {
 		return nil, envErr
 	}
@@ -432,9 +452,9 @@ func getExposedPorts() ([]string, error) {
 		return nil, projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	dockerPullErr := dockerPullImage(imageName)
-	if dockerPullErr != nil {
-		return nil, dockerPullErr
+	containerPullErrs := containerPullImage(imageName, false)
+	if containerPullErrs != nil {
+		return nil, containerPullErrs
 	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
@@ -618,9 +638,9 @@ func DockerPush(imageToPush string) error {
 func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput string, err error) {
 	cmdName := "docker"
 	var cmdArgs []string
-	dockerPullErr := dockerPullImage(image)
-	if dockerPullErr != nil {
-		return "", dockerPullErr
+	containerPullErrs := containerPullImage(image, false)
+	if containerPullErrs != nil {
+		return "", containerPullErrs
 	}
 	if len(options) >= 0 {
 		cmdArgs = append([]string{"run"}, options...)
@@ -778,10 +798,14 @@ func KubeGetDeploymentURL(service string) (url string, err error) {
 	return "", err
 }
 
-//dockerPullCmd
+//containerPullCmd
+// enable extract to use `buildah` sequences for image extraction.
 // Pull the given docker image
-func dockerPullCmd(imageToPull string) error {
+func containerPullCmd(imageToPull string, buildah bool) error {
 	cmdName := "docker"
+	if buildah {
+		cmdName = "buildah"
+	}
 	pullArgs := []string{"pull", imageToPull}
 	if dryrun {
 		Info.log("Dry run - skipping execution of: ", cmdName, " ", pullArgs)
@@ -814,10 +838,10 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 	return false
 }
 
-//dockerPullImage
-// pulls docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
+//containerPullImage
+// pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
-func dockerPullImage(imageToPull string) error {
+func containerPullImage(imageToPull string, buildah bool) error {
 
 	Debug.logf("%s image pulled status: %t", imageToPull, imagePulled[imageToPull])
 	if imagePulled[imageToPull] {
@@ -840,7 +864,7 @@ func dockerPullImage(imageToPull string) error {
 	}
 
 	if pullPolicyAlways || (!pullPolicyAlways && !localImageFound) {
-		err := dockerPullCmd(imageToPull)
+		err := containerPullCmd(imageToPull, buildah)
 		if err != nil {
 			if pullPolicyAlways {
 				localImageFound = checkDockerImageExistsLocally(imageToPull)
