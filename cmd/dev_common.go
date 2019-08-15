@@ -158,7 +158,6 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 			return existsErr
 		}
 		Debug.log("appsody-controller exists: ", controllerExists)
-
 		checksumMatch := false
 		if controllerExists {
 			var checksumMatchErr error
