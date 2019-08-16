@@ -16,10 +16,13 @@ package cmd
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
+
+var dockerBuildOptions string
 
 // buildCmd provides the ability run local builds, or setup/delete Tekton builds, for an appsody project
 var buildCmd = &cobra.Command{
@@ -47,9 +50,20 @@ var buildCmd = &cobra.Command{
 		if tag != "" {
 			buildImage = tag
 		}
-		cmdName := "docker"
-		cmdArgs := []string{"build", "-t", buildImage, "-f", dockerfile, extractDir}
-		execError := execAndWait(cmdName, cmdArgs, DockerLog)
+		//cmdName := "docker"
+		cmdArgs := []string{"-t", buildImage}
+
+		if dockerBuildOptions != "" {
+			options := strings.Split(dockerBuildOptions, " ")
+			for _, value := range options {
+				cmdArgs = append(cmdArgs, value)
+			}
+
+		}
+		cmdArgs = append(cmdArgs, "-f", dockerfile, extractDir)
+		Debug.log("final cmd args", cmdArgs)
+		execError := DockerBuild(cmdArgs, DockerLog)
+
 		if execError != nil {
 			return execError
 		}
@@ -63,4 +77,6 @@ var buildCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(buildCmd)
 	buildCmd.PersistentFlags().StringVarP(&tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
+	buildCmd.PersistentFlags().StringVar(&dockerBuildOptions, "docker-options", "", "Additional options to be sent when running docker commands.  Value must be in \"\".")
+
 }

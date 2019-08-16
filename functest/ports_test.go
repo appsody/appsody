@@ -103,3 +103,30 @@ func TestRunWithNetwork(t *testing.T) {
 
 	}
 }
+
+// This test tests the setting of --docker-options
+func TestRunWithDockerOptions(t *testing.T) {
+
+	var runOutput string
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-docker-options-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.RemoveAll(projectDir)
+
+	log.Println("Created project dir: " + projectDir)
+
+	// appsody init nodejs-express
+	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--docker-options \"-m 4g\"", "--publish-all", "--dryrun"}, projectDir)
+
+	if !strings.Contains(runOutput, "--docker-options \"-m 4g\"") {
+		t.Fatal("docker-options flag is not found in output as:  --docker-options \"-m 4g\"")
+
+	}
+}
