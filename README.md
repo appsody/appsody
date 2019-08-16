@@ -16,7 +16,7 @@ For information on building the Appsody CLI from source, see [Building from Sour
 
 ## Contributing
 
-We welcome all contributions to the Appsody project. Please see our [Contributing guidelines](https://github.com/appsody/website/blob/master/CODE_OF_CONDUCT.md)
+We welcome all contributions to the Appsody project. Please see our [Contributing guidelines](https://github.com/appsody/website/blob/master/CONTRIBUTING.md)
 
 ## Community
 
