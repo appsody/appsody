@@ -275,19 +275,7 @@ func getProjectName() (string, error) {
 	projectName := strings.ToLower(filepath.Base(projectDir))
 	return projectName, nil
 }
-func execAndListen(command string, args []string, logger appsodylogger) (*exec.Cmd, error) {
-	return execAndListenWithWorkDir(command, args, logger, workDirNotSet) // no workdir
-}
 
-func execAndListenWithWorkDir(command string, args []string, logger appsodylogger, workdir string) (*exec.Cmd, error) {
-
-	cmd, err := execAndListenWithWorkDirReturnErr(command, args, logger, workdir)
-	if err != nil {
-		return cmd, err
-	}
-	return cmd, nil
-
-}
 func execAndWait(command string, args []string, logger appsodylogger) error {
 
 	return execAndWaitWithWorkDir(command, args, logger, workDirNotSet)

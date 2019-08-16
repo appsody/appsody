@@ -55,9 +55,7 @@ var buildCmd = &cobra.Command{
 
 		if dockerBuildOptions != "" {
 			options := strings.Split(dockerBuildOptions, " ")
-			for _, value := range options {
-				cmdArgs = append(cmdArgs, value)
-			}
+			cmdArgs = append(cmdArgs, options...)
 
 		}
 		cmdArgs = append(cmdArgs, "-f", dockerfile, extractDir)
