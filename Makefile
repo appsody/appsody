@@ -16,6 +16,10 @@ BINARY_EXT_darwin :=
 BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder
+
+# If you need to pull the appsody controller from a different repo, then set the GH_ORG
+# environment variable before runing this Makefile
+GH_ORG ?= appsody
 CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/0.2.2
 
 #### Dynamic variables. These change depending on the target name.
@@ -30,7 +34,7 @@ package_binary = $(COMMAND)$(BINARY_EXT_$(os))
 .PHONY: all
 all: lint test package ## Run lint, test, build, and package
 
-PHONY: install-controller
+.PHONY: install-controller
 install-controller: ## Get the controller and install it
 	wget $(CONTROLLER_BASE_URL)/appsody-controller
 	chmod +x appsody-controller
