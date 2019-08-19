@@ -70,6 +70,8 @@ var buildCmd = &cobra.Command{
 		cmdArgs := []string{"-t", buildImage}
 
 		if dockerBuildOptions != "" {
+			dockerBuildOptions = strings.TrimPrefix(dockerBuildOptions, " ")
+			dockerBuildOptions = strings.TrimSuffix(dockerBuildOptions, " ")
 			options := strings.Split(dockerBuildOptions, " ")
 			err := checkDockerBuildOptions(options)
 			if err != nil {

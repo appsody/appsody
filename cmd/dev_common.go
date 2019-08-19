@@ -43,6 +43,7 @@ var nameFlags *flag.FlagSet
 var commonFlags *flag.FlagSet
 
 func checkDockerRunOptions(options []string) error {
+	fmt.Println("testing docker options", options)
 	runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))(=?$)|(=.*))"
 
 	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)
@@ -248,6 +249,8 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		cmdArgs = append(cmdArgs, volumeMaps...)
 	}
 	if dockerOptions != "" {
+		dockerOptions = strings.TrimPrefix(dockerOptions, " ")
+		dockerOptions = strings.TrimSuffix(dockerOptions, " ")
 		dockerOptionsCmd := strings.Split(dockerOptions, " ")
 		err := checkDockerRunOptions(dockerOptionsCmd)
 		if err != nil {
