@@ -118,7 +118,8 @@ func formatTable(containers []StackContainer) (string, error) {
 			table.AddRow(value.ID, value.containerName, value.stackName, value.status)
 		}
 	} else {
-		return "", errors.New("there are no stack-based containers running in your docker environment")
+		Info.log("There are no stack-based containers running in your docker environment")
+		return "", nil
 	}
 
 	return table.String(), nil
