@@ -42,6 +42,20 @@ var dockerOptions string
 var nameFlags *flag.FlagSet
 var commonFlags *flag.FlagSet
 
+func checkDockerRunOptions(options []string) error {
+	runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))(=?$)|(=.*))"
+
+	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)
+	for _, value := range options {
+		isInBlackListed := blackListedRunOptionsRegexp.MatchString(value)
+		if isInBlackListed {
+			return errors.Errorf("%s is not allowed in --docker-options", value)
+
+		}
+	}
+	return nil
+
+}
 func buildCommonFlags() {
 	if commonFlags == nil || nameFlags == nil {
 		commonFlags = flag.NewFlagSet("", flag.ContinueOnError)
@@ -235,6 +249,10 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	}
 	if dockerOptions != "" {
 		dockerOptionsCmd := strings.Split(dockerOptions, " ")
+		err := checkDockerRunOptions(dockerOptionsCmd)
+		if err != nil {
+			return err
+		}
 		cmdArgs = append(cmdArgs, dockerOptionsCmd...)
 	}
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/appsody/appsody-controller", platformDefinition, "--mode="+mode)
