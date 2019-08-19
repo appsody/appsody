@@ -16,11 +16,27 @@ package cmd
 
 import (
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
+
+func checkDockerBuildOptions(options []string) error {
+	buildOptionsTest := "(^((-t)|(--tag)|(-f)|(--file))(=?$)|(=.*))"
+
+	blackListedBuildOptionsRegexp := regexp.MustCompile(buildOptionsTest)
+	for _, value := range options {
+		isInBlackListed := blackListedBuildOptionsRegexp.MatchString(value)
+		if isInBlackListed {
+			return errors.Errorf("%s is not allowed in --docker-options", value)
+
+		}
+	}
+	return nil
+
+}
 
 var dockerBuildOptions string
 
@@ -55,6 +71,10 @@ var buildCmd = &cobra.Command{
 
 		if dockerBuildOptions != "" {
 			options := strings.Split(dockerBuildOptions, " ")
+			err := checkDockerBuildOptions(options)
+			if err != nil {
+				return err
+			}
 			cmdArgs = append(cmdArgs, options...)
 
 		}
