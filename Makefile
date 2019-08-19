@@ -18,7 +18,7 @@ DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder
 
 # If you need to pull the appsody controller from a different repo, then set the GH_ORG
-# environment variable before runing this Makefile
+# environment variable before running this Makefile
 GH_ORG ?= appsody
 CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/0.2.2
 
