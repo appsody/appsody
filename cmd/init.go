@@ -58,7 +58,7 @@ setup the local dev environment.`,
 			return setupErr
 		}
 		if noTemplate {
-			Warning.log("The --no-template flag has been deprecated")
+			Warning.log("The --no-template flag has been deprecated.  Please specify a template value of \"none\" instead.")
 		}
 		//var index RepoIndex
 		var repos RepositoryFile
@@ -131,6 +131,9 @@ setup the local dev environment.`,
 					URL := ""
 					if templateName == "" || templateName == "none" {
 						templateName = stack.DefaultTemplate
+						if templateName == "" {
+							return errors.Errorf("Cannot proceed, no template or \"none\" was specified and there is no default template.")
+						}
 					}
 					URL = findTemplateURL(stack, templateName)
 
