@@ -31,7 +31,7 @@ build_name = $(COMMAND)-$(VERSION)-$(os)-amd64
 build_binary = $(build_name)$(BINARY_EXT_$(os))
 package_binary = $(COMMAND)$(BINARY_EXT_$(os))
 
-.PHONY: all
+PHONY: all
 all: lint test package ## Run lint, test, build, and package
 
 .PHONY: install-controller
