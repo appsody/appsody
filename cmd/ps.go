@@ -87,8 +87,7 @@ func listContainers() ([]StackContainer, error) {
 		for outScanner.Scan() {
 			fields := strings.Split(outScanner.Text(), strSep)
 			if strings.Contains(fields[4], "appsody-controller") {
-				stack := strings.Split(fields[1], "/")
-				containers = append(containers, StackContainer{fields[0][0:12], stack[len(stack)-1], fields[2], fields[3]})
+				containers = append(containers, StackContainer{fields[0][0:12], fields[1], fields[2], fields[3]})
 			}
 		}
 	}()
@@ -113,10 +112,10 @@ func formatTable(containers []StackContainer) (string, error) {
 	table.Wrap = true
 
 	if len(containers) != 0 {
-		table.AddRow("CONTAINER ID", "STACK", "STATUS", "NAME")
+		table.AddRow("CONTAINER ID", "NAME", "IMAGE", "STATUS")
 
 		for _, value := range containers {
-			table.AddRow(value.ID, value.stackName, value.status, value.containerName)
+			table.AddRow(value.ID, value.containerName, value.stackName, value.status)
 		}
 	} else {
 		return "", errors.New("there are no stack-based containers running in your docker environment")
