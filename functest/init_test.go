@@ -320,7 +320,7 @@ func TestInitV2WithBadStackSpecified(t *testing.T) {
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	output, _ := cmdtest.RunAppsodyCmdExec([]string{"init", "experimental/badnodejs-express"}, projectDir)
+	output, _ := cmdtest.RunAppsodyCmdExec([]string{"init", "badnodejs-express"}, projectDir)
 	if !(strings.Contains(output, "Could not find a stack with the id")) {
 		t.Error("Should have flagged non existing stack")
 	}
