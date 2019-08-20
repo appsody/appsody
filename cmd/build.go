@@ -24,7 +24,7 @@ import (
 )
 
 func checkDockerBuildOptions(options []string) error {
-	buildOptionsTest := "(^((-t)|(--tag)|(-f)|(--file))(=?$)|(=.*))"
+	buildOptionsTest := "(^((-t)|(--tag)|(-f)|(--file))((=?$)|(=.*)))"
 
 	blackListedBuildOptionsRegexp := regexp.MustCompile(buildOptionsTest)
 	for _, value := range options {

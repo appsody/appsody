@@ -44,7 +44,7 @@ var commonFlags *flag.FlagSet
 
 func checkDockerRunOptions(options []string) error {
 	fmt.Println("testing docker options", options)
-	runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))(=?$)|(=.*))"
+	runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))((=?$)|(=.*)))"
 
 	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)
 	for _, value := range options {
