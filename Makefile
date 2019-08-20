@@ -39,6 +39,7 @@ ifeq (,$(wildcard ~/.appsody/appsody-controller))
 	chmod +x appsody-controller
 	mkdir -p ~/.appsody
 	cp appsody-controller ~/.appsody/ 
+	rm appsody-controller
 endif	
 .PHONY: test
 test: ## Run the all the automated tests
