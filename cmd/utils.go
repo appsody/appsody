@@ -15,8 +15,12 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"hash"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -131,6 +135,18 @@ func getEnvVarInt(searchEnvVar string) (int, error) {
 	}
 	return intVal, nil
 
+}
+
+func getExtractDir() (string, error) {
+	extractDir, envErr := getEnvVar("APPSODY_PROJECT_DIR")
+	if envErr != nil {
+		return "", envErr
+	}
+	if extractDir == "" {
+		Warning.log("The stack image does not contain APPSODY_PROJECT_DIR. Using /project")
+		return "/project", nil
+	}
+	return extractDir, nil
 }
 
 func getVolumeArgs() ([]string, error) {
@@ -253,6 +269,12 @@ func getProjectConfig() (ProjectConfig, error) {
 		}
 		stack := viper.GetString("stack")
 		Debug.log("Project stack from config file: ", stack)
+		imageRepo := cliConfig.GetString("images")
+		Debug.log("Image repository set to: ", imageRepo)
+		if imageRepo != "index.docker.io" {
+			stack = imageRepo + "/" + stack
+		}
+		Debug.log("Pulling stack image as: ", stack)
 		projectConfig = &ProjectConfig{stack}
 	}
 	return *projectConfig, nil
@@ -265,19 +287,7 @@ func getProjectName() (string, error) {
 	projectName := strings.ToLower(filepath.Base(projectDir))
 	return projectName, nil
 }
-func execAndListen(command string, args []string, logger appsodylogger) (*exec.Cmd, error) {
-	return execAndListenWithWorkDir(command, args, logger, workDirNotSet) // no workdir
-}
 
-func execAndListenWithWorkDir(command string, args []string, logger appsodylogger, workdir string) (*exec.Cmd, error) {
-
-	cmd, err := execAndListenWithWorkDirReturnErr(command, args, logger, workdir)
-	if err != nil {
-		return cmd, err
-	}
-	return cmd, nil
-
-}
 func execAndWait(command string, args []string, logger appsodylogger) error {
 
 	return execAndWaitWithWorkDir(command, args, logger, workDirNotSet)
@@ -830,4 +840,40 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 		}
 	}
 	return err
+}
+
+func createChecksumHash(fileName string) (hash.Hash, error) {
+	Debug.log("Checksum oldFile", fileName)
+	newFile, err := os.Open(fileName)
+	if err != nil {
+		return nil, errors.Errorf("File open failed for %s controller binary: %v", fileName, err)
+
+	}
+	defer newFile.Close()
+
+	computedSha256 := sha256.New()
+	if _, err := io.Copy(computedSha256, newFile); err != nil {
+		return nil, errors.Errorf("sha256 copy failed for %s controller binary %v", fileName, err)
+	}
+	return computedSha256, nil
+}
+
+func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
+	var checkValue bool
+
+	oldSha256, errOld := createChecksumHash(oldFileName)
+	if errOld != nil {
+		return false, errOld
+	}
+	newSha256, errNew := createChecksumHash(newFileName)
+	if errNew != nil {
+		return false, nil
+	}
+	Debug.logf("%x\n", oldSha256.Sum(nil))
+	Debug.logf("%x\n", newSha256.Sum(nil))
+	checkValue = bytes.Equal(oldSha256.Sum(nil), newSha256.Sum(nil))
+
+	Debug.log("Checksum returned", checkValue)
+
+	return checkValue, nil
 }
