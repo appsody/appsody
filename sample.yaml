@@ -1,0 +1,16 @@
+apiVersion: appsody.dev/v1alpha1
+kind: AppsodyApplication
+metadata:
+  name: example-appsodyapplication
+spec:
+  # Add fields here
+  version: 1.0.0
+  applicationImage: java-app:latest 
+  stack: java-microprofile
+  service:
+    type: ClusterIP
+    port: 9080
+  expose: true
+  storage:
+    size: 2Gi
+    mountPath: "/logs"
