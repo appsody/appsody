@@ -38,10 +38,25 @@ var depsVolumeName string
 var ports []string
 var publishAllPorts bool
 var dockerNetwork string
-
+var dockerOptions string
 var nameFlags *flag.FlagSet
 var commonFlags *flag.FlagSet
 
+func checkDockerRunOptions(options []string) error {
+	fmt.Println("testing docker options", options)
+	runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))(=?$)|(=.*))"
+
+	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)
+	for _, value := range options {
+		isInBlackListed := blackListedRunOptionsRegexp.MatchString(value)
+		if isInBlackListed {
+			return errors.Errorf("%s is not allowed in --docker-options", value)
+
+		}
+	}
+	return nil
+
+}
 func buildCommonFlags() {
 	if commonFlags == nil || nameFlags == nil {
 		commonFlags = flag.NewFlagSet("", flag.ContinueOnError)
@@ -70,7 +85,7 @@ func buildCommonFlags() {
 		commonFlags.StringVar(&depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 		commonFlags.StringArrayVarP(&ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
 		commonFlags.BoolVarP(&publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
-
+		commonFlags.StringVar(&dockerOptions, "docker-options", "", "Specify the docker options to use.  Value must be in \"\".")
 	}
 
 }
@@ -113,7 +128,6 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	Debug.log("Stack image: ", platformDefinition)
 	Debug.log("Project directory: ", projectDir)
 
-	var cmdName string
 	var cmdArgs []string
 	dockerPullErr := dockerPullImage(platformDefinition)
 	if dockerPullErr != nil {
@@ -206,8 +220,8 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		//dockerRemove(containerName) is not needed due to --rm flag
 		os.Exit(1)
 	}()
-	cmdName = "docker"
-	cmdArgs = []string{"run", "--rm"}
+
+	cmdArgs = []string{"--rm"}
 	validPorts, portError := checkPortInput(ports)
 	if !validPorts {
 		return errors.Errorf("Ports provided as input to the command are not valid: %v\n", portError)
@@ -234,10 +248,19 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	if len(volumeMaps) > 0 {
 		cmdArgs = append(cmdArgs, volumeMaps...)
 	}
-
+	if dockerOptions != "" {
+		dockerOptions = strings.TrimPrefix(dockerOptions, " ")
+		dockerOptions = strings.TrimSuffix(dockerOptions, " ")
+		dockerOptionsCmd := strings.Split(dockerOptions, " ")
+		err := checkDockerRunOptions(dockerOptionsCmd)
+		if err != nil {
+			return err
+		}
+		cmdArgs = append(cmdArgs, dockerOptionsCmd...)
+	}
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/appsody/appsody-controller", platformDefinition, "--mode="+mode)
 	Debug.logf("Attempting to start image %s with container name %s", platformDefinition, containerName)
-	execCmd, err := execAndListen(cmdName, cmdArgs, Container)
+	execCmd, err := DockerRunAndListen(cmdArgs, Container)
 	if dryrun {
 		Info.log("Dry Run - Skipping execCmd.Wait")
 	} else {
