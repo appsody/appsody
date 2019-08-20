@@ -20,6 +20,7 @@ GH_ORG ?= appsody
 CONTROLLER_VERSION ?=0.2.2
 CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/$(CONTROLLER_VERSION)
 
+
 #### Dynamic variables. These change depending on the target name.
 # Gets the current os from the target name, e.g. the 'build-linux' target will result in os = 'linux'
 # CAUTION: All targets that use these variables must have the OS after the first '-' in their name.
@@ -40,7 +41,7 @@ ifeq (,$(wildcard ~/.appsody/appsody-controller))
 	mkdir -p ~/.appsody
 	cp appsody-controller ~/.appsody/ 
 	rm appsody-controller
-endif	
+endif
 .PHONY: test
 test: ## Run the all the automated tests
 	$(GO_TEST_COMMAND) ./...
