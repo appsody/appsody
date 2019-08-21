@@ -33,6 +33,10 @@ var operatorURL = "https://raw.githubusercontent.com/appsody/appsody-operator/ma
 
 func downloadYaml(url string, target string) (string, error) {
 	Debug.log("Downloading file: ", url)
+	if dryrun {
+		Info.log("Skipping Downloading file: ", url)
+		return "", nil
+	}
 	fileBuffer := bytes.NewBuffer(nil)
 	err := downloadFile(url, fileBuffer)
 	if err != nil {
@@ -52,6 +56,11 @@ func downloadYaml(url string, target string) (string, error) {
 }
 
 func downloadOperatorYaml(url string, operatorNamespace string, watchNamespace string, target string) (string, error) {
+	if dryrun {
+		Info.log("Skipping download of operator yaml: ", url)
+		return "", nil
+
+	}
 	file, err := downloadYaml(url, target)
 	if err != nil {
 		return "", fmt.Errorf("Could not download Operator YAML file %s", url)
@@ -122,12 +131,12 @@ var installCmd = &cobra.Command{
 
 		appsodyCRD := filepath.Join(deployConfigDir, appsodyCRDName)
 		var file string
-		if !dryrun {
-			file, err = downloadCRDYaml(crdURL, appsodyCRD)
-			if err != nil {
-				return err
-			}
+
+		file, err = downloadCRDYaml(crdURL, appsodyCRD)
+		if err != nil {
+			return err
 		}
+
 		err = KubeApply(file)
 		if err != nil {
 			return err
@@ -143,12 +152,12 @@ var installCmd = &cobra.Command{
 		}
 
 		operatorYaml := filepath.Join(deployConfigDir, operatorYamlName)
-		if !dryrun {
-			file, err = downloadOperatorYaml(operatorURL, operatorNamespace, watchNamespace, operatorYaml)
-			if err != nil {
-				return err
-			}
+
+		file, err = downloadOperatorYaml(operatorURL, operatorNamespace, watchNamespace, operatorYaml)
+		if err != nil {
+			return err
 		}
+
 		err = KubeApply(file)
 		if err != nil {
 			return err
