@@ -935,13 +935,13 @@ func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
 	}
 	newSha256, errNew := createChecksumHash(newFileName)
 	if errNew != nil {
-		return false, nil
+		return false, errNew
 	}
 	Debug.logf("%x\n", oldSha256.Sum(nil))
 	Debug.logf("%x\n", newSha256.Sum(nil))
 	checkValue = bytes.Equal(oldSha256.Sum(nil), newSha256.Sum(nil))
 
-	Debug.log("Checksum returned", checkValue)
+	Debug.log("Checksum returned: ", checkValue)
 
 	return checkValue, nil
 }
