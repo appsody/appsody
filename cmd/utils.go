@@ -488,8 +488,6 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 			} `yaml:"runLatest"`
 		} `yaml:"spec"`
 	}
-	const YamlFilePrefix = "appsody"
-	const YamlFileSuffix = "service"
 	yamlMap := Y{}
 	err := yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
 	//Set the name
@@ -542,10 +540,6 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 		return "", err
 	}
 	Debug.logf("Generated YAML: \n%s\n", yamlStr)
-	if err != nil {
-		Error.log("Error getting current directory ", err)
-		return "", err
-	}
 	// Generate file based on supplied config, defaulting to app-deploy.yaml
 	yamlFile := configFile
 	if dryrun {

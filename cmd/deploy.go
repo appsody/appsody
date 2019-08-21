@@ -37,7 +37,7 @@ var generate, force, push bool
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
-	Short: "Build and deploy your Appsody project to Kubernetes cluster",
+	Short: "Build and deploy your Appsody project to your Kubernetes cluster",
 	Long: `This command extracts the code from your project, builds a local Docker image for deployment,
 generates a deployment manifest (yaml) file if one is not present, and uses it to deploy your image to Kubernetes.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -60,7 +60,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		if err != nil {
 			return errors.Errorf("Error checking status of %s", configFile)
 		}
-		if !exists || (exists && force == true) {
+		if !exists || (exists && force) {
 			err = generateDeploymentConfig()
 			if err != nil {
 				if err.Error() == "docker cp command failed: exit status 1" {
@@ -279,7 +279,6 @@ func generateDeploymentConfig() error {
 		if err != nil {
 			Error.log(err)
 		}
-		//dockerRemove(containerName) is not needed due to --rm flag
 		os.Exit(1)
 	}()
 	cmdName = "docker"
@@ -401,7 +400,7 @@ func generateDeploymentConfig() error {
 
 func init() {
 	rootCmd.AddCommand(deployCmd)
-	deployCmd.PersistentFlags().BoolVar(&generate, "generate", false, "Only generate the deployment configuration file. Do not deploy the project.")
+	deployCmd.PersistentFlags().BoolVar(&generate, "generate-only", false, "Only generate the deployment configuration file. Do not deploy the project.")
 	deployCmd.PersistentFlags().StringVarP(&configFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
 	deployCmd.PersistentFlags().BoolVar(&force, "force", false, "Force the reuse of the deployment configuration file if one exists.")
 	deployCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "", "Target namespace in your Kubernetes cluster")
