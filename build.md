@@ -42,7 +42,7 @@ So, you built from source and you would like to run it.
 
 * Next, you need to copy that file to some place that's in your $PATH (for example, /usr/bin or /usr/local/bin) or %PATH% (any Win folder, then add it to the %PATH%). You may also want to call it `appsody`, so that you can run the CLI just by typing `appsody <command>`.
 
-* Next, you need to build the `appsody-controller` (sorry). It's here: https://github.com/appsody/controller. Just build the binary, and move it to the *same directory where you put `appsody`*. Call it `appsody-controller` (mandatory!) and make sure that it has +x permissions (also mandatory).
+* Next, you need to build the `appsody-controller` (sorry). It's here: https://github.com/appsody/controller. Just build the binary, and move it to the /usr/local/Cellar/appsody/`<release_tag>`/appsody-controller. Call it `appsody-controller` (mandatory!) and make sure that it has +x permissions (also mandatory).
 
 * If you are replacing an old installation, you may want to delete the appsody home directory (`$HOME/.appsody`).
 

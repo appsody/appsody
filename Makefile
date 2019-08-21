@@ -16,7 +16,10 @@ BINARY_EXT_darwin :=
 BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder
-CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/0.2.2
+GH_ORG ?= appsody
+CONTROLLER_VERSION ?=0.2.2
+CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/$(CONTROLLER_VERSION)
+
 
 #### Dynamic variables. These change depending on the target name.
 # Gets the current os from the target name, e.g. the 'build-linux' target will result in os = 'linux'
@@ -30,13 +33,15 @@ package_binary = $(COMMAND)$(BINARY_EXT_$(os))
 .PHONY: all
 all: lint test package ## Run lint, test, build, and package
 
-PHONY: install-controller
-install-controller: ## Get the controller and install it
+.PHONY: install-controller
+install-controller:  ## Get the controller and install it
+ifeq (,$(wildcard ~/.appsody/appsody-controller))
 	wget $(CONTROLLER_BASE_URL)/appsody-controller
 	chmod +x appsody-controller
 	mkdir -p ~/.appsody
 	cp appsody-controller ~/.appsody/ 
-
+	rm appsody-controller
+endif
 .PHONY: test
 test: ## Run the all the automated tests
 	$(GO_TEST_COMMAND) ./...
@@ -45,8 +50,10 @@ test: ## Run the all the automated tests
 unittest: ## Run the automated unit tests
 	$(GO_TEST_COMMAND) ./cmd
 
+.PHONY: download-controller
+
 .PHONY: functest
-functest: ## Run the automated functional tests
+functest: install-controller  ## Run the automated functional tests
 	$(GO_TEST_COMMAND) ./functest
 
 .PHONY: lint
