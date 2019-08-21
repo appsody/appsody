@@ -121,9 +121,12 @@ var installCmd = &cobra.Command{
 		}
 
 		appsodyCRD := filepath.Join(deployConfigDir, appsodyCRDName)
-		file, err := downloadCRDYaml(crdURL, appsodyCRD)
-		if err != nil {
-			return err
+		var file string
+		if !dryrun {
+			file, err = downloadCRDYaml(crdURL, appsodyCRD)
+			if err != nil {
+				return err
+			}
 		}
 		err = KubeApply(file)
 		if err != nil {
@@ -140,9 +143,11 @@ var installCmd = &cobra.Command{
 		}
 
 		operatorYaml := filepath.Join(deployConfigDir, operatorYamlName)
-		file, err = downloadOperatorYaml(operatorURL, operatorNamespace, watchNamespace, operatorYaml)
-		if err != nil {
-			return err
+		if !dryrun {
+			file, err = downloadOperatorYaml(operatorURL, operatorNamespace, watchNamespace, operatorYaml)
+			if err != nil {
+				return err
+			}
 		}
 		err = KubeApply(file)
 		if err != nil {
