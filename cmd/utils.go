@@ -279,6 +279,13 @@ func getProjectConfig() (ProjectConfig, error) {
 	}
 	return *projectConfig, nil
 }
+
+func getOperatorHome() string {
+	operatorHome := cliConfig.GetString("operator")
+	Debug.log("Operator home set to: ", operatorHome)
+	return operatorHome
+}
+
 func getProjectName() (string, error) {
 	projectDir, err := getProjectDir()
 	if err != nil {
