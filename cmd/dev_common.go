@@ -176,7 +176,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		if controllerExists {
 			var checksumMatchErr error
 			checksumMatch, checksumMatchErr = checksum256TestFile(filepath.Join(binaryLocation, "appsody-controller"), destController)
-			Debug.log("checksum returned: ", controllerExists)
+			Debug.log("checksum returned: ", checksumMatch)
 			if checksumMatchErr != nil {
 				return checksumMatchErr
 			}
