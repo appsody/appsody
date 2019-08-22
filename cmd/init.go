@@ -121,8 +121,12 @@ setup the local dev environment.`,
 				//return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
 				Debug.log("Project ", projectType, " found in repo ", repoName)
 
-				// need to check template name vs default?
+				// need to check template name vs default
+				if !noTemplate && !(templateName == "" || templateName == index.Projects[projectType][0].DefaultTemplate) {
+					return errors.Errorf("template name is not \"none\" and does not match %s.", index.Projects[projectType][0].DefaultTemplate)
+				}
 				projectName = index.Projects[projectType][0].URLs[0]
+
 			}
 			for _, stack := range index.Stacks {
 				if stack.ID == projectType {
