@@ -80,20 +80,22 @@ func TestPS(t *testing.T) {
 		}
 	}
 
+	if !containerRunning {
+		t.Fatal("container never appeared t ostart")
+	}
+
 	// now run appsody ps and see if we can spot the container
-	go func() {
-		fmt.Println("about to run appsody ps")
-		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"ps"}, projectDir)
-		if !strings.Contains(stopOutput, "CONTAINER") {
-			t.Fatal("output doesn't contain header line")
-		}
-		if !strings.Contains(stopOutput, containerName) {
-			t.Fatal("output doesn't contain correct conatiner name")
-		}
-		if errStop != nil {
-			log.Printf("Ignoring error running appsody ps: %s", errStop)
-		}
-	}()
+	fmt.Println("about to run appsody ps")
+	stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"ps"}, projectDir)
+	if !strings.Contains(stopOutput, "CONTAINER") {
+		t.Fatal("output doesn't contain header line")
+	}
+	if !strings.Contains(stopOutput, containerName) {
+		t.Fatal("output doesn't contain correct conatiner name")
+	}
+	if errStop != nil {
+		log.Printf("Ignoring error running appsody ps: %s", errStop)
+	}
 
 	// defer the appsody stop to close the docker container
 	defer func() {
