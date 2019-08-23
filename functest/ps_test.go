@@ -81,7 +81,7 @@ func TestPS(t *testing.T) {
 	}
 
 	if !containerRunning {
-		t.Fatal("container never appeared t ostart")
+		t.Fatal("container never appeared to start")
 	}
 
 	// now run appsody ps and see if we can spot the container
@@ -91,7 +91,7 @@ func TestPS(t *testing.T) {
 		t.Fatal("output doesn't contain header line")
 	}
 	if !strings.Contains(stopOutput, containerName) {
-		t.Fatal("output doesn't contain correct conatiner name")
+		t.Fatal("output doesn't contain correct container name")
 	}
 	if errStop != nil {
 		log.Printf("Ignoring error running appsody ps: %s", errStop)
