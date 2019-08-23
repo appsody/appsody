@@ -16,6 +16,7 @@ package cmdtest
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -32,6 +33,12 @@ import (
 type Repository struct {
 	Name string
 	URL  string
+}
+
+type RepositoryFile struct {
+	APIVersion   string
+	Generated    string
+	Repositories []Repository
 }
 
 // RunAppsodyCmdExec runs the appsody CLI with the given args in a new process
@@ -175,6 +182,25 @@ func ParseRepoList(repoListString string) []Repository {
 		}
 	}
 	return repos
+}
+
+// ParseRepoListJson takes the string from 'appsody repo list -o json'
+// and returns an array of Repository structs from the string.
+func ParseRepoListJson(repoListString string) (*RepositoryFile, error) {
+	jsonString := ""
+	repoStrs := strings.Split(repoListString, "\n")
+	var repos *RepositoryFile
+	for _, repoStr := range repoStrs {
+		if strings.HasPrefix(repoStr, "{") {
+			jsonString = repoStr
+			break
+		}
+	}
+	e := json.Unmarshal([]byte(jsonString), &repos)
+	if e != nil {
+		return nil, e
+	}
+	return repos, nil
 }
 
 // AddLocalFileRepo calls the repo add command with the repo index located

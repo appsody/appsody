@@ -15,7 +15,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
+)
+
+var (
+	output string
 )
 
 // repo list represent repo list cmd
@@ -29,7 +35,7 @@ var repoListCmd = &cobra.Command{
 		if setupErr != nil {
 			return setupErr
 		}
-		_, repoErr := repos.getRepos()
+		list, repoErr := repos.getRepos()
 		if repoErr != nil {
 			return repoErr
 		}
@@ -37,12 +43,29 @@ var repoListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		Info.log("\n", repoList)
+
+		if output == "" {
+			Info.log("\n", repoList)
+		} else if output == "yaml" {
+			result := executeMarshal(&list, yaml.Marshal)
+			Info.log("\n", result)
+		} else if output == "json" {
+			result := executeMarshal(&list, json.Marshal)
+			Info.log("\n", result)
+		}
 		return nil
 	},
 }
 
+func executeMarshal(r **RepositoryFile, marshalImpl func(v interface{}) ([]byte, error)) string {
+	bytes, err := marshalImpl(r)
+	if err != nil {
+		Error.log("Could not marshal repository", err)
+	}
+	return string(bytes)
+}
+
 func init() {
 	repoCmd.AddCommand(repoListCmd)
-
+	repoCmd.PersistentFlags().StringVarP(&output, "output", "o", "", "Output in another type yaml or json")
 }
