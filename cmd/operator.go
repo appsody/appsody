@@ -28,8 +28,6 @@ import (
 
 var operatorYamlName = "appsody-app-operator.yaml"
 var appsodyCRDName = "appsody-app-crd.yaml"
-var crdURL = "https://raw.githubusercontent.com/appsody/appsody-operator/master/deploy/releases/0.1.0/appsody-app-crd.yaml"
-var operatorURL = "https://raw.githubusercontent.com/appsody/appsody-operator/master/deploy/releases/0.1.0/appsody-app-operator.yaml"
 
 func downloadYaml(url string, target string) (string, error) {
 	Debug.log("Downloading file: ", url)
@@ -129,6 +127,7 @@ var installCmd = &cobra.Command{
 			return errors.Errorf("Error getting deploy config dir: %v", err)
 		}
 
+		var crdURL = getOperatorHome() + "/" + appsodyCRDName
 		appsodyCRD := filepath.Join(deployConfigDir, appsodyCRDName)
 		var file string
 
@@ -153,6 +152,7 @@ var installCmd = &cobra.Command{
 
 		operatorYaml := filepath.Join(deployConfigDir, operatorYamlName)
 
+		var operatorURL = getOperatorHome() + "/" + operatorYamlName
 		file, err = downloadOperatorYaml(operatorURL, operatorNamespace, watchNamespace, operatorYaml)
 		if err != nil {
 			return err
@@ -193,6 +193,7 @@ var uninstallCmd = &cobra.Command{
 			return errors.Errorf("Error checking file: %v", err)
 		}
 		if !crdFileExists {
+			var crdURL = getOperatorHome() + "/" + appsodyCRDName
 			_, err := downloadCRDYaml(crdURL, appsodyCRD)
 			if err != nil {
 				return err
@@ -222,6 +223,7 @@ var uninstallCmd = &cobra.Command{
 			if watchspace != "" {
 				watchNamespace = watchspace
 			}
+			var operatorURL = getOperatorHome() + "/" + operatorYamlName
 			_, err := downloadOperatorYaml(operatorURL, operatorNamespace, watchNamespace, operatorYaml)
 			if err != nil {
 				return err
