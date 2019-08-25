@@ -21,8 +21,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -114,8 +112,8 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		if err != nil {
 			return err
 		}
-		defer file.Close()
 
+		defer closeAndRemoveFile(file, tempConfigFile)
 		w := bufio.NewWriter(file)
 		for _, line := range txtlines {
 			fmt.Fprintln(w, line)
@@ -135,11 +133,6 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		}
 		Info.log("Deployment succeeded.")
 
-		err = os.Remove(tempConfigFile)
-		if err != nil {
-			return err
-		}
-
 		// Ensure hostname and IP config is set up for deployment
 		time.Sleep(1 * time.Second)
 
@@ -154,6 +147,14 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 	},
 }
 
+func closeAndRemoveFile(file *os.File, fileName string) {
+	file.Close()
+	Debug.log("Removing file: ", fileName)
+	err := os.Remove(fileName)
+	if err != nil {
+		Warning.logf("Failed to remove %s.", fileName)
+	}
+}
 func deployWithKnative(cmd *cobra.Command, args []string) error {
 	buildErr := buildCmd.RunE(cmd, args)
 	if buildErr != nil {
@@ -285,44 +286,19 @@ func generateDeploymentConfig() error {
 	var configDir string
 	cmdArgs = []string{"--name", extractContainerName}
 
-	if runtime.GOOS != "windows" {
-		// On Linux and OS/X we run docker create
-		cmdArgs = append([]string{"create"}, cmdArgs...)
-		cmdArgs = append(cmdArgs, stackImage)
-		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
-		if err != nil {
+	cmdArgs = append([]string{"create"}, cmdArgs...)
+	cmdArgs = append(cmdArgs, stackImage)
+	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
+	if err != nil {
 
-			Error.log("docker create command failed: ", err)
-			removeErr := dockerRemove(extractContainerName)
-			Error.log("Error in dockerRemove", removeErr)
-			return err
+		Error.log("docker create command failed: ", err)
+		removeErr := dockerRemove(extractContainerName)
+		Error.log("Error in dockerRemove", removeErr)
+		return err
 
-		}
-		configDir = extractContainerName + ":" + containerConfigDir
-
-	} else {
-		// On Windows, we need to run the container to copy the /config dir in /tmp/project
-		// and navigate all the symlinks using cp -rL
-		// then extract /tmp/project and remove the container
-
-		bashCmd := "cp -rfL " + filepath.ToSlash(containerConfigDir) + " " + filepath.ToSlash(filepath.Join("/tmp", containerConfigDir))
-
-		Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
-		_, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd)
-		if err != nil {
-			Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage)
-
-			removeErr := dockerRemove(extractContainerName)
-			if removeErr != nil {
-				Error.log("dockerRemove error ", removeErr)
-			}
-
-			return errors.Errorf("Error attempting to run copy command %s on image %s", bashCmd, stackImage)
-
-		}
-		//If everything went fine, we need to set the source project directory to /tmp/...
-		configDir = extractContainerName + ":" + filepath.Join("/tmp", containerConfigDir)
 	}
+	configDir = extractContainerName + ":" + containerConfigDir
+
 	cmdArgs = []string{"cp", configDir, "./" + configFile}
 	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
 	if err != nil {
