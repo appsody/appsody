@@ -15,8 +15,12 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"hash"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -131,6 +135,18 @@ func getEnvVarInt(searchEnvVar string) (int, error) {
 	}
 	return intVal, nil
 
+}
+
+func getExtractDir() (string, error) {
+	extractDir, envErr := getEnvVar("APPSODY_PROJECT_DIR")
+	if envErr != nil {
+		return "", envErr
+	}
+	if extractDir == "" {
+		Warning.log("The stack image does not contain APPSODY_PROJECT_DIR. Using /project")
+		return "/project", nil
+	}
+	return extractDir, nil
 }
 
 func getVolumeArgs() ([]string, error) {
@@ -253,10 +269,23 @@ func getProjectConfig() (ProjectConfig, error) {
 		}
 		stack := viper.GetString("stack")
 		Debug.log("Project stack from config file: ", stack)
+		imageRepo := cliConfig.GetString("images")
+		Debug.log("Image repository set to: ", imageRepo)
+		if imageRepo != "index.docker.io" {
+			stack = imageRepo + "/" + stack
+		}
+		Debug.log("Pulling stack image as: ", stack)
 		projectConfig = &ProjectConfig{stack}
 	}
 	return *projectConfig, nil
 }
+
+func getOperatorHome() string {
+	operatorHome := cliConfig.GetString("operator")
+	Debug.log("Operator home set to: ", operatorHome)
+	return operatorHome
+}
+
 func getProjectName() (string, error) {
 	projectDir, err := getProjectDir()
 	if err != nil {
@@ -265,19 +294,7 @@ func getProjectName() (string, error) {
 	projectName := strings.ToLower(filepath.Base(projectDir))
 	return projectName, nil
 }
-func execAndListen(command string, args []string, logger appsodylogger) (*exec.Cmd, error) {
-	return execAndListenWithWorkDir(command, args, logger, workDirNotSet) // no workdir
-}
 
-func execAndListenWithWorkDir(command string, args []string, logger appsodylogger, workdir string) (*exec.Cmd, error) {
-
-	cmd, err := execAndListenWithWorkDirReturnErr(command, args, logger, workdir)
-	if err != nil {
-		return cmd, err
-	}
-	return cmd, nil
-
-}
 func execAndWait(command string, args []string, logger appsodylogger) error {
 
 	return execAndWaitWithWorkDir(command, args, logger, workDirNotSet)
@@ -466,8 +483,6 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 			} `yaml:"runLatest"`
 		} `yaml:"spec"`
 	}
-	const YamlFilePrefix = "appsody"
-	const YamlFileSuffix = "service"
 	yamlMap := Y{}
 	err := yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
 	//Set the name
@@ -520,38 +535,17 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 		return "", err
 	}
 	Debug.logf("Generated YAML: \n%s\n", yamlStr)
-	dir, err := os.Getwd()
-	if err != nil {
-		Error.log("Error getting current directory ", err)
-		return "", err
-	}
-	// Generate a file name appsody-service-xxxxx.yaml
-	yamlFilePrefix := YamlFilePrefix + "-" + YamlFileSuffix + "-*.yaml"
+	// Generate file based on supplied config, defaulting to app-deploy.yaml
+	yamlFile := configFile
 	if dryrun {
-		Info.log("Skipping creation of yaml file with prefix: ", yamlFilePrefix)
-		return yamlFilePrefix, nil
+		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
+		return yamlFile, nil
 	}
-	yamlFile, err := ioutil.TempFile(dir, yamlFilePrefix)
-	if err == nil {
-		// We can generate the file
-		Info.log("Generating the KNative yaml deployment file ", yamlFile.Name())
-		err = os.Chmod(yamlFile.Name(), 0666)
-
-		if err != nil {
-			Error.log("Cannot set file permissions: ", yamlFile.Name(), " ", err)
-			return yamlFile.Name(), err
-		}
-		err = ioutil.WriteFile(yamlFile.Name(), yamlStr, 0666)
-		if err != nil {
-			Error.log("Cannot write yaml file: ", yamlFile.Name(), " ", err)
-			return yamlFile.Name(), err
-
-		}
-	} else {
-		// The file could not be created - error
+	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
+	if err != nil {
 		return "", fmt.Errorf("Could not create the yaml file for KNative deployment %v", err)
 	}
-	return yamlFile.Name(), nil
+	return yamlFile, nil
 }
 
 func getKNativeTemplate() string {
@@ -637,9 +631,32 @@ func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput
 	return dockerOut, nil
 }
 
+//KubeGet issues kubectl get <arg>
+func KubeGet(args []string) (string, error) {
+	Info.log("Attempting to get resource from Kubernetes ...")
+	kcmd := "kubectl"
+	kargs := []string{"get"}
+	kargs = append(kargs, args...)
+	if namespace != "" {
+		kargs = append(kargs, "--namespace", namespace)
+	}
+
+	if dryrun {
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		return "", nil
+	}
+	Info.log("Running command: ", kcmd, kargs)
+	execCmd := exec.Command(kcmd, kargs...)
+	kout, kerr := execCmd.Output()
+	if kerr != nil {
+		return "", errors.Errorf("kubectl get failed: %s", string(kout[:]))
+	}
+	return string(kout[:]), nil
+}
+
 //KubeApply issues kubectl apply -f <filename>
 func KubeApply(fileToApply string) error {
-	Info.log("Deploying your project to Kubernetes...")
+	Info.log("Attempting to apply resource in Kubernetes ...")
 	kcmd := "kubectl"
 	kargs := []string{"apply", "-f", fileToApply}
 	if namespace != "" {
@@ -661,8 +678,59 @@ func KubeApply(fileToApply string) error {
 	return nil
 }
 
-//KubeGetRouteURL issues kubectl get rt <service> -o jsonpath="{.status.url}" and prints the return URL
+//KubeDelete issues kubectl delete -f <filename>
+func KubeDelete(fileToApply string) error {
+	Info.log("Attempting to delete resource from Kubernetes...")
+	kcmd := "kubectl"
+	kargs := []string{"delete", "-f", fileToApply}
+	if namespace != "" {
+		kargs = append(kargs, "--namespace", namespace)
+	}
+
+	if dryrun {
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		return nil
+	}
+	Info.log("Running command: ", kcmd, kargs)
+	execCmd := exec.Command(kcmd, kargs...)
+	var stderr bytes.Buffer
+	execCmd.Stderr = &stderr
+	kout, kerr := execCmd.Output()
+	if kerr != nil {
+		Error.log(strings.Trim(stderr.String(), "\n"))
+		Error.log("kubectl delete failed: ", kerr)
+		return kerr
+	}
+	Debug.log("kubectl delete success: ", string(kout[:]))
+	return nil
+}
+
+//KubeGetNodePortURL kubectl get svc <service> -o jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort} and prints the return URL
+func KubeGetNodePortURL(service string) (url string, err error) {
+	kargs := append([]string{"svc"}, service)
+	kargs = append(kargs, "-o", "jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort}")
+	out, err := KubeGet(kargs)
+	// Performing the kubectl apply
+	if err != nil {
+		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
+	}
+	return out, nil
+}
+
+//KubeGetRouteURL issues kubectl get svc <service> -o jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort} and prints the return URL
 func KubeGetRouteURL(service string) (url string, err error) {
+	kargs := append([]string{"route"}, service)
+	kargs = append(kargs, "-o", "jsonpath={.status.ingress[0].host}")
+	out, err := KubeGet(kargs)
+	// Performing the kubectl apply
+	if err != nil {
+		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
+	}
+	return out, nil
+}
+
+//KubeGetKnativeURL issues kubectl get rt <service> -o jsonpath="{.status.url}" and prints the return URL
+func KubeGetKnativeURL(service string) (url string, err error) {
 	kcmd := "kubectl"
 	kargs := append([]string{"get", "rt"}, service)
 	kargs = append(kargs, "-o", "jsonpath=\"{.status.url}\"")
@@ -678,10 +746,27 @@ func KubeGetRouteURL(service string) (url string, err error) {
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
-		Error.log("kubectl get failed: ", kerr, " ", string(kout[:]))
-		return "", kerr
+		return "", errors.Errorf("kubectl get failed: %s", string(kout[:]))
 	}
 	return string(kout[:]), nil
+}
+
+//KubeGetDeploymentURL searches for an exposed hostname and port for the deployed service
+func KubeGetDeploymentURL(service string) (url string, err error) {
+	url, err = KubeGetKnativeURL(service)
+	if err == nil {
+		return url, nil
+	}
+	url, err = KubeGetRouteURL(service)
+	if err == nil {
+		return url, nil
+	}
+	url, err = KubeGetNodePortURL(service)
+	if err == nil {
+		return url, nil
+	}
+	Error.log("Failed to get deployment hostname and port: ", err)
+	return "", err
 }
 
 //dockerPullCmd
@@ -830,4 +915,40 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 		}
 	}
 	return err
+}
+
+func createChecksumHash(fileName string) (hash.Hash, error) {
+	Debug.log("Checksum oldFile", fileName)
+	newFile, err := os.Open(fileName)
+	if err != nil {
+		return nil, errors.Errorf("File open failed for %s controller binary: %v", fileName, err)
+
+	}
+	defer newFile.Close()
+
+	computedSha256 := sha256.New()
+	if _, err := io.Copy(computedSha256, newFile); err != nil {
+		return nil, errors.Errorf("sha256 copy failed for %s controller binary %v", fileName, err)
+	}
+	return computedSha256, nil
+}
+
+func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
+	var checkValue bool
+
+	oldSha256, errOld := createChecksumHash(oldFileName)
+	if errOld != nil {
+		return false, errOld
+	}
+	newSha256, errNew := createChecksumHash(newFileName)
+	if errNew != nil {
+		return false, errNew
+	}
+	Debug.logf("%x\n", oldSha256.Sum(nil))
+	Debug.logf("%x\n", newSha256.Sum(nil))
+	checkValue = bytes.Equal(oldSha256.Sum(nil), newSha256.Sum(nil))
+
+	Debug.log("Checksum returned: ", checkValue)
+
+	return checkValue, nil
 }

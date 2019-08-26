@@ -16,10 +16,29 @@ package cmd
 
 import (
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
+
+func checkDockerBuildOptions(options []string) error {
+	buildOptionsTest := "(^((-t)|(--tag)|(-f)|(--file))((=?$)|(=.*)))"
+
+	blackListedBuildOptionsRegexp := regexp.MustCompile(buildOptionsTest)
+	for _, value := range options {
+		isInBlackListed := blackListedBuildOptionsRegexp.MatchString(value)
+		if isInBlackListed {
+			return errors.Errorf("%s is not allowed in --docker-options", value)
+
+		}
+	}
+	return nil
+
+}
+
+var dockerBuildOptions string
 
 // buildCmd provides the ability run local builds, or setup/delete Tekton builds, for an appsody project
 var buildCmd = &cobra.Command{
@@ -47,9 +66,24 @@ var buildCmd = &cobra.Command{
 		if tag != "" {
 			buildImage = tag
 		}
-		cmdName := "docker"
-		cmdArgs := []string{"build", "-t", buildImage, "-f", dockerfile, extractDir}
-		execError := execAndWait(cmdName, cmdArgs, DockerLog)
+		//cmdName := "docker"
+		cmdArgs := []string{"-t", buildImage}
+
+		if dockerBuildOptions != "" {
+			dockerBuildOptions = strings.TrimPrefix(dockerBuildOptions, " ")
+			dockerBuildOptions = strings.TrimSuffix(dockerBuildOptions, " ")
+			options := strings.Split(dockerBuildOptions, " ")
+			err := checkDockerBuildOptions(options)
+			if err != nil {
+				return err
+			}
+			cmdArgs = append(cmdArgs, options...)
+
+		}
+		cmdArgs = append(cmdArgs, "-f", dockerfile, extractDir)
+		Debug.log("final cmd args", cmdArgs)
+		execError := DockerBuild(cmdArgs, DockerLog)
+
 		if execError != nil {
 			return execError
 		}
@@ -63,4 +97,6 @@ var buildCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(buildCmd)
 	buildCmd.PersistentFlags().StringVarP(&tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
+	buildCmd.PersistentFlags().StringVar(&dockerBuildOptions, "docker-options", "", "Additional options to be sent when running docker commands.  Value must be in \"\".")
+
 }

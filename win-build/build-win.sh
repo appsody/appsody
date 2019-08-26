@@ -2,7 +2,7 @@
 set -e
 cd $(dirname "$0")
 VERSION=$4
-FILE_NAME="appsody-$VERSION-windows.tar"
+FILE_NAME="appsody-$VERSION-windows.tar.gz"
 FILE_POSTFIX="windows"
 CMD_NAME=$2
 CMD_NAME=${CMD_NAME%.*}

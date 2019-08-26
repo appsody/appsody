@@ -14,17 +14,25 @@
 package functest
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"time"
-
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
+// get the STACKSLIST environment variable
+// for testing locally we need to set the stacksList manually
+//var stacksList = ""
+//var stacksList = "incubator/java-microprofile incubator/nodejs experimental/nodejs-functions"
+var stacksList = os.Getenv("STACKSLIST")
+
+// Test appsody run of the nodejs-express stack and check the http://localhost:3000/health endpoint
 func TestRun(t *testing.T) {
 	// first add the test repo index
 	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
@@ -92,5 +100,68 @@ func TestRun(t *testing.T) {
 
 	if !healthCheckOK {
 		t.Errorf("Did not receive an OK health check within %d seconds.", healthCheckTimeout)
+	}
+}
+
+// Simple test for appsody run command. A future enhancement would be to verify the endpoint or console output if there is no web endpoint
+func TestRunSimple(t *testing.T) {
+
+	log.Println("stacksList is: ", stacksList)
+
+	// if stacksList is empty there is nothing to test so return
+	if stacksList == "" {
+		log.Println("stacksList is empty, exiting test...")
+		return
+	}
+
+	// replace incubator with appsodyhub to match current naming convention for repos
+	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
+
+	// split the appsodyStack env variable
+	stackRaw := strings.Split(stacksList, " ")
+
+	// loop through the stacks
+	for i := range stackRaw {
+
+		log.Println("***Testing stack: ", stackRaw[i], "***")
+
+		// first add the test repo index
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// create a temporary dir to create the project and run the test
+		projectDir, err := ioutil.TempDir("", "appsody-run-simple-test")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		log.Println("Created project dir: " + projectDir)
+
+		// appsody init
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
+		log.Println("Running appsody init...")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// appsody run
+		runChannel := make(chan error)
+		go func() {
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"run"}, projectDir)
+			runChannel <- err
+		}()
+
+		// stop and clean up after the run
+		func() {
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
+			if err != nil {
+				fmt.Printf("Ignoring error running appsody stop: %s", err)
+			}
+		}()
+
+		cleanup()
+		os.RemoveAll(projectDir)
 	}
 }

@@ -107,7 +107,10 @@ in preparation to build the final docker image.`,
 			return dockerPullErr
 		}
 
-		containerProjectDir := "/project"
+		containerProjectDir, containerProjectDirErr := getExtractDir()
+		if containerProjectDirErr != nil {
+			return containerProjectDirErr
+		}
 		Debug.log("Container project dir: ", containerProjectDir)
 
 		volumeMaps, volumeErr := getVolumeArgs()

@@ -20,7 +20,7 @@ The Appsody CLI is made available by creating a tagged GitHub release
     * appsody-x.y.z-1.x86_64.rpm
     * appsody-x.y.z-darwin-amd64.tar
     * appsody-x.y.z-linux-amd64.tar
-    * appsody-x.y.z-windows.tar
+    * appsody-x.y.z-windows.tar.gz
     * appsody-homebrew-x.y.z.tar.gz
     * appsody.rb
     * appsody_x.y.z_amd64.deb
@@ -38,7 +38,7 @@ We plan to release the Appsody CLI at the end of each sprint - approximately eve
 
 # Dependencies
 The Appsody CLI depends on a number of assets:
-1. The `Appsody Controller`, which is available [here](https://github.com/appsody/controller). The controller version to pull is located in the `Makefile` as `CONTROLLER_BASE_URL` variable. The version is updated manually as needed, there is no automatic update when a new controller is release. However, the dependent controller version does need to be released first, as the build process for the Appsody CLI retrieves the controller binaries and does not build them. 
+1. The `Appsody Controller`, which is available [here](https://github.com/appsody/controller). The controller version to pull is located in the `Makefile` as `CONTROLLER_VERSION` variable. The version is updated manually as needed, there is no automatic update when a new controller is release. However, the dependent controller version does need to be released first, as the build process for the Appsody CLI retrieves the controller binaries and does not build them. 
 1. The `debian-builder` Docker image, which is built separately from [this repo](https://github.com/appsody/debian-builder). The `Makefile` has a variable that points to the latest version of this image, called `DOCKER_IMAGE_DEB`. This image is used during the deploy stage to generate the Debian installer for Appsody. 
 1. The `rpmbuilder` Docker image, which builds the RPM installer for Appsody. Currently, we use the image provided by `alectolytic`, and we point to it through the `Makefile` env var `DOCKER_IMAGE_RPM`.
 

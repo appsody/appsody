@@ -19,6 +19,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sort"
+	"strings"
+
 	//"math/rand"
 	"net/http"
 	"os"
@@ -31,6 +34,14 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
+
+type Stack struct {
+	repoName    string
+	ID          string
+	Version     string
+	Description string
+	Templates   string
+}
 
 type RepoIndex struct {
 	APIVersion string                     `yaml:"apiVersion"`
@@ -45,19 +56,20 @@ type RepoIndices map[string]*RepoIndex
 type ProjectVersions []*ProjectVersion
 
 type ProjectVersion struct {
-	APIVersion  string        `yaml:"apiVersion"`
-	ID          string        `yaml:"id,omitempty"`
-	Created     time.Time     `yaml:"created"`
-	Name        string        `yaml:"name"`
-	Home        string        `yaml:"home"`
-	Version     string        `yaml:"version"`
-	Description string        `yaml:"description"`
-	Keywords    []string      `yaml:"keywords"`
-	Maintainers []interface{} `yaml:"maintainers"`
-	Icon        string        `yaml:"icon"`
-	Digest      string        `yaml:"digest"`
-	URLs        []string      `yaml:"urls"` //V1
-	Templates   []Template    `yaml:"templates,omitempty"`
+	APIVersion      string        `yaml:"apiVersion"`
+	ID              string        `yaml:"id,omitempty"`
+	Created         time.Time     `yaml:"created"`
+	Name            string        `yaml:"name"`
+	Home            string        `yaml:"home"`
+	Version         string        `yaml:"version"`
+	Description     string        `yaml:"description"`
+	Keywords        []string      `yaml:"keywords"`
+	Maintainers     []interface{} `yaml:"maintainers"`
+	Icon            string        `yaml:"icon"`
+	Digest          string        `yaml:"digest"`
+	URLs            []string      `yaml:"urls"` //V1
+	Templates       []Template    `yaml:"templates,omitempty"`
+	DefaultTemplate string        `yaml:"default-template"`
 }
 
 type RepositoryFile struct {
@@ -77,8 +89,28 @@ type Template struct {
 	URL string `yaml:"url"`
 }
 
+func findTemplateURL(projectVersion ProjectVersion, templateName string) string {
+	templates := projectVersion.Templates
+
+	for _, value := range templates {
+		if value.ID == templateName {
+			return value.URL
+		}
+
+	}
+	return ""
+}
+
+var unsupportedRepos []string
 var (
-	appsodyHubURL = "https://raw.githubusercontent.com/appsody/stacks/master/index.yaml"
+	supportedIndexAPIVersion = "v2"
+)
+
+var (
+	appsodyHubURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
+)
+var (
+	experimentalRepositoryURL = "https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml"
 )
 
 // repoCmd represents the repo command
@@ -149,7 +181,10 @@ func ensureConfig() error {
 				URL:       appsodyHubURL,
 				IsDefault: true,
 			})
-
+			repo.Add(&RepositoryEntry{
+				Name: "experimental",
+				URL:  experimentalRepositoryURL,
+			})
 			Debug.log("Creating ", repoFileLocation)
 			if err := repo.WriteFile(repoFileLocation); err != nil {
 				return errors.Errorf("Error writing %s file: %s ", repoFileLocation, err)
@@ -253,50 +288,26 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	return &index, nil
 }
 
-func (index *RepoIndex) listProjects(repoName string) string {
+func (index *RepoIndex) listProjects(repoName string) (string, error) {
+	var Stacks = []Stack{}
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
-	for id, value := range index.Projects {
-		table.AddRow(repoName, id, value[0].Version, value[0].Description)
+	table.Wrap = true
+	if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+		Debug.log("Adding unsupported repoistory", repoName)
+		unsupportedRepos = append(unsupportedRepos, repoName)
 	}
-	for _, value := range index.Stacks {
-		table.AddRow(repoName, value.ID, value.Version, value.Description)
-	}
-	return table.String()
-}
-func (r *RepositoryFile) listProjects() (string, error) {
-	table := uitable.New()
-	table.MaxColWidth = 60
-	//table.AddRow("REPO", "ID", "VERSION", "TEMPLATES", "DESCRIPTION")
-	table.AddRow("REPO", "ID", "VERSION", "DESCRIPTION")
-	indices, err := r.GetIndices()
-	//rnd := rand.New(rand.NewSource(99))
+	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
 
-	//err := index.getIndex()
-	//templates := [8]string{"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"}
+	Stacks, err := index.buildStacksFromIndex(repoName, Stacks)
 	if err != nil {
-		return "", errors.Errorf("Could not read indices: %v", err)
+		return "", err
 	}
-	if len(indices) != 0 {
-		for repoName, index := range indices {
-			//Info.log("\n", "Repository: ", repoName)
-			for id, value := range index.Projects {
-				//r1 := rnd.Intn(8)
-				//r2 := rnd.Intn(8)
-				//r3 := rnd.Intn(8)
-				//rndTemplates := "*" + templates[r1] + ", " + templates[r2] + ", " + templates[r3]
-				//table.AddRow(repoName, id, value[0].Version, rndTemplates, value[0].Description)
-				table.AddRow(repoName, id, value[0].Version, value[0].Description)
-			}
-			for _, value := range index.Stacks {
-				table.AddRow(repoName, value.ID, value.Version, value.Description)
-			}
-		}
-		return table.String(), nil
-	}
-	return "", errors.New("there are no repositories in your configuration")
 
+	for _, value := range Stacks {
+		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
+	}
+	return table.String(), nil
 }
 func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
@@ -305,7 +316,11 @@ func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return index.listProjects(repoName), nil
+		tableString, err := index.listProjects(repoName)
+		if err != nil {
+			return "", err
+		}
+		return tableString, nil
 	}
 	return "", errors.New("cannot locate repository named " + repoName)
 }
@@ -329,19 +344,29 @@ func (r *RepositoryFile) getRepos() (*RepositoryFile, error) {
 	return r, nil
 }
 
-func (r *RepositoryFile) listRepos() string {
+func (r *RepositoryFile) listRepos() (string, error) {
+	var entries = []RepositoryEntry{}
 	table := uitable.New()
 	table.MaxColWidth = 120
 	table.AddRow("NAME", "URL")
 	for _, value := range r.Repositories {
-		var repoName string
-		if repoName = value.Name; repoName == r.GetDefaultRepoName() {
+		repoName := value.Name
+		defaultRepoName, err := r.GetDefaultRepoName()
+		if err != nil {
+			return "", err
+		}
+		if repoName == defaultRepoName {
 			repoName = "*" + repoName
 		}
-		table.AddRow(repoName, value.URL)
+		entries = append(entries, RepositoryEntry{repoName, value.URL, value.IsDefault})
+
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
+	for _, value := range entries {
+		table.AddRow(value.Name, value.URL)
 	}
 
-	return table.String()
+	return table.String(), nil
 }
 
 func NewRepoFile() *RepositoryFile {
@@ -382,13 +407,35 @@ func (r *RepositoryFile) HasURL(url string) bool {
 	}
 	return false
 }
-func (r *RepositoryFile) GetDefaultRepoName() string {
+func (r *RepositoryFile) GetDefaultRepoName() (string, error) {
+	// Check if there are any repos first
+	if len(r.Repositories) < 1 {
+		return "", errors.New("your $HOME/.appsody/repository/repository.yaml contains no repositories")
+	}
 	for _, rf := range r.Repositories {
 		if rf.IsDefault {
-			return rf.Name
+			return rf.Name, nil
 		}
 	}
-	return ""
+	// If we got this far, no default repo was found - this is likely to be a 0.2.8 or prior
+	// We'll set the default repo
+	// If there's only one repo - set it as default
+	// And if appsodyhub isn't there set the first one as default
+	var repoName string
+	if len(r.Repositories) == 1 || !r.Has("appsodyhub") {
+		r.Repositories[0].IsDefault = true
+		repoName = r.Repositories[0].Name
+	} else {
+		// If there's more than one, let's search for appsodyhub first
+		repo := r.GetRepo("appsodyhub")
+		repo.IsDefault = true
+		repoName = repo.Name
+	}
+	if err := r.WriteFile(getRepoFileLocation()); err != nil {
+		return "", err
+	}
+	Info.log("Your default repository is now set to ", repoName)
+	return repoName, nil
 }
 
 func (r *RepositoryFile) Remove(name string) {
@@ -399,6 +446,26 @@ func (r *RepositoryFile) Remove(name string) {
 			return
 		}
 	}
+}
+
+func (r *RepositoryFile) SetDefaultRepoName(name string, defaultRepoName string) (string, error) {
+	var repoName string
+	for index, rf := range r.Repositories {
+		//set current default repo to false
+		if rf.Name == defaultRepoName {
+			r.Repositories[index].IsDefault = false
+		}
+		//set new default repo
+		if rf.Name == name {
+			r.Repositories[index].IsDefault = true
+			repoName = rf.Name
+		}
+	}
+	if err := r.WriteFile(getRepoFileLocation()); err != nil {
+		return "", err
+	}
+	Info.log("Your default repository is now set to ", repoName)
+	return repoName, nil
 }
 
 func (r *RepositoryFile) WriteFile(path string) error {
@@ -420,4 +487,85 @@ func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
 		indices[rf.Name] = index
 	}
 	return indices, nil
+}
+func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([]Stack, error) {
+
+	for id, value := range index.Projects {
+
+		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, "*" + value[0].DefaultTemplate})
+	}
+	for _, value := range index.Stacks {
+		Templates := value.Templates
+
+		templatesListString := ""
+		if value.Templates != nil {
+			sort.Slice(Templates, func(i, j int) bool { return Templates[i].ID < Templates[j].ID })
+
+			for _, template := range Templates {
+				defaultMarker := ""
+				if template.ID == value.DefaultTemplate {
+					defaultMarker = "*"
+				}
+				if templatesListString != "" {
+					templatesListString += ", " + defaultMarker + template.ID
+				} else {
+					templatesListString = defaultMarker + template.ID
+				}
+
+			}
+		}
+
+		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, templatesListString})
+	}
+
+	sort.Slice(Stacks, func(i, j int) bool {
+		if Stacks[i].repoName < Stacks[j].repoName {
+			return true
+		}
+		if Stacks[i].repoName == Stacks[j].repoName && Stacks[i].ID < Stacks[j].ID {
+			return true
+
+		}
+		return false
+	})
+
+	return Stacks, nil
+}
+
+func (r *RepositoryFile) listProjects() (string, error) {
+	var Stacks = []Stack{}
+	table := uitable.New()
+	table.MaxColWidth = 60
+	table.Wrap = true
+
+	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
+	indices, err := r.GetIndices()
+
+	if err != nil {
+		return "", errors.Errorf("Could not read indices: %v", err)
+	}
+	if len(indices) != 0 {
+		for repoName, index := range indices {
+
+			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+				Debug.log("Adding unsupported repoistory", repoName)
+				unsupportedRepos = append(unsupportedRepos, repoName)
+			}
+
+			var errStack error
+			Stacks, errStack = index.buildStacksFromIndex(repoName, Stacks)
+			if errStack != nil {
+				return "", errStack
+			}
+
+		}
+
+	} else {
+		return "", errors.New("there are no repositories in your configuration")
+	}
+	for _, value := range Stacks {
+
+		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
+	}
+	return table.String(), nil
 }

@@ -56,12 +56,12 @@ var bashCompletionCmd = &cobra.Command{
 			"# To install on macOS\n" +
 			"# 1. brew install bash-completion\n" +
 			"# 2. Make sure to update your ~/.bash_profile as instructed\n" +
-			"# 3. appsody completion > /usr/local/etc/bash_completion.d/appsdy\n"
+			"# 3. appsody completion > /usr/local/etc/bash_completion.d/appsody\n"
 		extra := "flags=()\n" + spaceTab +
-			"kdl=\"$((appsody list) | awk -F ' ' '{print $1}')\"\n" +
+			"kdl=\"$((appsody list) | awk -F ' ' '{print $1}{print $2}')\"\n" +
 			spaceTab + "arr=($kdl)\n" + spaceTab + "len=${#arr[@]}\n" +
-			spaceTab + "for (( i=1; i<$len; i++ ))\n" + spaceTab + "do\n" +
-			spaceTab + spaceTab + "commands+=(\"${arr[$i]}\")\n" + spaceTab + "done\n"
+			spaceTab + "for (( i=2; i<$len; i=i+2 ))\n" + spaceTab + "do\n" +
+			spaceTab + spaceTab + "j=i+1\n" + "thecmd=${arr[i]}/${arr[j]}\n" + "commands+=(\"${thecmd}\")\n" + spaceTab + "done\n"
 
 		fmt.Println(header + afterAppsodyDevInit[0] + "_appsody_init()\n" + strings.Replace(afterAppsodyDevInit[1], "flags=()", extra, 1))
 

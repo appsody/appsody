@@ -22,7 +22,7 @@ import (
 var repoListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List configured Appsody repositories",
-	Long:  ``,
+	Long:  `List configured Appsody repositories. An asterisk denotes the default repository.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var repos RepositoryFile
 		setupErr := setupConfig()
@@ -33,7 +33,10 @@ var repoListCmd = &cobra.Command{
 		if repoErr != nil {
 			return repoErr
 		}
-		var repoList = repos.listRepos()
+		repoList, err := repos.listRepos()
+		if err != nil {
+			return err
+		}
 		Info.log("\n", repoList)
 		return nil
 	},
