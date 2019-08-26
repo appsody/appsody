@@ -88,3 +88,19 @@ func TestListV2(t *testing.T) {
 	}
 
 }
+
+func TestRepoJson(t *testing.T) {
+	args := []string{"list", "-o", "json"}
+	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := cmdtest.ParseListJson(cmdtest.ParseJson(output))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list[0].ID != "java-microprofile" {
+		t.Error("list command should contain id 'java-microprofile'", list[0].ID, output)
+	}
+}

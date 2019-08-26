@@ -20,10 +20,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	output string
-)
-
 // repo list represent repo list cmd
 var repoListCmd = &cobra.Command{
 	Use:   "list",
@@ -57,7 +53,7 @@ var repoListCmd = &cobra.Command{
 	},
 }
 
-func executeMarshal(r **RepositoryFile, marshalImpl func(v interface{}) ([]byte, error)) string {
+func executeMarshal(r interface{}, marshalImpl func(v interface{}) ([]byte, error)) string {
 	bytes, err := marshalImpl(r)
 	if err != nil {
 		Error.log("Could not marshal repository", err)
@@ -67,5 +63,4 @@ func executeMarshal(r **RepositoryFile, marshalImpl func(v interface{}) ([]byte,
 
 func init() {
 	repoCmd.AddCommand(repoListCmd)
-	repoCmd.PersistentFlags().StringVarP(&output, "output", "o", "", "Output in another type yaml or json")
 }

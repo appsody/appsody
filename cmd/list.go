@@ -15,8 +15,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
+)
+
+var (
+	output string
 )
 
 // listCmd represents the list command
@@ -44,7 +50,22 @@ var listCmd = &cobra.Command{
 			if len(unsupportedRepos) > 0 {
 				Warning.log("The following repositories .yaml have an  APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", unsupportedRepos)
 			}
-			Info.log("\n", projects)
+			if output == "" {
+				Info.log("\n", projects)
+			} else {
+				list, err := values(repos.GetIndices)
+				if err != nil {
+					return err
+				}
+				if output == "yaml" {
+					result := executeMarshal(&list, yaml.Marshal)
+					Info.log("\n", result)
+				} else if output == "json" {
+					result := executeMarshal(&list, json.Marshal)
+					Info.log("\n", result)
+				}
+			}
+
 		} else {
 			repoName := args[0]
 			_, err := repos.getRepos()
@@ -66,7 +87,26 @@ var listCmd = &cobra.Command{
 	},
 }
 
+func values(indicesFunc func() (RepoIndices, error)) ([]Stack, error) {
+	var stacks []Stack
+	indices, err := indicesFunc()
+	if err != nil {
+		return nil, errors.Errorf("Could not read indices: %v", err)
+	}
+
+	if len(indices) != 0 {
+		for repoName, index := range indices {
+			var errStack error
+			stacks, errStack = index.buildStacksFromIndex(repoName, stacks)
+			if errStack != nil {
+				return nil, errStack
+			}
+		}
+	}
+	return stacks, nil
+}
+
 func init() {
 	rootCmd.AddCommand(listCmd)
-
+	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "", "Output in another type yaml or json")
 }

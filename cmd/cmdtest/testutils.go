@@ -41,6 +41,12 @@ type RepositoryFile struct {
 	Repositories []Repository
 }
 
+type Stack struct {
+	ID          string
+	Version     string
+	Description string
+}
+
 // RunAppsodyCmdExec runs the appsody CLI with the given args in a new process
 // The stdout and stderr are captured, printed, and returned
 // args will be passed to the appsody command
@@ -186,21 +192,34 @@ func ParseRepoList(repoListString string) []Repository {
 
 // ParseRepoListJson takes the string from 'appsody repo list -o json'
 // and returns an array of Repository structs from the string.
-func ParseRepoListJson(repoListString string) (*RepositoryFile, error) {
+func ParseJson(repoListString string) string {
 	jsonString := ""
-	repoStrs := strings.Split(repoListString, "\n")
-	var repos *RepositoryFile
-	for _, repoStr := range repoStrs {
-		if strings.HasPrefix(repoStr, "{") {
+	repoStrings := strings.Split(repoListString, "\n")
+	for _, repoStr := range repoStrings {
+		if strings.HasPrefix(repoStr, "{") || strings.HasPrefix(repoStr, "[{") {
 			jsonString = repoStr
 			break
 		}
 	}
+	return jsonString
+}
+
+func ParseRepoListJson(jsonString string) (*RepositoryFile, error) {
+	var repos *RepositoryFile
 	e := json.Unmarshal([]byte(jsonString), &repos)
 	if e != nil {
 		return nil, e
 	}
 	return repos, nil
+}
+
+func ParseListJson(jsonString string) ([]Stack, error) {
+	var stacks []Stack
+	e := json.Unmarshal([]byte(jsonString), &stacks)
+	if e != nil {
+		return nil, e
+	}
+	return stacks, nil
 }
 
 // AddLocalFileRepo calls the repo add command with the repo index located

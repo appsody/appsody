@@ -51,14 +51,14 @@ func TestRepoList(t *testing.T) {
 	}
 }
 
-func TestRepoListYaml(t *testing.T) {
+func TestRepoListJson(t *testing.T) {
 	args := []string{"repo", "list", "--config", "testdata/multiple_repository_config/config.yaml", "-o", "json"}
 	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	list, err := cmdtest.ParseRepoListJson(output)
+	list, err := cmdtest.ParseRepoListJson(cmdtest.ParseJson(output))
 	if err != nil {
 		t.Fatal(err)
 	}
