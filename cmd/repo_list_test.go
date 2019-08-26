@@ -58,7 +58,7 @@ func TestRepoListJson(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list, err := cmdtest.ParseRepoListJson(cmdtest.ParseJson(output))
+	list, err := cmdtest.ParseRepoListJSON(cmdtest.ParseJSON(output))
 	if err != nil {
 		t.Fatal(err)
 	}

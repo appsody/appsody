@@ -96,7 +96,7 @@ func TestRepoJson(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list, err := cmdtest.ParseListJson(cmdtest.ParseJson(output))
+	list, err := cmdtest.ParseListJSON(cmdtest.ParseJSON(output))
 	if err != nil {
 		t.Fatal(err)
 	}

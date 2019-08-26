@@ -190,9 +190,8 @@ func ParseRepoList(repoListString string) []Repository {
 	return repos
 }
 
-// ParseRepoListJson takes the string from 'appsody repo list -o json'
-// and returns an array of Repository structs from the string.
-func ParseJson(repoListString string) string {
+// ParseJSON finds the json on the output string
+func ParseJSON(repoListString string) string {
 	jsonString := ""
 	repoStrings := strings.Split(repoListString, "\n")
 	for _, repoStr := range repoStrings {
@@ -204,7 +203,9 @@ func ParseJson(repoListString string) string {
 	return jsonString
 }
 
-func ParseRepoListJson(jsonString string) (*RepositoryFile, error) {
+// ParseRepoListJSON takes the json from 'appsody repo list -o json'
+// and returns a RepositoryFile from the string.
+func ParseRepoListJSON(jsonString string) (*RepositoryFile, error) {
 	var repos *RepositoryFile
 	e := json.Unmarshal([]byte(jsonString), &repos)
 	if e != nil {
@@ -213,7 +214,9 @@ func ParseRepoListJson(jsonString string) (*RepositoryFile, error) {
 	return repos, nil
 }
 
-func ParseListJson(jsonString string) ([]Stack, error) {
+// ParseListJSON takes the json from 'appsody list -o json'
+// and returns an array of Stack from the string.
+func ParseListJSON(jsonString string) ([]Stack, error) {
 	var stacks []Stack
 	e := json.Unmarshal([]byte(jsonString), &stacks)
 	if e != nil {
