@@ -148,14 +148,53 @@ func TestRunSimple(t *testing.T) {
 
 		// appsody run
 		runChannel := make(chan error)
+		containerName := "testRunSimpleContainer"
 		go func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"run"}, projectDir)
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"run", "--name", containerName}, projectDir)
 			runChannel <- err
 		}()
 
+		// It will take a while for the container to spin up, so let's use docker ps to wait for it
+		fmt.Println("calling docker ps to wait for container")
+		containerRunning := false
+		count := 100
+		for {
+			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName})
+			if dockerErr != nil {
+				log.Print("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
+			}
+			if dockerOutput != "" {
+				fmt.Println("docker container " + containerName + " was found")
+				containerRunning = true
+			} else {
+				time.Sleep(2 * time.Second)
+				count = count - 1
+			}
+			if count == 0 || containerRunning {
+				break
+			}
+		}
+
+		if !containerRunning {
+			t.Fatal("container never appeared to start")
+		}
+
+		// now run appsody ps and see if we can spot the container
+		fmt.Println("about to run appsody ps")
+		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"ps"}, projectDir)
+		if !strings.Contains(stopOutput, "CONTAINER") {
+			t.Fatal("output doesn't contain header line")
+		}
+		if !strings.Contains(stopOutput, containerName) {
+			t.Fatal("output doesn't contain correct container name")
+		}
+		if errStop != nil {
+			log.Printf("Ignoring error running appsody ps: %s", errStop)
+		}
+
 		// stop and clean up after the run
 		func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", "testRunSimpleContainer"}, projectDir)
 			if err != nil {
 				fmt.Printf("Ignoring error running appsody stop: %s", err)
 			}
