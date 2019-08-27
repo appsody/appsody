@@ -891,14 +891,13 @@ func getLatestVersion() string {
 		Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
 	}
 	url := resp.Request.URL.String()
-	r, _ := regexp.Compile("\\d.\\d.\\d")
+	r, _ := regexp.Compile(`\d.\d.\d`)
 
 	return r.FindString(url)
 }
 
 func checkIfLatestVersion() {
-	var latest string
-	latest = getLatestVersion()
+	var latest = getLatestVersion()
 	if VERSION != "vlatest" && VERSION != latest {
 		fmt.Println("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
 	}
@@ -916,7 +915,7 @@ func checkTime() {
 	}
 
 	fileContent = string(data)
-	r, _ := regexp.Compile("lastversioncheck: .*")
+	r, _ := regexp.Compile(`lastversioncheck: .*`)
 	lastCheckTime = r.FindString(fileContent)[18:]
 	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 
@@ -925,7 +924,7 @@ func checkTime() {
 		fmt.Println(err)
 	}
 
-	if time.Now().Sub(lastTime).Hours() > 24 {
+	if time.Since(lastTime).Hours() > 24 {
 		checkIfLatestVersion()
 		output := bytes.Replace(data, []byte(lastCheckTime), []byte(currentTime), -1)
 		if err = ioutil.WriteFile(configFile, output, 0666); err != nil {
