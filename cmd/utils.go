@@ -925,7 +925,7 @@ func checkTime() {
 		fmt.Println(err)
 	}
 
-	if time.Now().Sub(lastTime).Seconds() > 10 {
+	if time.Now().Sub(lastTime).Hours() > 24 {
 		checkIfLatestVersion()
 		output := bytes.Replace(data, []byte(lastCheckTime), []byte(currentTime), -1)
 		if err = ioutil.WriteFile(configFile, output, 0666); err != nil {
