@@ -43,12 +43,18 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			return generateDeploymentConfig()
 		}
 		// Check for the Appsody Operator
-		kargs := []string{"service/appsody-operator"}
-		_, err := KubeGet(kargs)
+
+		operatorExists, operatorExistsErr := operatorExistsWithWatchspace(namespace)
+		if operatorExistsErr != nil {
+			return operatorExistsErr
+		}
+
+		//kargs := []string{"service/appsody-operator"}
+		//_, err := KubeGet(kargs)
 		// Performing the kubectl apply
-		if err != nil {
-			Warning.log("Failed to find Appsody operator. Attempting to install...")
-			err = installCmd.RunE(cmd, args)
+		if !operatorExists {
+			Warning.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
+			err := installCmd.RunE(cmd, args)
 			if err != nil {
 				return errors.Errorf("Failed to install Appsody operator. Exiting... %s", configFile)
 			}
