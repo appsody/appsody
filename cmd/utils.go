@@ -22,12 +22,15 @@ import (
 	"hash"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -45,6 +48,10 @@ func (e NotAnAppsodyProject) Error() string { return string(e) }
 
 var (
 	ConfigFile = ".appsody-config.yaml"
+)
+
+var (
+	LatestVersionURL = "https://github.com/appsody/appsody/releases/latest"
 )
 
 var imagePulled = make(map[string]bool)
@@ -876,4 +883,53 @@ func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
 	Debug.log("Checksum returned", checkValue)
 
 	return checkValue, nil
+}
+
+func getLatestVersion() string {
+	resp, err := http.Get(LatestVersionURL)
+	if err != nil {
+		Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
+	}
+	url := resp.Request.URL.String()
+	r, _ := regexp.Compile("\\d.\\d.\\d")
+
+	return r.FindString(url)
+}
+
+func checkIfLatestVersion() {
+	var latest string
+	latest = getLatestVersion()
+	if VERSION != "vlatest" && VERSION != latest {
+		fmt.Println("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
+	}
+}
+
+func checkTime() {
+	var fileContent string
+	var lastCheckTime string
+	var currentTime string
+
+	var configFile = getDefaultConfigFile()
+	data, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		Warning.log("Unable to read config file")
+	}
+
+	fileContent = string(data)
+	r, _ := regexp.Compile("lastversioncheck: .*")
+	lastCheckTime = r.FindString(fileContent)[18:]
+	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
+
+	lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	if time.Now().Sub(lastTime).Seconds() > 10 {
+		checkIfLatestVersion()
+		output := bytes.Replace(data, []byte(lastCheckTime), []byte(currentTime), -1)
+		if err = ioutil.WriteFile(configFile, output, 0666); err != nil {
+			Warning.log("Error writing to config file")
+		}
+	}
 }
