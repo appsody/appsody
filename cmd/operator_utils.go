@@ -117,6 +117,10 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, error) {
 		return false, getErr
 	}
 	getOutput = strings.Trim(getOutput, "'")
+	if getOutput == "" {
+		Info.log("There are no depooyments with appsody-operator")
+		return false, nil
+	}
 	deployments := strings.Split(getOutput, " ")
 	Debug.log("deployments with operators: ", deployments)
 	for _, deploymentNamespace := range deployments {
