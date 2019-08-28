@@ -165,5 +165,5 @@ func removeOperator(operatorNamespace string) error {
 func init() {
 
 	operatorCmd.AddCommand(uninstallCmd)
-	installCmd.PersistentFlags().BoolVar(&force, "force", false, "Force removal of appsody apps if present")
+	uninstallCmd.PersistentFlags().BoolVar(&force, "force", false, "Force removal of appsody apps if present")
 }
