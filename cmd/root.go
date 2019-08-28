@@ -54,6 +54,8 @@ func homeDir() (string, error) {
 	return home, nil
 }
 
+var operatorHome = "https://github.com/appsody/appsody-operator/releases/latest/download"
+
 var rootCmd = &cobra.Command{
 	Use:           "appsody",
 	SilenceErrors: true,
@@ -125,6 +127,7 @@ func initConfig() error {
 	}
 	cliConfig.SetDefault("home", filepath.Join(homeDirectory, ".appsody"))
 	cliConfig.SetDefault("images", "index.docker.io")
+	cliConfig.SetDefault("operator", operatorHome)
 	cliConfig.SetDefault("tektonserver", "")
 	cliConfig.SetDefault("lastversioncheck", "none")
 	if cfgFile != "" {

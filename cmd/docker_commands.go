@@ -23,6 +23,11 @@ func RunDockerCommandAndWait(args []string, logger appsodylogger) error {
 	if err != nil {
 		return err
 	}
+	if dryrun {
+		Info.log("Dry Run - Skipping : cmd.Wait")
+
+		return nil
+	}
 	return cmd.Wait()
 
 }
