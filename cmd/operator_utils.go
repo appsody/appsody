@@ -218,5 +218,5 @@ func getOperatorWatchspace(namespace string) (string, error) {
 	if watchspace == "" {
 		Debug.log("This operator watches the entire cluster ")
 	}
-	return "", nil
+	return watchspace, nil
 }
