@@ -149,6 +149,10 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 		Info.log("There are no deployments with appsody-operator")
 		return false, "", nil
 	}
+	if watchNamespace == "" && getOutput != "" {
+		watchAllErr := errors.Errorf("The user specified --watch-all and there are deployments with appsody-operator")
+		return true, "", watchAllErr
+	}
 	deployments := strings.Split(getOutput, " ")
 	Debug.log("deployments with operators: ", deployments)
 	for _, deploymentNamespace := range deployments {
@@ -163,7 +167,12 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 			Debug.logf("An operator exists in namespace %s, that is watching namespace: %s", deploymentNamespace, watchNamespace)
 			return true, deploymentNamespace, nil
 		}
+		// the operator is watching all namespaces
+		if strings.Trim(getOutput, "'") == "" {
 
+			Info.logf("An operator exists in namespace %s, that is watching all namespaces", deploymentNamespace)
+			return true, deploymentNamespace, nil
+		}
 	}
 	return false, "", nil
 }
