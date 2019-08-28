@@ -101,7 +101,6 @@ func removeOperatorRBAC(operatorNamespace string) error {
 	}
 	err = KubeDelete(appsodyRBAC)
 	if err != nil {
-		Debug.log("Error in KubeDelete: ", err)
 		return err
 	}
 	err = os.Remove(appsodyRBAC)
