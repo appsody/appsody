@@ -920,7 +920,7 @@ func checkTime() {
 	line = r.FindString(fileContent)
 	if len(line) >= 18 {
 		lastCheckTime = line[18:]
-	} 
+	}
 	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 
 	lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
