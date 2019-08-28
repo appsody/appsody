@@ -50,13 +50,12 @@ var installCmd = &cobra.Command{
 		if all {
 			watchNamespace = ""
 		}
-		fmt.Println("watchNamespace is:  ", watchNamespace)
+		Debug.log("watchNamespace is:  ", watchNamespace)
 		operatorExists, existsErr := operatorExistsInNamespace(operatorNamespace)
 		if existsErr != nil {
 			return existsErr
 		}
 		if operatorExists {
-			fmt.Println("returning error")
 			return errors.Errorf("An operator already exists in namespace: %s", operatorNamespace)
 		}
 
@@ -99,14 +98,13 @@ var installCmd = &cobra.Command{
 		}
 		rbacYaml := filepath.Join(deployConfigDir, operatorRBACName)
 		var rbacURL = getOperatorHome() + "/" + operatorRBACName
-		fmt.Println(operatorNamespace, watchNamespace, all)
 		if (operatorNamespace != watchNamespace) || all {
-			fmt.Println("download rbac")
+			Debug.log("Downloading: ", rbacURL)
 			file, err = downloadRBACYaml(rbacURL, operatorNamespace, rbacYaml)
 			if err != nil {
 				return err
 			}
-			fmt.Println("apply rbac")
+
 			err = KubeApply(file)
 			if err != nil {
 				return err
@@ -133,6 +131,6 @@ var installCmd = &cobra.Command{
 func init() {
 	operatorCmd.AddCommand(installCmd)
 	installCmd.PersistentFlags().StringVarP(&watchspace, "watchspace", "w", "", "The namespace which the operator will watch.")
-	installCmd.PersistentFlags().BoolVarP(&all, "all", "a", false, "Yhe operator will watch all namespaces.")
+	installCmd.PersistentFlags().BoolVar(&all, "watch-all", false, "Yhe operator will watch all namespaces.")
 
 }

@@ -53,7 +53,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		//_, err := KubeGet(kargs)
 		// Performing the kubectl apply
 		if !operatorExists {
-			Warning.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
+			Debug.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
 			err := installCmd.RunE(cmd, args)
 			if err != nil {
 				return errors.Errorf("Failed to install Appsody operator. Exiting... %s", configFile)
