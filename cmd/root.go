@@ -126,7 +126,7 @@ func initConfig() error {
 	cliConfig.SetDefault("home", filepath.Join(homeDirectory, ".appsody"))
 	cliConfig.SetDefault("images", "index.docker.io")
 	cliConfig.SetDefault("tektonserver", "")
-	cliConfig.SetDefault("lastversioncheck", time.Now().Format("2006-01-02 15:04:05 -0700 MST"))
+	cliConfig.SetDefault("lastversioncheck", "none")
 	if cfgFile != "" {
 		// Use config file from the flag.
 		cliConfig.SetConfigFile(cfgFile)
