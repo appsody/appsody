@@ -1,5 +1,10 @@
 [![](https://raw.githubusercontent.com/appsody/website/master/src/images/appsody_full_logo.svg?sanitize=true)](https://appsody.dev)
 
+[![Version](https://img.shields.io/github/v/release/appsody/appsody?style=for-the-badge)](https://github.com/appsody/appsody/releases/latest)
+[![License](https://img.shields.io/github/license/appsody/appsody?style=for-the-badge)](https://www.apache.org/licenses/LICENSE-2.0)
+
+![Twitter Follow](https://img.shields.io/twitter/follow/appsodydev?style=social)
+
 ## Welcome to Appsody!
 <https://appsody.dev>
 
