@@ -150,7 +150,7 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 		return false, "", nil
 	}
 	if watchNamespace == "" && getOutput != "" {
-		watchAllErr := errors.Errorf("The user specified --watch-all and there are deployments with appsody-operator")
+		watchAllErr := errors.Errorf("You specified --watch-all, but there are already instances of the appsody operator on the cluster")
 		return true, "", watchAllErr
 	}
 	deployments := strings.Split(getOutput, " ")
@@ -163,8 +163,7 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 			return false, "", getErr
 		}
 		if strings.Trim(getOutput, "'") == watchNamespace {
-
-			Debug.logf("An operator exists in namespace %s, that is watching namespace: %s", deploymentNamespace, watchNamespace)
+			Debug.logf("An operator that is watching namespace %s already exists in namespace %s", watchNamespace, deploymentNamespace)
 			return true, deploymentNamespace, nil
 		}
 		// the operator is watching all namespaces

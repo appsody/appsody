@@ -64,7 +64,7 @@ var installCmd = &cobra.Command{
 			return watchExistsErr
 		}
 		if watchExists {
-			return errors.Errorf("An operator already exists in namespace %s, either watching namespace: %s or all namespaces", existingNamespace, watchNamespace)
+			return errors.Errorf("An operator watching namespace %s or all namespaces already exists in namespace %s", watchNamespace, existingNamespace)
 		}
 
 		deployConfigDir, err := getDeployConfigDir()
