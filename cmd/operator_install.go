@@ -73,10 +73,6 @@ var installCmd = &cobra.Command{
 		if operCountErr != nil {
 			return operCountErr
 		}
-		if operCount > 0 {
-			fmt.Println("more than one operator exists", operCount)
-		}
-		//os.Exit(1)
 
 		deployConfigDir, err := getDeployConfigDir()
 		if err != nil {
@@ -131,6 +127,6 @@ var installCmd = &cobra.Command{
 func init() {
 	operatorCmd.AddCommand(installCmd)
 	installCmd.PersistentFlags().StringVarP(&watchspace, "watchspace", "w", "", "The namespace which the operator will watch.")
-	installCmd.PersistentFlags().BoolVar(&all, "watch-all", false, "Yhe operator will watch all namespaces.")
+	installCmd.PersistentFlags().BoolVar(&all, "watch-all", false, "The operator will watch all namespaces.")
 
 }
