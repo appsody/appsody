@@ -23,10 +23,23 @@ import (
 //RunKubeGet issues kubectl get <arg>
 func RunKubeGet(args []string) (string, error) {
 	Info.log("Attempting to get resource from Kubernetes ...")
-	kcmd := "kubectl"
 	kargs := []string{"get"}
 	kargs = append(kargs, args...)
+	return RunKube(kargs)
 
+}
+
+//RunKubeDelete issues kubectl delete <args>
+func RunKubeDelete(args []string) (string, error) {
+	Info.log("Attempting to delete resource from Kubernetes ...")
+	kargs := []string{"delete"}
+	kargs = append(kargs, args...)
+	return RunKube(kargs)
+}
+
+//RunKube runs a generic kubectl command
+func RunKube(kargs []string) (string, error) {
+	kcmd := "kubectl"
 	if dryrun {
 		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
 		return "", nil
@@ -126,7 +139,7 @@ func operatorExistsInNamespace(operatorNamespace string) (bool, error) {
 // Check to see if any other operator is watching the watchNameSpace
 func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 	Debug.log("Looking for an operator matching watchspace: ", watchNamespace)
-	var deploymentsWithOperatorsGetArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.namespace}'", "-A"}
+	var deploymentsWithOperatorsGetArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.namespace}'", "--all-namespaces"}
 	getOutput, getErr := RunKubeGet(deploymentsWithOperatorsGetArgs)
 	if getErr != nil {
 		return false, "", getErr
@@ -135,6 +148,10 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 	if getOutput == "" {
 		Info.log("There are no deployments with appsody-operator")
 		return false, "", nil
+	}
+	if watchNamespace == "" && getOutput != "" {
+		watchAllErr := errors.Errorf("You specified --watch-all, but there are already instances of the appsody operator on the cluster")
+		return true, "", watchAllErr
 	}
 	deployments := strings.Split(getOutput, " ")
 	Debug.log("deployments with operators: ", deployments)
@@ -146,19 +163,68 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 			return false, "", getErr
 		}
 		if strings.Trim(getOutput, "'") == watchNamespace {
-
-			Debug.logf("An operator exists in namespace %s, that is watching namespace: %s", deploymentNamespace, watchNamespace)
+			Debug.logf("An operator that is watching namespace %s already exists in namespace %s", watchNamespace, deploymentNamespace)
 			return true, deploymentNamespace, nil
 		}
+		// the operator is watching all namespaces
+		if strings.Trim(getOutput, "'") == "" {
 
+			Info.logf("An operator exists in namespace %s, that is watching all namespaces", deploymentNamespace)
+			return true, deploymentNamespace, nil
+		}
 	}
 	return false, "", nil
 }
 func operatorCount() (int, error) {
-	var getAllOperatorsArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.name}'", "-A"}
+	var getAllOperatorsArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.name}'", "--all-namespaces"}
 	getOutput, getErr := RunKubeGet(getAllOperatorsArgs)
 	if getErr != nil {
 		return 0, getErr
 	}
 	return strings.Count(getOutput, "appsody-operator"), nil
+}
+
+func appsodyApplicationCount(namespace string) (int, error) {
+	var getAppsodyAppsArgs = []string{"AppsodyApplication", "-o=jsonpath='{.items[*].kind}'"}
+	if namespace == "" {
+		getAppsodyAppsArgs = append(getAppsodyAppsArgs, "--all-namespaces")
+	} else {
+		getAppsodyAppsArgs = append(getAppsodyAppsArgs, "-n", namespace)
+	}
+	getOutput, getErr := RunKubeGet(getAppsodyAppsArgs)
+	if getErr != nil {
+		return 0, getErr
+	}
+	return strings.Count(getOutput, "AppsodyApplication"), nil
+}
+
+func deleteAppsodyApps(namespace string) (string, error) {
+	var deleteAppsodyAppsArgs = []string{"AppsodyApplication", "--all"}
+	if namespace != "" {
+		deleteAppsodyAppsArgs = append(deleteAppsodyAppsArgs, "-n", namespace)
+	}
+	return RunKubeDelete(deleteAppsodyAppsArgs)
+
+}
+
+func getOperatorWatchspace(namespace string) (string, error) {
+	operatorExists, existsErr := operatorExistsInNamespace(namespace)
+	if existsErr != nil {
+		return "", existsErr
+	}
+	if !operatorExists {
+		return "", errors.Errorf("An appsody operator could not be found in namespace: %s", namespace)
+	}
+	var args = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].value}'", "-n", namespace}
+
+	getOutput, getErr := RunKubeGet(args)
+	if getErr != nil {
+		Debug.log("Received an err: ", getErr)
+		return "", getErr
+	}
+	watchspace = strings.Trim(getOutput, "'")
+	if watchspace == "" {
+		Debug.log("This operator watches the entire cluster ")
+	}
+	return watchspace, nil
 }

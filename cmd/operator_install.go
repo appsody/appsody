@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -61,22 +60,12 @@ var installCmd = &cobra.Command{
 
 		watchExists, existingNamespace, watchExistsErr := operatorExistsWithWatchspace(watchNamespace)
 		if watchExistsErr != nil {
-			fmt.Println("Returning err", watchExistsErr)
-			return existsErr
+
+			return watchExistsErr
 		}
 		if watchExists {
-			return errors.Errorf("An operator already exists in namespace %s, watching namespace: %s", existingNamespace, watchNamespace)
+			return errors.Errorf("An operator watching namespace %s or all namespaces already exists in namespace %s", watchNamespace, existingNamespace)
 		}
-
-		operCount, operCountErr := operatorCount()
-		fmt.Println("count is: ", operCount)
-		if operCountErr != nil {
-			return operCountErr
-		}
-		if operCount > 0 {
-			fmt.Println("more than one operator exists", operCount)
-		}
-		//os.Exit(1)
 
 		deployConfigDir, err := getDeployConfigDir()
 		if err != nil {
@@ -131,6 +120,6 @@ var installCmd = &cobra.Command{
 func init() {
 	operatorCmd.AddCommand(installCmd)
 	installCmd.PersistentFlags().StringVarP(&watchspace, "watchspace", "w", "", "The namespace which the operator will watch.")
-	installCmd.PersistentFlags().BoolVar(&all, "watch-all", false, "Yhe operator will watch all namespaces.")
+	installCmd.PersistentFlags().BoolVar(&all, "watch-all", false, "The operator will watch all namespaces.")
 
 }
