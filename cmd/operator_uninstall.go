@@ -15,8 +15,10 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -84,7 +86,7 @@ func removeOperatorCRDs() error {
 	}
 	return nil
 }
-func removeOperatorRBAC() error {
+func removeOperatorRBAC(operatorNamespace string) error {
 	deployConfigDir, err := getDeployConfigDir()
 	if err != nil {
 		return errors.Errorf("Error getting deploy config dir: %v", err)
@@ -92,13 +94,14 @@ func removeOperatorRBAC() error {
 	appsodyRBAC := filepath.Join(deployConfigDir, operatorRBACName)
 	// Download the RBAC file
 	var rbacURL = getOperatorHome() + "/" + operatorRBACName
-	_, err = downloadCRDYaml(rbacURL, appsodyRBAC)
+	_, err = downloadRBACYaml(rbacURL, operatorNamespace, appsodyRBAC)
 	if err != nil {
 		return err
 
 	}
 	err = KubeDelete(appsodyRBAC)
 	if err != nil {
+		Debug.log("Error in KubeDelete: ", err)
 		return err
 	}
 	err = os.Remove(appsodyRBAC)
@@ -139,8 +142,11 @@ func removeOperator(operatorNamespace string) error {
 
 	// If the operator is watching a different namespace, remove RBACs
 	if watchspace != operatorNamespace {
-		if err := removeOperatorRBAC(); err != nil {
-			return err
+		if err := removeOperatorRBAC(operatorNamespace); err != nil {
+			Debug.logf("Error from removeOperatorRBAC: %s", fmt.Sprintf("%v", err))
+			if !strings.Contains(fmt.Sprintf("%v", err), "(NotFound)") {
+				return err
+			}
 		}
 	}
 
