@@ -93,15 +93,19 @@ func downloadRBACYaml(url string, operatorNamespace string, target string) (stri
 func operatorExistsInNamespace(operatorNamespace string) (bool, error) {
 
 	// check to see if this namespace already has an appsody-operator
-	var args = []string{"deployment", "appsody-operator", "-n", operatorNamespace}
+	//var args = []string{"deployment", "appsody-operator", "-n", operatorNamespace}
+	var args = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.namespace}'", "-n", operatorNamespace}
+
 	getOutput, getErr := RunKubeGet(args)
 	if getErr != nil {
 		Debug.log("Received an err: ", getErr)
-		return false, nil
+		return false, getErr
 	}
-
-	if !strings.Contains(getOutput, "deployments.extensions \"appsody-operator\" not found") {
-		Info.logf("An operator already exists in namespace: %s", operatorNamespace)
+	getOutput = strings.Trim(getOutput, "'")
+	if getOutput == "" {
+		Info.log("There are no deployments with appsody-operator")
+		return false, nil
+	} else {
 		return true, nil
 	}
 
@@ -109,17 +113,17 @@ func operatorExistsInNamespace(operatorNamespace string) (bool, error) {
 }
 
 // Check to see if any other operator is watching the watchNameSpace
-func operatorExistsWithWatchspace(watchNamespace string) (bool, error) {
+func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 	Debug.log("Looking for an operator matching watchspace: ", watchNamespace)
 	var deploymentsWithOperatorsGetArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.namespace}'", "-A"}
 	getOutput, getErr := RunKubeGet(deploymentsWithOperatorsGetArgs)
 	if getErr != nil {
-		return false, getErr
+		return false, "", getErr
 	}
 	getOutput = strings.Trim(getOutput, "'")
 	if getOutput == "" {
-		Info.log("There are no depooyments with appsody-operator")
-		return false, nil
+		Info.log("There are no deployments with appsody-operator")
+		return false, "", nil
 	}
 	deployments := strings.Split(getOutput, " ")
 	Debug.log("deployments with operators: ", deployments)
@@ -128,18 +132,17 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, error) {
 		getOutput, getErr = RunKubeGet(getDeploymentWatchNamespaceArgs)
 		Debug.logf("Deployment: %s is watching namespace %s", deploymentNamespace, getOutput)
 		if getErr != nil {
-			return false, getErr
+			return false, "", getErr
 		}
 		if strings.Trim(getOutput, "'") == watchNamespace {
 
-			Debug.logf("An operator exists that is watching namespace: %s", watchNamespace)
-			return true, nil
+			Debug.logf("An operator exists in namespace %s, that is watching namespace: %s", deploymentNamespace, watchNamespace)
+			return true, deploymentNamespace, nil
 		}
 
 	}
-	return false, nil
+	return false, "", nil
 }
-
 func operatorCount() (int, error) {
 	var getAllOperatorsArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.name}'", "-A"}
 	getOutput, getErr := RunKubeGet(getAllOperatorsArgs)

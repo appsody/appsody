@@ -44,7 +44,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		}
 		// Check for the Appsody Operator
 
-		operatorExists, operatorExistsErr := operatorExistsWithWatchspace(namespace)
+		operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(namespace)
 		if operatorExistsErr != nil {
 			return operatorExistsErr
 		}
@@ -58,6 +58,9 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			if err != nil {
 				return errors.Errorf("Failed to install Appsody operator. Exiting... %s", configFile)
 			}
+		} else {
+			Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
+
 		}
 
 		exists, err := exists(configFile)
