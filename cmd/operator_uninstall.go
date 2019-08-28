@@ -116,6 +116,7 @@ func removeOperator(operatorNamespace string) error {
 	operatorYaml := filepath.Join(deployConfigDir, operatorYamlName)
 
 	watchNamespace, err := getOperatorWatchspace(operatorNamespace)
+	Debug.logf("Operator is watching the '%s' namespace", watchNamespace)
 	if err != nil {
 		return err
 	}

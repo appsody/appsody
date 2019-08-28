@@ -139,7 +139,7 @@ func operatorExistsInNamespace(operatorNamespace string) (bool, error) {
 // Check to see if any other operator is watching the watchNameSpace
 func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 	Debug.log("Looking for an operator matching watchspace: ", watchNamespace)
-	var deploymentsWithOperatorsGetArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.namespace}'", "-A"}
+	var deploymentsWithOperatorsGetArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.namespace}'", "--all-namespaces"}
 	getOutput, getErr := RunKubeGet(deploymentsWithOperatorsGetArgs)
 	if getErr != nil {
 		return false, "", getErr
@@ -168,7 +168,7 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 	return false, "", nil
 }
 func operatorCount() (int, error) {
-	var getAllOperatorsArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.name}'", "-A"}
+	var getAllOperatorsArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.name}'", "--all-namespaces"}
 	getOutput, getErr := RunKubeGet(getAllOperatorsArgs)
 	if getErr != nil {
 		return 0, getErr
@@ -179,7 +179,7 @@ func operatorCount() (int, error) {
 func appsodyApplicationCount(namespace string) (int, error) {
 	var getAppsodyAppsArgs = []string{"AppsodyApplication", "-o=jsonpath='{.items[*].kind}'"}
 	if namespace == "" {
-		getAppsodyAppsArgs = append(getAppsodyAppsArgs, "-A")
+		getAppsodyAppsArgs = append(getAppsodyAppsArgs, "--all-namespaces")
 	} else {
 		getAppsodyAppsArgs = append(getAppsodyAppsArgs, "-n", namespace)
 	}
