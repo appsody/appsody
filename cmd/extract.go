@@ -34,7 +34,7 @@ var extractCmd = &cobra.Command{
 	Use:   "extract",
 	Short: "Extract the stack and your Appsody project to a local directory",
 	Long: `This copies the full project, stack plus app, into a local directory
-in preparation to build the final buidlah / docker image.`,
+in preparation to build the final container image.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		setupErr := setupConfig()
@@ -103,7 +103,7 @@ in preparation to build the final buidlah / docker image.`,
 			}
 		}
 
-		// Buildah fails if the desitnation does not exist.
+		// Buildah fails if the destination does not exist.
 		Debug.log("Creating extract dir: ", extractDir)
 		err = os.MkdirAll(extractDir, os.ModePerm)
 		if err != nil {
