@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -61,17 +60,11 @@ var installCmd = &cobra.Command{
 
 		watchExists, existingNamespace, watchExistsErr := operatorExistsWithWatchspace(watchNamespace)
 		if watchExistsErr != nil {
-			fmt.Println("Returning err", watchExistsErr)
+
 			return existsErr
 		}
 		if watchExists {
 			return errors.Errorf("An operator already exists in namespace %s, watching namespace: %s", existingNamespace, watchNamespace)
-		}
-
-		operCount, operCountErr := operatorCount()
-		fmt.Println("count is: ", operCount)
-		if operCountErr != nil {
-			return operCountErr
 		}
 
 		deployConfigDir, err := getDeployConfigDir()
