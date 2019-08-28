@@ -82,9 +82,9 @@ func getEnvVar(searchEnvVar string, buildah bool) (string, error) {
 		return "", projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	containerPullErrs := containerPullImage(imageName, buildah)
-	if containerPullErrs != nil {
-		return "", containerPullErrs
+	pullErrs := pullImage(imageName, buildah)
+	if pullErrs != nil {
+		return "", pullErrs
 	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
@@ -452,9 +452,9 @@ func getExposedPorts() ([]string, error) {
 		return nil, projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	containerPullErrs := containerPullImage(imageName, false)
-	if containerPullErrs != nil {
-		return nil, containerPullErrs
+	pullErrs := pullImage(imageName, false)
+	if pullErrs != nil {
+		return nil, pullErrs
 	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
@@ -638,9 +638,9 @@ func DockerPush(imageToPush string) error {
 func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput string, err error) {
 	cmdName := "docker"
 	var cmdArgs []string
-	containerPullErrs := containerPullImage(image, false)
-	if containerPullErrs != nil {
-		return "", containerPullErrs
+	pullErrs := pullImage(image, false)
+	if pullErrs != nil {
+		return "", pullErrs
 	}
 	if len(options) >= 0 {
 		cmdArgs = append([]string{"run"}, options...)
@@ -798,10 +798,10 @@ func KubeGetDeploymentURL(service string) (url string, err error) {
 	return "", err
 }
 
-//containerPullCmd
+//pullCmd
 // enable extract to use `buildah` sequences for image extraction.
 // Pull the given docker image
-func containerPullCmd(imageToPull string, buildah bool) error {
+func pullCmd(imageToPull string, buildah bool) error {
 	cmdName := "docker"
 	if buildah {
 		cmdName = "buildah"
@@ -838,10 +838,10 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 	return false
 }
 
-//containerPullImage
+//pullImage
 // pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
-func containerPullImage(imageToPull string, buildah bool) error {
+func pullImage(imageToPull string, buildah bool) error {
 
 	Debug.logf("%s image pulled status: %t", imageToPull, imagePulled[imageToPull])
 	if imagePulled[imageToPull] {
@@ -864,7 +864,7 @@ func containerPullImage(imageToPull string, buildah bool) error {
 	}
 
 	if pullPolicyAlways || (!pullPolicyAlways && !localImageFound) {
-		err := containerPullCmd(imageToPull, buildah)
+		err := pullCmd(imageToPull, buildah)
 		if err != nil {
 			if pullPolicyAlways {
 				localImageFound = checkDockerImageExistsLocally(imageToPull)

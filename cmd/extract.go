@@ -112,9 +112,9 @@ in preparation to build the final container image.`,
 
 		stackImage := projectConfig.Platform
 
-		containerPullErr := containerPullImage(stackImage, buildah)
-		if containerPullErr != nil {
-			return containerPullErr
+		pullErr := pullImage(stackImage, buildah)
+		if pullErr != nil {
+			return pullErr
 		}
 
 		containerProjectDir, containerProjectDirErr := getExtractDir(buildah)

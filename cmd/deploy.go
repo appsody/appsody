@@ -280,9 +280,9 @@ func generateDeploymentConfig() error {
 
 	var cmdName string
 	var cmdArgs []string
-	dockerPullErr := containerPullImage(stackImage, false)
-	if dockerPullErr != nil {
-		return dockerPullErr
+	pullErr := pullImage(stackImage, false)
+	if pullErr != nil {
+		return pullErr
 	}
 
 	c := make(chan os.Signal, 1)

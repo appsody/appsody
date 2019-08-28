@@ -129,9 +129,9 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	Debug.log("Project directory: ", projectDir)
 
 	var cmdArgs []string
-	dockerPullErr := containerPullImage(platformDefinition, false)
-	if dockerPullErr != nil {
-		return dockerPullErr
+	pullErr := pullImage(platformDefinition, false)
+	if pullErr != nil {
+		return pullErr
 	}
 
 	volumeMaps, volumeErr := getVolumeArgs(false)
