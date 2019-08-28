@@ -15,12 +15,15 @@
 package cmd
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 )
+
+var all bool
 
 // installCmd represents the "appsody deploy install" command
 var installCmd = &cobra.Command{
@@ -32,6 +35,49 @@ var installCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		operatorNamespace := "default"
+		watchNamespace := "''"
+		if namespace != "" {
+			operatorNamespace = namespace
+		}
+		if watchspace == "" {
+			watchNamespace = operatorNamespace
+		}
+		if watchspace != "" {
+			watchNamespace = watchspace
+		}
+		if all {
+			watchNamespace = ""
+		}
+		Debug.log("watchNamespace is:  ", watchNamespace)
+		operatorExists, existsErr := operatorExistsInNamespace(operatorNamespace)
+		if existsErr != nil {
+			return existsErr
+		}
+		if operatorExists {
+			return errors.Errorf("An operator already exists in namespace: %s", operatorNamespace)
+		}
+
+		watchExists, existingNamespace, watchExistsErr := operatorExistsWithWatchspace(watchNamespace)
+		if watchExistsErr != nil {
+			fmt.Println("Returning err", watchExistsErr)
+			return existsErr
+		}
+		if watchExists {
+			return errors.Errorf("An operator already exists in namespace %s, watching namespace: %s", existingNamespace, watchNamespace)
+		}
+
+		operCount, operCountErr := operatorCount()
+		fmt.Println("count is: ", operCount)
+		if operCountErr != nil {
+			return operCountErr
+		}
+		if operCount > 0 {
+			fmt.Println("more than one operator exists", operCount)
+		}
+		//os.Exit(1)
+
 		deployConfigDir, err := getDeployConfigDir()
 		if err != nil {
 			return errors.Errorf("Error getting deploy config dir: %v", err)
@@ -50,18 +96,22 @@ var installCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		rbacYaml := filepath.Join(deployConfigDir, operatorRBACName)
+		var rbacURL = getOperatorHome() + "/" + operatorRBACName
+		if (operatorNamespace != watchNamespace) || all {
+			Debug.log("Downloading: ", rbacURL)
+			file, err = downloadRBACYaml(rbacURL, operatorNamespace, rbacYaml)
+			if err != nil {
+				return err
+			}
 
-		operatorNamespace := "default"
-		watchNamespace := "''"
-		if operatorspace != "" {
-			operatorNamespace = operatorspace
-		}
-		if watchspace != "" {
-			watchNamespace = watchspace
+			err = KubeApply(file)
+			if err != nil {
+				return err
+			}
 		}
 
 		operatorYaml := filepath.Join(deployConfigDir, operatorYamlName)
-
 		var operatorURL = getOperatorHome() + "/" + operatorYamlName
 		file, err = downloadOperatorYaml(operatorURL, operatorNamespace, watchNamespace, operatorYaml)
 		if err != nil {
@@ -80,5 +130,7 @@ var installCmd = &cobra.Command{
 
 func init() {
 	operatorCmd.AddCommand(installCmd)
-	installCmd.PersistentFlags().StringVarP(&watchspace, "watchspace", "w", "''", "The namespace which the operator will watch. Use '' for all namespaces.")
+	installCmd.PersistentFlags().StringVarP(&watchspace, "watchspace", "w", "", "The namespace which the operator will watch.")
+	installCmd.PersistentFlags().BoolVar(&all, "watch-all", false, "Yhe operator will watch all namespaces.")
+
 }
