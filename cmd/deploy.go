@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var configFile, namespace, operatorspace, watchspace, tag string
+var configFile, namespace, watchspace, tag string
 var generate, force, push bool
 
 var deployCmd = &cobra.Command{

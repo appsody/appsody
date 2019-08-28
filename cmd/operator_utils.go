@@ -105,11 +105,9 @@ func operatorExistsInNamespace(operatorNamespace string) (bool, error) {
 	if getOutput == "" {
 		Info.log("There are no deployments with appsody-operator")
 		return false, nil
-	} else {
-		return true, nil
 	}
+	return true, nil
 
-	return false, nil
 }
 
 // Check to see if any other operator is watching the watchNameSpace
