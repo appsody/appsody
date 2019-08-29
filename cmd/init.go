@@ -50,6 +50,8 @@ With the [stack], [repository]/[stack], [stack] [template] or [repository]/[stac
 if files already exist. See the --overwrite and --no-template options for more details.
 Use 'appsody list' to see the available stack options.
 
+If keyword "none" is specified instead of a [template], the project will be initialized to use Appsody, and no template will be provided.
+
 Without the [stack] argument, this command must be run on an existing Appsody project and will only run the stack init script to
 setup the local dev environment.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
