@@ -47,9 +47,11 @@ func RunKube(kargs []string) (string, error) {
 	Info.log("Running command: ", kcmd, kargs)
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
+
 	if kerr != nil {
-		return "", errors.Errorf("kubectl get failed: %s", string(kout[:]))
+		return "", errors.Errorf("kubectl command failed: %s", string(kout[:]))
 	}
+	Debug.log("Command successful...")
 	return string(kout[:]), nil
 }
 

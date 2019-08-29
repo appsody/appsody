@@ -697,9 +697,10 @@ func KubeDelete(fileToApply string) error {
 	execCmd.Stderr = &stderr
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
-		Error.log(strings.Trim(stderr.String(), "\n"))
+		errorText := strings.Trim(stderr.String(), "\n")
+		Error.log(errorText)
 		Error.log("kubectl delete failed: ", kerr)
-		return kerr
+		return errors.Errorf("kubectl delete failed: %v %s", kerr, errorText)
 	}
 	Debug.log("kubectl delete success: ", string(kout[:]))
 	return nil
