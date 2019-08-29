@@ -899,7 +899,7 @@ func getLatestVersion() string {
 func doVersionCheck(data []byte, old string, new string, file string) {
 	var latest = getLatestVersion()
 	if VERSION != "vlatest" && VERSION != latest {
-		fmt.Println("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
+		Info.log("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
 	}
 	output := bytes.Replace(data, []byte(old), []byte(new), -1)
 	err := ioutil.WriteFile(file, output, 0666)
@@ -908,24 +908,22 @@ func doVersionCheck(data []byte, old string, new string, file string) {
 	}
 }
 
+func getLastCheckTime() string {
+	return cliConfig.GetString("lastversioncheck")
+}
+
 func checkTime() {
-	var fileContent string
-	var line string
 	var lastCheckTime string
 	var currentTime string
 
 	var configFile = getDefaultConfigFile()
+
 	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		Warning.log("Unable to read config file")
 	}
 
-	fileContent = string(data)
-	r, _ := regexp.Compile(`lastversioncheck: .*`)
-	line = r.FindString(fileContent)
-	if len(line) >= 18 {
-		lastCheckTime = line[18:]
-	}
+	lastCheckTime = getLastCheckTime()
 	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 
 	if lastCheckTime == "none" {
@@ -935,7 +933,7 @@ func checkTime() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		if time.Since(lastTime).Hours() > 24 {
+		if time.Since(lastTime).Seconds() > 5 {
 			doVersionCheck(data, lastCheckTime, currentTime, configFile)
 		}
 	}
