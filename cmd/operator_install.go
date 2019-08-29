@@ -59,6 +59,9 @@ var installCmd = &cobra.Command{
 			if err != nil {
 				Debug.log("Could not retrieve the watchspace of this operator - this should never happen...")
 			}
+			if existingOperatorWatchspace == "" {
+				existingOperatorWatchspace = "all namespaces"
+			}
 			return errors.Errorf("An operator already exists in namespace %s and it is watching the %s namespace.", operatorNamespace, existingOperatorWatchspace)
 		}
 
