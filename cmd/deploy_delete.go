@@ -46,7 +46,7 @@ var deleteDeploymentCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(deleteDeploymentCmd)
+	deployCmd.AddCommand(deleteDeploymentCmd)
 	deleteDeploymentCmd.PersistentFlags().StringVarP(&deployConfigFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
 
 }

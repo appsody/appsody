@@ -279,6 +279,13 @@ func getProjectConfig() (ProjectConfig, error) {
 	}
 	return *projectConfig, nil
 }
+
+func getOperatorHome() string {
+	operatorHome := cliConfig.GetString("operator")
+	Debug.log("Operator home set to: ", operatorHome)
+	return operatorHome
+}
+
 func getProjectName() (string, error) {
 	projectDir, err := getProjectDir()
 	if err != nil {
@@ -691,9 +698,10 @@ func KubeDelete(fileToApply string) error {
 	execCmd.Stderr = &stderr
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
-		Error.log(strings.Trim(stderr.String(), "\n"))
+		errorText := strings.Trim(stderr.String(), "\n")
+		Error.log(errorText)
 		Error.log("kubectl delete failed: ", kerr)
-		return kerr
+		return errors.Errorf("kubectl delete failed: %v %s", kerr, errorText)
 	}
 	Debug.log("kubectl delete success: ", string(kout[:]))
 	return nil
@@ -936,13 +944,13 @@ func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
 	}
 	newSha256, errNew := createChecksumHash(newFileName)
 	if errNew != nil {
-		return false, nil
+		return false, errNew
 	}
 	Debug.logf("%x\n", oldSha256.Sum(nil))
 	Debug.logf("%x\n", newSha256.Sum(nil))
 	checkValue = bytes.Equal(oldSha256.Sum(nil), newSha256.Sum(nil))
 
-	Debug.log("Checksum returned", checkValue)
+	Debug.log("Checksum returned: ", checkValue)
 
 	return checkValue, nil
 }
