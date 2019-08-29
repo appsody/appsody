@@ -14,11 +14,13 @@
 package functest
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
@@ -68,9 +70,43 @@ func TestBuildSimple(t *testing.T) {
 
 		// appsody build
 		runChannel := make(chan error)
+		imageName := "testbuildimage"
 		go func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"build"}, projectDir)
+			_, err = cmdtest.RunAppsodyCmdExec([]string{"build", "--tag", imageName}, projectDir)
 			runChannel <- err
+		}()
+
+		// It will take a while for the image to build, so lets use docker image ls to wait for it
+		fmt.Println("calling docker image ls to wait for the image")
+		imageBuilt := false
+		count := 900
+		for {
+			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"image", "ls", imageName})
+			if dockerErr != nil {
+				log.Print("Ignoring error running docker image ls "+imageName, dockerErr)
+			}
+			if strings.Contains(dockerOutput, imageName) {
+				fmt.Println("docker image " + imageName + " was found")
+				imageBuilt = true
+			} else {
+				time.Sleep(2 * time.Second)
+				count = count - 1
+			}
+			if count == 0 || imageBuilt {
+				break
+			}
+		}
+
+		if !imageBuilt {
+			t.Fatal("image was never built")
+		}
+
+		//delete the image
+		func() {
+			_, err = cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName})
+			if err != nil {
+				fmt.Printf("Ignoring error running docker image rm: %s", err)
+			}
 		}()
 
 		// clean up
