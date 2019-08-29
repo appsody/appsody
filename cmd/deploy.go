@@ -56,7 +56,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			Debug.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
 			err := installCmd.RunE(cmd, args)
 			if err != nil {
-				return errors.Errorf("Failed to install Appsody operator. Exiting... %s", configFile)
+				return errors.Errorf("Failed to install an Appsody operator in namespace %s watching namespace %s. Error was: %v", namespace, namespace, err)
 			}
 		} else {
 			Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
