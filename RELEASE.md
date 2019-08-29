@@ -18,8 +18,8 @@ The Appsody CLI is made available by creating a tagged GitHub release
     * A new branch will be created in the website repo (further steps below)
 1. Check the release artifacts to ensure these all exist (again, _x.y.z_ indicates the release - for example 0.2.4):
     * appsody-x.y.z-1.x86_64.rpm
-    * appsody-x.y.z-darwin-amd64.tar
-    * appsody-x.y.z-linux-amd64.tar
+    * appsody-x.y.z-darwin-amd64.tar.gz
+    * appsody-x.y.z-linux-amd64.tar.gz
     * appsody-x.y.z-windows.tar.gz
     * appsody-homebrew-x.y.z.tar.gz
     * appsody.rb
