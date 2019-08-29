@@ -76,6 +76,8 @@ func setupConfig() error {
 	if err != nil {
 		return err
 	}
+
+	checkTime()
 	return nil
 }
 
@@ -127,6 +129,7 @@ func initConfig() error {
 	cliConfig.SetDefault("images", "index.docker.io")
 	cliConfig.SetDefault("operator", operatorHome)
 	cliConfig.SetDefault("tektonserver", "")
+	cliConfig.SetDefault("lastversioncheck", "none")
 	if cfgFile != "" {
 		// Use config file from the flag.
 		cliConfig.SetConfigFile(cfgFile)
