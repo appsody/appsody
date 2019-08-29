@@ -292,6 +292,7 @@ func getProjectName() (string, error) {
 		return "my-project", err
 	}
 	projectName := strings.ToLower(filepath.Base(projectDir))
+	projectName = strings.ReplaceAll(projectName, "_", "-")
 	return projectName, nil
 }
 

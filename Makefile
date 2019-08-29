@@ -39,7 +39,7 @@ ifeq (,$(wildcard ~/.appsody/appsody-controller))
 	wget $(CONTROLLER_BASE_URL)/appsody-controller
 	chmod +x appsody-controller
 	mkdir -p ~/.appsody
-	cp appsody-controller ~/.appsody/ 
+	cp appsody-controller ~/.appsody/
 	rm appsody-controller
 endif
 .PHONY: test
@@ -114,31 +114,31 @@ tar-linux tar-darwin:
 	mkdir -p $(PACKAGE_PATH)
 	mv $(build_name).tar $(PACKAGE_PATH)/
 	rm -f $(package_binary)
-	
+
 .PHONY: tar-windows
 tar-windows: build-windows ## Build the windows binary and package it in a .tar file
-	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)	
+	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)
 	win-build/build-win.sh $(PACKAGE_PATH) $(package_binary) $(CONTROLLER_BASE_URL) $(VERSION)
-	rm -f $(package_binary)	
+	rm -f $(package_binary)
 
 .PHONY: brew-darwin
 brew-darwin: build-darwin ## Build the OSX binary and package it for OSX brew install
 	# brew script goes here
 	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)
 	homebrew-build/build-darwin.sh $(PACKAGE_PATH) $(package_binary) $(CONTROLLER_BASE_URL) $(VERSION)
-	rm -f $(package_binary)	
+	rm -f $(package_binary)
 .PHONY: deb-linux
 deb-linux: build-linux ## Build the linux binary and package it as a .deb for Debian apt-get install
 	# deb script goes here
-	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)	
+	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)
 	deb-build/build-deb.sh $(package_binary) $(DOCKER_IMAGE_DEB) $(PACKAGE_PATH) $(CONTROLLER_BASE_URL) $(VERSION)
 	rm -f $(package_binary)
 .PHONY: rpm-linux
 rpm-linux: build-linux ## Build the linux binary and package it as a .rpm for RedHat yum install
 	# rpm script goes here
-	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)	
+	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)
 	rpm-build/build-rpm.sh $(package_binary) $(DOCKER_IMAGE_RPM) $(PACKAGE_PATH) $(CONTROLLER_BASE_URL) $(VERSION)
-	rm -f $(package_binary)	
+	rm -f $(package_binary)
 
 
 .PHONY: build-docs
