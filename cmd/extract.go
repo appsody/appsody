@@ -17,7 +17,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	s "strings"
 
 	"path/filepath"
 	"runtime"
@@ -112,18 +111,18 @@ in preparation to build the final container image.`,
 
 		stackImage := projectConfig.Platform
 
-		pullErr := pullImage(stackImage, buildah)
+		pullErr := pullImage(stackImage)
 		if pullErr != nil {
 			return pullErr
 		}
 
-		containerProjectDir, containerProjectDirErr := getExtractDir(buildah)
+		containerProjectDir, containerProjectDirErr := getExtractDir()
 		if containerProjectDirErr != nil {
 			return containerProjectDirErr
 		}
 		Debug.log("Container project dir: ", containerProjectDir)
 
-		volumeMaps, volumeErr := getVolumeArgs(buildah)
+		volumeMaps, volumeErr := getVolumeArgs()
 		if volumeErr != nil {
 			return volumeErr
 		}
@@ -153,7 +152,7 @@ in preparation to build the final container image.`,
 				} else {
 					Error.log("docker create command failed: ", err)
 				}
-				removeErr := containerRemove(extractContainerName, buildah)
+				removeErr := containerRemove(extractContainerName)
 				Error.log("Error in containerRemove", removeErr)
 				return err
 
@@ -172,7 +171,7 @@ in preparation to build the final container image.`,
 			if err != nil {
 				Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage)
 
-				removeErr := containerRemove(extractContainerName, buildah)
+				removeErr := containerRemove(extractContainerName)
 				if removeErr != nil {
 					Error.log("containerRemove error ", removeErr)
 				}
@@ -187,14 +186,7 @@ in preparation to build the final container image.`,
 		if buildah {
 			appDir = containerProjectDir
 			cmdName = "/bin/sh"
-			script := fmt.Sprintf("x=`buildah mount %s`; cp -rf $x/%s/* %s; buildah unmount %s", extractContainerName, appDir, extractDir, extractContainerName)
-			// Hack to circuvment the buildah mount problem: The mounts supplied
-			// while creating the container seem to be not visible to the parent
-			// or child or both. Circumvent it by launching the container and
-			// perform the copy from within.
-			// script := fmt.Sprintf("buildah run -v %s:/ex %s bash -c 'cp -rf %s/* /ex; exit'", extractDir, extractContainerName, appDir)
-			// block this logic until https://github.com/containers/buildah/issues/1821
-			// and https://github.com/containers/buildah/issues/1814 are resolved.
+			script := fmt.Sprintf("buildah run -v %s:/ex %s bash -c 'cp -rf %s/* /ex; exit'", extractDir, extractContainerName, appDir)
 			cmdArgs = []string{"-c", script}
 		}
 		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
@@ -205,7 +197,7 @@ in preparation to build the final container image.`,
 				Error.log("docker cp command failed: ", err)
 			}
 
-			removeErr := containerRemove(extractContainerName, buildah)
+			removeErr := containerRemove(extractContainerName)
 			if removeErr != nil {
 				Error.log("containerRemove error ", removeErr)
 			}
@@ -215,38 +207,7 @@ in preparation to build the final container image.`,
 			return errors.Errorf("docker cp command failed: %v", err)
 		}
 
-		if buildah {
-			for _, item := range volumeMaps {
-				if s.Contains(item, ":") {
-					var src = s.Split(item, ":")[0]
-					var dest = s.Split(item, ":")[1]
-					dest = s.Replace(dest, appDir, extractDir, -1)
-					err = os.MkdirAll(dest, os.ModePerm)
-					if err != nil {
-						return errors.Errorf("Error creating directories %v %v", dest, err)
-					}
-					Debug.log("Created project location ", dest)
-					fileInfo, err := os.Lstat(dest)
-					if err != nil {
-						return errors.Errorf("project file check error: %v", err)
-					}
-					if fileInfo.IsDir() {
-						err := CopyFile(src, dest)
-						if err != nil {
-							Error.log("project directory copy error: ", src, " to ", dest, ": ", err)
-						}
-					} else {
-						err := copyDir(src, dest)
-						if err != nil {
-							Error.log("project file copy error: ", src, " to ", dest, ": ", err)
-						}
-					}
-					Debug.log("Copied ", src, " to ", dest)
-				}
-			}
-		}
-
-		removeErr := containerRemove(extractContainerName, buildah)
+		removeErr := containerRemove(extractContainerName)
 		if removeErr != nil {
 			Error.log("containerRemove error ", removeErr)
 		}

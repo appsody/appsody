@@ -28,7 +28,7 @@ func dockerStop(imageName string) error {
 	return nil
 }
 
-func containerRemove(imageName string, buildah bool) error {
+func containerRemove(imageName string) error {
 	cmdName := "docker"
 	//Added "-f" to force removal if container is still running or image has containers
 	cmdArgs := []string{"rm", imageName, "-f"}

@@ -129,17 +129,17 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	Debug.log("Project directory: ", projectDir)
 
 	var cmdArgs []string
-	pullErr := pullImage(platformDefinition, false)
+	pullErr := pullImage(platformDefinition)
 	if pullErr != nil {
 		return pullErr
 	}
 
-	volumeMaps, volumeErr := getVolumeArgs(false)
+	volumeMaps, volumeErr := getVolumeArgs()
 	if volumeErr != nil {
 		return volumeErr
 	}
 	// Mount the APPSODY_DEPS cache volume if it exists
-	depsEnvVar, envErr := getEnvVar("APPSODY_DEPS", false)
+	depsEnvVar, envErr := getEnvVar("APPSODY_DEPS")
 	if envErr != nil {
 		return envErr
 	}
@@ -298,7 +298,7 @@ func processPorts(cmdArgs []string) ([]string, error) {
 	Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
 	// if the container port is not in the lised of exposed ports add it to the list
 
-	containerPort, envErr := getEnvVar("PORT", false)
+	containerPort, envErr := getEnvVar("PORT")
 	if envErr != nil {
 		return cmdArgs, envErr
 	}

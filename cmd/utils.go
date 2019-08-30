@@ -70,7 +70,7 @@ func exists(path string) (bool, error) {
 	return true, err
 }
 
-func getEnvVar(searchEnvVar string, buildah bool) (string, error) {
+func getEnvVar(searchEnvVar string) (string, error) {
 	// TODO cache this so the buildah / docker inspect command only runs once per cli invocation
 
 	// Docker and Buildah produce slightly different output
@@ -82,7 +82,7 @@ func getEnvVar(searchEnvVar string, buildah bool) (string, error) {
 		return "", projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	pullErrs := pullImage(imageName, buildah)
+	pullErrs := pullImage(imageName)
 	if pullErrs != nil {
 		return "", pullErrs
 	}
@@ -143,7 +143,7 @@ func getEnvVar(searchEnvVar string, buildah bool) (string, error) {
 }
 
 func getEnvVarBool(searchEnvVar string) (bool, error) {
-	strVal, envErr := getEnvVar(searchEnvVar, false)
+	strVal, envErr := getEnvVar(searchEnvVar)
 	if envErr != nil {
 		return false, envErr
 	}
@@ -152,7 +152,7 @@ func getEnvVarBool(searchEnvVar string) (bool, error) {
 
 func getEnvVarInt(searchEnvVar string) (int, error) {
 
-	strVal, envErr := getEnvVar(searchEnvVar, false)
+	strVal, envErr := getEnvVar(searchEnvVar)
 	if envErr != nil {
 		return 0, envErr
 	}
@@ -164,8 +164,8 @@ func getEnvVarInt(searchEnvVar string) (int, error) {
 
 }
 
-func getExtractDir(buildah bool) (string, error) {
-	extractDir, envErr := getEnvVar("APPSODY_PROJECT_DIR", buildah)
+func getExtractDir() (string, error) {
+	extractDir, envErr := getEnvVar("APPSODY_PROJECT_DIR")
 	if envErr != nil {
 		return "", envErr
 	}
@@ -176,9 +176,9 @@ func getExtractDir(buildah bool) (string, error) {
 	return extractDir, nil
 }
 
-func getVolumeArgs(buildah bool) ([]string, error) {
+func getVolumeArgs() ([]string, error) {
 	volumeArgs := []string{}
-	stackMounts, envErr := getEnvVar("APPSODY_MOUNTS", buildah)
+	stackMounts, envErr := getEnvVar("APPSODY_MOUNTS")
 	if envErr != nil {
 		return nil, envErr
 	}
@@ -452,7 +452,7 @@ func getExposedPorts() ([]string, error) {
 		return nil, projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	pullErrs := pullImage(imageName, false)
+	pullErrs := pullImage(imageName)
 	if pullErrs != nil {
 		return nil, pullErrs
 	}
@@ -638,7 +638,7 @@ func DockerPush(imageToPush string) error {
 func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput string, err error) {
 	cmdName := "docker"
 	var cmdArgs []string
-	pullErrs := pullImage(image, false)
+	pullErrs := pullImage(image)
 	if pullErrs != nil {
 		return "", pullErrs
 	}
@@ -801,7 +801,7 @@ func KubeGetDeploymentURL(service string) (url string, err error) {
 //pullCmd
 // enable extract to use `buildah` sequences for image extraction.
 // Pull the given docker image
-func pullCmd(imageToPull string, buildah bool) error {
+func pullCmd(imageToPull string) error {
 	cmdName := "docker"
 	if buildah {
 		cmdName = "buildah"
@@ -841,7 +841,7 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 //pullImage
 // pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
-func pullImage(imageToPull string, buildah bool) error {
+func pullImage(imageToPull string) error {
 
 	Debug.logf("%s image pulled status: %t", imageToPull, imagePulled[imageToPull])
 	if imagePulled[imageToPull] {
@@ -864,7 +864,7 @@ func pullImage(imageToPull string, buildah bool) error {
 	}
 
 	if pullPolicyAlways || (!pullPolicyAlways && !localImageFound) {
-		err := pullCmd(imageToPull, buildah)
+		err := pullCmd(imageToPull)
 		if err != nil {
 			if pullPolicyAlways {
 				localImageFound = checkDockerImageExistsLocally(imageToPull)

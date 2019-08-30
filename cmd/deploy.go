@@ -280,7 +280,7 @@ func generateDeploymentConfig() error {
 
 	var cmdName string
 	var cmdArgs []string
-	pullErr := pullImage(stackImage, false)
+	pullErr := pullImage(stackImage)
 	if pullErr != nil {
 		return pullErr
 	}
@@ -305,7 +305,7 @@ func generateDeploymentConfig() error {
 	if err != nil {
 
 		Error.log("docker create command failed: ", err)
-		removeErr := containerRemove(extractContainerName, false)
+		removeErr := containerRemove(extractContainerName)
 		Error.log("Error in containerRemove", removeErr)
 		return err
 
@@ -317,14 +317,14 @@ func generateDeploymentConfig() error {
 	if err != nil {
 		Error.log("docker cp command failed: ", err)
 
-		removeErr := containerRemove(extractContainerName, false)
+		removeErr := containerRemove(extractContainerName)
 		if removeErr != nil {
 			Error.log("containerRemove error ", removeErr)
 		}
 		return errors.Errorf("docker cp command failed: %v", err)
 	}
 
-	removeErr := containerRemove(extractContainerName, false)
+	removeErr := containerRemove(extractContainerName)
 	if removeErr != nil {
 		Error.log("containerRemove error ", removeErr)
 	}
