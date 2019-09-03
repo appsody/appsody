@@ -129,7 +129,7 @@ func removeOperator(operatorNamespace string) error {
 			return err
 		}
 	} else {
-		Info.log("Dry run - skipping execution of: getOperaotWatchspace(" + operatorNamespace + ")")
+		Info.log("Dry run - skipping execution of: getOperatorWatchspace(" + operatorNamespace + ")")
 	}
 	// If there are running apps...
 	appsCount, err := appsodyApplicationCount(watchNamespace)
