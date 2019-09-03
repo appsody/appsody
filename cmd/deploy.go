@@ -37,7 +37,7 @@ var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Build and deploy your Appsody project to your Kubernetes cluster",
 	Long: `This command extracts the code from your project, builds a local Docker image for deployment,
-generates a deployment manifest (yaml) file if one is not present, and uses it to deploy your image to Kubernetes.`,
+generates a deployment manifest (yaml) file if one is not present, and uses it to deploy your image to a Kubernetes cluster, either via the Appsody operator or as a Knative service.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if generate {
 			return generateDeploymentConfig()
@@ -56,7 +56,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			Debug.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
 			err := installCmd.RunE(cmd, args)
 			if err != nil {
-				return errors.Errorf("Failed to install Appsody operator. Exiting... %s", configFile)
+				return errors.Errorf("Failed to install an Appsody operator in namespace %s watching namespace %s. Error was: %v", namespace, namespace, err)
 			}
 		} else {
 			Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
