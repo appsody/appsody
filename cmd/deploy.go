@@ -96,7 +96,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		}
 		// Edit the deployment manifest to reflect the new tag
 		yamlFile, err := os.Open(configFile)
-		if err != nil {
+		if !dryrun && err != nil {
 			if os.IsNotExist(err) {
 				return errors.Errorf("Config file does not exist %s. ", configFile)
 			}
@@ -150,7 +150,11 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		if err != nil {
 			return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
 		}
-		Info.log("Deployed project running at ", out)
+		if !dryrun {
+			Info.log("Deployed project running at ", out)
+		} else {
+			Info.log("Dry run complete")
+		}
 
 		return nil
 	},
@@ -326,7 +330,7 @@ func generateDeploymentConfig() error {
 	}
 
 	yamlReader, err := ioutil.ReadFile(configFile)
-	if err != nil {
+	if !dryrun && err != nil {
 		if os.IsNotExist(err) {
 			return errors.Errorf("Config file does not exist %s. ", configFile)
 
@@ -368,17 +372,19 @@ func generateDeploymentConfig() error {
 	stack := split[len(split)-2]
 	split = strings.Split(stack, "/")
 	stack = split[len(split)-1]
+	if !dryrun {
+		output := bytes.Replace(yamlReader, []byte("APPSODY_PROJECT_NAME"), []byte(projectName), -1)
+		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(projectName), -1)
+		output = bytes.Replace(output, []byte("APPSODY_STACK"), []byte(stack), -1)
+		output = bytes.Replace(output, []byte("APPSODY_PORT"), []byte(portStr), -1)
 
-	output := bytes.Replace(yamlReader, []byte("APPSODY_PROJECT_NAME"), []byte(projectName), -1)
-	output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(projectName), -1)
-	output = bytes.Replace(output, []byte("APPSODY_STACK"), []byte(stack), -1)
-	output = bytes.Replace(output, []byte("APPSODY_PORT"), []byte(portStr), -1)
-
-	err = ioutil.WriteFile(configFile, output, 0666)
-	if err != nil {
-		return errors.Errorf("Failed to write local application configuration file: %s", err)
+		err = ioutil.WriteFile(configFile, output, 0666)
+		if err != nil {
+			return errors.Errorf("Failed to write local application configuration file: %s", err)
+		}
+	} else {
+		Info.logf("Dry run skipped construction of file %s", configFile)
 	}
-
 	Info.log("Created deployent manifest: ", configFile)
 	return nil
 }

@@ -80,9 +80,11 @@ func removeOperatorCRDs() error {
 	if err != nil {
 		return err
 	}
-	err = os.Remove(appsodyCRD)
-	if err != nil {
-		return err
+	if !dryrun {
+		err = os.Remove(appsodyCRD)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -104,24 +106,30 @@ func removeOperatorRBAC(operatorNamespace string) error {
 		Debug.log("Error in KubeDelete: ", err)
 		return err
 	}
-	err = os.Remove(appsodyRBAC)
-	if err != nil {
-		return err
+	if !dryrun {
+		err = os.Remove(appsodyRBAC)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func removeOperator(operatorNamespace string) error {
+	var watchNamespace string
 	deployConfigDir, err := getDeployConfigDir()
 	if err != nil {
 		return errors.Errorf("Error getting deploy config dir: %v", err)
 	}
 	operatorYaml := filepath.Join(deployConfigDir, operatorYamlName)
-
-	watchNamespace, err := getOperatorWatchspace(operatorNamespace)
-	Debug.logf("Operator is watching the '%s' namespace", watchNamespace)
-	if err != nil {
-		return err
+	if !dryrun {
+		watchNamespace, err = getOperatorWatchspace(operatorNamespace)
+		Debug.logf("Operator is watching the '%s' namespace", watchNamespace)
+		if err != nil {
+			return err
+		}
+	} else {
+		Info.log("Dry run - skipping execution of: getOperaotWatchspace(" + operatorNamespace + ")")
 	}
 	// If there are running apps...
 	appsCount, err := appsodyApplicationCount(watchNamespace)
@@ -160,9 +168,11 @@ func removeOperator(operatorNamespace string) error {
 	if err != nil {
 		return err
 	}
-	err = os.Remove(operatorYaml)
-	if err != nil {
-		return err
+	if !dryrun {
+		err = os.Remove(operatorYaml)
+		if err != nil {
+			return err
+		}
 	}
 
 	Info.log("Appsody operator removed from Kubernetes")
