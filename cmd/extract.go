@@ -102,11 +102,13 @@ in preparation to build the final container image.`,
 			}
 		}
 
-		// Buildah fails if the destination does not exist.
-		Debug.log("Creating extract dir: ", extractDir)
-		err = os.MkdirAll(extractDir, os.ModePerm)
-		if err != nil {
-			return errors.Errorf("Error creating directories %s %v", extractDir, err)
+		if buildah {
+			// Buildah fails if the destination does not exist.
+			Debug.log("Creating extract dir: ", extractDir)
+			err = os.MkdirAll(extractDir, os.ModePerm)
+			if err != nil {
+				return errors.Errorf("Error creating directories %s %v", extractDir, err)
+			}
 		}
 
 		stackImage := projectConfig.Platform
