@@ -963,14 +963,18 @@ func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
 }
 
 func getLatestVersion() string {
+	var version = ""
 	resp, err := http.Get(LatestVersionURL)
 	if err != nil {
 		Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
-	}
-	url := resp.Request.URL.String()
-	r, _ := regexp.Compile(`\d.\d.\d`)
+		version = "none"
+	} else {
+		url := resp.Request.URL.String()
+		r, _ := regexp.Compile(`\d.\d.\d`)
 
-	return r.FindString(url)
+		version = r.FindString(url)
+	}
+	return version
 }
 
 func doVersionCheck(data []byte, old string, new string, file string) {
@@ -1003,15 +1007,17 @@ func checkTime() {
 	lastCheckTime = getLastCheckTime()
 	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 
-	if lastCheckTime == "none" {
-		doVersionCheck(data, lastCheckTime, currentTime, configFile)
-	} else {
-		lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
-		if err != nil {
-			fmt.Println(err)
-		}
-		if time.Since(lastTime).Hours() > 24 {
+	if getLatestVersion() != "none" {
+		if lastCheckTime == "none" {
 			doVersionCheck(data, lastCheckTime, currentTime, configFile)
+		} else {
+			lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
+			if err != nil {
+				fmt.Println(err)
+			}
+			if time.Since(lastTime).Hours() > 24 {
+				doVersionCheck(data, lastCheckTime, currentTime, configFile)
+			}
 		}
 	}
 }
