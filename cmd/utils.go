@@ -963,7 +963,7 @@ func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
 }
 
 func getLatestVersion() string {
-	var version = ""
+	var version string
 	resp, err := http.Get(LatestVersionURL)
 	if err != nil {
 		Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
