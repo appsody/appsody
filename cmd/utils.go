@@ -22,12 +22,15 @@ import (
 	"hash"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -47,6 +50,10 @@ var (
 	ConfigFile = ".appsody-config.yaml"
 )
 
+var (
+	LatestVersionURL = "https://github.com/appsody/appsody/releases/latest"
+)
+
 var imagePulled = make(map[string]bool)
 var projectConfig *ProjectConfig
 
@@ -64,19 +71,27 @@ func exists(path string) (bool, error) {
 }
 
 func getEnvVar(searchEnvVar string) (string, error) {
-	// TODO cache this so the docker inspect command only runs once per cli invocation
-	var data []map[string]interface{}
+	// TODO cache this so the buildah / docker inspect command only runs once per cli invocation
+
+	// Docker and Buildah produce slightly different output
+	// for `inspect` command. Array of maps vs. maps
+	var dataBuildah map[string]interface{}
+	var dataDocker []map[string]interface{}
 	projectConfig, projectConfigErr := getProjectConfig()
 	if projectConfigErr != nil {
 		return "", projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	dockerPullErr := dockerPullImage(imageName)
-	if dockerPullErr != nil {
-		return "", dockerPullErr
+	pullErrs := pullImage(imageName)
+	if pullErrs != nil {
+		return "", pullErrs
 	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
+	if buildah {
+		cmdName = "buildah"
+		cmdArgs = []string{"inspect", "--format={{.Config}}", imageName}
+	}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
 	inspectOut, inspectErr := inspectCmd.Output()
@@ -85,14 +100,26 @@ func getEnvVar(searchEnvVar string) (string, error) {
 
 	}
 
-	err := json.Unmarshal([]byte(inspectOut), &data)
-	if err != nil {
-		return "", errors.New("error unmarshaling data from inspect command - exiting")
+	var err error
+	var envVars []interface{}
+	if buildah {
+		err = json.Unmarshal([]byte(inspectOut), &dataBuildah)
+		if err != nil {
+			return "", errors.New("error unmarshaling data from inspect command - exiting")
+		}
+		config := dataBuildah["config"].(map[string]interface{})
+		envVars = config["Env"].([]interface{})
 
+	} else {
+		err = json.Unmarshal([]byte(inspectOut), &dataDocker)
+		if err != nil {
+			return "", errors.New("error unmarshaling data from inspect command - exiting")
+
+		}
+		config := dataDocker[0]["Config"].(map[string]interface{})
+
+		envVars = config["Env"].([]interface{})
 	}
-	config := data[0]["Config"].(map[string]interface{})
-
-	envVars := config["Env"].([]interface{})
 
 	Debug.log("Number of environment variables in stack image: ", len(envVars))
 	Debug.log("All environment variables in stack image: ", envVars)
@@ -292,6 +319,7 @@ func getProjectName() (string, error) {
 		return "my-project", err
 	}
 	projectName := strings.ToLower(filepath.Base(projectDir))
+	projectName = strings.ReplaceAll(projectName, "_", "-")
 	return projectName, nil
 }
 
@@ -424,9 +452,9 @@ func getExposedPorts() ([]string, error) {
 		return nil, projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	dockerPullErr := dockerPullImage(imageName)
-	if dockerPullErr != nil {
-		return nil, dockerPullErr
+	pullErrs := pullImage(imageName)
+	if pullErrs != nil {
+		return nil, pullErrs
 	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
@@ -610,9 +638,9 @@ func DockerPush(imageToPush string) error {
 func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput string, err error) {
 	cmdName := "docker"
 	var cmdArgs []string
-	dockerPullErr := dockerPullImage(image)
-	if dockerPullErr != nil {
-		return "", dockerPullErr
+	pullErrs := pullImage(image)
+	if pullErrs != nil {
+		return "", pullErrs
 	}
 	if len(options) >= 0 {
 		cmdArgs = append([]string{"run"}, options...)
@@ -697,9 +725,10 @@ func KubeDelete(fileToApply string) error {
 	execCmd.Stderr = &stderr
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
-		Error.log(strings.Trim(stderr.String(), "\n"))
+		errorText := strings.Trim(stderr.String(), "\n")
+		Error.log(errorText)
 		Error.log("kubectl delete failed: ", kerr)
-		return kerr
+		return errors.Errorf("kubectl delete failed: %v %s", kerr, errorText)
 	}
 	Debug.log("kubectl delete success: ", string(kout[:]))
 	return nil
@@ -769,10 +798,14 @@ func KubeGetDeploymentURL(service string) (url string, err error) {
 	return "", err
 }
 
-//dockerPullCmd
+//pullCmd
+// enable extract to use `buildah` sequences for image extraction.
 // Pull the given docker image
-func dockerPullCmd(imageToPull string) error {
+func pullCmd(imageToPull string) error {
 	cmdName := "docker"
+	if buildah {
+		cmdName = "buildah"
+	}
 	pullArgs := []string{"pull", imageToPull}
 	if dryrun {
 		Info.log("Dry run - skipping execution of: ", cmdName, " ", pullArgs)
@@ -805,10 +838,10 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 	return false
 }
 
-//dockerPullImage
-// pulls docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
+//pullImage
+// pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
-func dockerPullImage(imageToPull string) error {
+func pullImage(imageToPull string) error {
 
 	Debug.logf("%s image pulled status: %t", imageToPull, imagePulled[imageToPull])
 	if imagePulled[imageToPull] {
@@ -831,7 +864,7 @@ func dockerPullImage(imageToPull string) error {
 	}
 
 	if pullPolicyAlways || (!pullPolicyAlways && !localImageFound) {
-		err := dockerPullCmd(imageToPull)
+		err := pullCmd(imageToPull)
 		if err != nil {
 			if pullPolicyAlways {
 				localImageFound = checkDockerImageExistsLocally(imageToPull)
@@ -951,4 +984,64 @@ func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
 	Debug.log("Checksum returned: ", checkValue)
 
 	return checkValue, nil
+}
+
+func getLatestVersion() string {
+	var version string
+	resp, err := http.Get(LatestVersionURL)
+	if err != nil {
+		Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
+		version = "none"
+	} else {
+		url := resp.Request.URL.String()
+		r, _ := regexp.Compile(`\d.\d.\d`)
+
+		version = r.FindString(url)
+	}
+	return version
+}
+
+func doVersionCheck(data []byte, old string, new string, file string) {
+	var latest = getLatestVersion()
+	if VERSION != "vlatest" && VERSION != latest {
+		Info.log("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
+	}
+	output := bytes.Replace(data, []byte(old), []byte(new), -1)
+	err := ioutil.WriteFile(file, output, 0666)
+	if err != nil {
+		Warning.log("Error writing to config file")
+	}
+}
+
+func getLastCheckTime() string {
+	return cliConfig.GetString("lastversioncheck")
+}
+
+func checkTime() {
+	var lastCheckTime string
+	var currentTime string
+
+	var configFile = getDefaultConfigFile()
+
+	data, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		Warning.log("Unable to read config file")
+	}
+
+	lastCheckTime = getLastCheckTime()
+	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
+
+	if getLatestVersion() != "none" {
+		if lastCheckTime == "none" {
+			doVersionCheck(data, lastCheckTime, currentTime, configFile)
+		} else {
+			lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
+			if err != nil {
+				fmt.Println(err)
+			}
+			if time.Since(lastTime).Hours() > 24 {
+				doVersionCheck(data, lastCheckTime, currentTime, configFile)
+			}
+		}
+	}
 }

@@ -31,7 +31,7 @@ var deleteDeploymentCmd = &cobra.Command{
 		if err != nil {
 			return errors.Errorf("Error checking status of %s", deployConfigFile)
 		}
-		if !exists {
+		if !dryrun && !exists {
 			return errors.Errorf("Cannot delete deployment. Deployment manifest not found: %s", deployConfigFile)
 		}
 
