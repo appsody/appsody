@@ -280,9 +280,9 @@ func generateDeploymentConfig() error {
 
 	var cmdName string
 	var cmdArgs []string
-	dockerPullErr := dockerPullImage(stackImage)
-	if dockerPullErr != nil {
-		return dockerPullErr
+	pullErr := pullImage(stackImage)
+	if pullErr != nil {
+		return pullErr
 	}
 
 	c := make(chan os.Signal, 1)
@@ -305,8 +305,8 @@ func generateDeploymentConfig() error {
 	if err != nil {
 
 		Error.log("docker create command failed: ", err)
-		removeErr := dockerRemove(extractContainerName)
-		Error.log("Error in dockerRemove", removeErr)
+		removeErr := containerRemove(extractContainerName)
+		Error.log("Error in containerRemove", removeErr)
 		return err
 
 	}
@@ -317,16 +317,16 @@ func generateDeploymentConfig() error {
 	if err != nil {
 		Error.log("docker cp command failed: ", err)
 
-		removeErr := dockerRemove(extractContainerName)
+		removeErr := containerRemove(extractContainerName)
 		if removeErr != nil {
-			Error.log("dockerRemove error ", removeErr)
+			Error.log("containerRemove error ", removeErr)
 		}
 		return errors.Errorf("docker cp command failed: %v", err)
 	}
 
-	removeErr := dockerRemove(extractContainerName)
+	removeErr := containerRemove(extractContainerName)
 	if removeErr != nil {
-		Error.log("dockerRemove error ", removeErr)
+		Error.log("containerRemove error ", removeErr)
 	}
 
 	yamlReader, err := ioutil.ReadFile(configFile)

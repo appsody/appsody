@@ -129,9 +129,9 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	Debug.log("Project directory: ", projectDir)
 
 	var cmdArgs []string
-	dockerPullErr := dockerPullImage(platformDefinition)
-	if dockerPullErr != nil {
-		return dockerPullErr
+	pullErr := pullImage(platformDefinition)
+	if pullErr != nil {
+		return pullErr
 	}
 
 	volumeMaps, volumeErr := getVolumeArgs()
@@ -217,7 +217,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		if err != nil {
 			Error.log(err)
 		}
-		//dockerRemove(containerName) is not needed due to --rm flag
+		//containerRemove(containerName) is not needed due to --rm flag
 		os.Exit(1)
 	}()
 
