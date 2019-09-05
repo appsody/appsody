@@ -719,7 +719,7 @@ func KubeDelete(fileToApply string) error {
 		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
 		return nil
 	}
-	Info.log("Running command: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	var stderr bytes.Buffer
 	execCmd.Stderr = &stderr
