@@ -1015,3 +1015,22 @@ func checkTime() {
 		}
 	}
 }
+
+func setNewIndexURL() {
+
+	var repoFile = getRepoFileLocation()
+	var oldIndexUrl = "https://raw.githubusercontent.com/appsody/stacks/master/index.yaml"
+	var newIndexUrl = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
+
+	data, err := ioutil.ReadFile(repoFile)
+	if err != nil {
+		Warning.log("Unable to read repository file")
+	}
+
+	replaceUrl := bytes.Replace(data, []byte(oldIndexUrl), []byte(newIndexUrl), -1)
+
+	if err = ioutil.WriteFile(repoFile, replaceUrl, 0666); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
