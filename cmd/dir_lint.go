@@ -18,51 +18,110 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"io/ioutil"
+	"path"
+	"strconv"
 )
 
-// listCmd represents the list command
 var lintCmd = &cobra.Command{
-	Use:   "lint ",
-	Short: "",
+	Use:   "lint",
+	Short: "Lint your stack to verify that it conforms to the standard of an Appsody stack",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		stackPath := os.Getenv("PWD")
-		templatePath := os.Getenv("PWD") + "/templates"
+		errorCount := 0
+		warningCount := 0
 
-		if fileExists(templatePath) {
+		if (len(args) > 0) {
+			stackPath = args[0]
+		}
+
+		imagePath := stackPath + "/image"
+		templatePath := stackPath + "/templates"
+		configPath := imagePath + "/config"
+		projectPath := imagePath + "/project"
+
+		Info.log("LINTING " + path.Base(stackPath) + "\n")
+		
+		if fileDoesNotExist(stackPath + "/README.md") {
+			Info.log("ERROR: Missing README.md in: " + stackPath)
+			errorCount += 1
+		}
+		
+		if fileDoesNotExist(stackPath + "/stack.yaml") {
+			Info.log("ERROR: Missing stack.yaml in: " + stackPath)
+			errorCount += 1
+		}
+
+
+		if fileDoesNotExist(imagePath) {
+			Info.log("ERROR: Missing image directory in " + stackPath)
+			errorCount += 1	
+		}
+
+		if fileDoesNotExist(imagePath + "/Dockerfile-stack") {
+			Info.log("ERROR: Missing Dockerfile-stack in " + imagePath)
+			errorCount += 1	
+		}
+
+		if fileDoesNotExist(imagePath + "/LICENSE") {
+			Info.log("ERROR: Missing LICENSE in " + imagePath)
+			errorCount += 1	
+		}
+
+		if fileDoesNotExist(configPath) {
+			Info.log("WARNING: Missing config directory in " + imagePath + " (Knative deployment will be used over Kubernetes)");
+			warningCount += 1
+
+		} 
+		
+		if fileDoesNotExist(configPath + "/app-deploy.yaml") {
+			Info.log("WARNING: Missing app-deploy.yaml in " + configPath + " (Knative deployment will be used over Kubernetes)")
+			warningCount += 1
+		}
+
+		if fileDoesNotExist(projectPath + "/Dockerfile") {
+			Info.log("WARNING: Missing Dockerfile in " + projectPath)
+			warningCount += 1
+		}
+
+		if fileDoesNotExist(templatePath) {
 			Info.log("ERROR: Missing template directory in: " + stackPath )
+			errorCount += 1
 		} 
 		
 		if IsEmptyDir(templatePath) {
 			Info.log("ERROR: No templates found in: " + templatePath )
+			errorCount += 1
 		}
 
-		if fileExists(stackPath + "/README.md") {
-			Info.log("ERROR: Missing README.md in: " + stackPath)
-		}
 
-		if fileExists(stackPath + "/stack.yaml") {
-			Info.log("ERROR: Missing stack.yaml in: " + stackPath)
+		if errorCount > 0 {
+			Info.log("\nLINT TEST FAILED")
+			Info.log("\nTOTAL ERRORS: " + strconv.Itoa(errorCount))
+			Info.log("TOTAL WARNINGS: " + strconv.Itoa(warningCount))
+		
+		} else {
+			Info.log("\nLINT TEST PASSED")
+			Info.log("TOTAL WARNINGS: " + strconv.Itoa(warningCount))
 		}
-
 
 		return nil
 	},
 }
 
-func fileExists(filename string) (bool) {
-    _, err := os.Stat(filename)
-    if os.IsNotExist(err) {
-        return true;
-    } else {
-		return false
-	}
-    
-}
 
 func IsEmptyDir(name string) (bool) {
 	_, err := ioutil.ReadDir(name)
 	if err != nil {
+		return true
+	} else {
+		return false
+	}
+}
+
+func fileDoesNotExist(filename string) bool {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
 		return true
 	} else {
 		return false
