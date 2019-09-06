@@ -18,15 +18,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
-
 var stackCmd = &cobra.Command{
 	Use:   "stack",
 	Short: "",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		Info.log("stack")
-
 		return nil
 	},
 }
