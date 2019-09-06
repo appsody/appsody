@@ -180,8 +180,8 @@ var (
 
 func (l appsodylogger) log(args ...interface{}) {
 	msgString := fmt.Sprint(args...)
-	r := strings.NewReplacer("[", " ", "]", " ",)
-    resultString := r.Replace(msgString)
+	r := strings.NewReplacer("[", " ", "]", " ")
+	resultString := r.Replace(msgString)
 	l.internalLog(resultString, args...)
 }
 
