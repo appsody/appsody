@@ -188,7 +188,7 @@ in preparation to build the final container image.`,
 		if buildah {
 			appDir = containerProjectDir
 			cmdName = "/bin/sh"
-			script := fmt.Sprintf("buildah run -v %s:/ex %s bash -c 'cp -rf %s/* /ex; exit'", extractDir, extractContainerName, appDir)
+			script := fmt.Sprintf("x=`buildah mount %s`; cp -rf $x/%s/* %s", extractContainerName, appDir, extractDir)
 			cmdArgs = []string{"-c", script}
 		}
 		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
