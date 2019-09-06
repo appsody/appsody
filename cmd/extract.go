@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"path/filepath"
@@ -25,13 +26,14 @@ import (
 )
 
 var targetDir string
+var buildah bool
 var extractContainerName string
 
 var extractCmd = &cobra.Command{
 	Use:   "extract",
 	Short: "Extract the stack and your Appsody project to a local directory",
 	Long: `This copies the full project, stack plus app, into a local directory
-in preparation to build the final docker image.`,
+in preparation to build the final container image.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		setupErr := setupConfig()
@@ -100,11 +102,20 @@ in preparation to build the final docker image.`,
 			}
 		}
 
+		if buildah {
+			// Buildah fails if the destination does not exist.
+			Debug.log("Creating extract dir: ", extractDir)
+			err = os.MkdirAll(extractDir, os.ModePerm)
+			if err != nil {
+				return errors.Errorf("Error creating directories %s %v", extractDir, err)
+			}
+		}
+
 		stackImage := projectConfig.Platform
 
-		dockerPullErr := dockerPullImage(stackImage)
-		if dockerPullErr != nil {
-			return dockerPullErr
+		pullErr := pullImage(stackImage)
+		if pullErr != nil {
+			return pullErr
 		}
 
 		containerProjectDir, containerProjectDirErr := getExtractDir()
@@ -118,6 +129,9 @@ in preparation to build the final docker image.`,
 			return volumeErr
 		}
 		cmdName := "docker"
+		if buildah {
+			cmdName = "buildah"
+		}
 		var appDir string
 		cmdArgs := []string{"--name", extractContainerName}
 		if len(volumeMaps) > 0 {
@@ -125,15 +139,23 @@ in preparation to build the final docker image.`,
 		}
 
 		if runtime.GOOS != "windows" {
-			// On Linux and OS/X we run docker create
-			cmdArgs = append([]string{"create"}, cmdArgs...)
+			// On Linux and OS/X we run docker create or buildah from
+			if buildah {
+				cmdArgs = append([]string{"from"}, cmdArgs...)
+			} else {
+				cmdArgs = append([]string{"create"}, cmdArgs...)
+			}
 			cmdArgs = append(cmdArgs, stackImage)
 			err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
 			if err != nil {
 
-				Error.log("docker create command failed: ", err)
-				removeErr := dockerRemove(extractContainerName)
-				Error.log("Error in dockerRemove", removeErr)
+				if buildah {
+					Error.log("buildah from command failed: ", err)
+				} else {
+					Error.log("docker create command failed: ", err)
+				}
+				removeErr := containerRemove(extractContainerName)
+				Error.log("Error in containerRemove", removeErr)
 				return err
 
 			}
@@ -151,9 +173,9 @@ in preparation to build the final docker image.`,
 			if err != nil {
 				Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage)
 
-				removeErr := dockerRemove(extractContainerName)
+				removeErr := containerRemove(extractContainerName)
 				if removeErr != nil {
-					Error.log("dockerRemove error ", removeErr)
+					Error.log("containerRemove error ", removeErr)
 				}
 
 				return errors.Errorf("Error attempting to run copy command %s on image %s", bashCmd, stackImage)
@@ -163,20 +185,33 @@ in preparation to build the final docker image.`,
 			appDir = extractContainerName + ":" + filepath.Join("/tmp", containerProjectDir)
 		}
 		cmdArgs = []string{"cp", appDir, extractDir}
+		if buildah {
+			appDir = containerProjectDir
+			cmdName = "/bin/sh"
+			script := fmt.Sprintf("buildah run -v %s:/ex %s bash -c 'cp -rf %s/* /ex; exit'", extractDir, extractContainerName, appDir)
+			cmdArgs = []string{"-c", script}
+		}
 		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
 		if err != nil {
-			Error.log("docker cp command failed: ", err)
+			if buildah {
+				Error.log("buildah mount / copy command failed: ", err)
+			} else {
+				Error.log("docker cp command failed: ", err)
+			}
 
-			removeErr := dockerRemove(extractContainerName)
+			removeErr := containerRemove(extractContainerName)
 			if removeErr != nil {
-				Error.log("dockerRemove error ", removeErr)
+				Error.log("containerRemove error ", removeErr)
+			}
+			if buildah {
+				return errors.Errorf("buildah mount / copy command failed: %v", err)
 			}
 			return errors.Errorf("docker cp command failed: %v", err)
 		}
 
-		removeErr := dockerRemove(extractContainerName)
+		removeErr := containerRemove(extractContainerName)
 		if removeErr != nil {
-			Error.log("dockerRemove error ", removeErr)
+			Error.log("containerRemove error ", removeErr)
 		}
 		if targetDir == "" {
 			if !dryrun {
@@ -201,6 +236,7 @@ in preparation to build the final docker image.`,
 func init() {
 	rootCmd.AddCommand(extractCmd)
 	extractCmd.PersistentFlags().StringVar(&targetDir, "target-dir", "", "Directory path to place the extracted files. This dir must not exist, it will be created.")
+	extractCmd.PersistentFlags().BoolVar(&buildah, "buildah", false, "Extract project using buildah primitives instead of docker.")
 	// curDir, err := os.Getwd()
 	// if err != nil {
 	//		Error.log("Error getting current directory ", err)

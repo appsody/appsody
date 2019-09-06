@@ -31,11 +31,7 @@ var appsodyCRDName = "appsody-app-crd.yaml"
 var operatorRBACName = "appsody-app-cluster-rbac.yaml"
 
 func downloadOperatorYaml(url string, operatorNamespace string, watchNamespace string, target string) (string, error) {
-	if dryrun {
-		Info.log("Skipping download of operator yaml: ", url)
-		return "", nil
 
-	}
 	file, err := downloadYaml(url, target)
 	if err != nil {
 		return "", fmt.Errorf("Could not download Operator YAML file %s", url)
@@ -93,10 +89,7 @@ func downloadRBACYaml(url string, operatorNamespace string, target string) (stri
 }
 func downloadYaml(url string, target string) (string, error) {
 	Debug.log("Downloading file: ", url)
-	if dryrun {
-		Info.log("Skipping Downloading file: ", url)
-		return "", nil
-	}
+
 	fileBuffer := bytes.NewBuffer(nil)
 	err := downloadFile(url, fileBuffer)
 	if err != nil {
@@ -130,15 +123,13 @@ func getDeployConfigDir() (string, error) {
 		return "", errors.Errorf("Error checking directory: %v", err)
 	}
 	if !deployConfigDirExists {
-		if dryrun {
-			Info.log("Dry Run - Skip creating deploy config dir: ", deployConfigDir)
-		} else {
-			Debug.log("Creating deploy config dir: ", deployConfigDir)
-			err = os.MkdirAll(deployConfigDir, os.ModePerm)
-			if err != nil {
-				return "", errors.Errorf("Error creating directories %s %v", deployConfigDir, err)
-			}
+
+		Debug.log("Creating deploy config dir: ", deployConfigDir)
+		err = os.MkdirAll(deployConfigDir, os.ModePerm)
+		if err != nil {
+			return "", errors.Errorf("Error creating directories %s %v", deployConfigDir, err)
 		}
+
 	}
 	return deployConfigDir, nil
 }
