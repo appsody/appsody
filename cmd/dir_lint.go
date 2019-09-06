@@ -25,8 +25,12 @@ import (
 var lintCmd = &cobra.Command{
 	Use:   "lint",
 	Short: "Lint your stack to verify that it conforms to the standard of an Appsody stack",
-	Long:  ``,
+	Long:  `This command will validate that your stack has the structure of an Appsody stack. It will inform you of files/directories
+missing and warn you if your stack could be enhanced.
+
+This command can be run from the base directory of your stack or you can supply a path to the stack as an argument.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+
 		stackPath := os.Getenv("PWD")
 		errorCount := 0
 		warningCount := 0
