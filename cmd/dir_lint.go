@@ -16,6 +16,8 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"os"
+	"io/ioutil"
 )
 
 // listCmd represents the list command
@@ -24,10 +26,47 @@ var lintCmd = &cobra.Command{
 	Short: "",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		Info.log("lint")
+		stackPath := os.Getenv("PWD")
+		templatePath := os.Getenv("PWD") + "/templates"
+
+		if fileExists(templatePath) {
+			Info.log("ERROR: Missing template directory in: " + stackPath )
+		} 
+		
+		if IsEmptyDir(templatePath) {
+			Info.log("ERROR: No templates found in: " + templatePath )
+		}
+
+		if fileExists(stackPath + "/README.md") {
+			Info.log("ERROR: Missing README.md in: " + stackPath)
+		}
+
+		if fileExists(stackPath + "/stack.yaml") {
+			Info.log("ERROR: Missing stack.yaml in: " + stackPath)
+		}
+
 
 		return nil
 	},
+}
+
+func fileExists(filename string) (bool) {
+    _, err := os.Stat(filename)
+    if os.IsNotExist(err) {
+        return true;
+    } else {
+		return false
+	}
+    
+}
+
+func IsEmptyDir(name string) (bool) {
+	_, err := ioutil.ReadDir(name)
+	if err != nil {
+		return true
+	} else {
+		return false
+	}
 }
 
 func init() {
