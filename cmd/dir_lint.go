@@ -97,6 +97,14 @@ This command can be run from the base directory of your stack or you can supply 
 			errorCount++
 		}
 
+		templates, _ := ioutil.ReadDir(templatePath)
+		for _, f := range templates {
+			if fileDoesNotExist(templatePath+"/"+f.Name()+"/"+".appsody-config.yaml") == nil {
+				Info.log("ERROR: Unexpected .appsody-config.yaml in " + templatePath + "/" + f.Name())
+				errorCount++
+			}
+		}
+
 		if errorCount > 0 {
 			Info.log("\nLINT TEST FAILED")
 			Info.log("\nTOTAL ERRORS: " + strconv.Itoa(errorCount))
