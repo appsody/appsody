@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
 	"strconv"
 )
