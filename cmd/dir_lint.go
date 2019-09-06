@@ -42,12 +42,12 @@ var lintCmd = &cobra.Command{
 
 		Info.log("LINTING " + path.Base(stackPath) + "\n")
 
-		if fileDoesNotExist(stackPath + "/README.md") != nil {
+		if fileDoesNotExist(stackPath+"/README.md") != nil {
 			Info.log("ERROR: Missing README.md in: " + stackPath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(stackPath + "/stack.yaml") != nil {
+		if fileDoesNotExist(stackPath+"/stack.yaml") != nil {
 			Info.log("ERROR: Missing stack.yaml in: " + stackPath)
 			errorCount++
 		}
@@ -57,12 +57,12 @@ var lintCmd = &cobra.Command{
 			errorCount++
 		}
 
-		if fileDoesNotExist(imagePath + "/Dockerfile-stack") != nil {
+		if fileDoesNotExist(imagePath+"/Dockerfile-stack") != nil {
 			Info.log("ERROR: Missing Dockerfile-stack in " + imagePath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(imagePath + "/LICENSE") != nil {
+		if fileDoesNotExist(imagePath+"/LICENSE") != nil {
 			Info.log("ERROR: Missing LICENSE in " + imagePath)
 			errorCount++
 		}
@@ -73,12 +73,12 @@ var lintCmd = &cobra.Command{
 
 		}
 
-		if fileDoesNotExist(configPath + "/app-deploy.yaml") != nil {
+		if fileDoesNotExist(configPath+"/app-deploy.yaml") != nil {
 			Info.log("WARNING: Missing app-deploy.yaml in " + configPath + " (Knative deployment will be used over Kubernetes)")
 			warningCount++
 		}
 
-		if fileDoesNotExist(projectPath + "/Dockerfile") != nil {
+		if fileDoesNotExist(projectPath+"/Dockerfile") != nil {
 			Info.log("WARNING: Missing Dockerfile in " + projectPath)
 			warningCount++
 		}
@@ -109,7 +109,7 @@ var lintCmd = &cobra.Command{
 
 func IsEmptyDir(name string) error {
 	_, err := ioutil.ReadDir(name)
-	return err;
+	return err
 }
 
 func fileDoesNotExist(filename string) error {
