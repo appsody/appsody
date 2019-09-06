@@ -1016,6 +1016,8 @@ func checkTime() {
 	}
 }
 
+// TEMPORARY CODE: sets the old v1 index to point to the new v2 index (latest)
+// this code should be removed when we think everyone is using the latest index.
 func setNewIndexURL() {
 
 	var repoFile = getRepoFileLocation()
@@ -1029,8 +1031,7 @@ func setNewIndexURL() {
 
 	replaceURL := bytes.Replace(data, []byte(oldIndexURL), []byte(newIndexURL), -1)
 
-	if err = ioutil.WriteFile(repoFile, replaceURL, 0666); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	if err = ioutil.WriteFile(repoFile, replaceURL, 0644); err != nil {
+		Warning.log(err)
 	}
 }
