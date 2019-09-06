@@ -42,53 +42,53 @@ var lintCmd = &cobra.Command{
 
 		Info.log("LINTING " + path.Base(stackPath) + "\n")
 
-		if fileDoesNotExist(stackPath + "/README.md") {
+		if fileDoesNotExist(stackPath + "/README.md") != nil {
 			Info.log("ERROR: Missing README.md in: " + stackPath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(stackPath + "/stack.yaml") {
+		if fileDoesNotExist(stackPath + "/stack.yaml") != nil {
 			Info.log("ERROR: Missing stack.yaml in: " + stackPath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(imagePath) {
+		if fileDoesNotExist(imagePath) != nil {
 			Info.log("ERROR: Missing image directory in " + stackPath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(imagePath + "/Dockerfile-stack") {
+		if fileDoesNotExist(imagePath + "/Dockerfile-stack") != nil {
 			Info.log("ERROR: Missing Dockerfile-stack in " + imagePath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(imagePath + "/LICENSE") {
+		if fileDoesNotExist(imagePath + "/LICENSE") != nil {
 			Info.log("ERROR: Missing LICENSE in " + imagePath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(configPath) {
+		if fileDoesNotExist(configPath) != nil {
 			Info.log("WARNING: Missing config directory in " + imagePath + " (Knative deployment will be used over Kubernetes)")
 			warningCount++
 
 		}
 
-		if fileDoesNotExist(configPath + "/app-deploy.yaml") {
+		if fileDoesNotExist(configPath + "/app-deploy.yaml") != nil {
 			Info.log("WARNING: Missing app-deploy.yaml in " + configPath + " (Knative deployment will be used over Kubernetes)")
 			warningCount++
 		}
 
-		if fileDoesNotExist(projectPath + "/Dockerfile") {
+		if fileDoesNotExist(projectPath + "/Dockerfile") != nil {
 			Info.log("WARNING: Missing Dockerfile in " + projectPath)
 			warningCount++
 		}
 
-		if fileDoesNotExist(templatePath) {
+		if fileDoesNotExist(templatePath) != nil {
 			Info.log("ERROR: Missing template directory in: " + stackPath)
 			errorCount++
 		}
 
-		if IsEmptyDir(templatePath) {
+		if IsEmptyDir(templatePath) != nil {
 			Info.log("ERROR: No templates found in: " + templatePath)
 			errorCount++
 		}
@@ -107,20 +107,14 @@ var lintCmd = &cobra.Command{
 	},
 }
 
-func IsEmptyDir(name string) bool {
+func IsEmptyDir(name string) error {
 	_, err := ioutil.ReadDir(name)
-	if err != nil {
-		return true
-	}
-	return false
+	return err;
 }
 
-func fileDoesNotExist(filename string) bool {
+func fileDoesNotExist(filename string) error {
 	_, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return true
-	}
-	return false
+	return err
 }
 
 func init() {
