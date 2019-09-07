@@ -17,7 +17,7 @@ package cmd
 import (
 	"fmt"
 	"os"
-	s "strings"
+	"strings"
 
 	"path/filepath"
 	"runtime"
@@ -217,17 +217,17 @@ in preparation to build the final container image.`,
 		// ref: https://github.com/containers/buildah/issues/1821
 		if buildah {
 			for _, item := range volumeMaps {
-				if s.Contains(item, ":") {
+				if strings.Contains(item, ":") {
 					Debug.log("Appsody mount: ", item)
-					var src = s.Split(item, ":")[0]
-					var dest = s.Split(item, ":")[1]
-					if s.EqualFold(src, ".") {
+					var src = strings.Split(item, ":")[0]
+					var dest = strings.Split(item, ":")[1]
+					if strings.EqualFold(src, ".") {
 						src, err = os.Getwd()
 						if err != nil {
 							return errors.Errorf("Error getting cwd: %v", err)
 						}
 					}
-					dest = s.Replace(dest, appDir, extractDir, -1)
+					dest = strings.Replace(dest, appDir, extractDir, -1)
 					Debug.log("Local-adjusted mount destination: ", dest)
 					fileInfo, err := os.Lstat(src)
 					if err != nil {
