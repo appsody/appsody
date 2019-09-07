@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	s "strings"
 
 	"path/filepath"
 	"runtime"
@@ -188,7 +189,7 @@ in preparation to build the final container image.`,
 		if buildah {
 			appDir = containerProjectDir
 			cmdName = "/bin/sh"
-			script := fmt.Sprintf("buildah run -v %s:/ex %s bash -c 'cp -rf %s/* /ex; exit'", extractDir, extractContainerName, appDir)
+			script := fmt.Sprintf("x=`buildah mount %s`; cp -rf $x/%s/* %s", extractContainerName, appDir, extractDir)
 			cmdArgs = []string{"-c", script}
 		}
 		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
@@ -207,6 +208,62 @@ in preparation to build the final container image.`,
 				return errors.Errorf("buildah mount / copy command failed: %v", err)
 			}
 			return errors.Errorf("docker cp command failed: %v", err)
+		}
+
+		// A class of systems (e.g:- RHEL 7.6) exhibit situations wherein
+		// the bindmount volumes are not propagated to the child containers
+		// Accommodate those systems as well, by performing local copies
+		// for the locations that are resident in the host.
+		// ref: https://github.com/containers/buildah/issues/1821
+		if buildah {
+			for _, item := range volumeMaps {
+				if s.Contains(item, ":") {
+					Debug.log("Appsody mount: ", item)
+					var src = s.Split(item, ":")[0]
+					var dest = s.Split(item, ":")[1]
+					if s.EqualFold(src, ".") {
+						src, err = os.Getwd()
+						if err != nil {
+							return errors.Errorf("Error getting cwd: %v", err)
+						}
+					}
+					dest = s.Replace(dest, appDir, extractDir, -1)
+					Debug.log("Local-adjusted mount destination: ", dest)
+					fileInfo, err := os.Lstat(src)
+					if err != nil {
+						return errors.Errorf("Error lstat: %v", err)
+					}
+					var mkdir string
+					if fileInfo.IsDir() {
+						mkdir = dest
+					} else {
+						mkdir = filepath.Dir(dest)
+					}
+					err = os.MkdirAll(mkdir, os.ModePerm)
+					if err != nil {
+						return errors.Errorf("Error creating directories %s %v", extractDir, err)
+					}
+
+					fileInfo, err = os.Lstat(src)
+					if err != nil {
+						return errors.Errorf("project file check error %v", err)
+					}
+					Debug.log("Copy source: ", src)
+					Debug.log("Copy destination: ", dest)
+					if fileInfo.IsDir() {
+						err = copyDir(src+"/.", dest)
+						if err != nil {
+							return errors.Errorf("folder copy error %v", err)
+						}
+					} else {
+						err = CopyFile(src, dest)
+						if err != nil {
+							return errors.Errorf("file copy error %v", err)
+						}
+					}
+					Debug.log("Copied ", src, " to ", dest)
+				}
+			}
 		}
 
 		removeErr := containerRemove(extractContainerName)
