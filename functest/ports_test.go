@@ -42,7 +42,7 @@ func TestPortMap(t *testing.T) {
 		t.Fatal(err)
 	}
 	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--dryrun", "--publish", "3100:3000", "--publish", "4100:4000", "--publish", "9230:9229"}, projectDir)
-	if !strings.Contains(runOutput, "docker[run --rm -p 3100:3000 -p 4100:4000 -p 9230:9229") {
+	if !strings.Contains(runOutput, "docker run --rm -p 3100:3000 -p 4100:4000 -p 9230:9229") {
 
 		t.Fatal("Ports are not correctly specified as: -p 3100:3000 -p 4100:4000 -p 9230:9229")
 
@@ -70,8 +70,8 @@ func TestPublishAll(t *testing.T) {
 	}
 	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--publish-all", "--dryrun"}, projectDir)
 
-	if !strings.Contains(runOutput, "docker[run --rm -P") {
-		t.Fatal("publish all is not found in output as: docker[run --rm -P")
+	if !strings.Contains(runOutput, "docker run --rm -P") {
+		t.Fatal("publish all is not found in output as: docker run --rm -P")
 
 	}
 
