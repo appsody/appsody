@@ -20,11 +20,8 @@ import (
 
 var stackCmd = &cobra.Command{
 	Use:   "stack",
-	Short: "",
+	Short: "Tools to help create and test Appsody stacks",
 	Long:  ``,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return nil
-	},
 }
 
 func init() {

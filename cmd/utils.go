@@ -1045,3 +1045,23 @@ func checkTime() {
 		}
 	}
 }
+
+func IsEmptyDir(name string) bool {
+	f, err := os.Open(name)
+
+	if err != nil {
+		return true
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1)
+	if err == io.EOF {
+		return true
+	}
+	return false
+}
+
+func fileDoesNotExist(filename string) bool {
+	_, err := os.Stat(filename)
+	return os.IsNotExist(err)
+}
