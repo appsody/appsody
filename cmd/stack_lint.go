@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"
@@ -106,15 +107,14 @@ This command can be run from the base directory of your stack or you can supply 
 		}
 
 		if errorCount > 0 {
-			Info.log("LINT TEST FAILED")
 			Info.log("TOTAL ERRORS: ", errorCount)
 			Info.log("TOTAL WARNINGS: ", warningCount)
+			return errors.Errorf("LINT TEST FAILED")
 
-		} else {
-			Info.log("LINT TEST PASSED")
-			Info.log("TOTAL WARNINGS: ", warningCount)
 		}
 
+		Info.log("TOTAL WARNINGS: ", warningCount)
+		Info.log("LINT TEST PASSED")
 		return nil
 	},
 }
