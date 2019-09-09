@@ -18,8 +18,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"strconv"
+	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,7 @@ missing and warn you if your stack could be enhanced.
 This command can be run from the base directory of your stack or you can supply a path to the stack as an argument.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		stackPath := os.Getenv("PWD")
+		stackPath, _ := os.Getwd()
 		errorCount := 0
 		warningCount := 0
 
@@ -40,82 +41,81 @@ This command can be run from the base directory of your stack or you can supply 
 			stackPath = args[0]
 		}
 
-		imagePath := stackPath + "/image"
-		templatePath := stackPath + "/templates"
-		configPath := imagePath + "/config"
-		projectPath := imagePath + "/project"
+		imagePath := filepath.Join(stackPath, "image")
+		templatePath := filepath.Join(stackPath, "/templates")
+		configPath := filepath.Join(imagePath, "/config")
+		projectPath := filepath.Join(imagePath, "/project")
 
-		Info.log("LINTING " + path.Base(stackPath) + "\n")
+		Info.log("LINTING ", path.Base(stackPath))
 
-		if fileDoesNotExist(stackPath + "/README.md") {
-			Info.log("ERROR: Missing README.md in: " + stackPath)
+		if fileDoesNotExist(filepath.Join(stackPath, "/README.md")) {
+			Error.log("Missing README.md in: ", stackPath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(stackPath + "/stack.yaml") {
-			Info.log("ERROR: Missing stack.yaml in: " + stackPath)
+		if fileDoesNotExist(filepath.Join(stackPath, "/stack.yaml")) {
+			Error.log("Missing stack.yaml in: ", stackPath)
 			errorCount++
 		}
 
 		if fileDoesNotExist(imagePath) {
-			Info.log("ERROR: Missing image directory in " + stackPath)
+			Error.log("Missing image directory in ", stackPath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(imagePath + "/Dockerfile-stack") {
-			Info.log("ERROR: Missing Dockerfile-stack in " + imagePath)
+		if fileDoesNotExist(filepath.Join(imagePath, "/Dockerfile-stack")) {
+			Error.log("Missing Dockerfile-stack in ", imagePath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(imagePath + "/LICENSE") {
-			Info.log("ERROR: Missing LICENSE in " + imagePath)
+		if fileDoesNotExist(filepath.Join(imagePath, "/LICENSE")) {
+			Error.log("Missing LICENSE in ", imagePath)
 			errorCount++
 		}
 
 		if fileDoesNotExist(configPath) {
-			Info.log("WARNING: Missing config directory in " + imagePath + " (Knative deployment will be used over Kubernetes)")
+			Warning.log("Missing config directory in ", imagePath, " (Knative deployment will be used over Kubernetes)")
 			warningCount++
 
 		}
 
-		if fileDoesNotExist(configPath + "/app-deploy.yaml") {
-			Info.log("WARNING: Missing app-deploy.yaml in " + configPath + " (Knative deployment will be used over Kubernetes)")
+		if fileDoesNotExist(filepath.Join(configPath, "/app-deploy.yaml")) {
+			Warning.log("Missing app-deploy.yaml in ", configPath, " (Knative deployment will be used over Kubernetes)")
 			warningCount++
 		}
 
-		if fileDoesNotExist(projectPath + "/Dockerfile") {
-			Info.log("WARNING: Missing Dockerfile in " + projectPath)
+		if fileDoesNotExist(filepath.Join(projectPath, "/Dockerfile")) {
+			Warning.log("Missing Dockerfile in ", projectPath)
 			warningCount++
 		}
 
 		if fileDoesNotExist(templatePath) {
-			Info.log("ERROR: Missing template directory in: " + stackPath)
+			Error.log("Missing template directory in: ", stackPath)
 			errorCount++
 		}
 
 		if IsEmptyDir(templatePath) {
-			Info.log("ERROR: No templates found in: " + templatePath)
+			Error.log("No templates found in: ", templatePath)
 			errorCount++
 		}
 
 		templates, _ := ioutil.ReadDir(templatePath)
 		for _, f := range templates {
-			if !fileDoesNotExist(templatePath + "/" + f.Name() + "/" + ".appsody-config.yaml") {
-				Info.log("ERROR: Unexpected .appsody-config.yaml in " + templatePath + "/" + f.Name())
+			if !fileDoesNotExist(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml")) {
+				Error.log("Unexpected .appsody-config.yaml in ", filepath.Join(templatePath, f.Name()))
 				errorCount++
 			}
 		}
 
 		if errorCount > 0 {
-			Info.log("\nLINT TEST FAILED")
-			Info.log("\nTOTAL ERRORS: " + strconv.Itoa(errorCount))
-			Info.log("TOTAL WARNINGS: " + strconv.Itoa(warningCount))
+			Info.log("TOTAL ERRORS: ", errorCount)
+			Info.log("TOTAL WARNINGS: ", warningCount)
+			return errors.Errorf("LINT TEST FAILED")
 
-		} else {
-			Info.log("\nLINT TEST PASSED")
-			Info.log("TOTAL WARNINGS: " + strconv.Itoa(warningCount))
 		}
 
+		Info.log("TOTAL WARNINGS: ", warningCount)
+		Info.log("LINT TEST PASSED")
 		return nil
 	},
 }
