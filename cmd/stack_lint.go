@@ -19,7 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"strconv"
+	"path/filepath"
 )
 
 var lintCmd = &cobra.Command{
@@ -31,7 +31,7 @@ missing and warn you if your stack could be enhanced.
 This command can be run from the base directory of your stack or you can supply a path to the stack as an argument.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		stackPath := os.Getenv("PWD")
+		stackPath, _ := os.Getwd()
 		errorCount := 0
 		warningCount := 0
 
@@ -39,80 +39,80 @@ This command can be run from the base directory of your stack or you can supply 
 			stackPath = args[0]
 		}
 
-		imagePath := stackPath + "/image"
-		templatePath := stackPath + "/templates"
-		configPath := imagePath + "/config"
-		projectPath := imagePath + "/project"
+		imagePath := filepath.Join(stackPath, "image")
+		templatePath := filepath.Join(stackPath, "/templates")
+		configPath := filepath.Join(imagePath, "/config")
+		projectPath := filepath.Join(imagePath, "/project")
 
-		Info.log("LINTING " + path.Base(stackPath) + "\n")
+		Info.log("LINTING ", path.Base(stackPath))
 
-		if fileDoesNotExist(stackPath+"/README.md") != nil {
-			Info.log("ERROR: Missing README.md in: " + stackPath)
+		if fileDoesNotExist(filepath.Join(stackPath, "/README.md")) != nil {
+			Error.log("Missing README.md in: ", stackPath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(stackPath+"/stack.yaml") != nil {
-			Info.log("ERROR: Missing stack.yaml in: " + stackPath)
+		if fileDoesNotExist(filepath.Join(stackPath, "/stack.yaml")) != nil {
+			Error.log("Missing stack.yaml in: ", stackPath)
 			errorCount++
 		}
 
 		if fileDoesNotExist(imagePath) != nil {
-			Info.log("ERROR: Missing image directory in " + stackPath)
+			Error.log("Missing image directory in ", stackPath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(imagePath+"/Dockerfile-stack") != nil {
-			Info.log("ERROR: Missing Dockerfile-stack in " + imagePath)
+		if fileDoesNotExist(filepath.Join(imagePath, "/Dockerfile-stack")) != nil {
+			Error.log("Missing Dockerfile-stack in ", imagePath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(imagePath+"/LICENSE") != nil {
-			Info.log("ERROR: Missing LICENSE in " + imagePath)
+		if fileDoesNotExist(filepath.Join(imagePath, "/LICENSE")) != nil {
+			Error.log("Missing LICENSE in ", imagePath)
 			errorCount++
 		}
 
 		if fileDoesNotExist(configPath) != nil {
-			Info.log("WARNING: Missing config directory in " + imagePath + " (Knative deployment will be used over Kubernetes)")
+			Warning.log("Missing config directory in ", imagePath, " (Knative deployment will be used over Kubernetes)")
 			warningCount++
 
 		}
 
-		if fileDoesNotExist(configPath+"/app-deploy.yaml") != nil {
-			Info.log("WARNING: Missing app-deploy.yaml in " + configPath + " (Knative deployment will be used over Kubernetes)")
+		if fileDoesNotExist(filepath.Join(configPath, "/app-deploy.yaml")) != nil {
+			Warning.log("Missing app-deploy.yaml in ", configPath, " (Knative deployment will be used over Kubernetes)")
 			warningCount++
 		}
 
-		if fileDoesNotExist(projectPath+"/Dockerfile") != nil {
-			Info.log("WARNING: Missing Dockerfile in " + projectPath)
+		if fileDoesNotExist(filepath.Join(projectPath, "/Dockerfile")) != nil {
+			Warning.log("Missing Dockerfile in ", projectPath)
 			warningCount++
 		}
 
 		if fileDoesNotExist(templatePath) != nil {
-			Info.log("ERROR: Missing template directory in: " + stackPath)
+			Error.log("Missing template directory in: ", stackPath)
 			errorCount++
 		}
 
 		if IsEmptyDir(templatePath) != nil {
-			Info.log("ERROR: No templates found in: " + templatePath)
+			Error.log("No templates found in: ", templatePath)
 			errorCount++
 		}
 
 		templates, _ := ioutil.ReadDir(templatePath)
 		for _, f := range templates {
-			if fileDoesNotExist(templatePath+"/"+f.Name()+"/"+".appsody-config.yaml") == nil {
-				Info.log("ERROR: Unexpected .appsody-config.yaml in " + templatePath + "/" + f.Name())
+			if fileDoesNotExist(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml")) == nil {
+				Info.log("ERROR: Unexpected .appsody-config.yaml in ", filepath.Join(templatePath, f.Name()))
 				errorCount++
 			}
 		}
 
 		if errorCount > 0 {
-			Info.log("\nLINT TEST FAILED")
-			Info.log("\nTOTAL ERRORS: " + strconv.Itoa(errorCount))
-			Info.log("TOTAL WARNINGS: " + strconv.Itoa(warningCount))
+			Info.log("LINT TEST FAILED")
+			Info.log("TOTAL ERRORS: ", errorCount)
+			Info.log("TOTAL WARNINGS: ", warningCount)
 
 		} else {
-			Info.log("\nLINT TEST PASSED")
-			Info.log("TOTAL WARNINGS: " + strconv.Itoa(warningCount))
+			Info.log("LINT TEST PASSED")
+			Info.log("TOTAL WARNINGS: ", warningCount)
 		}
 
 		return nil
