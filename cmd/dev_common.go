@@ -188,6 +188,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 				}
 			} else {
 				//the binary controller did not exist so skip copying it
+				Warning.log("The binary controller could not be found.")
 				checksumMatch = true
 			}
 		}
