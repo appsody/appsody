@@ -78,6 +78,7 @@ func setupConfig() error {
 	}
 
 	checkTime()
+	setNewIndexURL()
 	return nil
 }
 
@@ -180,7 +181,9 @@ var (
 
 func (l appsodylogger) log(args ...interface{}) {
 	msgString := fmt.Sprint(args...)
-	l.internalLog(msgString, args...)
+	r := strings.NewReplacer("[", " ", "]", " ")
+	resultString := r.Replace(msgString)
+	l.internalLog(resultString, args...)
 }
 
 func (l appsodylogger) logf(fmtString string, args ...interface{}) {

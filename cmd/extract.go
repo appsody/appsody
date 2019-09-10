@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"path/filepath"
 	"runtime"
@@ -171,14 +172,14 @@ in preparation to build the final container image.`,
 			Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
 			_, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd)
 			if err != nil {
-				Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage)
+				Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage, ": ", err)
 
 				removeErr := containerRemove(extractContainerName)
 				if removeErr != nil {
 					Error.log("containerRemove error ", removeErr)
 				}
 
-				return errors.Errorf("Error attempting to run copy command %s on image %s", bashCmd, stackImage)
+				return errors.Errorf("Error attempting to run copy command %s on image %s: %v", bashCmd, stackImage, err)
 
 			}
 			//If everything went fine, we need to set the source project directory to /tmp/...
@@ -188,7 +189,7 @@ in preparation to build the final container image.`,
 		if buildah {
 			appDir = containerProjectDir
 			cmdName = "/bin/sh"
-			script := fmt.Sprintf("buildah run -v %s:/ex %s bash -c 'cp -rf %s/* /ex; exit'", extractDir, extractContainerName, appDir)
+			script := fmt.Sprintf("x=`buildah mount %s`; cp -rf $x/%s/* %s", extractContainerName, appDir, extractDir)
 			cmdArgs = []string{"-c", script}
 		}
 		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
@@ -207,6 +208,62 @@ in preparation to build the final container image.`,
 				return errors.Errorf("buildah mount / copy command failed: %v", err)
 			}
 			return errors.Errorf("docker cp command failed: %v", err)
+		}
+
+		// A class of systems (e.g:- RHEL 7.6) exhibit situations wherein
+		// the bindmount volumes are not propagated to the child containers
+		// Accommodate those systems as well, by performing local copies
+		// for the locations that are resident in the host.
+		// ref: https://github.com/containers/buildah/issues/1821
+		if buildah {
+			for _, item := range volumeMaps {
+				if strings.Contains(item, ":") {
+					Debug.log("Appsody mount: ", item)
+					var src = strings.Split(item, ":")[0]
+					var dest = strings.Split(item, ":")[1]
+					if strings.EqualFold(src, ".") {
+						src, err = os.Getwd()
+						if err != nil {
+							return errors.Errorf("Error getting cwd: %v", err)
+						}
+					}
+					dest = strings.Replace(dest, appDir, extractDir, -1)
+					Debug.log("Local-adjusted mount destination: ", dest)
+					fileInfo, err := os.Lstat(src)
+					if err != nil {
+						return errors.Errorf("Error lstat: %v", err)
+					}
+					var mkdir string
+					if fileInfo.IsDir() {
+						mkdir = dest
+					} else {
+						mkdir = filepath.Dir(dest)
+					}
+					err = os.MkdirAll(mkdir, os.ModePerm)
+					if err != nil {
+						return errors.Errorf("Error creating directories %s %v", extractDir, err)
+					}
+
+					fileInfo, err = os.Lstat(src)
+					if err != nil {
+						return errors.Errorf("project file check error %v", err)
+					}
+					Debug.log("Copy source: ", src)
+					Debug.log("Copy destination: ", dest)
+					if fileInfo.IsDir() {
+						err = copyDir(src+"/.", dest)
+						if err != nil {
+							return errors.Errorf("folder copy error %v", err)
+						}
+					} else {
+						err = CopyFile(src, dest)
+						if err != nil {
+							return errors.Errorf("file copy error %v", err)
+						}
+					}
+					Debug.log("Copied ", src, " to ", dest)
+				}
+			}
 		}
 
 		removeErr := containerRemove(extractContainerName)
