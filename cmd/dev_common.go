@@ -175,10 +175,21 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		checksumMatch := false
 		if controllerExists {
 			var checksumMatchErr error
-			checksumMatch, checksumMatchErr = checksum256TestFile(filepath.Join(binaryLocation, "appsody-controller"), destController)
-			Debug.log("checksum returned: ", checksumMatch)
-			if checksumMatchErr != nil {
-				return checksumMatchErr
+			binaryControllerPath := filepath.Join(binaryLocation, "appsody-controller")
+			binaryControllerExists, existsErr := exists(binaryControllerPath)
+			if existsErr != nil {
+				return existsErr
+			}
+			if binaryControllerExists {
+				checksumMatch, checksumMatchErr = checksum256TestFile(binaryControllerPath, destController)
+				Debug.log("checksum returned: ", checksumMatch)
+				if checksumMatchErr != nil {
+					return checksumMatchErr
+				}
+			} else {
+				//the binary controller did not exist so skip copying it
+				Warning.log("The binary controller could not be found.")
+				checksumMatch = true
 			}
 		}
 		// if the controller doesn't exist

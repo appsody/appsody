@@ -1046,6 +1046,26 @@ func checkTime() {
 	}
 }
 
+// TEMPORARY CODE: sets the old v1 index to point to the new v2 index (latest)
+// this code should be removed when we think everyone is using the latest index.
+func setNewIndexURL() {
+
+	var repoFile = getRepoFileLocation()
+	var oldIndexURL = "https://raw.githubusercontent.com/appsody/stacks/master/index.yaml"
+	var newIndexURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
+
+	data, err := ioutil.ReadFile(repoFile)
+	if err != nil {
+		Warning.log("Unable to read repository file")
+	}
+
+	replaceURL := bytes.Replace(data, []byte(oldIndexURL), []byte(newIndexURL), -1)
+
+	if err = ioutil.WriteFile(repoFile, replaceURL, 0644); err != nil {
+		Warning.log(err)
+	}
+}
+
 func IsEmptyDir(name string) bool {
 	f, err := os.Open(name)
 
