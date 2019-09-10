@@ -78,6 +78,7 @@ func setupConfig() error {
 	}
 
 	checkTime()
+	setNewIndexURL()
 	return nil
 }
 
