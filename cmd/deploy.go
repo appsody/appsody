@@ -30,28 +30,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var configFile, namespace, operatorspace, watchspace, tag string
+var configFile, namespace, watchspace, tag string
 var generate, force, push bool
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Build and deploy your Appsody project to your Kubernetes cluster",
 	Long: `This command extracts the code from your project, builds a local Docker image for deployment,
-generates a deployment manifest (yaml) file if one is not present, and uses it to deploy your image to Kubernetes.`,
+generates a deployment manifest (yaml) file if one is not present, and uses it to deploy your image to a Kubernetes cluster, either via the Appsody operator or as a Knative service.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if generate {
 			return generateDeploymentConfig()
 		}
 		// Check for the Appsody Operator
-		kargs := []string{"service/appsody-operator"}
-		_, err := KubeGet(kargs)
+
+		operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(namespace)
+		if operatorExistsErr != nil {
+			return operatorExistsErr
+		}
+
+		//kargs := []string{"service/appsody-operator"}
+		//_, err := KubeGet(kargs)
 		// Performing the kubectl apply
-		if err != nil {
-			Warning.log("Failed to find Appsody operator. Attempting to install...")
-			err = installCmd.RunE(cmd, args)
+		if !operatorExists {
+			Debug.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
+			err := installCmd.RunE(cmd, args)
 			if err != nil {
-				return errors.Errorf("Failed to install Appsody operator. Exiting... %s", configFile)
+				return errors.Errorf("Failed to install an Appsody operator in namespace %s watching namespace %s. Error was: %v", namespace, namespace, err)
 			}
+		} else {
+			Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
+
 		}
 
 		exists, err := exists(configFile)
@@ -87,7 +96,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		}
 		// Edit the deployment manifest to reflect the new tag
 		yamlFile, err := os.Open(configFile)
-		if err != nil {
+		if !dryrun && err != nil {
 			if os.IsNotExist(err) {
 				return errors.Errorf("Config file does not exist %s. ", configFile)
 			}
@@ -141,7 +150,11 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		if err != nil {
 			return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
 		}
-		Info.log("Deployed project running at ", out)
+		if !dryrun {
+			Info.log("Deployed project running at ", out)
+		} else {
+			Info.log("Dry run complete")
+		}
 
 		return nil
 	},
@@ -267,9 +280,9 @@ func generateDeploymentConfig() error {
 
 	var cmdName string
 	var cmdArgs []string
-	dockerPullErr := dockerPullImage(stackImage)
-	if dockerPullErr != nil {
-		return dockerPullErr
+	pullErr := pullImage(stackImage)
+	if pullErr != nil {
+		return pullErr
 	}
 
 	c := make(chan os.Signal, 1)
@@ -292,8 +305,8 @@ func generateDeploymentConfig() error {
 	if err != nil {
 
 		Error.log("docker create command failed: ", err)
-		removeErr := dockerRemove(extractContainerName)
-		Error.log("Error in dockerRemove", removeErr)
+		removeErr := containerRemove(extractContainerName)
+		Error.log("Error in containerRemove", removeErr)
 		return err
 
 	}
@@ -304,20 +317,20 @@ func generateDeploymentConfig() error {
 	if err != nil {
 		Error.log("docker cp command failed: ", err)
 
-		removeErr := dockerRemove(extractContainerName)
+		removeErr := containerRemove(extractContainerName)
 		if removeErr != nil {
-			Error.log("dockerRemove error ", removeErr)
+			Error.log("containerRemove error ", removeErr)
 		}
 		return errors.Errorf("docker cp command failed: %v", err)
 	}
 
-	removeErr := dockerRemove(extractContainerName)
+	removeErr := containerRemove(extractContainerName)
 	if removeErr != nil {
-		Error.log("dockerRemove error ", removeErr)
+		Error.log("containerRemove error ", removeErr)
 	}
 
 	yamlReader, err := ioutil.ReadFile(configFile)
-	if err != nil {
+	if !dryrun && err != nil {
 		if os.IsNotExist(err) {
 			return errors.Errorf("Config file does not exist %s. ", configFile)
 
@@ -359,17 +372,19 @@ func generateDeploymentConfig() error {
 	stack := split[len(split)-2]
 	split = strings.Split(stack, "/")
 	stack = split[len(split)-1]
+	if !dryrun {
+		output := bytes.Replace(yamlReader, []byte("APPSODY_PROJECT_NAME"), []byte(projectName), -1)
+		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(projectName), -1)
+		output = bytes.Replace(output, []byte("APPSODY_STACK"), []byte(stack), -1)
+		output = bytes.Replace(output, []byte("APPSODY_PORT"), []byte(portStr), -1)
 
-	output := bytes.Replace(yamlReader, []byte("APPSODY_PROJECT_NAME"), []byte(projectName), -1)
-	output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(projectName), -1)
-	output = bytes.Replace(output, []byte("APPSODY_STACK"), []byte(stack), -1)
-	output = bytes.Replace(output, []byte("APPSODY_PORT"), []byte(portStr), -1)
-
-	err = ioutil.WriteFile(configFile, output, 0666)
-	if err != nil {
-		return errors.Errorf("Failed to write local application configuration file: %s", err)
+		err = ioutil.WriteFile(configFile, output, 0666)
+		if err != nil {
+			return errors.Errorf("Failed to write local application configuration file: %s", err)
+		}
+	} else {
+		Info.logf("Dry run skipped construction of file %s", configFile)
 	}
-
 	Info.log("Created deployent manifest: ", configFile)
 	return nil
 }

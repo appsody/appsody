@@ -76,6 +76,9 @@ func setupConfig() error {
 	if err != nil {
 		return err
 	}
+
+	checkTime()
+	setNewIndexURL()
 	return nil
 }
 
@@ -127,6 +130,7 @@ func initConfig() error {
 	cliConfig.SetDefault("images", "index.docker.io")
 	cliConfig.SetDefault("operator", operatorHome)
 	cliConfig.SetDefault("tektonserver", "")
+	cliConfig.SetDefault("lastversioncheck", "none")
 	if cfgFile != "" {
 		// Use config file from the flag.
 		cliConfig.SetConfigFile(cfgFile)
@@ -177,7 +181,9 @@ var (
 
 func (l appsodylogger) log(args ...interface{}) {
 	msgString := fmt.Sprint(args...)
-	l.internalLog(msgString, args...)
+	r := strings.NewReplacer("[", " ", "]", " ")
+	resultString := r.Replace(msgString)
+	l.internalLog(resultString, args...)
 }
 
 func (l appsodylogger) logf(fmtString string, args ...interface{}) {

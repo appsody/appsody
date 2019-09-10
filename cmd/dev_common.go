@@ -129,9 +129,9 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	Debug.log("Project directory: ", projectDir)
 
 	var cmdArgs []string
-	dockerPullErr := dockerPullImage(platformDefinition)
-	if dockerPullErr != nil {
-		return dockerPullErr
+	pullErr := pullImage(platformDefinition)
+	if pullErr != nil {
+		return pullErr
 	}
 
 	volumeMaps, volumeErr := getVolumeArgs()
@@ -175,10 +175,21 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		checksumMatch := false
 		if controllerExists {
 			var checksumMatchErr error
-			checksumMatch, checksumMatchErr = checksum256TestFile(filepath.Join(binaryLocation, "appsody-controller"), destController)
-			Debug.log("checksum returned: ", checksumMatch)
-			if checksumMatchErr != nil {
-				return checksumMatchErr
+			binaryControllerPath := filepath.Join(binaryLocation, "appsody-controller")
+			binaryControllerExists, existsErr := exists(binaryControllerPath)
+			if existsErr != nil {
+				return existsErr
+			}
+			if binaryControllerExists {
+				checksumMatch, checksumMatchErr = checksum256TestFile(binaryControllerPath, destController)
+				Debug.log("checksum returned: ", checksumMatch)
+				if checksumMatchErr != nil {
+					return checksumMatchErr
+				}
+			} else {
+				//the binary controller did not exist so skip copying it
+				Warning.log("The binary controller could not be found.")
+				checksumMatch = true
 			}
 		}
 		// if the controller doesn't exist
@@ -217,7 +228,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		if err != nil {
 			Error.log(err)
 		}
-		//dockerRemove(containerName) is not needed due to --rm flag
+		//containerRemove(containerName) is not needed due to --rm flag
 		os.Exit(1)
 	}()
 
@@ -259,6 +270,9 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		cmdArgs = append(cmdArgs, dockerOptionsCmd...)
 	}
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/appsody/appsody-controller", platformDefinition, "--mode="+mode)
+	if verbose {
+		cmdArgs = append(cmdArgs, "-v")
+	}
 	Debug.logf("Attempting to start image %s with container name %s", platformDefinition, containerName)
 	execCmd, err := DockerRunAndListen(cmdArgs, Container)
 	if dryrun {
