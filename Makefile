@@ -105,22 +105,21 @@ build-linux build-darwin build-windows: ## Build the binary of the respective op
 package: build-docs tar-linux deb-linux rpm-linux tar-darwin brew-darwin tar-windows ## Creates packages for all operating systems and store them in package/ dir
 
 .PHONY: tar-linux
-tar-linux: build-linux ## Build the linux binary and package it in a .tar file
+tar-linux: build-linux ## Build the linux binary and package it in a .tar.gz file
 .PHONY: tar-darwin
-tar-darwin: build-darwin ## Build the OSX binary and package it in a .tar file
+tar-darwin: build-darwin ## Build the OSX binary and package it in a .tar.gz file
 tar-linux tar-darwin:
 	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)
-	tar cfz $(build_name).tar LICENSE README.md $(package_binary)
+	tar cfz $(build_name).tar.gz LICENSE README.md $(package_binary)
 	mkdir -p $(PACKAGE_PATH)
-	mv $(build_name).tar $(PACKAGE_PATH)/
+	mv $(build_name).tar.gz $(PACKAGE_PATH)/
 	rm -f $(package_binary)
 
 .PHONY: tar-windows
-tar-windows: build-windows ## Build the windows binary and package it in a .tar file
-	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)
+tar-windows: build-windows ## Build the windows binary and package it in a .tar.gz file
+	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)	
 	win-build/build-win.sh $(PACKAGE_PATH) $(package_binary) $(CONTROLLER_BASE_URL) $(VERSION)
 	rm -f $(package_binary)
-
 .PHONY: brew-darwin
 brew-darwin: build-darwin ## Build the OSX binary and package it for OSX brew install
 	# brew script goes here

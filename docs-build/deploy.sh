@@ -16,7 +16,7 @@ then
 
     git add content/docs/using-appsody/cli-commands.md
 
-    git commit -m "Travis build: $TRAVIS_TAG$TRAVIS_BUILD_NUMBER" --author="Kyle G. Christianson <christik@us.ibm.com>"
+    git commit -m "Travis build: $TRAVIS_TAG$TRAVIS_BUILD_NUMBER" --author="Appsody Devops <appsodydev@gmail.com>"
 
     git push --set-upstream origin test${TRAVIS_TAG}${TRAVIS_BUILD_NUMBER}
 else

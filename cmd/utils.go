@@ -71,19 +71,27 @@ func exists(path string) (bool, error) {
 }
 
 func getEnvVar(searchEnvVar string) (string, error) {
-	// TODO cache this so the docker inspect command only runs once per cli invocation
-	var data []map[string]interface{}
+	// TODO cache this so the buildah / docker inspect command only runs once per cli invocation
+
+	// Docker and Buildah produce slightly different output
+	// for `inspect` command. Array of maps vs. maps
+	var dataBuildah map[string]interface{}
+	var dataDocker []map[string]interface{}
 	projectConfig, projectConfigErr := getProjectConfig()
 	if projectConfigErr != nil {
 		return "", projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	dockerPullErr := dockerPullImage(imageName)
-	if dockerPullErr != nil {
-		return "", dockerPullErr
+	pullErrs := pullImage(imageName)
+	if pullErrs != nil {
+		return "", pullErrs
 	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
+	if buildah {
+		cmdName = "buildah"
+		cmdArgs = []string{"inspect", "--format={{.Config}}", imageName}
+	}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
 	inspectOut, inspectErr := inspectCmd.Output()
@@ -92,14 +100,26 @@ func getEnvVar(searchEnvVar string) (string, error) {
 
 	}
 
-	err := json.Unmarshal([]byte(inspectOut), &data)
-	if err != nil {
-		return "", errors.New("error unmarshaling data from inspect command - exiting")
+	var err error
+	var envVars []interface{}
+	if buildah {
+		err = json.Unmarshal([]byte(inspectOut), &dataBuildah)
+		if err != nil {
+			return "", errors.New("error unmarshaling data from inspect command - exiting")
+		}
+		config := dataBuildah["config"].(map[string]interface{})
+		envVars = config["Env"].([]interface{})
 
+	} else {
+		err = json.Unmarshal([]byte(inspectOut), &dataDocker)
+		if err != nil {
+			return "", errors.New("error unmarshaling data from inspect command - exiting")
+
+		}
+		config := dataDocker[0]["Config"].(map[string]interface{})
+
+		envVars = config["Env"].([]interface{})
 	}
-	config := data[0]["Config"].(map[string]interface{})
-
-	envVars := config["Env"].([]interface{})
 
 	Debug.log("Number of environment variables in stack image: ", len(envVars))
 	Debug.log("All environment variables in stack image: ", envVars)
@@ -432,9 +452,9 @@ func getExposedPorts() ([]string, error) {
 		return nil, projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	dockerPullErr := dockerPullImage(imageName)
-	if dockerPullErr != nil {
-		return nil, dockerPullErr
+	pullErrs := pullImage(imageName)
+	if pullErrs != nil {
+		return nil, pullErrs
 	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
@@ -618,9 +638,9 @@ func DockerPush(imageToPush string) error {
 func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput string, err error) {
 	cmdName := "docker"
 	var cmdArgs []string
-	dockerPullErr := dockerPullImage(image)
-	if dockerPullErr != nil {
-		return "", dockerPullErr
+	pullErrs := pullImage(image)
+	if pullErrs != nil {
+		return "", pullErrs
 	}
 	if len(options) >= 0 {
 		cmdArgs = append([]string{"run"}, options...)
@@ -778,10 +798,14 @@ func KubeGetDeploymentURL(service string) (url string, err error) {
 	return "", err
 }
 
-//dockerPullCmd
+//pullCmd
+// enable extract to use `buildah` sequences for image extraction.
 // Pull the given docker image
-func dockerPullCmd(imageToPull string) error {
+func pullCmd(imageToPull string) error {
 	cmdName := "docker"
+	if buildah {
+		cmdName = "buildah"
+	}
 	pullArgs := []string{"pull", imageToPull}
 	if dryrun {
 		Info.log("Dry run - skipping execution of: ", cmdName, " ", pullArgs)
@@ -814,10 +838,10 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 	return false
 }
 
-//dockerPullImage
-// pulls docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
+//pullImage
+// pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
-func dockerPullImage(imageToPull string) error {
+func pullImage(imageToPull string) error {
 
 	Debug.logf("%s image pulled status: %t", imageToPull, imagePulled[imageToPull])
 	if imagePulled[imageToPull] {
@@ -840,7 +864,7 @@ func dockerPullImage(imageToPull string) error {
 	}
 
 	if pullPolicyAlways || (!pullPolicyAlways && !localImageFound) {
-		err := dockerPullCmd(imageToPull)
+		err := pullCmd(imageToPull)
 		if err != nil {
 			if pullPolicyAlways {
 				localImageFound = checkDockerImageExistsLocally(imageToPull)
@@ -963,14 +987,18 @@ func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
 }
 
 func getLatestVersion() string {
+	var version string
 	resp, err := http.Get(LatestVersionURL)
 	if err != nil {
 		Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
-	}
-	url := resp.Request.URL.String()
-	r, _ := regexp.Compile(`\d.\d.\d`)
+		version = "none"
+	} else {
+		url := resp.Request.URL.String()
+		r, _ := regexp.Compile(`\d.\d.\d`)
 
-	return r.FindString(url)
+		version = r.FindString(url)
+	}
+	return version
 }
 
 func doVersionCheck(data []byte, old string, new string, file string) {
@@ -1003,15 +1031,50 @@ func checkTime() {
 	lastCheckTime = getLastCheckTime()
 	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 
-	if lastCheckTime == "none" {
-		doVersionCheck(data, lastCheckTime, currentTime, configFile)
-	} else {
-		lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
-		if err != nil {
-			fmt.Println(err)
-		}
-		if time.Since(lastTime).Hours() > 24 {
+	if getLatestVersion() != "none" {
+		if lastCheckTime == "none" {
 			doVersionCheck(data, lastCheckTime, currentTime, configFile)
+		} else {
+			lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
+			if err != nil {
+				fmt.Println(err)
+			}
+			if time.Since(lastTime).Hours() > 24 {
+				doVersionCheck(data, lastCheckTime, currentTime, configFile)
+			}
 		}
 	}
+}
+
+// TEMPORARY CODE: sets the old v1 index to point to the new v2 index (latest)
+// this code should be removed when we think everyone is using the latest index.
+func setNewIndexURL() {
+
+	var repoFile = getRepoFileLocation()
+	var oldIndexURL = "https://raw.githubusercontent.com/appsody/stacks/master/index.yaml"
+	var newIndexURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
+
+	data, err := ioutil.ReadFile(repoFile)
+	if err != nil {
+		Warning.log("Unable to read repository file")
+	}
+
+	replaceURL := bytes.Replace(data, []byte(oldIndexURL), []byte(newIndexURL), -1)
+
+	if err = ioutil.WriteFile(repoFile, replaceURL, 0644); err != nil {
+		Warning.log(err)
+	}
+}
+
+func IsEmptyDir(name string) bool {
+	f, err := os.Open(name)
+
+	if err != nil {
+		return true
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1)
+
+	return err == io.EOF
 }
