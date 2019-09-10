@@ -270,6 +270,9 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		cmdArgs = append(cmdArgs, dockerOptionsCmd...)
 	}
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/appsody/appsody-controller", platformDefinition, "--mode="+mode)
+	if verbose {
+		cmdArgs = append(cmdArgs, "-v")
+	}
 	Debug.logf("Attempting to start image %s with container name %s", platformDefinition, containerName)
 	execCmd, err := DockerRunAndListen(cmdArgs, Container)
 	if dryrun {

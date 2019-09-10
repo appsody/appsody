@@ -60,8 +60,8 @@ func TestStopWithoutName(t *testing.T) {
 		fmt.Println("calling docker stop")
 		stopOutput, errStop := cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
 
-		//docker[stop appsody-stop-test
-		if !strings.Contains(stopOutput, "docker[stop appsody-stop-test") {
+		//docker stop appsody-stop-test
+		if !strings.Contains(stopOutput, "docker stop appsody-stop-test") {
 			t.Fatal("docker stop command not present for appsody-stop-test...")
 		}
 		if errStop != nil {
@@ -145,7 +145,7 @@ func TestStopWithName(t *testing.T) {
 	defer func() {
 		fmt.Println("about to run stop for with name")
 		stopOutput, errStop := cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", "testStopContainer"}, projectDir)
-		if !strings.Contains(stopOutput, "docker[stop testStopContainer") {
+		if !strings.Contains(stopOutput, "docker stop testStopContainer") {
 			t.Fatal("docker stop command not present for container testStopContainer")
 		}
 		if errStop != nil {
