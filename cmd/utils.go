@@ -1058,8 +1058,3 @@ func IsEmptyDir(name string) bool {
 
 	return err == io.EOF
 }
-
-func fileDoesNotExist(filename string) bool {
-	_, err := os.Stat(filename)
-	return os.IsNotExist(err)
-}

@@ -48,48 +48,82 @@ This command can be run from the base directory of your stack or you can supply 
 
 		Info.log("LINTING ", path.Base(stackPath))
 
-		if fileDoesNotExist(filepath.Join(stackPath, "/README.md")) {
+		fileCheck, err := exists(filepath.Join(stackPath, "/README.md"))
+		if err != nil {
+			Error.log("Error attempting to determine file: ", err)
+			errorCount++
+		} else if !fileCheck {
 			Error.log("Missing README.md in: ", stackPath)
 			errorCount++
 		}
-
-		if fileDoesNotExist(filepath.Join(stackPath, "/stack.yaml")) {
+		fileCheck, err = exists(filepath.Join(stackPath, "/stack.yaml"))
+		if err != nil {
+			Error.log("Error attempting to determine file: ", err)
+			errorCount++
+		} else if !fileCheck {
 			Error.log("Missing stack.yaml in: ", stackPath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(imagePath) {
+		fileCheck, err = exists(imagePath)
+		if err != nil {
+			Error.log("Error attempting to determine file: ", err)
+			errorCount++
+		} else if !fileCheck {
 			Error.log("Missing image directory in ", stackPath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(filepath.Join(imagePath, "/Dockerfile-stack")) {
+		fileCheck, err = exists(filepath.Join(imagePath, "/Dockerfile-stack"))
+		if err != nil {
+			Error.log("Error attempting to determine file: ", err)
+			errorCount++
+		} else if !fileCheck {
 			Error.log("Missing Dockerfile-stack in ", imagePath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(filepath.Join(imagePath, "/LICENSE")) {
+		fileCheck, err = exists(filepath.Join(imagePath, "/LICENSE"))
+		if err != nil {
+			Error.log("Error attempting to determine file: ", err)
+			errorCount++
+		} else if !fileCheck {
 			Error.log("Missing LICENSE in ", imagePath)
 			errorCount++
 		}
 
-		if fileDoesNotExist(configPath) {
+		fileCheck, err = exists(configPath)
+		if err != nil {
+			Error.log("Error attempting to determine file: ", err)
+			errorCount++
+		} else if !fileCheck {
 			Warning.log("Missing config directory in ", imagePath, " (Knative deployment will be used over Kubernetes)")
 			warningCount++
-
 		}
 
-		if fileDoesNotExist(filepath.Join(configPath, "/app-deploy.yaml")) {
+		fileCheck, err = exists(filepath.Join(configPath, "/app-deploy.yaml"))
+		if err != nil {
+			Error.log("Error attempting to determine file: ", err)
+			errorCount++
+		} else if !fileCheck {
 			Warning.log("Missing app-deploy.yaml in ", configPath, " (Knative deployment will be used over Kubernetes)")
 			warningCount++
 		}
 
-		if fileDoesNotExist(filepath.Join(projectPath, "/Dockerfile")) {
+		fileCheck, err = exists(filepath.Join(projectPath, "/Dockerfile"))
+		if err != nil {
+			Error.log("Error attempting to determine file: ", err)
+			errorCount++
+		} else if !fileCheck {
 			Warning.log("Missing Dockerfile in ", projectPath)
 			warningCount++
 		}
 
-		if fileDoesNotExist(templatePath) {
+		fileCheck, err = exists(templatePath)
+		if err != nil {
+			Error.log("Error attempting to determine file: ", err)
+			errorCount++
+		} else if !fileCheck {
 			Error.log("Missing template directory in: ", stackPath)
 			errorCount++
 		}
@@ -101,20 +135,23 @@ This command can be run from the base directory of your stack or you can supply 
 
 		templates, _ := ioutil.ReadDir(templatePath)
 		for _, f := range templates {
-			if !fileDoesNotExist(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml")) {
+			fileCheck, err = exists(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml"))
+			if (err != nil) && f.Name() != ".DS_Store" {
+				Error.log("Error attempting to determine file: ", err)
+				errorCount++
+			} else if fileCheck && f.Name() != ".DS_Store" {
 				Error.log("Unexpected .appsody-config.yaml in ", filepath.Join(templatePath, f.Name()))
 				errorCount++
 			}
 		}
 
-		if errorCount > 0 {
-			Info.log("TOTAL ERRORS: ", errorCount)
-			Info.log("TOTAL WARNINGS: ", warningCount)
-			return errors.Errorf("LINT TEST FAILED")
+		Info.log("TOTAL ERRORS: ", errorCount)
+		Info.log("TOTAL WARNINGS: ", warningCount)
 
+		if errorCount > 0 {
+			return errors.Errorf("LINT TEST FAILED")
 		}
 
-		Info.log("TOTAL WARNINGS: ", warningCount)
 		Info.log("LINT TEST PASSED")
 		return nil
 	},
@@ -122,5 +159,4 @@ This command can be run from the base directory of your stack or you can supply 
 
 func init() {
 	stackCmd.AddCommand(lintCmd)
-
 }
