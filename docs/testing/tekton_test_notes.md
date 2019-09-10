@@ -1,0 +1,45 @@
+# Appsody tekton deploy
+- tekton:
+    - shutdown local docker kube to free up machine resources
+    - https://appsody.dev/docs/using-appsody/building-and-deploying
+        - Deploying your app through a Tekton pipeline
+    - https://github.com/tektoncd/pipeline/blob/master/docs/auth.md
+        - Basic authentication (Docker), step 1
+            - metadata:name -> my-docker-secret
+            - annotation -> https://index.docker.io
+            - dockerhub username and password
+            - save file as my-docker-secret.yaml in with other istio and knative yamls
+    - minikube start
+    - https://github.com/tektoncd/pipeline/blob/master/docs/install.md
+        - Adding the Tekton Pipelines, step 1 only
+            - kubectl apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
+            - kubectl get pods --all-namespaces --watch
+                - wait about 10 minutes
+                - tekton-pipelines-controller and -webhook should be in Running state, istio and knative stuff should all be running or completed also
+    - create tekton namespace
+        - kubectl create ns tekton
+    - kubectl apply -f my-docker-secret.yaml --namespace tekton 
+        - where is this documented?
+            - https://github.com/tektoncd/pipeline/blob/master/docs/auth.md
+    - clone apposdy project repo (michaele's git)
+        - git clone https://github.com/appsody/tekton-example.git
+        - cd into directory with the yamls, tekton-example
+    - https://github.com/appsody/tekton-example
+        - Setting up the pipeline
+            - kubectl apply -f appsody-service-account.yaml --namespace tekton
+            - kubectl apply -f appsody-cluster-role-binding.yaml --namespace tekton
+            - kubectl edit serviceaccount appsody-sa
+            - kubectl apply -f appsody-build-task.yaml --namespace tekton
+            - kubectl apply -f appsody-build-pipeline.yaml --namespace tekton
+            - vi appsody-pipeline-resources.yaml
+                - apiVersion: v1items:- apiVersion: tekton.dev/v1alpha1  kind: PipelineResource  metadata:    name: docker-image  spec:    params:    - name: url      value: index.docker.io/tnixa/my-appsody-image    type: image- apiVersion: tekton.dev/v1alpha1  kind: PipelineResource  metadata:    name: appsody-source  spec:    params:    - name: revision      value: master    - name: url      value: https://github.com/chilanti/appsody-test-build    type: gitkind: List
+            - kubectl apply -f appsody-pipeline-resources.yaml --namespace tekton
+            - kubectl apply -f appsody-pipeline-run.yaml --namespace tekton
+                - kubectl get pods --all-namespaces --watch
+                - kubectl logs appsody-manual-pipeline-run-appsody-build-fsflt-pod-e4efe1 --all-containers --namespace tekton -f --max-log-requests 200
+                - kubectl get pod appsody-manual-pipeline-run-appsody-build-l4x56-pod-4ada62 --namespace tekton -o yaml
+                - debug...
+                    - kubectl logs appsody-manual-pipeline-run-appsody-build-l4x56-pod-4ada62 --all-containers --namespace tekton
+                    - kubectl get pipelinerun --all-namespaces -o yaml
+    - quit
+        - kubectl delete -f appsody-pipeline-run.yaml --namespace tekton

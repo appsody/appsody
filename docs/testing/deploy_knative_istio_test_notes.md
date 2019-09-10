@@ -1,0 +1,100 @@
+# Appsody deploy with minikube/knative/istio
+test deploy:
+- install minkube
+    - install virtualbox or other hypervisor
+    - brew cask install minikube
+    - install cli
+        - brew install kubernetes-cli
+        - or get latest cli
+            - rm /usr/local/bin/kubectlsupra:knative
+            - brew link --overwrite kubernetes-cli
+- install cluster . https://knative.dev/docs/install/knative-with-minikube/
+    - mkdir knative, cd knative
+    - create file (mk.sh) (for some reason the mem and proc parms were not working in the script so those need to be configured manually in the VM (virutalbox) so run the script and then do a minikube stop and then change the parms in the VM and then run the script again (one time setup))
+    - minikube start \  
+    - --kubernetes-version=v1.12.0 \  
+    - --vm-driver=virtualbox \  -
+    - -disk-size=30g \  
+    - --extra-config=apiserver.enable-admission-plugins="LimitRanger,NamespaceExists,NamespaceLifecycle,ResourceQuota,ServiceAccount,DefaultStorageClass,MutatingAdmissionWebhook"
+    - run the script (./mk.sh)
+    - check for all pods running:
+        - kubectl get pods --all-namespaces
+- install istio
+    - wget https://raw.githubusercontent.com/knative/serving/v0.7.0/third_party/istio-1.1.7/istio-crds.yaml
+    - wget https://raw.githubusercontent.com/knative/serving/v0.7.0/third_party/istio-1.1.7/istio.yaml
+        - edit the yaml and replace LoadBalancer with NodePort
+    - kubectl apply -f istio-crds.yaml
+        - wait 5 minutes
+    - kubectl apply -f istio.yaml
+        - wait 5 minutes
+        - if problems can do: kubectl delete -f istio.yaml then add again
+    - kubectl get pods --all-namespaces
+        - verify everything is completed/running
+            - if not look at the details of the problem namespace...
+                - kubectl describe pod istio-pilot-5f55c58796-mj6c2 -n istio-system
+                - or keep refreshing, sometimes the errors go away after awhile
+    - kubectl label namespace default istio-injection=enabled
+- install knative
+    - wget https://github.com/knative/serving/releases/download/v0.7.0/serving.yaml
+    - kubectl apply --selector knative.dev/crd-install=true -f serving.yaml
+    - kubectl get pods --all-namespaces
+        - verify everything completed/running
+    - kubectl apply -f serving.yaml --selector networking.knative.dev/certificate-provider!=cert-manager
+    - kubectl get pods --all-namespaces
+        - verify everything completed/running, might take 5 minutes or more
+- try an external deploy (dockerhub)
+    - create appsody project
+        - mkdir node-js-express
+        - cd node-js-express
+        - appsody init node-js-express
+    - deploy to docker hub and push to knative
+        - appsody deploy -t tnixa/node-js-example:1 --push
+            - the -t stuff is the docker image in dockerhub, tnixa is dockerhub id, node-js-example:1 is the docker image name you want to use
+            - note the URL at the end of the output, URL: "http://nodejs-express.default.example.com"
+        - kubectl get pods
+            - got PodInitializing
+        - kubectl get ksvc
+            - got Unknown/OutOfDate
+            - kubectl get ksvc -o yaml
+                - not sure what we were looking in here for
+        - kubectl get svc istio-ingressgateway --namespace istio-system --output 'jsonpath={.spec.ports[?(@.port==80)].nodePort}'
+            - note the port (32017)
+        - echo $(minikube ip)
+            - note the ip (192.168.99.100)
+        - curl -H "Host: nodejs-express.default.example.com" http://192.168.99.100:32017
+            - verify "Hello" message
+            - kubectl get pods
+                - verify running pods
+                - pods will shutoff when left idle
+            - cleanup
+                - kubectl delete -f app
+                - kubectl delete -f appsody-service-068396731.yaml
+                - rm appsody-service-068396731.yaml
+- try a local deploy (local docker cache) https://appsody.dev/docs/using-appsody/installing-knative-locally
+    - verify k8s for docker is running (mac)
+        - kubectl get pods --all-namespaces
+            - should show some kube-system pods running
+    - assuming you have the yamls downloaded and are in that directory...
+    - start istio
+          - kubectl apply -f istio-crds.yaml
+              - kubectl get pods --all-namespaces
+                  - should show a couple of completed tasks within a minute
+          - kubectl apply -f istio.yaml
+              - kubectl get pods --all-namespaces
+              - should show all completed/running tasks within a few minutes
+    - start knative serving
+    - kubectl edit -n knative-serving cm config-deployment
+        - add 'registriesSkippingTagResolving: "dev.local"' to the top under data:
+            - :wq to save and exit
+    - echo $(ifconfig | grep "inet 9." | cut -d ' ' -f2).nip.io
+        - note the ipaddress
+    - kubectl edit cm config-domain -n knative-serving
+        - add your ip to the top under data so it looks like this: '9.174.18.28.nip.io: ""' 
+            - :wq to save and exit
+    - appsody deploy
+    - kubectl get pods
+        - verify all pods come up clean
+        - if problems 
+            - kubectl get pods -o yaml
+            - kubectl delete -f appsody-service-062138429.yaml
+            - kubectl get rt nodejs-express -o jsonpath="{.status.url}"
