@@ -318,8 +318,12 @@ func getProjectName() (string, error) {
 	if err != nil {
 		return "my-project", err
 	}
-	projectName := strings.ToLower(filepath.Base(projectDir))
-	projectName = strings.ReplaceAll(projectName, "_", "-")
+	project := "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-project"
+	reg, err := regexp.Compile("[^a-z0-9]+")
+	if err != nil {
+		Error.log(err)
+	}
+	projectName := reg.ReplaceAllString(project, "-")
 	return projectName, nil
 }
 
