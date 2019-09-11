@@ -16,18 +16,13 @@ package cmd_test
 
 import (
 	"github.com/appsody/appsody/cmd/cmdtest"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
 func TestLintWithValidStack(t *testing.T) {
 	args := []string{"stack", "lint"}
 
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir + "/testData/sample-stack") //Get path to valid stack
-
-	_, err := cmdtest.RunAppsodyCmdExec(args, testStackPath)
+	_, err := cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/sample-stack")
 
 	if err != nil { //Lint check should pass, if not fail the test
 		t.Fatal(err)
@@ -37,10 +32,7 @@ func TestLintWithValidStack(t *testing.T) {
 func TestLintWithBadStack(t *testing.T) {
 	args := []string{"stack", "lint"}
 
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir + "/testData/bad-sample-stack") //Get path to invalid stack
-
-	_, err := cmdtest.RunAppsodyCmdExec(args, testStackPath)
+	_, err := cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/bad-sample-stack")
 
 	if err == nil { //Lint check should fail, if not fail the test
 		t.Fatal(err)
