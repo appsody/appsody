@@ -1,0 +1,23 @@
+# Dockerfile for building the stack
+
+#See https://appsody.dev/docs/stacks/environment-variables for more information about each variable.
+
+ENV APPSODY_MOUNTS= #Mount directories
+
+ENV APPSODY_WATCH_DIR= #Directories to watch for changes in.
+ENV APPSODY_WATCH_IGNORE_DIR= #Directories to ignore changes in.
+ENV APPSODY_WATCH_REGEX= #Regex expression to describe which files are watched for changes in.
+
+ENV APPSODY_INSTALL= #Optional command executed before RUN/TEST/DEBUG
+
+ENV APPSODY_RUN= #Command executed in 'run' mode.
+ENV APPSODY_RUN_ON_CHANGE= #Command executed in 'run' mode when a change is detected.
+ENV APPSODY_RUN_KILL= #Signals whether to kill the server process before starting the ON_CHANGE action.
+
+ENV APPSODY_DEBUG= #Command executed in 'debug' mode
+ENV APPSODY_DEBUG_ON_CHANGE= #Command executed in 'debug' mode when a change is detected.
+ENV APPSODY_DEBUG_KILL= #Signals whether to kill the server process before starting the ON_CHANGE action.
+
+ENV APPSODY_TEST= #Command executed in 'test' mode
+ENV APPSODY_TEST_ON_CHANGE= #Command executed in 'test' mode when a change is detected.
+ENV APPSODY_TEST_KILL= #Signals whether to kill the server process before starting the ON_CHANGE action.
