@@ -808,7 +808,7 @@ func pullCmd(imageToPull string) error {
 	}
 	pullArgs := []string{"pull", imageToPull}
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", cmdName, " ", " ", strings.Join(pullArgs, " "))
+		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(pullArgs, " "))
 		return nil
 	}
 	Debug.log("Pulling docker image ", imageToPull)
