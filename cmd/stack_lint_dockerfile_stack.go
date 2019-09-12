@@ -43,14 +43,14 @@ func lintDockerFileStack() (int, int) {
 	}
 
 	for i := 0; i < len(mendatoryEnvironmentVariables); i++ {
-		if strings.Contains(string(dockerfileStack), mendatoryEnvironmentVariables[i]) == false {
+		if !strings.Contains(string(dockerfileStack), mendatoryEnvironmentVariables[i]) {
 			Error.log("Missing ", mendatoryEnvironmentVariables[i], " in: ", arg)
 			errorCount++
 		}
 	}
 
 	for i := 0; i < len(optionalEnvironmentVariables); i++ {
-		if strings.Contains(string(dockerfileStack), optionalEnvironmentVariables[i]) == false {
+		if !strings.Contains(string(dockerfileStack), optionalEnvironmentVariables[i]) {
 			Warning.log("Missing ", optionalEnvironmentVariables[i], " in: ", arg)
 			warningCount++
 		}
