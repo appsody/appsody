@@ -85,7 +85,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		}
 
 		if tag == "" {
-			buildCmd.PersistentFlags().Set("tag", "dev.local/"+projectName)
+			_ = buildCmd.PersistentFlags().Set("tag", "dev.local/"+projectName)
 		}
 		// Extract code and build the image - and tags it if -t is specified
 		buildErr := buildCmd.RunE(cmd, args)
@@ -93,7 +93,8 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			return buildErr
 		}
 
-		deployImage := projectName // if not tagged, this is the deploy image name
+		var deployImage string
+		//	:= projectName // if not tagged, this is the deploy image name
 		if tag != "" {
 			deployImage = tag //Otherwise, it's the tag
 		} else {
@@ -122,7 +123,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				line = start + deployImage
 				Info.log("Using applicationImage of: ", deployImage)
 			}
-			if strings.Contains(line, "createKnativeService") && strings.Contains(line, "createKnativeService") {
+			if strings.Contains(line, "createKnativeService") && strings.Contains(line, "true") {
 				foundCreateKnativeTag = true
 				localFoundCreateKnativeTag = true
 			}
