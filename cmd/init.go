@@ -79,7 +79,7 @@ setup the local dev environment.`,
 		indices, errIndices, err := repos.GetIndices()
 
 		if err != nil {
-			Error.logf("Could not read indices: %v. Skipping repo %v and continuing...", err, errIndices)
+			Error.logf("Could not read indices: %v. Skipping repositories %v and continuing...", err, errIndices)
 		}
 		if len(indices) == 0 {
 			return errors.Errorf("Your stack repository is empty - please use `appsody repo add` to add a repository.")

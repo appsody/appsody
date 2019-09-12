@@ -476,17 +476,19 @@ func (r *RepositoryFile) WriteFile(path string) error {
 	return ioutil.WriteFile(path, data, 0644)
 }
 
-func (r *RepositoryFile) GetIndices() (RepoIndices, string, error) {
-
+func (r *RepositoryFile) GetIndices() (RepoIndices, []string, error) {
+	
+	names := []string{}
 	indices := make(map[string]*RepoIndex)
 	for _, rf := range r.Repositories {
 		var index, err = downloadIndex(rf.URL)
 		if err != nil {
-			return indices, rf.Name, err
+			names := append(names, rf.Name)
+			return indices, names, err
 		}
 		indices[rf.Name] = index
 	}
-	return indices, "", nil
+	return indices, nil, nil
 }
 func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([]Stack, error) {
 
@@ -542,7 +544,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	indices, errIndices, err := r.GetIndices()
 
 	if err != nil {
-		Error.logf("Could not read indices: %v. Skipping repo %v and continuing...", err, errIndices)
+		Error.logf("Could not read indices: %v. Skipping repositories %v and continuing...", err, errIndices)
 	}
 	if len(indices) != 0 {
 		for repoName, index := range indices {
