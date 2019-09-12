@@ -24,6 +24,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var errorCount int
+var warningCount int
+
 var lintCmd = &cobra.Command{
 	Use:   "lint",
 	Short: "Lint your stack to verify that it conforms to the standard of an Appsody stack",
@@ -34,8 +37,6 @@ This command can be run from the base directory of your stack or you can supply 
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		stackPath, _ := os.Getwd()
-		errorCount := 0
-		warningCount := 0
 
 		if len(args) > 0 {
 			stackPath = args[0]
@@ -144,6 +145,9 @@ This command can be run from the base directory of your stack or you can supply 
 				errorCount++
 			}
 		}
+
+		var s StackDetails
+		s.validateYaml()
 
 		Info.log("TOTAL ERRORS: ", errorCount)
 		Info.log("TOTAL WARNINGS: ", warningCount)
