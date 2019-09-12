@@ -76,7 +76,7 @@ setup the local dev environment.`,
 
 		//err = index.getIndex()
 
-		indices, errIndices,err := repos.GetIndices()
+		indices, errIndices, err := repos.GetIndices()
 
 		if err != nil {
 			Error.logf("Could not read indices: %v. Skipping repo %v and continuing...", err, errIndices)
