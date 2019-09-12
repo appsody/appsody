@@ -145,8 +145,10 @@ This command can be run from the base directory of your stack or you can supply 
 			}
 		}
 
-		Info.log("TOTAL ERRORS: ", errorCount)
-		Info.log("TOTAL WARNINGS: ", warningCount)
+		errorsReturned, warningsReturned := lintDockerFileStack()
+
+		Info.log("TOTAL ERRORS: ", errorCount+errorsReturned)
+		Info.log("TOTAL WARNINGS: ", warningCount+warningsReturned)
 
 		if errorCount > 0 {
 			return errors.Errorf("LINT TEST FAILED")
