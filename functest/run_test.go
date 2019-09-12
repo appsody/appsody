@@ -137,6 +137,7 @@ func TestRunSimple(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		defer os.RemoveAll(projectDir)
 		log.Println("Created project dir: " + projectDir)
 
 		// appsody init
@@ -201,6 +202,5 @@ func TestRunSimple(t *testing.T) {
 		}()
 
 		cleanup()
-		os.RemoveAll(projectDir)
 	}
 }
