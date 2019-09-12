@@ -127,6 +127,12 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				foundCreateKnativeTag = true
 				localFoundCreateKnativeTag = true
 			}
+			if strings.Contains(line, "createKnativeService") && strings.Contains(line, "false") && knative {
+				//if knative we want to replace false with true in
+				line = strings.Replace(line, "false", "true", 1)
+				foundCreateKnativeTag = true
+				localFoundCreateKnativeTag = true
+			}
 			if strings.Contains(line, "kind:") && strings.Contains(line, "Service") {
 				isKnativeService = true
 			}
