@@ -37,6 +37,7 @@ var containerName string
 var depsVolumeName string
 var ports []string
 var publishAllPorts bool
+var interactive bool
 var dockerNetwork string
 var dockerOptions string
 var nameFlags *flag.FlagSet
@@ -85,6 +86,7 @@ func buildCommonFlags() {
 		commonFlags.StringVar(&depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 		commonFlags.StringArrayVarP(&ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
 		commonFlags.BoolVarP(&publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
+		commonFlags.BoolVarP(&interactive, "interactive", "i", false, "Attach STDIN to the container for interactive TTY mode")
 		commonFlags.StringVar(&dockerOptions, "docker-options", "", "Specify the docker options to use.  Value must be in \"\".")
 	}
 
@@ -268,6 +270,9 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 			return err
 		}
 		cmdArgs = append(cmdArgs, dockerOptionsCmd...)
+	}
+	if interactive {
+		cmdArgs = append(cmdArgs, "-i")
 	}
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/appsody/appsody-controller", platformDefinition, "--mode="+mode)
 	if verbose {

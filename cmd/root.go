@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -44,6 +45,10 @@ var (
 	verbose         bool
 	klogInitialized = false
 )
+
+const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[-a-zA-Z\\d\\/#&.:=?%@~_\\s]*)*)?(\u0007|^G))|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))"
+
+var ansi_regexp = regexp.MustCompile(ansi)
 
 func homeDir() (string, error) {
 	home, err := homedir.Dir()
@@ -181,15 +186,25 @@ var (
 
 func (l appsodylogger) log(args ...interface{}) {
 	msgString := fmt.Sprint(args...)
-	l.internalLog(msgString, args...)
+	l.internalLog(msgString, false, args...)
 }
 
 func (l appsodylogger) logf(fmtString string, args ...interface{}) {
 	msgString := fmt.Sprintf(fmtString, args...)
-	l.internalLog(msgString, args...)
+	l.internalLog(msgString, false, args...)
 }
 
-func (l appsodylogger) internalLog(msgString string, args ...interface{}) {
+func (l appsodylogger) logSkipConsole(args ...interface{}) {
+	msgString := fmt.Sprint(args...)
+	l.internalLog(msgString, true, args...)
+}
+
+func (l appsodylogger) logfSkipConsole(fmtString string, args ...interface{}) {
+	msgString := fmt.Sprintf(fmtString, args...)
+	l.internalLog(msgString, true, args...)
+}
+
+func (l appsodylogger) internalLog(msgString string, skipConsole bool, args ...interface{}) {
 	if l == Debug && !verbose {
 		return
 	}
@@ -208,15 +223,20 @@ func (l appsodylogger) internalLog(msgString string, args ...interface{}) {
 		}
 	}
 
-	// Print to console
-	if l == Info {
-		fmt.Fprintln(os.Stdout, msgString)
-	} else {
-		fmt.Fprintln(os.Stderr, msgString)
+	if !skipConsole {
+		// Print to console
+		if l == Info {
+			fmt.Fprintln(os.Stdout, msgString)
+		} else if l == Container {
+			fmt.Fprint(os.Stdout, msgString)
+		} else {
+			fmt.Fprintln(os.Stderr, msgString)
+		}
 	}
 
 	// Print to log file
 	if verbose && klogInitialized {
+		msgString = ansi_regexp.ReplaceAllString(msgString, "")
 		klog.InfoDepth(2, msgString)
 		klog.Flush()
 	}
