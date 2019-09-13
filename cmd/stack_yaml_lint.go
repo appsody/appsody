@@ -26,16 +26,16 @@ import (
 )
 
 type StackDetails struct {
-	Name        string            `yaml: "name"`
-	Version     string            `yaml: "version"`
-	Description string            `yaml: "description"`
-	License     string            `yaml: "license"`
-	Language    string            `yaml: "language"`
-	Maintainers []StackMaintainer `yaml: "maintainers"`
+	Name        string            `yaml:"name"`
+	Version     string            `yaml:"version"`
+	Description string            `yaml:"description"`
+	License     string            `yaml:"license"`
+	Language    string            `yaml:"language"`
+	Maintainers []StackMaintainer `yaml:"maintainers"`
 }
 
 type StackMaintainer struct {
-	Email string `yaml: "email"`
+	Email string `yaml:"email"`
 }
 
 var DefaultFound bool
