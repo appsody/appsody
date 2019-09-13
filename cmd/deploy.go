@@ -84,8 +84,15 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			return errors.Errorf("%v", perr)
 		}
 
+		var deployImage string
 		if tag == "" {
-			_ = buildCmd.PersistentFlags().Set("tag", "dev.local/"+projectName)
+			deployImage = "dev.local/" + projectName
+			// send the modified tag to the buildCmd if no tag is given
+			// you can't add the tag to the args
+			// if the tag was on the deployCmd, then build will receive that.
+			_ = buildCmd.PersistentFlags().Set("tag", deployImage)
+		} else {
+			deployImage = tag //Otherwise, it's the tag
 		}
 		// Extract code and build the image - and tags it if -t is specified
 		buildErr := buildCmd.RunE(cmd, args)
@@ -93,13 +100,6 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			return buildErr
 		}
 
-		var deployImage string
-		//	:= projectName // if not tagged, this is the deploy image name
-		if tag != "" {
-			deployImage = tag //Otherwise, it's the tag
-		} else {
-			deployImage = "dev.local/" + projectName
-		}
 		// Edit the deployment manifest to reflect the new tag
 		yamlFile, err := os.Open(configFile)
 		if !dryrun && err != nil {
