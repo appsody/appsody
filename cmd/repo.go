@@ -293,7 +293,7 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	indexBuffer := bytes.NewBuffer(nil)
 	err := downloadFile(url, indexBuffer)
 	if err != nil {
-		return nil, errors.Errorf("%s", err)
+		return nil, err
 	}
 
 	yamlFile, err := ioutil.ReadAll(indexBuffer)
