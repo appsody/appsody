@@ -22,7 +22,7 @@ import (
 )
 
 func lintDockerFileStack() (int, int) {
-	mendatoryEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN", "APPSODY_RUN_ON_CHANGE", "APPSODY_RUN_KILL", "APPSODY_DEBUG", "APPSODY_DEBUG_ON_CHANGE", "APPSODY_DEBUG_KILL", "APPSODY_TEST", "APPSODY_TEST_ON_CHANGE", "APPSODY_TEST_KILL"}
+	mendatoryEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN=", "APPSODY_RUN_ON_CHANGE", "APPSODY_RUN_KILL", "APPSODY_DEBUG", "APPSODY_DEBUG_ON_CHANGE", "APPSODY_DEBUG_KILL", "APPSODY_TEST", "APPSODY_TEST_ON_CHANGE", "APPSODY_TEST_KILL"}
 	optionalEnvironmentVariables := [...]string{"APPSODY_DEPS", "APPSODY_WATCH_DIR"}
 	errorCount := 0
 	warningCount := 0
