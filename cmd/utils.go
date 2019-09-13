@@ -1003,13 +1003,15 @@ func getLatestVersion() string {
 
 func doVersionCheck(data []byte, old string, new string, file string) {
 	var latest = getLatestVersion()
-	if VERSION != "vlatest" && VERSION != latest {
-		Info.log("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
-	}
-	output := bytes.Replace(data, []byte(old), []byte(new), -1)
-	err := ioutil.WriteFile(file, output, 0666)
-	if err != nil {
-		Warning.log("Error writing to config file")
+	if latest != "none" {
+		if VERSION != "vlatest" && VERSION != latest {
+			Info.log("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
+		}
+		output := bytes.Replace(data, []byte(old), []byte(new), -1)
+		err := ioutil.WriteFile(file, output, 0666)
+		if err != nil {
+			Warning.log("Error writing to config file")
+		}
 	}
 }
 
@@ -1031,17 +1033,15 @@ func checkTime() {
 	lastCheckTime = getLastCheckTime()
 	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 
-	if getLatestVersion() != "none" {
-		if lastCheckTime == "none" {
+	if lastCheckTime == "none" {
+		doVersionCheck(data, lastCheckTime, currentTime, configFile)
+	} else {
+		lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
+		if err != nil {
+			fmt.Println(err)
+		}
+		if time.Since(lastTime).Hours() > 24 {
 			doVersionCheck(data, lastCheckTime, currentTime, configFile)
-		} else {
-			lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
-			if err != nil {
-				fmt.Println(err)
-			}
-			if time.Since(lastTime).Hours() > 24 {
-				doVersionCheck(data, lastCheckTime, currentTime, configFile)
-			}
 		}
 	}
 }
