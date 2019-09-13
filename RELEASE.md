@@ -9,6 +9,7 @@ The Appsody CLI is made available by creating a tagged GitHub release
 1. Define a tag in the format of x.y.z (example: 0.2.4). Use the tag also for the title.
 1. Describe the release with your release notes, including a list of the features added by the release, a list of the major issues that are resolved by the release, caveats, known issues.
     * To see a comparison between master and the last release, navigate to https://github.com/appsody/appsody/compare/0.0.0...master replacing 0.0.0 with the last release.
+1. Check the box for _This is a pre-release_
 1. Click _Publish release_
 
 ### Monitor the build
@@ -24,6 +25,7 @@ The Appsody CLI is made available by creating a tagged GitHub release
     * appsody-homebrew-x.y.z.tar.gz
     * appsody.rb
     * appsody_x.y.z_amd64.deb
+1. Edit the release and uncheck _This is a pre-relsease_ then click _Update relsease_
 
 ### Create a PR in the homebrew repo
 1. Go to the [appsody/homebrew-appsody](https://github.com/appsody/homebrew-appsody) repo and create a PR for the new Travis build branch.
