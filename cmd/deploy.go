@@ -115,7 +115,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		scanner.Split(bufio.ScanLines)
 		var txtlines []string
 		for scanner.Scan() {
-			var localFoundCreateKnativeTag bool
+
 			line := scanner.Text()
 			if strings.Contains(line, "applicationImage:") {
 				index := strings.Index(line, ": ")
@@ -123,22 +123,22 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				line = start + deployImage
 				Info.log("Using applicationImage of: ", deployImage)
 			}
-			if strings.Contains(line, "createKnativeService") && strings.Contains(line, "true") {
+			if strings.Contains(line, "createKnativeService") {
 				foundCreateKnativeTag = true
-				localFoundCreateKnativeTag = true
+				if strings.Contains(line, "true") && !knative {
+					line = strings.Replace(line, "true", "false", 1)
+				}
+				if strings.Contains(line, "false") && knative {
+					line = strings.Replace(line, "false", "true", 1)
+				}
+
 			}
-			if strings.Contains(line, "createKnativeService") && strings.Contains(line, "false") && knative {
-				//if knative we want to replace false with true in
-				line = strings.Replace(line, "false", "true", 1)
-				foundCreateKnativeTag = true
-				localFoundCreateKnativeTag = true
-			}
+
 			if strings.Contains(line, "kind:") && strings.Contains(line, "Service") {
 				isKnativeService = true
 			}
-			if !(localFoundCreateKnativeTag && !knative) {
-				txtlines = append(txtlines, line)
-			}
+
+			txtlines = append(txtlines, line)
 
 		}
 		if !foundCreateKnativeTag && knative && !isKnativeService {
