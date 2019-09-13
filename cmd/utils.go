@@ -1003,16 +1003,15 @@ func getLatestVersion() string {
 
 func doVersionCheck(data []byte, old string, new string, file string) {
 	var latest = getLatestVersion()
-	if latest != "none" {
-		if VERSION != "vlatest" && VERSION != latest {
-			Info.log("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
-		}
-		output := bytes.Replace(data, []byte(old), []byte(new), -1)
-		err := ioutil.WriteFile(file, output, 0666)
-		if err != nil {
-			Warning.log("Error writing to config file")
-		}
+	if latest != "none" && VERSION != "vlatest" && VERSION != latest {
+		Info.log("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
 	}
+	output := bytes.Replace(data, []byte(old), []byte(new), -1)
+	err := ioutil.WriteFile(file, output, 0666)
+	if err != nil {
+		Warning.log("Error writing to config file")
+	}
+
 }
 
 func getLastCheckTime() string {
