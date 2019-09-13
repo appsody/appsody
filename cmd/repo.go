@@ -101,6 +101,27 @@ func findTemplateURL(projectVersion ProjectVersion, templateName string) string 
 	return ""
 }
 
+type indexError struct {
+	indexName string
+	theError  error
+}
+
+type indexErrors struct {
+	listOfErrors []indexError
+}
+
+func (e indexError) Error() string {
+	return "- Repository: " + e.indexName + "\n  Reason: " + fmt.Sprintf("%s", e.theError)
+}
+
+func (e indexErrors) Error() string {
+	var myerrors string
+	for _, err := range e.listOfErrors {
+		myerrors = myerrors + fmt.Sprintf("%v\n", err)
+	}
+	return myerrors
+}
+
 var unsupportedRepos []string
 var (
 	supportedIndexAPIVersion = "v2"
@@ -256,7 +277,7 @@ func downloadFile(href string, writer io.Writer) error {
 			Debug.logf("Contents http response:\n%s", buf)
 		}
 		resp.Body.Close()
-		return fmt.Errorf("%s response trying to download %s", resp.Status, href)
+		return fmt.Errorf("Could not download %s: %s", href, resp.Status)
 	}
 
 	_, err = io.Copy(writer, resp.Body)
@@ -272,7 +293,7 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	indexBuffer := bytes.NewBuffer(nil)
 	err := downloadFile(url, indexBuffer)
 	if err != nil {
-		return nil, errors.Errorf("Failed to get repository index: %s", err)
+		return nil, errors.Errorf("%s", err)
 	}
 
 	yamlFile, err := ioutil.ReadAll(indexBuffer)
@@ -476,39 +497,19 @@ func (r *RepositoryFile) WriteFile(path string) error {
 	return ioutil.WriteFile(path, data, 0644)
 }
 
-type indexError struct {
-	indexName string
-	theError error
- }
- 
- func (e indexError) Error() string {
-	return e.indexName + " " + fmt.Sprintf("%s", e.theError)
- }
- 
- type indexErrors struct {
-	listOfErrors []indexError
- }
- 
- func (e indexErrors) Error() []string {
-	var result []string
-	for _, err := range e.listOfErrors {
-		result = append(result, fmt.Sprintf("%s", err))
-	}
-	return result
- }
-
-func (r *RepositoryFile) GetIndices() (RepoIndices, []string, error) {
-	names := make([]string, 0)
+func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
 	indices := make(map[string]*RepoIndex)
+	brokenRepos := make([]indexError, 0)
 	for _, rf := range r.Repositories {
 		var index, err = downloadIndex(rf.URL)
 		if err != nil {
-			names = append(names, rf.Name)
+			repoErr := indexError{rf.Name, err}
+			brokenRepos = append(brokenRepos, repoErr)
 		} else {
 			indices[rf.Name] = index
 		}
 	}
-	return indices, names, nil
+	return indices, &indexErrors{brokenRepos}
 }
 
 func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([]Stack, error) {
@@ -562,10 +563,10 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	table.Wrap = true
 
 	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
-	indices, errIndices, err := r.GetIndices()
+	indices, err := r.GetIndices()
 
-	if len(errIndices)>0 {
-		Error.logf("Could not read indices: %v. Skipping repositories %v and continuing...", err, errIndices)
+	if err != nil {
+		Error.logf("The following indices could not be read, skipping:\n%v", err)
 	}
 	if len(indices) != 0 {
 		for repoName, index := range indices {
