@@ -56,7 +56,7 @@ func RunDockerCommandAndListen(args []string, logger appsodylogger) (*exec.Cmd, 
 		logScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		go func() {
 			for logScanner.Scan() {
-				logger.logSkipConsole(logScanner.Text())
+				logger.LogSkipConsole(logScanner.Text())
 			}
 		}()
 

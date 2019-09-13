@@ -48,7 +48,7 @@ var (
 
 const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[-a-zA-Z\\d\\/#&.:=?%@~_\\s]*)*)?(\u0007|^G))|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))"
 
-var ansi_regexp = regexp.MustCompile(ansi)
+var ansiRegexp = regexp.MustCompile(ansi)
 
 func homeDir() (string, error) {
 	home, err := homedir.Dir()
@@ -194,12 +194,22 @@ func (l appsodylogger) logf(fmtString string, args ...interface{}) {
 	l.internalLog(msgString, false, args...)
 }
 
-func (l appsodylogger) logSkipConsole(args ...interface{}) {
+func (l appsodylogger) Log(args ...interface{}) {
+	msgString := fmt.Sprint(args...)
+	l.internalLog(msgString, false, args...)
+}
+
+func (l appsodylogger) Logf(fmtString string, args ...interface{}) {
+	msgString := fmt.Sprintf(fmtString, args...)
+	l.internalLog(msgString, false, args...)
+}
+
+func (l appsodylogger) LogSkipConsole(args ...interface{}) {
 	msgString := fmt.Sprint(args...)
 	l.internalLog(msgString, true, args...)
 }
 
-func (l appsodylogger) logfSkipConsole(fmtString string, args ...interface{}) {
+func (l appsodylogger) LogfSkipConsole(fmtString string, args ...interface{}) {
 	msgString := fmt.Sprintf(fmtString, args...)
 	l.internalLog(msgString, true, args...)
 }
@@ -236,7 +246,7 @@ func (l appsodylogger) internalLog(msgString string, skipConsole bool, args ...i
 
 	// Print to log file
 	if verbose && klogInitialized {
-		msgString = ansi_regexp.ReplaceAllString(msgString, "")
+		msgString = ansiRegexp.ReplaceAllString(msgString, "")
 		klog.InfoDepth(2, msgString)
 		klog.Flush()
 	}
