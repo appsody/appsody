@@ -1,0 +1,37 @@
+# Appsody list/init/build --docker-options
+- `appsody list`
+    - should see templates for each stack star with default
+- `appsody list <repo>`
+    - should see templates for each stack
+- `appsody init <stack>`
+    - should create default stack and default template
+- `appsody init  <repo>/<stack>`
+    - should create default template for stack
+- `appsody init <repo>/stack> <template>`
+    - should create template mentioned
+- `appsody init <stack>`
+    - should create default repo. With default template for stack
+- `appsody init <repo>/<stack> none`
+- `appsody init <repo>/<stack> none —no-template`
+- `appsody init <stack> none`
+- `appsody init <stack> —no-template`
+    - (warning message)
+- `appsody init <stack> none —no-template`
+    - (warning message)
+    - should just create .appsody-config.yaml for default repo, stack
+- `appsody init <stack>  <template> —no-template`
+- `appsody init <repo><stack>  <template> —no-template`
+    - should be an error
+- `appsody build --docker-options “-m 4g”`
+    - should work
+- `appsody build —docker-options`
+    - should be an error
+        - (-t)|(--tag)|(-f)|(--file)
+    - Should be an error  
+- `appsody run —docker-options “-m 4g”`  
+        - Should work  
+- `appsody run —docker-options`  
+    - any of the following should work
+    - runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))(=?$)|(=.*))  
+- `appsody run --publish-all` 
+    - run 4 simultaneous instances

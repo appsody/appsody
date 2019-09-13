@@ -43,7 +43,19 @@ func TestRunWithDockerOptionsRegex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var testOptions = []string{"-p", "--publish", "--publish-all", "-P", "-u", "--user", "--name", "--network", "-t", "--tty", "--rm", "--entrypoint", "-v", "--volume", "-e", "--env"}
+	//var testOptions = []string{"-p", "--publish", "--publish-all", "-P", "-u", "--user", "--name", "--network", "-t", "--tty", "--rm", "--entrypoint", "-v", "--volume", "-e", "--env"}
+	var testOptions = []string{"-p", "--publish",
+		"--publish-all",
+		"-P",
+		"-u", "--user",
+		"--name",
+		"--network",
+		"-t",
+		"--tty",
+		"--rm",
+		"--entrypoint",
+		"-v", "--volume"}
+
 	for _, value := range testOptions {
 		fmt.Println("Option is", value)
 		runOutput, err = cmdtest.RunAppsodyCmdExec([]string{"run", "--docker-options", value, "--dryrun"}, projectDir)
