@@ -139,7 +139,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		return volumeErr
 	}
 	// Mount the APPSODY_DEPS cache volume if it exists
-	depsEnvVar, envErr := getEnvVar("APPSODY_DEPS")
+	depsEnvVar, envErr := GetEnvVar("APPSODY_DEPS")
 	if envErr != nil {
 		return envErr
 	}
@@ -312,7 +312,7 @@ func processPorts(cmdArgs []string) ([]string, error) {
 	Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
 	// if the container port is not in the lised of exposed ports add it to the list
 
-	containerPort, envErr := getEnvVar("PORT")
+	containerPort, envErr := GetEnvVar("PORT")
 	if envErr != nil {
 		return cmdArgs, envErr
 	}
