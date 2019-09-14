@@ -19,10 +19,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	cmdtest "github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -74,21 +74,22 @@ func TestExtract(t *testing.T) {
 
 		// appsody init inside projectDir
 		log.Println("Now running appsody init...")
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// appsody extract: running in projectDir, extracting into extractDir
-		var stdout string
-		stdout, err = cmdtest.RunAppsodyCmdExec([]string{"extract", "--target-dir", extractDir, "-v"}, projectDir)
+		log.Println("Now running appsody extract...")
+		_, err = cmdtest.RunAppsodyCmd([]string{"extract", "--target-dir", extractDir, "-v"}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Main extraction test logic:
-		// 1. Don't inspect the images, but just figure out the mount points
-		// from the debug log that is thrown out from extraction
+		// 1. Get the environment variables from the images that was
+		// just extracted - GetEnvVar. Switch the current directory
+		// to meet the API's needs. (refactor it so that this isn't needed)
 		// 2. For each mount that is a file, make sure the source and
 		// destination file sizes match.
 		// 3. For each mount that is a folder, make sure the source and
@@ -96,19 +97,28 @@ func TestExtract(t *testing.T) {
 		// 4. Skip mounts that were not extracted (e.g:- /mvn/...)
 		// 5. For all cases, make sure we have a Dockerfile extracted
 		// at the vortex of the extraction.
-		r, _ := regexp.Compile("APPSODY_MOUNTS Value: .*")
-		mounts := strings.TrimSpace(r.FindString(stdout))
-		mounts = strings.Split(mounts, "APPSODY_MOUNTS Value: ")[1]
-		log.Println("Stack mounts:", mounts)
-		r, _ = regexp.Compile("APPSODY_PROJECT_DIR=.*")
-		pDir := strings.TrimSpace(r.FindString(stdout))
-		if pDir == "" {
-			pDir = "/project"
-		} else {
-			pDir = strings.Split(pDir, " ")[0]
-			pDir = strings.Split(pDir, "=")[1]
+
+		oldDir, err := os.Getwd()
+		if err != nil {
+			t.Fatal("Error getting current directory: ", err)
 		}
 
+		err = os.Chdir(projectDir)
+		if err != nil {
+			t.Fatal("Error changing directory: ", err)
+		}
+		mounts, _ := cmd.GetEnvVar("APPSODY_MOUNTS")
+		pDir, _ := cmd.GetEnvVar("APPSODY_PROJECT_DIR")
+
+		err = os.Chdir(oldDir)
+		if err != nil {
+			t.Fatal("Error changing directory: ", err)
+		}
+
+		log.Println("Stack mounts:", mounts)
+		if pDir == "" {
+			pDir = "/project"
+		}
 		log.Println("Stack's project dir:", pDir)
 
 		mountlist := strings.Split(mounts, ";")
