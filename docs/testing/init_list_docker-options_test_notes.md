@@ -32,6 +32,6 @@
         - Should work  
 - `appsody run —docker-options`  
     - any of the following should work
-    - runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))(=?$)|(=.*))  
+    - runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))(=?$)|(=.*))  
 - `appsody run --publish-all` 
     - run 4 simultaneous instances
