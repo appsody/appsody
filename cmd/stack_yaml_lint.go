@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -52,13 +53,13 @@ func (s *StackDetails) validateYaml() *StackDetails {
 	stackyaml, err := ioutil.ReadFile(arg)
 	if err != nil {
 		Error.log("stackyaml.Get err ", err)
-		errorCount++
+		stackLintErrorCount++
 	}
 
 	err = yaml.Unmarshal([]byte(stackyaml), s)
 	if err != nil {
 		Error.log("Unmarshal: ", err)
-		errorCount++
+		stackLintErrorCount++
 	}
 
 	s.validateFields(arg)
@@ -73,7 +74,7 @@ func (s *StackDetails) validateFields(arg string) *StackDetails {
 		yamlValues[i] = v.Field(i).Interface()
 		if yamlValues[i] == "" {
 			Error.log("Missing value for field: ", strings.ToLower(v.Type().Field(i).Name), " in ", arg)
-			errorCount++
+			stackLintErrorCount++
 		}
 	}
 
@@ -100,9 +101,16 @@ func (s *StackDetails) checkMaintainer(arg string, yamlValues []interface{}) *St
 func (s *StackDetails) checkVersion(arg string) *StackDetails {
 	versionNo := strings.Split(s.Version, ".")
 
+	for _, mmp := range versionNo {
+		_, err := strconv.Atoi(mmp)
+		if err != nil {
+			Error.log("Each version field must be an integer in ", arg)
+		}
+	}
+
 	if len(versionNo) < 3 {
-		Error.log("Version is not formatted as major.minor.patch in ", arg)
-		errorCount++
+		Error.log("Version must contain 3 or 4 elements in ", arg)
+		stackLintErrorCount++
 	}
 
 	s.checkDescLenth(arg)
@@ -113,7 +121,7 @@ func (s *StackDetails) checkDescLenth(arg string) *StackDetails {
 
 	if len(s.Description) > 70 {
 		Error.log("Description should be under 70 characters in ", arg)
-		errorCount++
+		stackLintErrorCount++
 	}
 
 	s.checkDefaultTemplate(arg)
@@ -142,7 +150,7 @@ func (s *StackDetails) checkDefaultTemplate(arg string) *StackDetails {
 
 	if !DefaultFound {
 		Error.log("Missing value for field: default-template in ", arg)
-		errorCount++
+		stackLintErrorCount++
 	}
 
 	return s
