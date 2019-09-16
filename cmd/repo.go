@@ -511,9 +511,8 @@ func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
 	}
 	if len(brokenRepos) > 0 {
 		return indices, &indexErrors{brokenRepos}
-	} else {
-		return indices, nil
 	}
+	return indices, nil
 }
 
 func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([]Stack, error) {
