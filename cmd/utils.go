@@ -1017,7 +1017,10 @@ func doVersionCheck() {
 			Info.logf("*\n*\n*\n\nA new CLI update is available.\nPlease go to https://appsody.dev/docs/getting-started/installation and upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
 		}
 		cliConfig.Set("lastversioncheck", currentTime)
-		cliConfig.WriteConfig()
+		if err := cliConfig.WriteConfig(); err != nil {
+			Error.logf("Writing default config file %s", err)
+
+		}
 	}
 }
 
