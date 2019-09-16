@@ -71,7 +71,7 @@ func TestDebugSimple(t *testing.T) {
 
 		// appsody debug
 		runChannel := make(chan error)
-		containerName := "testDebugSimpleContainer" + stackRaw[i]
+		containerName := "testDebugSimpleContainer" + strings.ReplaceAll(stackRaw[i], "/", "_")
 		go func() {
 			_, err := cmdtest.RunAppsodyCmdExec([]string{"debug", "--name", containerName}, projectDir)
 			runChannel <- err
