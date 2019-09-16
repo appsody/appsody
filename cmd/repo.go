@@ -113,7 +113,7 @@ type indexErrors struct {
 func (e indexError) Error() string {
 	return "- Repository: " + e.indexName + "\n  Reason: " + e.theError.Error()
 }
- 
+
 func (e indexErrors) Error() string {
 	var myerrors string
 	for _, err := range e.listOfErrors {
