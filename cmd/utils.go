@@ -991,27 +991,34 @@ func getLatestVersion() string {
 	resp, err := http.Get(LatestVersionURL)
 	if err != nil {
 		Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
-		version = "none"
 	} else {
 		url := resp.Request.URL.String()
-		r, _ := regexp.Compile(`\d.\d.\d`)
+		r, _ := regexp.Compile(`[\d]+\.[\d]+\.[\d]+$`)
 
 		version = r.FindString(url)
 	}
 	return version
 }
 
-func doVersionCheck(data []byte, old string, new string, file string) {
+func doVersionCheck() {
 	var latest = getLatestVersion()
-	if latest != "none" && VERSION != "vlatest" && VERSION != latest {
-		Info.log("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
+	var currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
+	configFile = getDefaultConfigFile()
+	
+	if latest != "" && VERSION != "vlatest" && VERSION != latest {
+		switch os := runtime.GOOS; os {
+		case "darwin":
+			Info.logf("*\n*\n*\n\nA new CLI update is available.\nPlease run `brew upgrade appsody` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
+		case "linux":
+			Info.logf("*\n*\n*\n\nA new CLI update is available.\n1)Please download the most recently released Debian install package from the Appsody releases page.\n2)Open your terminal and enter the directory in which you downloaded the file.\n3)Run the command `sudo apt upgrade -f ./appsody_v.r.m_amd64.deb -y` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
+		case "windows":
+			Info.logf("*\n*\n*\n\nA new CLI update is available.\n1)Please download the Appsody binaries for Windows from the Appsody releases page.\n2)Move the file to the directory where you stored the existing Appsody binaries.\n3)Run the command `tar -xvf appsody-v.r.m-windows.tar.gz` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
+		default:
+			Info.logf("*\n*\n*\n\nA new CLI update is available.\nPlease go to https://appsody.dev/docs/getting-started/installation and upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
 	}
-	output := bytes.Replace(data, []byte(old), []byte(new), -1)
-	err := ioutil.WriteFile(file, output, 0666)
-	if err != nil {
-		Warning.log("Error writing to config file")
-	}
-
+	cliConfig.Set("lastversioncheck", currentTime)
+	cliConfig.WriteConfig()
+}
 }
 
 func getLastCheckTime() string {
@@ -1019,28 +1026,18 @@ func getLastCheckTime() string {
 }
 
 func checkTime() {
-	var lastCheckTime string
-	var currentTime string
-
-	var configFile = getDefaultConfigFile()
-
-	data, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		Warning.log("Unable to read config file")
-	}
-
-	lastCheckTime = getLastCheckTime()
-	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
+	var lastCheckTime = getLastCheckTime()
 
 	if lastCheckTime == "none" {
-		doVersionCheck(data, lastCheckTime, currentTime, configFile)
+		doVersionCheck()
 	} else {
 		lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
 		if err != nil {
-			fmt.Println(err)
+			Warning.log("Error", err)
+			doVersionCheck()
 		}
 		if time.Since(lastTime).Hours() > 24 {
-			doVersionCheck(data, lastCheckTime, currentTime, configFile)
+			doVersionCheck()
 		}
 	}
 }
