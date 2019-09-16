@@ -111,9 +111,9 @@ type indexErrors struct {
 }
 
 func (e indexError) Error() string {
-	return "- Repository: " + e.indexName + "\n  Reason: " + fmt.Sprintf("%s", e.theError)
+	return "- Repository: " + e.indexName + "\n  Reason: " + e.theError.Error()
 }
-
+ 
 func (e indexErrors) Error() string {
 	var myerrors string
 	for _, err := range e.listOfErrors {
@@ -509,7 +509,11 @@ func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
 			indices[rf.Name] = index
 		}
 	}
-	return indices, &indexErrors{brokenRepos}
+	if len(brokenRepos) > 0 {
+		return indices, &indexErrors{brokenRepos}
+	} else {
+		return indices, nil
+	}
 }
 
 func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([]Stack, error) {
