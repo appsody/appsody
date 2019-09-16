@@ -591,8 +591,15 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	} else {
 		return "", errors.New("there are no repositories in your configuration")
 	}
+	defaultRepoName, err := r.GetDefaultRepoName()
+	if err != nil {
+		return "", err
+	}
 	for _, value := range Stacks {
 
+		if value.repoName == defaultRepoName {
+			value.repoName = "*" + value.repoName
+		}
 		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
 	}
 	return table.String(), nil
