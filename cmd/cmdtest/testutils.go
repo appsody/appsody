@@ -284,13 +284,25 @@ func AddLocalFileRepo(repoName string, repoFilePath string) (string, func(), err
 	return repoURL, cleanupFunc, err
 }
 
-// RunDockerCmdExec runs the docker command with the given args in a new process
-// The stdout and stderr are captured, printed, and returned
-// args will be passed to the docker command
-// workingDir will be the directory the command runs in
-func RunDockerCmdExec(args []string) (string, error) {
+func RunCommandExec(command string, args []string, workingDir string) (string, error) {
+	execDir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		// replace the original working directory when this function completes
+		err := os.Chdir(execDir)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
-	cmdArgs := []string{"docker"}
+	// set the working directory
+	if err := os.Chdir(workingDir); err != nil {
+		return "", err
+	}
+
+	cmdArgs := []string{command}
 	cmdArgs = append(cmdArgs, args...)
 	fmt.Println(cmdArgs)
 
@@ -327,4 +339,16 @@ func RunDockerCmdExec(args []string) (string, error) {
 	err = execCmd.Wait()
 
 	return outBuffer.String(), err
+}
+
+// RunDockerCmdExec runs the docker command with the given args in a new process
+// The stdout and stderr are captured, printed, and returned
+// args will be passed to the docker command
+// workingDir will be the directory the command runs in
+func RunDockerCmdExec(args []string) (string, error) {
+	return RunCommandExec("docker", args, ".")
+}
+
+func RunGitCmdExec(args []string, workingDir string) (string, error) {
+	return RunCommandExec("git", args, workingDir)
 }
