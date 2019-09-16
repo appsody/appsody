@@ -602,7 +602,7 @@ func DockerTag(imageToTag string, tag string) error {
 	cmdName := "docker"
 	cmdArgs := []string{"image", "tag", imageToTag, tag}
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", cmdName, " ", cmdArgs)
+		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
 		return nil
 	}
 	tagCmd := exec.Command(cmdName, cmdArgs...)
@@ -621,7 +621,7 @@ func DockerPush(imageToPush string) error {
 	cmdName := "docker"
 	cmdArgs := []string{"push", imageToPush}
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", cmdName, " ", cmdArgs)
+		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
 		return nil
 	}
 	pushCmd := exec.Command(cmdName, cmdArgs...)
@@ -648,7 +648,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput
 		cmdArgs = []string{"run"}
 	}
 	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/bash", image, "-c", bashCmd)
-	Info.log("Running command: ", cmdName, cmdArgs)
+	Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
 	dockerOutBytes, err := dockerCmd.Output()
 	if err != nil {
@@ -670,10 +670,10 @@ func KubeGet(args []string) (string, error) {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return "", nil
 	}
-	Info.log("Running command: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
@@ -692,10 +692,10 @@ func KubeApply(fileToApply string) error {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return nil
 	}
-	Info.log("Running command: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
@@ -716,10 +716,10 @@ func KubeDelete(fileToApply string) error {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return nil
 	}
-	Info.log("Running command: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	var stderr bytes.Buffer
 	execCmd.Stderr = &stderr
@@ -768,10 +768,10 @@ func KubeGetKnativeURL(service string) (url string, err error) {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return "", nil
 	}
-	Info.log("Running command: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
@@ -808,7 +808,7 @@ func pullCmd(imageToPull string) error {
 	}
 	pullArgs := []string{"pull", imageToPull}
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", cmdName, " ", pullArgs)
+		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(pullArgs, " "))
 		return nil
 	}
 	Debug.log("Pulling docker image ", imageToPull)
@@ -885,9 +885,9 @@ func execAndListenWithWorkDirReturnErr(command string, args []string, logger app
 	var execCmd *exec.Cmd
 	var err error
 	if dryrun {
-		Info.log("Dry Run - Skipping command: ", command, args)
+		Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
 	} else {
-		Info.log("Running command: ", command, args)
+		Info.log("Running command: ", command, " ", strings.Join(args, " "))
 		execCmd = exec.Command(command, args...)
 		if workdir != "" {
 			execCmd.Dir = workdir
@@ -936,7 +936,7 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 	var err error
 	var execCmd *exec.Cmd
 	if dryrun {
-		Info.log("Dry Run - Skipping command: ", command, args)
+		Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
 	} else {
 		execCmd, err = execAndListenWithWorkDirReturnErr(command, args, logger, workdir)
 		if err != nil {
