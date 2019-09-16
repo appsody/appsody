@@ -466,7 +466,11 @@ func extractAndInitialize() error {
 		return configErr
 	}
 	stackImage := projectConfig.Platform
-	bashCmd := "find /project -type f -name " + scriptFileName
+	containerProjectDir, containerProjectDirErr := getExtractDir()
+	if containerProjectDirErr != nil {
+		return containerProjectDirErr
+	}
+	bashCmd := "find " + containerProjectDir + " -type f -name " + scriptFileName
 	cmdOptions := []string{"--rm"}
 	Debug.log("Attempting to run ", bashCmd, " on image ", stackImage, " with options: ", cmdOptions)
 	//DockerRunBashCmd has a pullImage call
