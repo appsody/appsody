@@ -1004,7 +1004,7 @@ func doVersionCheck() {
 	var latest = getLatestVersion()
 	var currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 	configFile = getDefaultConfigFile()
-	
+
 	if latest != "" && VERSION != "vlatest" && VERSION != latest {
 		switch os := runtime.GOOS; os {
 		case "darwin":
@@ -1015,10 +1015,10 @@ func doVersionCheck() {
 			Info.logf("*\n*\n*\n\nA new CLI update is available.\n1)Please download the Appsody binaries for Windows from the Appsody releases page.\n2)Move the file to the directory where you stored the existing Appsody binaries.\n3)Run the command `tar -xvf appsody-v.r.m-windows.tar.gz` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
 		default:
 			Info.logf("*\n*\n*\n\nA new CLI update is available.\nPlease go to https://appsody.dev/docs/getting-started/installation and upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
+		}
+		cliConfig.Set("lastversioncheck", currentTime)
+		cliConfig.WriteConfig()
 	}
-	cliConfig.Set("lastversioncheck", currentTime)
-	cliConfig.WriteConfig()
-}
 }
 
 func getLastCheckTime() string {
