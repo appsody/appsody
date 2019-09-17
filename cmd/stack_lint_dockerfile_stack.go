@@ -91,7 +91,7 @@ func lintDockerFileStack() {
 				variableFound = true
 			}
 		}
-		if variableFound == false {
+		if !variableFound {
 			Error.log("Missing ", variable)
 			stackLintErrorCount++
 		}
@@ -107,7 +107,7 @@ func lintDockerFileStack() {
 				variableFound = true
 			}
 		}
-		if variableFound == false {
+		if !variableFound {
 			Warning.log("Missing ", variable)
 			stackLintWarningCount++
 		}
