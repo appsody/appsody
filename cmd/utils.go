@@ -70,7 +70,7 @@ func exists(path string) (bool, error) {
 	return true, err
 }
 
-func getEnvVar(searchEnvVar string) (string, error) {
+func GetEnvVar(searchEnvVar string) (string, error) {
 	// TODO cache this so the buildah / docker inspect command only runs once per cli invocation
 
 	// Docker and Buildah produce slightly different output
@@ -143,7 +143,7 @@ func getEnvVar(searchEnvVar string) (string, error) {
 }
 
 func getEnvVarBool(searchEnvVar string) (bool, error) {
-	strVal, envErr := getEnvVar(searchEnvVar)
+	strVal, envErr := GetEnvVar(searchEnvVar)
 	if envErr != nil {
 		return false, envErr
 	}
@@ -152,7 +152,7 @@ func getEnvVarBool(searchEnvVar string) (bool, error) {
 
 func getEnvVarInt(searchEnvVar string) (int, error) {
 
-	strVal, envErr := getEnvVar(searchEnvVar)
+	strVal, envErr := GetEnvVar(searchEnvVar)
 	if envErr != nil {
 		return 0, envErr
 	}
@@ -165,7 +165,7 @@ func getEnvVarInt(searchEnvVar string) (int, error) {
 }
 
 func getExtractDir() (string, error) {
-	extractDir, envErr := getEnvVar("APPSODY_PROJECT_DIR")
+	extractDir, envErr := GetEnvVar("APPSODY_PROJECT_DIR")
 	if envErr != nil {
 		return "", envErr
 	}
@@ -178,7 +178,7 @@ func getExtractDir() (string, error) {
 
 func getVolumeArgs() ([]string, error) {
 	volumeArgs := []string{}
-	stackMounts, envErr := getEnvVar("APPSODY_MOUNTS")
+	stackMounts, envErr := GetEnvVar("APPSODY_MOUNTS")
 	if envErr != nil {
 		return nil, envErr
 	}
