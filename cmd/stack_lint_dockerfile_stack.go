@@ -53,23 +53,21 @@ func getENVDockerfile() (dockerfileStack map[string]string) {
 }
 
 func split(txtlines []string) (dockerfileStack map[string]string) {
-	var m = make(map[string]string)
+	var dockerfileMap = make(map[string]string)
 	for _, eachline := range txtlines {
 		s := strings.Split(eachline, "=")
 		key := strings.TrimPrefix(s[0], "ENV")
 		key = strings.TrimSpace(key)
 		value := strings.TrimPrefix(eachline, s[0]+"=")
-		m[key] = value
+		dockerfileMap[key] = value
 	}
 
-	return m
+	return dockerfileMap
 }
 
-func lintDockerFileStack() (int, int) {
+func lintDockerFileStack() {
 	mendatoryEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN"}
 	optionalEnvironmentVariables := [...]string{"APPSODY_DEBUG", "APPSODY_TEST", "APPSODY_DEPS", "APPSODY_PROJECT_DIR"}
-	errorCount := 0
-	warningCount := 0
 
 	stackPath, _ := os.Getwd()
 
@@ -78,6 +76,8 @@ func lintDockerFileStack() (int, int) {
 	}
 
 	arg := filepath.Join(stackPath, "image/Dockerfile-stack")
+
+	Info.log("Linting Dockerfile-stack: ", arg)
 
 	dockerfileStack := getENVDockerfile()
 
@@ -92,8 +92,8 @@ func lintDockerFileStack() (int, int) {
 			}
 		}
 		if variableFound == false {
-			Error.log("Missing ", variable, " in: ", arg)
-			errorCount++
+			Error.log("Missing ", variable)
+			stackLintErrorCount++
 		}
 		variableFound = false
 	}
@@ -108,8 +108,8 @@ func lintDockerFileStack() (int, int) {
 			}
 		}
 		if variableFound == false {
-			Warning.log("Missing ", variable, " in: ", arg)
-			warningCount++
+			Warning.log("Missing ", variable)
+			stackLintWarningCount++
 		}
 		variableFound = false
 	}
@@ -131,19 +131,20 @@ func lintDockerFileStack() (int, int) {
 	}
 
 	if count == len(dockerfileStack) && !onChangeFound {
-		Error.log("APPSODY_WATCH_DIR is defined, but no _ON_CHANGE variable is defined: ", arg)
-		errorCount++
+		Error.log("APPSODY_WATCH_DIR is defined, but no ON_CHANGE variable is defined")
+		stackLintErrorCount++
 	}
 
 	for k, v := range dockerfileStack {
 		if strings.Contains(k, "APPSODY_INSTALL") {
-			Warning.log("APPSODY_INSTALL should be deprecated and APPSODY_PREP should be used instead in: ", arg)
-			warningCount++
+			Warning.log("APPSODY_INSTALL should be deprecated and APPSODY_PREP should be used instead")
+			stackLintWarningCount++
 		}
 
 		if strings.Contains(k, "_KILL") {
 			if !(v == "true" || v == "false") {
 				Error.log(k, " can only have value true/false")
+				stackLintErrorCount++
 			}
 		}
 
@@ -155,6 +156,4 @@ func lintDockerFileStack() (int, int) {
 			}
 		}
 	}
-
-	return errorCount, warningCount
 }
