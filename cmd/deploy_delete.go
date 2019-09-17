@@ -27,7 +27,7 @@ var deleteDeploymentCmd = &cobra.Command{
 	Long:  `This command deletes your deployed Appsody project from the configured Kubernetes cluster using your existing deployment manifest.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		exists, err := exists(deployConfigFile)
+		exists, err := Exists(deployConfigFile)
 		if err != nil {
 			return errors.Errorf("Error checking status of %s", deployConfigFile)
 		}
