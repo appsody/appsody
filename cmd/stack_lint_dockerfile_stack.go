@@ -15,15 +15,59 @@
 package cmd
 
 import (
-	"io/ioutil"
+	"bufio"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
+func getENVDockerfile() (dockerfileStack map[string]string) {
+	stackPath, _ := os.Getwd()
+
+	if len(os.Args) > 3 {
+		stackPath = os.Args[3]
+	}
+
+	arg := filepath.Join(stackPath, "image/Dockerfile-stack")
+
+	file, err := os.Open(arg)
+
+	if err != nil {
+		Error.log("failed opening file: ", err)
+	}
+
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanLines)
+	var txtlines []string
+
+	for scanner.Scan() {
+		if strings.HasPrefix(strings.TrimSpace(scanner.Text()), "ENV") {
+			txtlines = append(txtlines, strings.TrimSpace(scanner.Text()))
+		}
+	}
+
+	file.Close()
+
+	return split(txtlines)
+}
+
+func split(txtlines []string) (dockerfileStack map[string]string) {
+	var m = make(map[string]string)
+	for _, eachline := range txtlines {
+		s := strings.Split(eachline, "=")
+		key := strings.TrimPrefix(s[0], "ENV")
+		key = strings.TrimSpace(key)
+		value := strings.TrimPrefix(eachline, s[0]+"=")
+		m[key] = value
+	}
+
+	return m
+}
+
 func lintDockerFileStack() (int, int) {
-	mendatoryEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN=", "APPSODY_RUN_ON_CHANGE", "APPSODY_RUN_KILL", "APPSODY_DEBUG", "APPSODY_DEBUG_ON_CHANGE", "APPSODY_DEBUG_KILL", "APPSODY_TEST", "APPSODY_TEST_ON_CHANGE", "APPSODY_TEST_KILL"}
-	optionalEnvironmentVariables := [...]string{"APPSODY_DEPS", "APPSODY_WATCH_DIR"}
+	mendatoryEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN"}
+	optionalEnvironmentVariables := [...]string{"APPSODY_DEBUG", "APPSODY_TEST", "APPSODY_DEPS", "APPSODY_PROJECT_DIR"}
 	errorCount := 0
 	warningCount := 0
 
@@ -35,24 +79,80 @@ func lintDockerFileStack() (int, int) {
 
 	arg := filepath.Join(stackPath, "image/Dockerfile-stack")
 
-	dockerfileStack, err := ioutil.ReadFile(arg)
+	dockerfileStack := getENVDockerfile()
 
-	if err != nil {
-		Error.log("Error attempting to read file: ", err)
-		errorCount++
-	}
+	variableFound := false
+	variable := ""
 
 	for i := 0; i < len(mendatoryEnvironmentVariables); i++ {
-		if !strings.Contains(string(dockerfileStack), mendatoryEnvironmentVariables[i]) {
-			Error.log("Missing ", mendatoryEnvironmentVariables[i], " in: ", arg)
+		variable = mendatoryEnvironmentVariables[i]
+		for k := range dockerfileStack {
+			if k == mendatoryEnvironmentVariables[i] {
+				variableFound = true
+			}
+		}
+		if variableFound == false {
+			Error.log("Missing ", variable, " in: ", arg)
 			errorCount++
+		}
+		variableFound = false
+	}
+
+	variableFound = false
+
+	for i := 0; i < len(optionalEnvironmentVariables); i++ {
+		variable = optionalEnvironmentVariables[i]
+		for k := range dockerfileStack {
+			if k == optionalEnvironmentVariables[i] {
+				variableFound = true
+			}
+		}
+		if variableFound == false {
+			Warning.log("Missing ", variable, " in: ", arg)
+			warningCount++
+		}
+		variableFound = false
+	}
+
+	count := 0
+	onChangeFound := false
+
+	for k := range dockerfileStack {
+		if strings.Contains(k, "APPSODY_WATCH_DIR") {
+			for j := range dockerfileStack {
+				count++
+				if strings.Contains(j, "_ON_CHANGE") {
+					onChangeFound = true
+
+				}
+			}
+			break
 		}
 	}
 
-	for i := 0; i < len(optionalEnvironmentVariables); i++ {
-		if !strings.Contains(string(dockerfileStack), optionalEnvironmentVariables[i]) {
-			Warning.log("Missing ", optionalEnvironmentVariables[i], " in: ", arg)
+	if count == len(dockerfileStack) && !onChangeFound {
+		Error.log("APPSODY_WATCH_DIR is defined, but no _ON_CHANGE variable is defined: ", arg)
+		errorCount++
+	}
+
+	for k, v := range dockerfileStack {
+		if strings.Contains(k, "APPSODY_INSTALL") {
+			Warning.log("APPSODY_INSTALL should be deprecated and APPSODY_PREP should be used instead in: ", arg)
 			warningCount++
+		}
+
+		if strings.Contains(k, "_KILL") {
+			if !(v == "true" || v == "false") {
+				Error.log(k, " can only have value true/false")
+			}
+		}
+
+		if strings.Contains(k, "APPSODY_WATCH_REGEX") {
+			_, err := regexp.Compile(v)
+
+			if err != nil {
+				Error.log(err)
+			}
 		}
 	}
 
