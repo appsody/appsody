@@ -1008,19 +1008,16 @@ func doVersionCheck() {
 	if latest != "" && VERSION != "vlatest" && VERSION != latest {
 		switch os := runtime.GOOS; os {
 		case "darwin":
-			Info.logf("*\n*\n*\n\nA new CLI update is available.\nPlease run `brew upgrade appsody` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
-		case "linux":
-			Info.logf("*\n*\n*\n\nA new CLI update is available.\n1)Please download the most recently released Debian install package from the Appsody releases page.\n2)Open your terminal and enter the directory in which you downloaded the file.\n3)Run the command `sudo apt upgrade -f ./appsody_v.r.m_amd64.deb -y` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
-		case "windows":
-			Info.logf("*\n*\n*\n\nA new CLI update is available.\n1)Please download the Appsody binaries for Windows from the Appsody releases page.\n2)Move the file to the directory where you stored the existing Appsody binaries.\n3)Run the command `tar -xvf appsody-v.r.m-windows.tar.gz` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
+			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease run `brew upgrade appsody` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
 		default:
-			Info.logf("*\n*\n*\n\nA new CLI update is available.\nPlease go to https://appsody.dev/docs/getting-started/installation and upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
+			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease go to https://appsody.dev/docs/getting-started/installation and upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
 		}
-		cliConfig.Set("lastversioncheck", currentTime)
-		if err := cliConfig.WriteConfig(); err != nil {
-			Error.logf("Writing default config file %s", err)
+	}
 
-		}
+	cliConfig.Set("lastversioncheck", currentTime)
+	if err := cliConfig.WriteConfig(); err != nil {
+		Error.logf("Writing default config file %s", err)
+
 	}
 }
 
@@ -1031,18 +1028,14 @@ func getLastCheckTime() string {
 func checkTime() {
 	var lastCheckTime = getLastCheckTime()
 
-	if lastCheckTime == "none" {
+	lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
+	if err != nil {
+		Debug.logf("Could not parse the config file's lastversioncheck: %v. Continuing with a new version check...", err)
 		doVersionCheck()
-	} else {
-		lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
-		if err != nil {
-			Warning.log("Error", err)
-			doVersionCheck()
-		}
-		if time.Since(lastTime).Hours() > 24 {
-			doVersionCheck()
-		}
+	} else if time.Since(lastTime).Hours() > 24 {
+		doVersionCheck()
 	}
+
 }
 
 // TEMPORARY CODE: sets the old v1 index to point to the new v2 index (latest)
