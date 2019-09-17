@@ -44,6 +44,7 @@ func RunDockerCommandAndListen(args []string, logger appsodylogger) (*exec.Cmd, 
 		Info.log("Running docker command: ", command, args)
 		execCmd = exec.Command(command, args...)
 
+		// Create io pipes for the command
 		logReader, logWriter := io.Pipe()
 		consoleReader, consoleWriter := io.Pipe()
 		execCmd.Stdout = io.MultiWriter(logWriter, consoleWriter)
@@ -52,6 +53,8 @@ func RunDockerCommandAndListen(args []string, logger appsodylogger) (*exec.Cmd, 
 			execCmd.Stdin = os.Stdin
 		}
 
+		// Create a scanner for both the log and the console
+		// The log will be written when a newline is encountered
 		logScanner := bufio.NewScanner(logReader)
 		logScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		go func() {
@@ -60,6 +63,7 @@ func RunDockerCommandAndListen(args []string, logger appsodylogger) (*exec.Cmd, 
 			}
 		}()
 
+		// The console will be written on every byte
 		consoleScanner := bufio.NewScanner(consoleReader)
 		consoleScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		consoleScanner.Split(bufio.ScanBytes)

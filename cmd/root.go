@@ -26,8 +26,6 @@ import (
 	// for logging
 	"k8s.io/klog"
 
-	//  homedir "github.com/mitchellh/go-homedir"
-
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 
@@ -46,6 +44,7 @@ var (
 	klogInitialized = false
 )
 
+// Regular expression to match ANSI terminal commands so that we can remove them from the log
 const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[-a-zA-Z\\d\\/#&.:=?%@~_\\s]*)*)?(\u0007|^G))|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))"
 
 var ansiRegexp = regexp.MustCompile(ansi)
@@ -246,6 +245,7 @@ func (l appsodylogger) internalLog(msgString string, skipConsole bool, args ...i
 
 	// Print to log file
 	if verbose && klogInitialized {
+		// Remove ansi commands
 		msgString = ansiRegexp.ReplaceAllString(msgString, "")
 		klog.InfoDepth(2, msgString)
 		klog.Flush()
