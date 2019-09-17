@@ -41,14 +41,10 @@ type StackMaintainer struct {
 
 var defaultTemplateFound bool
 
-func (s *StackDetails) validateYaml() *StackDetails {
-	stackPath, _ := os.Getwd()
-
-	if len(os.Args) > 3 {
-		stackPath = os.Args[3]
-	}
-
+func (s *StackDetails) validateYaml(stackPath string) *StackDetails {
 	arg := filepath.Join(stackPath, "/stack.yaml")
+
+	Info.log("LINTING stack.yaml: ", arg)
 
 	stackyaml, err := ioutil.ReadFile(arg)
 	if err != nil {
@@ -58,74 +54,7 @@ func (s *StackDetails) validateYaml() *StackDetails {
 
 	err = yaml.Unmarshal([]byte(stackyaml), s)
 	if err != nil {
-		Error.log("Unmarshal: ", err)
-		stackLintErrorCount++
-	}
-
-	s.validateFields(arg)
-	return s
-}
-
-func (s *StackDetails) validateFields(arg string) *StackDetails {
-	v := reflect.ValueOf(s).Elem()
-	yamlValues := make([]interface{}, v.NumField())
-
-	for i := 0; i < v.NumField(); i++ {
-		yamlValues[i] = v.Field(i).Interface()
-		if yamlValues[i] == "" {
-			Error.log("Missing value for field: ", strings.ToLower(v.Type().Field(i).Name), " in ", arg)
-			stackLintErrorCount++
-		}
-	}
-
-	s.checkMaintainer(arg, yamlValues)
-
-	return s
-
-}
-
-func (s *StackDetails) checkMaintainer(arg string, yamlValues []interface{}) *StackDetails {
-	Map := make(map[string]interface{})
-	Map["maintainerEmails"] = yamlValues[5]
-
-	maintainerEmails := Map["maintainerEmails"].([]StackMaintainer)
-
-	if len(maintainerEmails) == 0 {
-		Error.log("Email is not provided under field: maintainers in ", arg)
-	}
-
-	s.checkVersion(arg)
-	return s
-}
-
-func (s *StackDetails) checkVersion(arg string) *StackDetails {
-	versionNo := strings.Split(s.Version, ".")
-
-	for _, mmp := range versionNo {
-		_, err := strconv.Atoi(mmp)
-		if err != nil {
-			Error.log("Each version field must be an integer in ", arg)
-		}
-	}
-
-	if len(versionNo) < 3 {
-		Error.log("Version must contain 3 or 4 elements in ", arg)
-		stackLintErrorCount++
-	}
-
-	s.checkDescLength(arg)
-	return s
-}
-
-func (s *StackDetails) checkDescLength(arg string) *StackDetails {
-
-	if len(s.Description) > 70 {
-		Error.log("Description should be under 70 characters in ", arg)
-		stackLintErrorCount++
-	}
-
-	if len(s.Name) > 30 {
-		Error.log("Stack name should be under 30 characters in ", arg)
+		Error.log("Unmarshal: Error unmarshalling stack.yaml")
 		stackLintErrorCount++
 	}
 
@@ -144,7 +73,7 @@ func (s *StackDetails) checkDefaultTemplate(arg string) *StackDetails {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		yamlFields := strings.Split(scanner.Text(), ":")
-		if yamlFields[0] == "default-template" {
+		if yamlFields[0] == "default-template" && yamlFields[1] != "" {
 			defaultTemplateFound = true
 		}
 	}
@@ -154,7 +83,75 @@ func (s *StackDetails) checkDefaultTemplate(arg string) *StackDetails {
 	}
 
 	if !defaultTemplateFound {
-		Error.log("Missing value for field: default-template in ", arg)
+		Error.log("Missing value for field: default-template")
+		stackLintErrorCount++
+	}
+
+	s.validateFields()
+	return s
+}
+
+func (s *StackDetails) validateFields() *StackDetails {
+	v := reflect.ValueOf(s).Elem()
+	yamlValues := make([]interface{}, v.NumField())
+
+	for i := 0; i < v.NumField(); i++ {
+		yamlValues[i] = v.Field(i).Interface()
+		if yamlValues[i] == "" {
+			Error.log("Missing value for field: ", strings.ToLower(v.Type().Field(i).Name))
+			stackLintErrorCount++
+		}
+	}
+
+	s.checkMaintainer(yamlValues)
+
+	return s
+
+}
+
+func (s *StackDetails) checkMaintainer(yamlValues []interface{}) *StackDetails {
+	Map := make(map[string]interface{})
+	Map["maintainerEmails"] = yamlValues[5]
+
+	maintainerEmails := Map["maintainerEmails"].([]StackMaintainer)
+
+	if len(maintainerEmails) == 0 {
+		Error.log("Email is not provided under field: maintainers")
+		stackLintErrorCount++
+	}
+
+	s.checkVersion()
+	return s
+}
+
+func (s *StackDetails) checkVersion() *StackDetails {
+	versionNo := strings.Split(s.Version, ".")
+
+	for _, mmp := range versionNo {
+		_, err := strconv.Atoi(mmp)
+		if err != nil {
+			Error.log("Each version field must be an integer")
+		}
+	}
+
+	if len(versionNo) < 3 {
+		Error.log("Version must contain 3 or 4 elements")
+		stackLintErrorCount++
+	}
+
+	s.checkDescLength()
+	return s
+}
+
+func (s *StackDetails) checkDescLength() *StackDetails {
+
+	if len(s.Description) > 70 {
+		Error.log("Description must be under 70 characters")
+		stackLintErrorCount++
+	}
+
+	if len(s.Name) > 30 {
+		Error.log("Stack name must be under 30 characters")
 		stackLintErrorCount++
 	}
 
