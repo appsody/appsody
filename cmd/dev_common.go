@@ -168,7 +168,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		if err != nil {
 			return errors.New("fatal error - can't retrieve the binary path... exiting")
 		}
-		controllerExists, existsErr := exists(destController)
+		controllerExists, existsErr := Exists(destController)
 		if existsErr != nil {
 			return existsErr
 		}
@@ -177,7 +177,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		if controllerExists {
 			var checksumMatchErr error
 			binaryControllerPath := filepath.Join(binaryLocation, "appsody-controller")
-			binaryControllerExists, existsErr := exists(binaryControllerPath)
+			binaryControllerExists, existsErr := Exists(binaryControllerPath)
 			if existsErr != nil {
 				return existsErr
 			}

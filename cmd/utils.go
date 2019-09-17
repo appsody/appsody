@@ -59,7 +59,9 @@ var projectConfig *ProjectConfig
 
 const workDirNotSet = ""
 
-func exists(path string) (bool, error) {
+// Checks whether an inode (it does not bother
+// about file or folder) exists or not.
+func Exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
@@ -250,7 +252,7 @@ func mountExistsLocally(mount string) bool {
 		}
 	}
 	Debug.log("Checking for existence of local file or directory to mount: ", localFile[0])
-	fileExists, _ := exists(localFile[0])
+	fileExists, _ := Exists(localFile[0])
 	return fileExists
 }
 
@@ -261,7 +263,7 @@ func getProjectDir() (string, error) {
 		return "", err
 	}
 	appsodyConfig := filepath.Join(dir, ConfigFile)
-	projectDir, err := exists(appsodyConfig)
+	projectDir, err := Exists(appsodyConfig)
 	if err != nil {
 		Error.log(err)
 		return "", err
