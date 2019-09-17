@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func DockerRunAndListen(args []string, logger appsodylogger) (*exec.Cmd, error) {
@@ -39,9 +40,9 @@ func RunDockerCommandAndListen(args []string, logger appsodylogger) (*exec.Cmd, 
 	var command = "docker"
 	var err error
 	if dryrun {
-		Info.log("Dry Run - Skipping docker command: ", command, args)
+		Info.log("Dry Run - Skipping docker command: ", command, " ", strings.Join(args, " "))
 	} else {
-		Info.log("Running docker command: ", command, args)
+		Info.log("Running docker command: ", command, " ", strings.Join(args, " "))
 		execCmd = exec.Command(command, args...)
 
 		// Create io pipes for the command
