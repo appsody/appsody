@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var disableWatcher bool
 var containerName string
 var depsVolumeName string
 var ports []string
@@ -87,6 +88,7 @@ func buildCommonFlags() {
 		commonFlags.StringVar(&depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 		commonFlags.StringArrayVarP(&ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
 		commonFlags.BoolVarP(&publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
+		commonFlags.BoolVar(&disableWatcher, "no-watcher", false, "Disable file watching, regardless of container environment variable settings.")
 		commonFlags.BoolVarP(&interactive, "interactive", "i", false, "Attach STDIN to the container for interactive TTY mode")
 		commonFlags.StringVar(&dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\".")
 	}
@@ -278,6 +280,9 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/appsody/appsody-controller", platformDefinition, "--mode="+mode)
 	if verbose {
 		cmdArgs = append(cmdArgs, "-v")
+	}
+	if disableWatcher {
+		cmdArgs = append(cmdArgs, "--no-watcher")
 	}
 	Debug.logf("Attempting to start image %s with container name %s", platformDefinition, containerName)
 	execCmd, err := DockerRunAndListen(cmdArgs, Container)
