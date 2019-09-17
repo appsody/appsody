@@ -48,7 +48,7 @@ This command can be run from the base directory of your stack or you can supply 
 
 		Info.log("LINTING ", path.Base(stackPath))
 
-		fileCheck, err := exists(filepath.Join(stackPath, "/README.md"))
+		fileCheck, err := Exists(filepath.Join(stackPath, "/README.md"))
 		if err != nil {
 			Error.log("Error attempting to determine file: ", err)
 			errorCount++
@@ -56,7 +56,7 @@ This command can be run from the base directory of your stack or you can supply 
 			Error.log("Missing README.md in: ", stackPath)
 			errorCount++
 		}
-		fileCheck, err = exists(filepath.Join(stackPath, "/stack.yaml"))
+		fileCheck, err = Exists(filepath.Join(stackPath, "/stack.yaml"))
 		if err != nil {
 			Error.log("Error attempting to determine file: ", err)
 			errorCount++
@@ -65,7 +65,7 @@ This command can be run from the base directory of your stack or you can supply 
 			errorCount++
 		}
 
-		fileCheck, err = exists(imagePath)
+		fileCheck, err = Exists(imagePath)
 		if err != nil {
 			Error.log("Error attempting to determine file: ", err)
 			errorCount++
@@ -74,7 +74,7 @@ This command can be run from the base directory of your stack or you can supply 
 			errorCount++
 		}
 
-		fileCheck, err = exists(filepath.Join(imagePath, "/Dockerfile-stack"))
+		fileCheck, err = Exists(filepath.Join(imagePath, "/Dockerfile-stack"))
 		if err != nil {
 			Error.log("Error attempting to determine file: ", err)
 			errorCount++
@@ -83,7 +83,7 @@ This command can be run from the base directory of your stack or you can supply 
 			errorCount++
 		}
 
-		fileCheck, err = exists(filepath.Join(imagePath, "/LICENSE"))
+		fileCheck, err = Exists(filepath.Join(imagePath, "/LICENSE"))
 		if err != nil {
 			Error.log("Error attempting to determine file: ", err)
 			errorCount++
@@ -92,7 +92,7 @@ This command can be run from the base directory of your stack or you can supply 
 			errorCount++
 		}
 
-		fileCheck, err = exists(configPath)
+		fileCheck, err = Exists(configPath)
 		if err != nil {
 			Error.log("Error attempting to determine file: ", err)
 			errorCount++
@@ -101,7 +101,7 @@ This command can be run from the base directory of your stack or you can supply 
 			warningCount++
 		}
 
-		fileCheck, err = exists(filepath.Join(configPath, "/app-deploy.yaml"))
+		fileCheck, err = Exists(filepath.Join(configPath, "/app-deploy.yaml"))
 		if err != nil {
 			Error.log("Error attempting to determine file: ", err)
 			errorCount++
@@ -110,7 +110,7 @@ This command can be run from the base directory of your stack or you can supply 
 			warningCount++
 		}
 
-		fileCheck, err = exists(filepath.Join(projectPath, "/Dockerfile"))
+		fileCheck, err = Exists(filepath.Join(projectPath, "/Dockerfile"))
 		if err != nil {
 			Error.log("Error attempting to determine file: ", err)
 			errorCount++
@@ -119,7 +119,7 @@ This command can be run from the base directory of your stack or you can supply 
 			warningCount++
 		}
 
-		fileCheck, err = exists(templatePath)
+		fileCheck, err = Exists(templatePath)
 		if err != nil {
 			Error.log("Error attempting to determine file: ", err)
 			errorCount++
@@ -135,7 +135,7 @@ This command can be run from the base directory of your stack or you can supply 
 
 		templates, _ := ioutil.ReadDir(templatePath)
 		for _, f := range templates {
-			fileCheck, err = exists(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml"))
+			fileCheck, err = Exists(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml"))
 			if (err != nil) && f.Name() != ".DS_Store" {
 				Error.log("Error attempting to determine file: ", err)
 				errorCount++
