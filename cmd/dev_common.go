@@ -44,7 +44,8 @@ var commonFlags *flag.FlagSet
 
 func checkDockerRunOptions(options []string) error {
 	fmt.Println("testing docker options", options)
-	runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))((=?$)|(=.*)))"
+	//runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))((=?$)|(=.*)))"
+	runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))((=?$)|(=.*)))"
 
 	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)
 	for _, value := range options {
@@ -85,7 +86,7 @@ func buildCommonFlags() {
 		commonFlags.StringVar(&depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 		commonFlags.StringArrayVarP(&ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
 		commonFlags.BoolVarP(&publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
-		commonFlags.StringVar(&dockerOptions, "docker-options", "", "Specify the docker options to use.  Value must be in \"\".")
+		commonFlags.StringVar(&dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\".")
 	}
 
 }
@@ -139,7 +140,7 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		return volumeErr
 	}
 	// Mount the APPSODY_DEPS cache volume if it exists
-	depsEnvVar, envErr := getEnvVar("APPSODY_DEPS")
+	depsEnvVar, envErr := GetEnvVar("APPSODY_DEPS")
 	if envErr != nil {
 		return envErr
 	}
@@ -175,10 +176,21 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		checksumMatch := false
 		if controllerExists {
 			var checksumMatchErr error
-			checksumMatch, checksumMatchErr = checksum256TestFile(filepath.Join(binaryLocation, "appsody-controller"), destController)
-			Debug.log("checksum returned: ", checksumMatch)
-			if checksumMatchErr != nil {
-				return checksumMatchErr
+			binaryControllerPath := filepath.Join(binaryLocation, "appsody-controller")
+			binaryControllerExists, existsErr := exists(binaryControllerPath)
+			if existsErr != nil {
+				return existsErr
+			}
+			if binaryControllerExists {
+				checksumMatch, checksumMatchErr = checksum256TestFile(binaryControllerPath, destController)
+				Debug.log("checksum returned: ", checksumMatch)
+				if checksumMatchErr != nil {
+					return checksumMatchErr
+				}
+			} else {
+				//the binary controller did not exist so skip copying it
+				Warning.log("The binary controller could not be found.")
+				checksumMatch = true
 			}
 		}
 		// if the controller doesn't exist
@@ -301,7 +313,7 @@ func processPorts(cmdArgs []string) ([]string, error) {
 	Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
 	// if the container port is not in the lised of exposed ports add it to the list
 
-	containerPort, envErr := getEnvVar("PORT")
+	containerPort, envErr := GetEnvVar("PORT")
 	if envErr != nil {
 		return cmdArgs, envErr
 	}

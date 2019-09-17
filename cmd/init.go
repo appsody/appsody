@@ -79,7 +79,7 @@ setup the local dev environment.`,
 		indices, err := repos.GetIndices()
 
 		if err != nil {
-			return errors.Errorf("Could not read indices: %v", err)
+			Error.logf("The following indices could not be read, skipping:\n%v", err)
 		}
 		if len(indices) == 0 {
 			return errors.Errorf("Your stack repository is empty - please use `appsody repo add` to add a repository.")
@@ -466,7 +466,11 @@ func extractAndInitialize() error {
 		return configErr
 	}
 	stackImage := projectConfig.Platform
-	bashCmd := "find /project -type f -name " + scriptFileName
+	containerProjectDir, containerProjectDirErr := getExtractDir()
+	if containerProjectDirErr != nil {
+		return containerProjectDirErr
+	}
+	bashCmd := "find " + containerProjectDir + " -type f -name " + scriptFileName
 	cmdOptions := []string{"--rm"}
 	Debug.log("Attempting to run ", bashCmd, " on image ", stackImage, " with options: ", cmdOptions)
 	//DockerRunBashCmd has a pullImage call
