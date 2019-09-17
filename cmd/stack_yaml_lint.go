@@ -39,7 +39,7 @@ type StackMaintainer struct {
 	Email string `yaml:"email"`
 }
 
-var DefaultFound bool
+var defaultTemplateFound bool
 
 func (s *StackDetails) validateYaml() *StackDetails {
 	stackPath, _ := os.Getwd()
@@ -113,14 +113,19 @@ func (s *StackDetails) checkVersion(arg string) *StackDetails {
 		stackLintErrorCount++
 	}
 
-	s.checkDescLenth(arg)
+	s.checkDescLength(arg)
 	return s
 }
 
-func (s *StackDetails) checkDescLenth(arg string) *StackDetails {
+func (s *StackDetails) checkDescLength(arg string) *StackDetails {
 
 	if len(s.Description) > 70 {
 		Error.log("Description should be under 70 characters in ", arg)
+		stackLintErrorCount++
+	}
+
+	if len(s.Name) > 30 {
+		Error.log("Stack name should be under 30 characters in ", arg)
 		stackLintErrorCount++
 	}
 
@@ -129,7 +134,7 @@ func (s *StackDetails) checkDescLenth(arg string) *StackDetails {
 }
 
 func (s *StackDetails) checkDefaultTemplate(arg string) *StackDetails {
-	DefaultFound = false
+	defaultTemplateFound = false
 	file, err := os.Open(arg)
 	if err != nil {
 		Error.log(err)
@@ -140,7 +145,7 @@ func (s *StackDetails) checkDefaultTemplate(arg string) *StackDetails {
 	for scanner.Scan() {
 		yamlFields := strings.Split(scanner.Text(), ":")
 		if yamlFields[0] == "default-template" {
-			DefaultFound = true
+			defaultTemplateFound = true
 		}
 	}
 
@@ -148,7 +153,7 @@ func (s *StackDetails) checkDefaultTemplate(arg string) *StackDetails {
 		Error.log(err)
 	}
 
-	if !DefaultFound {
+	if !defaultTemplateFound {
 		Error.log("Missing value for field: default-template in ", arg)
 		stackLintErrorCount++
 	}
