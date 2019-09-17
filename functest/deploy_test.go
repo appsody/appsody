@@ -90,6 +90,7 @@ func TestDeploySimple(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		defer os.RemoveAll(projectDir)
 		log.Println("Created project dir: " + projectDir)
 
 		// appsody init
@@ -109,6 +110,5 @@ func TestDeploySimple(t *testing.T) {
 
 		// cleanup tasks
 		cleanup()
-		os.RemoveAll(projectDir)
 	}
 }

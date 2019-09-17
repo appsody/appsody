@@ -118,7 +118,7 @@ func downloadCRDYaml(url string, target string) (string, error) {
 
 func getDeployConfigDir() (string, error) {
 	deployConfigDir := filepath.Join(getHome(), "deploy")
-	deployConfigDirExists, err := exists(deployConfigDir)
+	deployConfigDirExists, err := Exists(deployConfigDir)
 	if err != nil {
 		return "", errors.Errorf("Error checking directory: %v", err)
 	}
