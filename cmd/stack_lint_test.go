@@ -17,15 +17,18 @@ package cmd_test
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
 func TestLintWithValidStack(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	args := []string{"stack", "lint"}
 
-	_, err := cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/test-stack")
+	_, err := cmdtest.RunAppsodyCmdExec(args, testStackPath)
 
 	if err != nil { //Lint check should pass, if not fail the test
 		t.Fatal(err)
@@ -33,13 +36,15 @@ func TestLintWithValidStack(t *testing.T) {
 }
 
 func TestLintWithMissingConfig(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	args := []string{"stack", "lint"}
-	removeConf := "../cmd/testData/test-stack/image/config"
-	removeArray := []string{removeConf, "../cmd/testdata/test-stack/image/config/app-deploy.yaml"}
+	removeConf := filepath.Join(testStackPath, "image", "config")
+	removeArray := []string{removeConf, filepath.Join(removeConf, "app-deploy.yaml")}
 
 	os.RemoveAll(removeConf)
 
-	_, err := cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/test-stack")
+	_, err := cmdtest.RunAppsodyCmdExec(args, testStackPath)
 
 	if err != nil { //Lint check should pass, if not fail the test
 		t.Fatal(err)
@@ -49,9 +54,11 @@ func TestLintWithMissingConfig(t *testing.T) {
 }
 
 func TestLintWithMissingProject(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	args := []string{"stack", "lint"}
-	removeProj := "../cmd/testData/test-stack/image/project"
-	removeArray := []string{removeProj, "../cmd/testdata/test-stack/image/project/Dockerfile"}
+	removeProj := filepath.Join(testStackPath, "image", "project")
+	removeArray := []string{removeProj, filepath.Join(removeProj, "Dockerfile")}
 
 	osErr := os.RemoveAll(removeProj)
 
@@ -59,7 +66,7 @@ func TestLintWithMissingProject(t *testing.T) {
 		t.Fatal(osErr)
 	}
 
-	_, err := cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/test-stack")
+	_, err := cmdtest.RunAppsodyCmdExec(args, testStackPath)
 
 	if err != nil { //Lint check should pass, if not fail the test
 		t.Fatal(err)
@@ -69,8 +76,10 @@ func TestLintWithMissingProject(t *testing.T) {
 }
 
 func TestLintWithMissingFile(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	args := []string{"stack", "lint"}
-	removeReadme := "../cmd/testdata/test-stack/README.md"
+	removeReadme := filepath.Join(testStackPath, "README.md")
 	removeArray := []string{removeReadme}
 
 	osErr := os.RemoveAll(removeReadme)
@@ -78,7 +87,7 @@ func TestLintWithMissingFile(t *testing.T) {
 		t.Fatal(osErr)
 	}
 
-	_, err := cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/test-stack")
+	_, err := cmdtest.RunAppsodyCmdExec(args, testStackPath)
 
 	if err == nil { //Lint check should fail, if not fail the test
 		t.Fatal(err)
@@ -88,8 +97,10 @@ func TestLintWithMissingFile(t *testing.T) {
 }
 
 func RestoreSampleStack(fixStack []string) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	for _, missingContent := range fixStack {
-		if missingContent == "../cmd/testData/test-stack/image/config" || missingContent == "../cmd/testData/test-stack/image/project" {
+		if missingContent == filepath.Join(testStackPath, "image/config") || missingContent == filepath.Join(testStackPath, "image/project") {
 			osErr := os.Mkdir(missingContent, os.ModePerm)
 			if osErr != nil {
 				log.Println(osErr)
