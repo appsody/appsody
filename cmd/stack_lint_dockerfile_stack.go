@@ -22,13 +22,7 @@ import (
 	"strings"
 )
 
-func getENVDockerfile() (dockerfileStack map[string]string) {
-	stackPath, _ := os.Getwd()
-
-	if len(os.Args) > 3 {
-		stackPath = os.Args[3]
-	}
-
+func getENVDockerfile(stackPath string) (dockerfileStack map[string]string) {
 	arg := filepath.Join(stackPath, "image/Dockerfile-stack")
 
 	file, err := os.Open(arg)
@@ -49,11 +43,8 @@ func getENVDockerfile() (dockerfileStack map[string]string) {
 
 	file.Close()
 
-	return split(txtlines)
-}
+	dockerfileMap := make(map[string]string)
 
-func split(txtlines []string) (dockerfileStack map[string]string) {
-	var dockerfileMap = make(map[string]string)
 	for _, eachline := range txtlines {
 		s := strings.Split(eachline, "=")
 		key := strings.TrimPrefix(s[0], "ENV")
@@ -65,21 +56,15 @@ func split(txtlines []string) (dockerfileStack map[string]string) {
 	return dockerfileMap
 }
 
-func lintDockerFileStack() {
+func lintDockerFileStack(stackPath string) {
 	mendatoryEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN"}
 	optionalEnvironmentVariables := [...]string{"APPSODY_DEBUG", "APPSODY_TEST", "APPSODY_DEPS", "APPSODY_PROJECT_DIR"}
-
-	stackPath, _ := os.Getwd()
-
-	if len(os.Args) > 3 {
-		stackPath = os.Args[3]
-	}
 
 	arg := filepath.Join(stackPath, "image/Dockerfile-stack")
 
 	Info.log("Linting Dockerfile-stack: ", arg)
 
-	dockerfileStack := getENVDockerfile()
+	dockerfileStack := getENVDockerfile(stackPath)
 
 	variableFound := false
 	variable := ""
@@ -153,6 +138,7 @@ func lintDockerFileStack() {
 
 			if err != nil {
 				Error.log(err)
+				stackLintErrorCount++
 			}
 		}
 	}

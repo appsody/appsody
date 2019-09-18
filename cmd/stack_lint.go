@@ -146,7 +146,7 @@ This command can be run from the base directory of your stack or you can supply 
 			}
 		}
 
-		lintDockerFileStack()
+		lintDockerFileStack(stackPath)
 
 		Info.log("TOTAL ERRORS: ", stackLintErrorCount)
 		Info.log("TOTAL WARNINGS: ", stackLintWarningCount)
