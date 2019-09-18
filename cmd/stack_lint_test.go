@@ -15,14 +15,248 @@
 package cmd_test
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
+func TestAPPSODY_RUNMissingInDockerfileStack(t *testing.T) {
+	restoreLine := ""
+	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	lines := strings.Split(string(file), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, "APPSODY_RUN") {
+			restoreLine = lines[i]
+			lines[i] = "Testing"
+		}
+	}
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	args := []string{"stack", "lint"}
+	_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/test-stack")
+
+	if err == nil { //Lint check should fail, if not fail the test
+		t.Fatal(err)
+	}
+
+	for i, line := range lines {
+		if strings.Contains(line, "Testing") {
+			lines[i] = restoreLine
+		}
+	}
+
+	output = strings.Join(lines, "\n")
+	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
+func TestAPPSODY_MOUNTSMissingInDockerfileStack(t *testing.T) {
+	restoreLine := ""
+	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	lines := strings.Split(string(file), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, "APPSODY_MOUNTS") {
+			restoreLine = lines[i]
+			lines[i] = "Testing"
+		}
+	}
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	args := []string{"stack", "lint"}
+	_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/test-stack")
+
+	if err == nil { //Lint check should fail, if not fail the test
+		t.Fatal(err)
+	}
+
+	for i, line := range lines {
+		if strings.Contains(line, "Testing") {
+			lines[i] = restoreLine
+		}
+	}
+
+	output = strings.Join(lines, "\n")
+	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
+func TestAPPSODY_WATCH_DIRPRESENTAndONCHANGEMissingInDockerfileStack(t *testing.T) {
+	restoreLine := ""
+	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	lines := strings.Split(string(file), "\n")
+
+	if strings.Contains(string(file), "APPSODY_WATCH_DIR") {
+		if strings.Contains(string(file), "_ON_CHANGE") {
+			for i, line := range lines {
+				if strings.Contains(line, "_ON_CHANGE") {
+					restoreLine = lines[i]
+					lines[i] = "Testing"
+				}
+			}
+
+			output := strings.Join(lines, "\n")
+			err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			args := []string{"stack", "lint"}
+			_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/test-stack")
+
+			if err == nil { //Lint check should fail, if not fail the test
+				t.Fatal(err)
+			}
+
+			for i, line := range lines {
+				if strings.Contains(line, "Testing") {
+					lines[i] = restoreLine
+				}
+			}
+
+			output = strings.Join(lines, "\n")
+			err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+		} else {
+			args := []string{"stack", "lint"}
+			_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/test-stack")
+
+			if err == nil { //Lint check should fail, if not fail the test
+				t.Fatal(err)
+			}
+		}
+	}
+}
+
+func Test_KILLValue(t *testing.T) {
+	restoreLine := ""
+	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	lines := strings.Split(string(file), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, "_KILL") {
+			restoreLine = lines[i]
+			lines[i] = "ENV APPSODY_DEBUG_KILL=trued"
+		}
+	}
+
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args := []string{"stack", "lint"}
+	_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/test-stack")
+
+	if err == nil { //Lint check should fail, if not fail the test
+		t.Fatal(err)
+	}
+
+	for i, line := range lines {
+		if strings.Contains(line, "ENV APPSODY_DEBUG_KILL=trued") {
+			lines[i] = restoreLine
+		}
+	}
+
+	output = strings.Join(lines, "\n")
+	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func Test_APPSODY_REGEXValue(t *testing.T) {
+	restoreLine := ""
+	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	lines := strings.Split(string(file), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, "ENV APPSODY_WATCH_REGEX='^.*(.xml|.java|.properties)$'") {
+			restoreLine = lines[i]
+			lines[i] = "ENV APPSODY_WATCH_REGEX='['"
+		}
+	}
+
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args := []string{"stack", "lint"}
+	_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/test-stack")
+
+	if err == nil { //Lint check should fail, if not fail the test
+		log.Fatalln(err)
+	}
+
+	for i, line := range lines {
+		if strings.Contains(line, "ENV APPSODY_WATCH_REGEX='['") {
+			lines[i] = restoreLine
+		}
+	}
+
+	output = strings.Join(lines, "\n")
+	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 func TestLintWithValidStack(t *testing.T) {
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
