@@ -71,15 +71,15 @@ func TestLintWithMissingProject(t *testing.T) {
 func TestLintWithMissingFiles(t *testing.T) {
 	args := []string{"stack", "lint"}
 	removeReadme := "../cmd/testdata/test-stack/README.md"
-	removeDeploy := "../cmd/testdata/test-stack/image/config/app-deploy.yaml"
-	removeArray := []string{removeReadme, removeDeploy}
+	removeDockerfile := "../cmd/testdata/test-stack/image/project/Dockerfile"
+	removeArray := []string{removeReadme, removeDockerfile}
 
 	osErr := os.RemoveAll(removeReadme)
 	if osErr != nil {
 		t.Fatal(osErr)
 	}
 
-	osErr1 := os.RemoveAll(removeDeploy)
+	osErr1 := os.RemoveAll(removeDockerfile)
 	if osErr1 != nil {
 		t.Fatal(osErr1)
 	}
@@ -91,28 +91,6 @@ func TestLintWithMissingFiles(t *testing.T) {
 	}
 
 	RestoreSampleStack(removeArray)
-}
-
-func TestLintWithTypo(t *testing.T) {
-	args := []string{"stack", "lint"}
-
-	osErr := os.Rename("../cmd/testdata/test-stack/image", "../cmd/testdata/test-stack/imag")
-
-	if osErr != nil {
-		t.Fatal(osErr)
-	}
-
-	_, err := cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/test-stack")
-
-	if err == nil { //Lint check should fail, if not fail the test
-		t.Fatal(err)
-	}
-
-	renErr := os.Rename("../cmd/testdata/test-stack/imag", "../cmd/testdata/test-stack/image")
-
-	if renErr != nil {
-		t.Fatal(renErr)
-	}
 }
 
 func RestoreSampleStack(fixStack []string) {
