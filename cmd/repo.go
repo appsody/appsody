@@ -101,6 +101,27 @@ func findTemplateURL(projectVersion ProjectVersion, templateName string) string 
 	return ""
 }
 
+type indexError struct {
+	indexName string
+	theError  error
+}
+
+type indexErrors struct {
+	listOfErrors []indexError
+}
+
+func (e indexError) Error() string {
+	return "- Repository: " + e.indexName + "\n  Reason: " + e.theError.Error()
+}
+
+func (e indexErrors) Error() string {
+	var myerrors string
+	for _, err := range e.listOfErrors {
+		myerrors = myerrors + fmt.Sprintf("%v\n", err)
+	}
+	return myerrors
+}
+
 var unsupportedRepos []string
 var (
 	supportedIndexAPIVersion = "v2"
@@ -256,7 +277,7 @@ func downloadFile(href string, writer io.Writer) error {
 			Debug.logf("Contents http response:\n%s", buf)
 		}
 		resp.Body.Close()
-		return fmt.Errorf("%s response trying to download %s", resp.Status, href)
+		return fmt.Errorf("Could not download %s: %s", href, resp.Status)
 	}
 
 	_, err = io.Copy(writer, resp.Body)
@@ -272,7 +293,7 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	indexBuffer := bytes.NewBuffer(nil)
 	err := downloadFile(url, indexBuffer)
 	if err != nil {
-		return nil, errors.Errorf("Failed to get repository index: %s", err)
+		return nil, err
 	}
 
 	yamlFile, err := ioutil.ReadAll(indexBuffer)
@@ -477,17 +498,23 @@ func (r *RepositoryFile) WriteFile(path string) error {
 }
 
 func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
-
 	indices := make(map[string]*RepoIndex)
+	brokenRepos := make([]indexError, 0)
 	for _, rf := range r.Repositories {
 		var index, err = downloadIndex(rf.URL)
 		if err != nil {
-			return indices, err
+			repoErr := indexError{rf.Name, err}
+			brokenRepos = append(brokenRepos, repoErr)
+		} else {
+			indices[rf.Name] = index
 		}
-		indices[rf.Name] = index
+	}
+	if len(brokenRepos) > 0 {
+		return indices, &indexErrors{brokenRepos}
 	}
 	return indices, nil
 }
+
 func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([]Stack, error) {
 
 	for id, value := range index.Projects {
@@ -542,7 +569,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	indices, err := r.GetIndices()
 
 	if err != nil {
-		return "", errors.Errorf("Could not read indices: %v", err)
+		Error.logf("The following indices could not be read, skipping:\n%v", err)
 	}
 	if len(indices) != 0 {
 		for repoName, index := range indices {
