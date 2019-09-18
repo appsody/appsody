@@ -20,8 +20,8 @@ goto :done
 
 :UserPathRead
 SET UserPathTest=%UserPath:APPSODY_PATH=NONE%
-echo UserPathTest = %UserPathTest%
-echo UserPath = %UserPath%
+REM echo UserPathTest = %UserPathTest%
+REM echo UserPath = %UserPath%
 if NOT "%UserPathTest%" == "%UserPath%" goto SkipSetx
 echo doing setx
 set lastUserPathChar=%UserPath:~-1%
