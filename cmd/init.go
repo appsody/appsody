@@ -489,7 +489,7 @@ func extractAndInitialize() error {
 
 	// run the extract command here
 	if !dryrun {
-		workdirExists, err := exists(workdir)
+		workdirExists, err := Exists(workdir)
 		if workdirExists && err == nil {
 			err = os.RemoveAll(workdir)
 			if err != nil {
@@ -509,7 +509,7 @@ func extractAndInitialize() error {
 	}
 
 	scriptPath := filepath.Join(workdir, scriptFile)
-	scriptExists, err := exists(scriptPath)
+	scriptExists, err := Exists(scriptPath)
 
 	if scriptExists && err == nil { // if it doesn't exist, don't run it
 		Debug.log("Running appsody_init script ", scriptFile)

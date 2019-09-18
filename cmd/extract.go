@@ -55,7 +55,7 @@ in preparation to build the final container image.`,
 			// the user specified a target dir, quit if it already exists
 			targetDir, _ = filepath.Abs(targetDir)
 			Debug.log("Checking if target-dir exists: ", targetDir)
-			targetExists, err := exists(targetDir)
+			targetExists, err := Exists(targetDir)
 			if err != nil {
 				return errors.Errorf("Error checking target directory: %v", err)
 			}
@@ -64,7 +64,7 @@ in preparation to build the final container image.`,
 
 			}
 			targetDirParent := filepath.Dir(targetDir)
-			targetDirParentExists, err := exists(targetDirParent)
+			targetDirParentExists, err := Exists(targetDirParent)
 			if err != nil {
 				return errors.Errorf("Error checking directory: %v", err)
 			}
@@ -74,7 +74,7 @@ in preparation to build the final container image.`,
 		}
 
 		extractDir := filepath.Join(getHome(), "extract")
-		extractDirExists, err := exists(extractDir)
+		extractDirExists, err := Exists(extractDir)
 		if err != nil {
 			return errors.Errorf("Error checking directory: %v", err)
 		}
@@ -90,7 +90,7 @@ in preparation to build the final container image.`,
 			}
 		}
 		extractDir = filepath.Join(extractDir, projectName)
-		extractDirExists, err = exists(extractDir)
+		extractDirExists, err = Exists(extractDir)
 		if err != nil {
 			return errors.Errorf("Error checking directory: %v", err)
 		}
