@@ -121,7 +121,11 @@ func TestExtract(t *testing.T) {
 		}
 		log.Println("Stack's project dir:", pDir)
 
-		mountlist := strings.Split(mounts, ";")
+		mountSeparator, err := cmd.GetMountSeparator()
+		if err != nil {
+			t.Fatal(err)
+		}
+		mountlist := strings.Split(mounts, mountSeparator)
 		for _, mount := range mountlist {
 			log.Println("mount:", mount)
 			src := strings.Split(mount, ":")[0]

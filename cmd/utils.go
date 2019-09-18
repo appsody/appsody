@@ -188,7 +188,12 @@ func getVolumeArgs() ([]string, error) {
 		Warning.log("The stack image does not contain APPSODY_MOUNTS")
 		return volumeArgs, nil
 	}
-	stackMountList := strings.Split(stackMounts, ";")
+	mountSeparator, err := GetMountSeparator()
+	if err != nil {
+		Warning.log("Could not determine mount separator from The stack image")
+		return volumeArgs, err
+	}
+	stackMountList := strings.Split(stackMounts, mountSeparator)
 	homeDir := UserHomeDir()
 	homeDirOverride := os.Getenv("APPSODY_MOUNT_HOME")
 	homeDirOverridden := false
@@ -1071,4 +1076,16 @@ func IsEmptyDir(name string) bool {
 	_, err = f.Readdirnames(1)
 
 	return err == io.EOF
+}
+
+func GetMountSeparator() (string, error) {
+	mountSeparator, err := GetEnvVar("APPSODY_MOUNT_SEPARATOR")
+	if err != nil {
+		return "", err
+	}
+	if mountSeparator == "" {
+		return ":", nil
+	}
+	Debug.log("The stack image uses special APPSODY_MOUNT_SEPARATOR: ", mountSeparator)
+	return mountSeparator, nil
 }
