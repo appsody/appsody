@@ -148,6 +148,9 @@ This command can be run from the base directory of your stack or you can supply 
 
 		lintDockerFileStack(stackPath)
 
+		var s StackDetails
+		s.validateYaml(stackPath)
+
 		Info.log("TOTAL ERRORS: ", stackLintErrorCount)
 		Info.log("TOTAL WARNINGS: ", stackLintWarningCount)
 
