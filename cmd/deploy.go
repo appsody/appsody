@@ -63,7 +63,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 		}
 
-		exists, err := exists(configFile)
+		exists, err := Exists(configFile)
 		if err != nil {
 			return errors.Errorf("Error checking status of %s", configFile)
 		}
@@ -276,7 +276,7 @@ func deployWithKnative(cmd *cobra.Command, args []string) error {
 func generateDeploymentConfig() error {
 	containerConfigDir := "/config/app-deploy.yaml"
 
-	exists, err := exists(configFile)
+	exists, err := Exists(configFile)
 	if err != nil {
 		return errors.Errorf("Error checking status of %s", configFile)
 	}
