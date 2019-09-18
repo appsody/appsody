@@ -68,20 +68,14 @@ func TestLintWithMissingProject(t *testing.T) {
 	RestoreSampleStack(removeArray)
 }
 
-func TestLintWithMissingFiles(t *testing.T) {
+func TestLintWithMissingFile(t *testing.T) {
 	args := []string{"stack", "lint"}
 	removeReadme := "../cmd/testdata/test-stack/README.md"
-	removeDockerfile := "../cmd/testdata/test-stack/image/project/Dockerfile"
-	removeArray := []string{removeReadme, removeDockerfile}
+	removeArray := []string{removeReadme}
 
 	osErr := os.RemoveAll(removeReadme)
 	if osErr != nil {
 		t.Fatal(osErr)
-	}
-
-	osErr1 := os.RemoveAll(removeDockerfile)
-	if osErr1 != nil {
-		t.Fatal(osErr1)
 	}
 
 	_, err := cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/test-stack")
