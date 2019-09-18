@@ -240,6 +240,10 @@ func Test_APPSODY_REGEXValue(t *testing.T) {
 	args := []string{"stack", "lint"}
 	_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/test-stack")
 
+	if err == nil { //Lint check should fail, if not fail the test
+		log.Fatalln(err)
+	}
+
 	for i, line := range lines {
 		if strings.Contains(line, "ENV APPSODY_WATCH_REGEX='['") {
 			lines[i] = restoreLine

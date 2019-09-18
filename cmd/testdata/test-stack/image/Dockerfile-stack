@@ -7,7 +7,7 @@ ENV APPSODY_RUN="mvn -B -Dmaven.repo.local=/mvn/repository liberty:run"
 
 ENV APPSODY_WATCH_DIR= #Directories to watch for changes in.
 ENV APPSODY_WATCH_IGNORE_DIR= #Directories to ignore changes in.
-ENV APPSODY_WATCH_REGEX='^.*(.xml|.java|.properties)$'
+
 
 ENV APPSODY_INSTALL= #Optional command executed before RUN/TEST/DEBUG
 
