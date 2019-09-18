@@ -1084,7 +1084,7 @@ func GetMountSeparator() (string, error) {
 		return "", err
 	}
 	if mountSeparator == "" {
-		return ":", nil
+		return ";", nil
 	}
 	Debug.log("The stack image uses special APPSODY_MOUNT_SEPARATOR: ", mountSeparator)
 	return mountSeparator, nil
