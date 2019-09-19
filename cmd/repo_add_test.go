@@ -29,6 +29,7 @@ func TestRepoAdd(t *testing.T) {
 	startRepos := cmdtest.ParseRepoList(output)
 
 	addRepoName := "LocalTestRepo"
+	_, _ = cmdtest.RunAppsodyCmdExec([]string{"repo", "remove", addRepoName}, ".")
 	addRepoURL, cleanup, err := cmdtest.AddLocalFileRepo(addRepoName, "testdata/index.yaml")
 	if err != nil {
 		t.Fatal(err)

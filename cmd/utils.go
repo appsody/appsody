@@ -993,25 +993,33 @@ func getLatestVersion() string {
 	resp, err := http.Get(LatestVersionURL)
 	if err != nil {
 		Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
-		version = "none"
 	} else {
 		url := resp.Request.URL.String()
-		r, _ := regexp.Compile(`\d.\d.\d`)
+		r, _ := regexp.Compile(`[\d]+\.[\d]+\.[\d]+$`)
 
 		version = r.FindString(url)
 	}
 	return version
 }
 
-func doVersionCheck(data []byte, old string, new string, file string) {
+func doVersionCheck() {
 	var latest = getLatestVersion()
-	if VERSION != "vlatest" && VERSION != latest {
-		Info.log("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
+	var currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
+	configFile = getDefaultConfigFile()
+
+	if latest != "" && VERSION != "vlatest" && VERSION != latest {
+		switch os := runtime.GOOS; os {
+		case "darwin":
+			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease run `brew upgrade appsody` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
+		default:
+			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease go to https://appsody.dev/docs/getting-started/installation and upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
+		}
 	}
-	output := bytes.Replace(data, []byte(old), []byte(new), -1)
-	err := ioutil.WriteFile(file, output, 0666)
-	if err != nil {
-		Warning.log("Error writing to config file")
+
+	cliConfig.Set("lastversioncheck", currentTime)
+	if err := cliConfig.WriteConfig(); err != nil {
+		Error.logf("Writing default config file %s", err)
+
 	}
 }
 
@@ -1020,32 +1028,16 @@ func getLastCheckTime() string {
 }
 
 func checkTime() {
-	var lastCheckTime string
-	var currentTime string
+	var lastCheckTime = getLastCheckTime()
 
-	var configFile = getDefaultConfigFile()
-
-	data, err := ioutil.ReadFile(configFile)
+	lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
 	if err != nil {
-		Warning.log("Unable to read config file")
+		Debug.logf("Could not parse the config file's lastversioncheck: %v. Continuing with a new version check...", err)
+		doVersionCheck()
+	} else if time.Since(lastTime).Hours() > 24 {
+		doVersionCheck()
 	}
 
-	lastCheckTime = getLastCheckTime()
-	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
-
-	if getLatestVersion() != "none" {
-		if lastCheckTime == "none" {
-			doVersionCheck(data, lastCheckTime, currentTime, configFile)
-		} else {
-			lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
-			if err != nil {
-				fmt.Println(err)
-			}
-			if time.Since(lastTime).Hours() > 24 {
-				doVersionCheck(data, lastCheckTime, currentTime, configFile)
-			}
-		}
-	}
 }
 
 // TEMPORARY CODE: sets the old v1 index to point to the new v2 index (latest)
