@@ -28,36 +28,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 var configFile, namespace, watchspace, tag string
 var knative, generate, force, push bool
-
-type AppsodyApplication struct {
-	APIVersion string   `yaml:"apiVersion"`
-	Kind       string   `yaml:"kind"`
-	Metadata   Metadata `yaml:"metadata"`
-}
-type Metadata struct {
-	Name string `yaml:"name`
-}
-
-func getAppsodyApplication(configFile string) (AppsodyApplication, error) {
-	var appsodyApplication AppsodyApplication
-	yamlFileBytes, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return appsodyApplication, fmt.Errorf("Could not read app-deploy.yaml file: %s", err)
-
-	}
-
-	err = yaml.Unmarshal(yamlFileBytes, &appsodyApplication)
-	if err != nil {
-
-		return appsodyApplication, fmt.Errorf("app-deploy.yaml formatting error: %s", err)
-	}
-	return appsodyApplication, err
-}
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
@@ -105,7 +79,6 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		}
 		Info.log("Found existing deployment manifest ", configFile)
 		//Retrieve the project name and lowercase it
-
 		projectName, perr := getProjectName()
 		if perr != nil {
 			return errors.Errorf("%v", perr)
@@ -202,13 +175,8 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 		// Ensure hostname and IP config is set up for deployment
 		time.Sleep(1 * time.Second)
-		var appsodyApplication AppsodyApplication
-		appsodyApplication, err = getAppsodyApplication(configFile)
-		if err != nil {
-			return err
-		}
-		Info.log("Appsody Deployment name is: ", appsodyApplication.Metadata.Name)
-		out, err := KubeGetDeploymentURL(appsodyApplication.Metadata.Name)
+
+		out, err := KubeGetDeploymentURL(projectName)
 		// Performing the kubectl apply
 		if err != nil {
 			return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
