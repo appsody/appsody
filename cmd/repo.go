@@ -368,7 +368,7 @@ func (r *RepositoryFile) getRepos() (*RepositoryFile, error) {
 func (r *RepositoryFile) listRepos() (string, error) {
 	var entries = []RepositoryEntry{}
 	table := uitable.New()
-	table.MaxColWidth = 120
+	table.MaxColWidth = 1024
 	table.AddRow("NAME", "URL")
 	for _, value := range r.Repositories {
 		repoName := value.Name
