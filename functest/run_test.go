@@ -27,9 +27,6 @@ import (
 )
 
 // get the STACKSLIST environment variable
-// for testing locally we need to set the stacksList manually
-//var stacksList = ""
-//var stacksList = "incubator/java-microprofile incubator/nodejs experimental/nodejs-functions"
 var stacksList = os.Getenv("STACKSLIST")
 
 // Test appsody run of the nodejs-express stack and check the http://localhost:3000/health endpoint
