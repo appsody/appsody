@@ -106,7 +106,7 @@ func TestDebugSimple(t *testing.T) {
 		if err != nil {
 			fmt.Printf("Ignoring error running appsody stop: %s", err)
 		}
-		
+
 		cleanup()
 	}
 }
