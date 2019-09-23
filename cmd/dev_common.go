@@ -233,7 +233,6 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 			Error.log(err)
 		}
 		//containerRemove(containerName) is not needed due to --rm flag
-		os.Exit(1)
 	}()
 
 	cmdArgs = []string{"--rm"}
