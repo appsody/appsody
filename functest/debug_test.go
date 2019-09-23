@@ -101,26 +101,12 @@ func TestDebugSimple(t *testing.T) {
 			t.Fatal("container never appeared to start")
 		}
 
-		// now run appsody ps and see if we can spot the container
-		fmt.Println("about to run appsody ps")
-		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"ps"}, projectDir)
-		if !strings.Contains(stopOutput, "CONTAINER") {
-			t.Fatal("output doesn't contain header line")
-		}
-		if !strings.Contains(stopOutput, containerName) {
-			t.Fatal("output doesn't contain correct container name")
-		}
-		if errStop != nil {
-			log.Printf("Ignoring error running appsody ps: %s", errStop)
+		// stop and cleanup
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", containerName}, projectDir)
+		if err != nil {
+			fmt.Printf("Ignoring error running appsody stop: %s", err)
 		}
 
-		// stop and cleanup
-		func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", containerName}, projectDir)
-			if err != nil {
-				fmt.Printf("Ignoring error running appsody stop: %s", err)
-			}
-		}()
 		cleanup()
 	}
 }
