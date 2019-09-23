@@ -53,7 +53,9 @@ var psCmd = &cobra.Command{
 		if err != nil {
 			return errors.Errorf("%v", err)
 		}
-		Info.log(table)
+		if table != "" {
+			Info.log(table)
+		}
 		return nil
 	},
 }
