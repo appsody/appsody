@@ -46,7 +46,7 @@ var commonFlags *flag.FlagSet
 func checkDockerRunOptions(options []string) error {
 	fmt.Println("testing docker options", options)
 	//runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))((=?$)|(=.*)))"
-	runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))((=?$)|(=.*)))"
+	runOptionsTest := "(^((--help)|(-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))((=?$)|(=.*)))"
 
 	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)
 	for _, value := range options {
@@ -233,7 +233,6 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 			Error.log(err)
 		}
 		//containerRemove(containerName) is not needed due to --rm flag
-		os.Exit(1)
 	}()
 
 	cmdArgs = []string{"--rm"}
