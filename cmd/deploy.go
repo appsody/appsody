@@ -28,10 +28,36 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 var configFile, namespace, watchspace, tag string
-var generate, force, push bool
+var knative, generate, force, push bool
+
+type AppsodyApplication struct {
+	APIVersion string   `yaml:"apiVersion"`
+	Kind       string   `yaml:"kind"`
+	Metadata   Metadata `yaml:"metadata"`
+}
+type Metadata struct {
+	Name string `yaml:"name"`
+}
+
+func getAppsodyApplication(configFile string) (AppsodyApplication, error) {
+	var appsodyApplication AppsodyApplication
+	yamlFileBytes, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		return appsodyApplication, errors.Errorf("Could not read app-deploy.yaml file: %s", err)
+
+	}
+
+	err = yaml.Unmarshal(yamlFileBytes, &appsodyApplication)
+	if err != nil {
+
+		return appsodyApplication, errors.Errorf("app-deploy.yaml formatting error: %s", err)
+	}
+	return appsodyApplication, err
+}
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
@@ -63,7 +89,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 		}
 
-		exists, err := exists(configFile)
+		exists, err := Exists(configFile)
 		if err != nil {
 			return errors.Errorf("Error checking status of %s", configFile)
 		}
@@ -78,22 +104,28 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			}
 		}
 		Info.log("Found existing deployment manifest ", configFile)
+		//Retrieve the project name and lowercase it
+		projectName, perr := getProjectName()
+		if perr != nil {
+			return errors.Errorf("%v", perr)
+		}
 
+		var deployImage string
+		if tag == "" {
+			deployImage = "dev.local/" + projectName
+			// send the modified tag to the buildCmd if no tag is given
+			// you can't add the tag to the args
+			// if the tag was on the deployCmd, then build will receive that.
+			_ = buildCmd.PersistentFlags().Set("tag", deployImage)
+		} else {
+			deployImage = tag //Otherwise, it's the tag
+		}
 		// Extract code and build the image - and tags it if -t is specified
 		buildErr := buildCmd.RunE(cmd, args)
 		if buildErr != nil {
 			return buildErr
 		}
 
-		//Retrieve the project name and lowercase it
-		projectName, perr := getProjectName()
-		if perr != nil {
-			return errors.Errorf("%v", perr)
-		}
-		deployImage := projectName // if not tagged, this is the deploy image name
-		if tag != "" {
-			deployImage = tag //Otherwise, it's the tag
-		}
 		// Edit the deployment manifest to reflect the new tag
 		yamlFile, err := os.Open(configFile)
 		if !dryrun && err != nil {
@@ -103,10 +135,13 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			return errors.Errorf("Failed reading file %s", configFile)
 		}
 		defer yamlFile.Close()
+		var foundCreateKnativeTag, isKnativeService bool
+
 		scanner := bufio.NewScanner(yamlFile)
 		scanner.Split(bufio.ScanLines)
 		var txtlines []string
 		for scanner.Scan() {
+
 			line := scanner.Text()
 			if strings.Contains(line, "applicationImage:") {
 				index := strings.Index(line, ": ")
@@ -114,15 +149,37 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				line = start + deployImage
 				Info.log("Using applicationImage of: ", deployImage)
 			}
+			if strings.Contains(line, "createKnativeService") {
+				foundCreateKnativeTag = true
+				if strings.Contains(line, "true") && !knative {
+					line = strings.Replace(line, "true", "false", 1)
+				}
+				if strings.Contains(line, "false") && knative {
+					line = strings.Replace(line, "false", "true", 1)
+				}
+
+			}
+
+			if strings.Contains(line, "kind:") && strings.Contains(line, "Service") {
+				isKnativeService = true
+			}
+
 			txtlines = append(txtlines, line)
+
 		}
-		tempConfigFile := "temp-" + configFile
-		file, err := os.Create(tempConfigFile)
+		if !foundCreateKnativeTag && knative && !isKnativeService {
+			txtlines = append(txtlines, "  createKnativeService: true")
+		}
+
+		//yamlFile.Close() // need to think about defer
+
+		targetConfigFile := configFile
+		file, err := os.Create(targetConfigFile)
 		if err != nil {
 			return err
 		}
 
-		defer closeAndRemoveFile(file, tempConfigFile)
+		defer file.Close()
 		w := bufio.NewWriter(file)
 		for _, line := range txtlines {
 			fmt.Fprintln(w, line)
@@ -135,7 +192,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
 			}
 		}
-		err = KubeApply(tempConfigFile)
+		err = KubeApply(configFile)
 		// Performing the kubectl apply
 		if err != nil {
 			return errors.Errorf("Failed to deploy to your Kubernetes cluster: %v", err)
@@ -144,8 +201,13 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 		// Ensure hostname and IP config is set up for deployment
 		time.Sleep(1 * time.Second)
-
-		out, err := KubeGetDeploymentURL(projectName)
+		var appsodyApplication AppsodyApplication
+		appsodyApplication, err = getAppsodyApplication(configFile)
+		if err != nil {
+			return err
+		}
+		Info.log("Appsody Deployment name is: ", appsodyApplication.Metadata.Name)
+		out, err := KubeGetDeploymentURL(appsodyApplication.Metadata.Name)
 		// Performing the kubectl apply
 		if err != nil {
 			return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
@@ -160,14 +222,6 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 	},
 }
 
-func closeAndRemoveFile(file *os.File, fileName string) {
-	file.Close()
-	Debug.log("Removing file: ", fileName)
-	err := os.Remove(fileName)
-	if err != nil {
-		Warning.logf("Failed to remove %s.", fileName)
-	}
-}
 func deployWithKnative(cmd *cobra.Command, args []string) error {
 	buildErr := buildCmd.RunE(cmd, args)
 	if buildErr != nil {
@@ -253,7 +307,7 @@ func deployWithKnative(cmd *cobra.Command, args []string) error {
 func generateDeploymentConfig() error {
 	containerConfigDir := "/config/app-deploy.yaml"
 
-	exists, err := exists(configFile)
+	exists, err := Exists(configFile)
 	if err != nil {
 		return errors.Errorf("Error checking status of %s", configFile)
 	}
@@ -328,7 +382,6 @@ func generateDeploymentConfig() error {
 	if removeErr != nil {
 		Error.log("containerRemove error ", removeErr)
 	}
-
 	yamlReader, err := ioutil.ReadFile(configFile)
 	if !dryrun && err != nil {
 		if os.IsNotExist(err) {
@@ -397,5 +450,5 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "", "Target namespace in your Kubernetes cluster")
 	deployCmd.PersistentFlags().StringVarP(&tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&push, "push", false, "Push this image to an external Docker registry. Assumes that you have previously successfully done docker login")
-
+	deployCmd.PersistentFlags().BoolVar(&knative, "knative", false, "Deploy as a Knative Service")
 }

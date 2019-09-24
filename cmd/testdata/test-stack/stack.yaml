@@ -1,0 +1,10 @@
+name: sample stack # title or short name for the stack (used on the website)
+version: 0.1.0 # version of the stack
+description: sample stack to help creation of more appsody stacks # short description of this stack (used on the website and `list` command)
+license: Apache-2.0 # license for the stack (SPDX license id)
+language: java # language used for this stack
+maintainers: # list of maintainers for this stack
+  - name: First Middle Last
+    email: name@email.com
+    github-id: github-account
+default-template: hello # folder name of default template
