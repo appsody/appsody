@@ -22,9 +22,6 @@ install-controller: &install-controller
   install:
       - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
       - make install-controller
-      # manually set the list of stacks to test
-      # the stacks repo will generate their own list of stacks that have changed and should be tested
-      - export STACKSLIST=incubator/nodejs
       
 test-template: &test-template
   stage: test

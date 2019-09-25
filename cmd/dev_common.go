@@ -24,7 +24,6 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -47,7 +46,7 @@ var commonFlags *flag.FlagSet
 func checkDockerRunOptions(options []string) error {
 	fmt.Println("testing docker options", options)
 	//runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))((=?$)|(=.*)))"
-	runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))((=?$)|(=.*)))"
+	runOptionsTest := "(^((--help)|(-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))((=?$)|(=.*)))"
 
 	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)
 	for _, value := range options {
@@ -298,14 +297,14 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		error := fmt.Sprintf("%s", err)
 		//Linux and Windows return a different error on Ctrl-C
 		if error == "signal: interrupt" || error == "exit status 2" {
-			Info.log("Closing down development environment, sleeping 60 seconds: ", error)
-
-			time.Sleep(60 * time.Second)
+			Info.log("Closing down, development environment was interrupted.")
 		} else {
-			return errors.Errorf("Error waiting in 'appsody %s' %s", mode, error)
+			return errors.Errorf("Error in 'appsody %s': %s", mode, error)
 
 		}
 
+	} else {
+		Info.log("Closing down development environment.")
 	}
 	return nil
 
