@@ -441,7 +441,7 @@ func generateDeploymentConfig() error {
 		knativeString := "  createKnativeService: " + strconv.FormatBool(knative)
 		lastChar := output[len(output)-1:]
 
-		if bytes.Compare([]byte("\n"), lastChar) == 0 {
+		if bytes.Equal([]byte("\n"), lastChar) {
 			output = append(output, []byte(knativeString)...)
 		} else {
 			output = append(output, []byte("\n"+knativeString)...)
