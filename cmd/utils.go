@@ -448,6 +448,7 @@ func UserHomeDir() string {
 func getExposedPorts() ([]string, error) {
 	// TODO cache this so the docker inspect command only runs once per cli invocation
 	var data []map[string]interface{}
+	var buildahData map[string]interface{}
 	var portValues []string
 	projectConfig, projectConfigErr := getProjectConfig()
 	if projectConfigErr != nil {
@@ -458,21 +459,38 @@ func getExposedPorts() ([]string, error) {
 	if pullErrs != nil {
 		return nil, pullErrs
 	}
+
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
-
+	if buildah {
+		cmdName = "buildah"
+		cmdArgs = []string{"inspect", "--format", "{{.Config}}", imageName}
+	}
+	Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
 	inspectOut, inspectErr := inspectCmd.Output()
 	if inspectErr != nil {
 		return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
 	}
-
-	err := json.Unmarshal([]byte(inspectOut), &data)
-	if err != nil {
-		return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+	if buildah {
+		err := json.Unmarshal([]byte(inspectOut), &buildahData)
+		if err != nil {
+			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+		}
+	} else {
+		err := json.Unmarshal([]byte(inspectOut), &data)
+		if err != nil {
+			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+		}
 	}
+	var config map[string]interface{}
 
-	config := data[0]["Config"].(map[string]interface{})
+	if buildah {
+		config = buildahData["config"].(map[string]interface{})
+		Debug.Log("Config inspected by buildah: ", config)
+	} else {
+		config = data[0]["Config"].(map[string]interface{})
+	}
 
 	if config["ExposedPorts"] != nil {
 		exposedPorts := config["ExposedPorts"].(map[string]interface{})
@@ -578,6 +596,157 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 	return yamlFile, nil
 }
 
+//GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
+func GenDeploymentYaml(appName string, imageName string, ports []string) (fileName string, err error) {
+	// KNative serving YAML representation in a struct
+	type Port struct {
+		Name          string `yaml:"name,omitempty"`
+		ContainerPort int    `yaml:"containerPort"`
+	}
+	type EnvVar struct {
+		Name  string `yaml:"name,omitempty"`
+		Value string `yaml:"value,omitempty"`
+	}
+	type VolumeMount struct {
+		Name      string `yaml:"name"`
+		MountPath string `yaml:"mountPath"`
+	}
+	type Container struct {
+		Args            []string  `yaml:"args,omitempty"`
+		Command         []string  `yaml:"command,omitempty"`
+		Env             []*EnvVar `yaml:"env,omitempty"`
+		Image           string    `yaml:"image"`
+		ImagePullPolicy string    `yaml:"imagePullPolicy,omitempty"`
+		Name            string    `yaml:"name,omitempty"`
+		Ports           []*Port   `yaml:"ports,omitempty"`
+		SecurityContext struct {
+			Privileged bool `yaml:"privileged"`
+		} `yaml:"securityContext,omitempty"`
+		VolumeMounts []*VolumeMount `yaml:"volumeMounts"`
+		WorkingDir   string         `yaml:"workingDir,omitempty"`
+	}
+	type Volume struct {
+		Name                  string `yaml:"name"`
+		PersistentVolumeClaim struct {
+			ClaimName string `yaml:"claimName"`
+		} `yaml:"persistentVolumeClaim,omitempty"`
+		EmptyDir struct {
+			Medium string `yaml:"medium"`
+		} `yaml:"emptyDir,omitempty"`
+	}
+
+	type Deployment struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+		Metadata   struct {
+			Name      string `yaml:"name"`
+			Namespace string `yaml:"namespace,omitempty"`
+		} `yaml:"metadata"`
+		Spec struct {
+			Selector struct {
+				MatchLabels map[string]string `yaml:"matchLabels"`
+			} `yaml:"selector"`
+			Replicas    int `yaml:"replicas"`
+			PodTemplate struct {
+				Metadata struct {
+					Labels map[string]string `yaml:"labels"`
+				} `yaml:"metadata"`
+				Spec struct {
+					Containers []*Container `yaml:"containers"`
+					Volumes    []*Volume    `yaml:"volumes"`
+				} `yaml:"spec"`
+			} `yaml:"template"`
+		} `yaml:"spec"`
+	}
+
+	yamlMap := Deployment{}
+	yamlTemplate := getDeploymentTemplate()
+	err = yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
+	if err != nil {
+		Error.log("Could not create the YAML structure from template. Exiting.")
+		return "", err
+	}
+	//Set the name
+	yamlMap.Metadata.Name = appName
+	//Set the image
+	yamlMap.Spec.PodTemplate.Spec.Containers[0].Name = appName
+	yamlMap.Spec.PodTemplate.Spec.Containers[0].Image = imageName
+
+	//Set the containerPort
+	containerPorts := make([]*Port, 0)
+	for i, port := range ports {
+		//KNative only allows a single port entry
+		if i == 0 {
+			yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = containerPorts
+		}
+		Debug.Log("Adding port to yaml: ", port)
+		newContainerPort := new(Port)
+		newContainerPort.ContainerPort, err = strconv.Atoi(port)
+		if err != nil {
+			return "", err
+		}
+		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
+	}
+
+	Debug.logf("YAML map: \n%v\n", yamlMap)
+	yamlStr, err := yaml.Marshal(&yamlMap)
+	if err != nil {
+		Error.log("Could not create the YAML string from Map. Exiting.")
+		return "", err
+	}
+	Debug.logf("Generated YAML: \n%s\n", yamlStr)
+	// Generate file based on supplied config, defaulting to app-deploy.yaml
+	yamlFile := "/workspace/app-deploy.yaml"
+	if dryrun {
+		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
+		return yamlFile, nil
+	}
+	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
+	if err != nil {
+		return "", fmt.Errorf("Could not create the yaml file for deployment %v", err)
+	}
+	return yamlFile, nil
+}
+func getDeploymentTemplate() string {
+	yamltempl := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: APPSODY_APP_NAME
+spec:
+  selector:
+    matchLabels:
+      app: appsody
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: appsody
+    spec:
+      serviceAccountName: appsody-sa
+      containers:
+      - name: APPSODY_APP_NAME
+        image: APPSODY_STACK
+        imagePullPolicy: Always
+        command: ["/.appsody/appsody-controller"]
+        env:
+          - name: HOME
+            value: /.appsody
+        volumeMounts:
+          - name: appsody-controller
+            mountPath: /.appsody
+          - name: appsody-workspace
+            mountPath: /project/user-app
+      volumes:
+        - name: appsody-controller
+          persistentVolumeClaim: 
+            claimName: appsody-controller
+        - name: appsody-workspace
+          persistentVolumeClaim: 
+            claimName: appsody-workspace
+`
+	return yamltempl
+}
 func getKNativeTemplate() string {
 	yamltempl := `
 apiVersion: serving.knative.dev/v1alpha1

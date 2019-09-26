@@ -231,6 +231,7 @@ setup the local dev environment.`,
 }
 
 func init() {
+	buildah = true
 	rootCmd.AddCommand(initCmd)
 	initCmd.PersistentFlags().BoolVar(&overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
@@ -470,21 +471,22 @@ func extractAndInitialize() error {
 	if containerProjectDirErr != nil {
 		return containerProjectDirErr
 	}
-	bashCmd := "find " + containerProjectDir + " -type f -name " + scriptFileName
-	cmdOptions := []string{"--rm"}
-	Debug.log("Attempting to run ", bashCmd, " on image ", stackImage, " with options: ", cmdOptions)
-	//DockerRunBashCmd has a pullImage call
-	scriptFindOut, err := DockerRunBashCmd(cmdOptions, stackImage, bashCmd)
-	if err != nil {
-		Debug.log("Failed to run the find command for the ", scriptFileName, " on the stack image: ", stackImage)
-		return fmt.Errorf("Failed to run the docker find command: %s", err)
-	}
+	if !buildah { //We can skip extract in some cases
+		bashCmd := "find " + containerProjectDir + " -type f -name " + scriptFileName
+		cmdOptions := []string{"--rm"}
+		Debug.log("Attempting to run ", bashCmd, " on image ", stackImage, " with options: ", cmdOptions)
+		//DockerRunBashCmd has a pullImage call
+		scriptFindOut, err := DockerRunBashCmd(cmdOptions, stackImage, bashCmd)
+		if err != nil {
+			Debug.log("Failed to run the find command for the ", scriptFileName, " on the stack image: ", stackImage)
+			return fmt.Errorf("Failed to run the docker find command: %s", err)
+		}
 
-	if scriptFindOut == "" {
-		Debug.log("There is no initialization script in the image - skipping extract and initialize")
-		return nil
+		if scriptFindOut == "" {
+			Debug.log("There is no initialization script in the image - skipping extract and initialize")
+			return nil
+		}
 	}
-
 	workdir := ".appsody_init"
 
 	// run the extract command here

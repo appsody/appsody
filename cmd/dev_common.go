@@ -224,19 +224,19 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	controllerMount := destController + ":/appsody/appsody-controller"
 	Debug.log("Adding controller to volume mounts: ", controllerMount)
 	volumeMaps = append(volumeMaps, "-v", controllerMount)
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		err := dockerStop(containerName)
-		if err != nil {
-			Error.log(err)
-		}
-		//containerRemove(containerName) is not needed due to --rm flag
-		os.Exit(1)
-	}()
-
+	if !buildah {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			<-c
+			err := dockerStop(containerName)
+			if err != nil {
+				Error.log(err)
+			}
+			//containerRemove(containerName) is not needed due to --rm flag
+			os.Exit(1)
+		}()
+	}
 	cmdArgs = []string{"--rm"}
 	validPorts, portError := checkPortInput(ports)
 	if !validPorts {
@@ -284,30 +284,52 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 	if disableWatcher {
 		cmdArgs = append(cmdArgs, "--no-watcher")
 	}
-	Debug.logf("Attempting to start image %s with container name %s", platformDefinition, containerName)
-	execCmd, err := DockerRunAndListen(cmdArgs, Container)
-	if dryrun {
-		Info.log("Dry Run - Skipping execCmd.Wait")
-	} else {
-		if err == nil {
-			err = execCmd.Wait()
-		}
-	}
-	if err != nil {
-		// 'signal: interrupt'
-		// TODO presumably you can query the error itself
-		error := fmt.Sprintf("%s", err)
-		//Linux and Windows return a different error on Ctrl-C
-		if error == "signal: interrupt" || error == "exit status 2" {
-			Info.log("Closing down development environment, sleeping 60 seconds: ", error)
-
-			time.Sleep(60 * time.Second)
+	if !buildah {
+		Debug.logf("Attempting to start image %s with container name %s", platformDefinition, containerName)
+		execCmd, err := DockerRunAndListen(cmdArgs, Container)
+		if dryrun {
+			Info.log("Dry Run - Skipping execCmd.Wait")
 		} else {
-			return errors.Errorf("Error waiting in 'appsody %s' %s", mode, error)
-
+			if err == nil {
+				err = execCmd.Wait()
+			}
 		}
+		if err != nil {
+			// 'signal: interrupt'
+			// TODO presumably you can query the error itself
+			error := fmt.Sprintf("%s", err)
+			//Linux and Windows return a different error on Ctrl-C
+			if error == "signal: interrupt" || error == "exit status 2" {
+				Info.log("Closing down development environment, sleeping 60 seconds: ", error)
 
+				time.Sleep(60 * time.Second)
+			} else {
+				return errors.Errorf("Error waiting in 'appsody %s' %s", mode, error)
+
+			}
+		}
+	} else {
+		//This is buildah path - so do a kube apply instead
+		portList, portsErr := getExposedPorts()
+		if portsErr != nil {
+			return portsErr
+		}
+		projectName, err := getProjectName()
+		if err != nil {
+			return err
+		}
+		deploymentYaml, err := GenDeploymentYaml(projectName, platformDefinition, portList)
+		if err != nil {
+			return err
+		}
+		//hack
+		namespace = ""
+		err = KubeApply(deploymentYaml)
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 
 }

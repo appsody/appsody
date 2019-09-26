@@ -28,6 +28,7 @@ import (
 
 var targetDir string
 var buildah bool
+
 var extractContainerName string
 
 var extractCmd = &cobra.Command{
@@ -189,7 +190,7 @@ in preparation to build the final container image.`,
 		if buildah {
 			appDir = containerProjectDir
 			cmdName = "/bin/sh"
-			script := fmt.Sprintf("x=`buildah mount %s`; cp -rf $x/%s/* %s", extractContainerName, appDir, extractDir)
+			script := fmt.Sprintf("x=`buildah mount %s`; cp -rf $x%s/* %s", extractContainerName, appDir, extractDir)
 			cmdArgs = []string{"-c", script}
 		}
 		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug)
