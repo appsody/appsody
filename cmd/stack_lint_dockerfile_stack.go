@@ -56,10 +56,12 @@ func getENVDockerfile(stackPath string) (dockerfileStack map[string]string) {
 	return dockerfileMap
 }
 
-func lintDockerFileStack(stackPath string) {
+func lintDockerFileStack(stackPath string) (int, int) {
 	mendatoryEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN"}
 	optionalEnvironmentVariables := [...]string{"APPSODY_DEBUG", "APPSODY_TEST", "APPSODY_DEPS", "APPSODY_PROJECT_DIR"}
 
+	stackLintErrorCount := 0
+	stackLintWarningCount := 0
 	arg := filepath.Join(stackPath, "image/Dockerfile-stack")
 
 	Info.log("Linting Dockerfile-stack: ", arg)
@@ -142,4 +144,5 @@ func lintDockerFileStack(stackPath string) {
 			}
 		}
 	}
+	return stackLintErrorCount, stackLintWarningCount
 }

@@ -39,9 +39,8 @@ type StackMaintainer struct {
 	Email string `yaml:"email"`
 }
 
-var defaultTemplateFound bool
-
-func (s *StackDetails) validateYaml(stackPath string) *StackDetails {
+func (s *StackDetails) validateYaml(stackPath string) int {
+	stackLintErrorCount := 0
 	arg := filepath.Join(stackPath, "/stack.yaml")
 
 	Info.log("LINTING stack.yaml: ", arg)
@@ -58,12 +57,16 @@ func (s *StackDetails) validateYaml(stackPath string) *StackDetails {
 		stackLintErrorCount++
 	}
 
-	s.checkDefaultTemplate(arg)
-	return s
+	stackLintErrorCount += s.checkDefaultTemplate(arg)
+	stackLintErrorCount += s.validateFields()
+	stackLintErrorCount += s.checkVersion()
+	stackLintErrorCount += s.checkDescLength()
+	return stackLintErrorCount
 }
 
-func (s *StackDetails) checkDefaultTemplate(arg string) *StackDetails {
-	defaultTemplateFound = false
+func (s *StackDetails) checkDefaultTemplate(arg string) int {
+	stackLintErrorCount := 0
+	defaultTemplateFound := false
 	file, err := os.Open(arg)
 	if err != nil {
 		Error.log(err)
@@ -87,11 +90,11 @@ func (s *StackDetails) checkDefaultTemplate(arg string) *StackDetails {
 		stackLintErrorCount++
 	}
 
-	s.validateFields()
-	return s
+	return stackLintErrorCount
 }
 
-func (s *StackDetails) validateFields() *StackDetails {
+func (s *StackDetails) validateFields() int {
+	stackLintErrorCount := 0
 	v := reflect.ValueOf(s).Elem()
 	yamlValues := make([]interface{}, v.NumField())
 
@@ -103,13 +106,13 @@ func (s *StackDetails) validateFields() *StackDetails {
 		}
 	}
 
-	s.checkMaintainer(yamlValues)
-
-	return s
+	stackLintErrorCount += s.checkMaintainer(yamlValues)
+	return stackLintErrorCount
 
 }
 
-func (s *StackDetails) checkMaintainer(yamlValues []interface{}) *StackDetails {
+func (s *StackDetails) checkMaintainer(yamlValues []interface{}) int {
+	stackLintErrorCount := 0
 	Map := make(map[string]interface{})
 	Map["maintainerEmails"] = yamlValues[5]
 
@@ -120,11 +123,11 @@ func (s *StackDetails) checkMaintainer(yamlValues []interface{}) *StackDetails {
 		stackLintErrorCount++
 	}
 
-	s.checkVersion()
-	return s
+	return stackLintErrorCount
 }
 
-func (s *StackDetails) checkVersion() *StackDetails {
+func (s *StackDetails) checkVersion() int {
+	stackLintErrorCount := 0
 	versionNo := strings.Split(s.Version, ".")
 
 	for _, mmp := range versionNo {
@@ -139,11 +142,11 @@ func (s *StackDetails) checkVersion() *StackDetails {
 		stackLintErrorCount++
 	}
 
-	s.checkDescLength()
-	return s
+	return stackLintErrorCount
 }
 
-func (s *StackDetails) checkDescLength() *StackDetails {
+func (s *StackDetails) checkDescLength() int {
+	stackLintErrorCount := 0
 
 	if len(s.Description) > 70 {
 		Error.log("Description must be under 70 characters")
@@ -155,5 +158,5 @@ func (s *StackDetails) checkDescLength() *StackDetails {
 		stackLintErrorCount++
 	}
 
-	return s
+	return stackLintErrorCount
 }

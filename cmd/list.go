@@ -19,54 +19,47 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// listCmd represents the list command
-var listCmd = &cobra.Command{
-	Use:   "list [repository]",
-	Short: "List the Appsody stacks available to init",
-	Long:  `This command lists all the stacks available in your repositories. If you omit the  optional [repository] parameter, the stacks for all the repositories are listed. If you specify the repository name [repository], only the stacks in that repository will be listed.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var repos RepositoryFile
+func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	// listCmd represents the list command
+	var listCmd = &cobra.Command{
+		Use:   "list [repository]",
+		Short: "List the Appsody stacks available to init",
+		Long:  `This command lists all the stacks available in your repositories. If you omit the  optional [repository] parameter, the stacks for all the repositories are listed. If you specify the repository name [repository], only the stacks in that repository will be listed.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var repos RepositoryFile
 
-		setupErr := setupConfig()
-		if setupErr != nil {
-			return setupErr
-		}
-
-		if _, err := repos.getRepos(); err != nil {
-			return err
-		}
-		//var index RepoIndex
-		if len(args) < 1 {
-			projects, err := repos.listProjects()
-			if err != nil {
-				return errors.Errorf("%v", err)
-			}
-			if len(unsupportedRepos) > 0 {
-				Warning.log("The following repositories .yaml have an  APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", unsupportedRepos)
-			}
-			Info.log("\n", projects)
-		} else {
-			repoName := args[0]
-			_, err := repos.getRepos()
-			if err != nil {
+			if _, err := repos.getRepos(rootConfig); err != nil {
 				return err
 			}
-			repoProjects, err := repos.listRepoProjects(repoName)
-			if err != nil {
-				return err
+			//var index RepoIndex
+			if len(args) < 1 {
+				projects, err := repos.listProjects(rootConfig)
+				if err != nil {
+					return errors.Errorf("%v", err)
+				}
+				if len(rootConfig.UnsupportedRepos) > 0 {
+					Warning.log("The following repositories .yaml have an  APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
+				}
+				Info.log("\n", projects)
+			} else {
+				repoName := args[0]
+				_, err := repos.getRepos(rootConfig)
+				if err != nil {
+					return err
+				}
+				repoProjects, err := repos.listRepoProjects(repoName, rootConfig)
+				if err != nil {
+					return err
+				}
+				if len(rootConfig.UnsupportedRepos) > 0 {
+					Warning.log("The following repositories are of APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
+				}
+
+				Info.log("\n", repoProjects)
 			}
-			if len(unsupportedRepos) > 0 {
-				Warning.log("The following repositories are of APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", unsupportedRepos)
-			}
 
-			Info.log("\n", repoProjects)
-		}
-
-		return nil
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(listCmd)
-
+			return nil
+		},
+	}
+	return listCmd
 }

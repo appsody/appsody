@@ -23,61 +23,54 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// deleteCmd provides the ability to delete a GitHook for a Tekton build pipeline
-var deleteCmd = &cobra.Command{
-	Use: "delete",
-	// disable this command until we have a better plan on how to support ci pipelines
-	Hidden: true,
-	Short:  "Delete a Githook and build pipeline for your Appsody project",
-	Long:   `This allows you to delete a Githook for your Appsody project.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// projectDir := getProjectDir()
-		// projectName := filepath.Base(projectDir)
-		setupErr := setupConfig()
-		if setupErr != nil {
-			return setupErr
-		}
-		projectName, perr := getProjectName()
-		if perr != nil {
-			return errors.Errorf("%v", perr)
+func newBuildDeleteCmd(config *buildCommandConfig) *cobra.Command {
+	// deleteCmd provides the ability to delete a GitHook for a Tekton build pipeline
+	var deleteCmd = &cobra.Command{
+		Use: "delete",
+		// disable this command until we have a better plan on how to support ci pipelines
+		Hidden: true,
+		Short:  "Delete a Githook and build pipeline for your Appsody project",
+		Long:   `This allows you to delete a Githook for your Appsody project.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		}
-		tektonServer := cliConfig.GetString("tektonserver")
-		if tektonServer == "" {
-			return errors.New("no target Tekton server specified in the configuration")
-
-		}
-		url := fmt.Sprintf("%s/v1/namespaces/default/githubsource/%s", tektonServer, projectName)
-		if dryrun {
-			Info.log("Dry Run appsody build delete")
-		} else {
-			req, _ := http.NewRequest("DELETE", url, nil)
-			req.Header.Set("Content-Type", "application/json")
-
-			client := &http.Client{}
-			Info.log("Making request to ", url)
-			resp, err := client.Do(req)
-			if err != nil {
-				return errors.Errorf("%v", err)
+			projectName, perr := getProjectName(config.RootCommandConfig)
+			if perr != nil {
+				return errors.Errorf("%v", perr)
 
 			}
-			defer resp.Body.Close()
-			body, _ := ioutil.ReadAll(resp.Body)
-			bodyStr := string(body)
+			tektonServer := config.CliConfig.GetString("tektonserver")
+			if tektonServer == "" {
+				return errors.New("no target Tekton server specified in the configuration")
 
-			if resp.StatusCode >= 300 {
-
-				return errors.Errorf("Bad Status Code: %s with message: %s", resp.Status, string(bodyStr))
 			}
-			Info.log(resp.Status)
-			Info.log(string(bodyStr))
+			url := fmt.Sprintf("%s/v1/namespaces/default/githubsource/%s", tektonServer, projectName)
+			if config.Dryrun {
+				Info.log("Dry Run appsody build delete")
+			} else {
+				req, _ := http.NewRequest("DELETE", url, nil)
+				req.Header.Set("Content-Type", "application/json")
 
-		}
-		return nil
-	},
-}
+				client := &http.Client{}
+				Info.log("Making request to ", url)
+				resp, err := client.Do(req)
+				if err != nil {
+					return errors.Errorf("%v", err)
 
-func init() {
-	buildCmd.AddCommand(deleteCmd)
+				}
+				defer resp.Body.Close()
+				body, _ := ioutil.ReadAll(resp.Body)
+				bodyStr := string(body)
 
+				if resp.StatusCode >= 300 {
+
+					return errors.Errorf("Bad Status Code: %s with message: %s", resp.Status, string(bodyStr))
+				}
+				Info.log(resp.Status)
+				Info.log(string(bodyStr))
+
+			}
+			return nil
+		},
+	}
+	return deleteCmd
 }

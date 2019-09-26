@@ -22,12 +22,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
-	flag "github.com/spf13/pflag"
 )
 
 //generate Doc file (.md) for cmds in package
 
-func generateDoc(commandDocFile string) error {
+func generateDoc(commandDocFile string, rootCmd *cobra.Command) error {
 
 	if commandDocFile == "" {
 		return errors.New("no docFile specified")
@@ -77,21 +76,28 @@ func generateDoc(commandDocFile string) error {
 
 }
 
-// docs command is used to generate markdown file for all the appsody commands
-var docsCmd = &cobra.Command{
-	Use:    "docs",
-	Hidden: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
+func newDocsCmd(rootConfig *RootCommandConfig, rootCmd *cobra.Command) *cobra.Command {
 
-		Debug.log("Running appsody docs command.")
-		err := generateDoc(docFile)
-		if err != nil {
-			return errors.Errorf("appsody docs command failed with error: %v", err)
+	var docFile string
+	// docs command is used to generate markdown file for all the appsody commands
+	var docsCmd = &cobra.Command{
+		Use:    "docs",
+		Hidden: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		}
-		Debug.log("appsody docs command completed successfully.")
-		return nil
-	},
+			Debug.log("Running appsody docs command.")
+			err := generateDoc(docFile, rootCmd)
+			if err != nil {
+				return errors.Errorf("appsody docs command failed with error: %v", err)
+
+			}
+			Debug.log("appsody docs command completed successfully.")
+			return nil
+		},
+	}
+
+	docsCmd.PersistentFlags().StringVar(&docFile, "docFile", "", "Specify the file to contain the generated documentation.")
+	return docsCmd
 }
 
 func appendChildren(commandArray []*cobra.Command, cmd *cobra.Command) []*cobra.Command {
@@ -113,14 +119,4 @@ func appendChildren(commandArray []*cobra.Command, cmd *cobra.Command) []*cobra.
 		}
 	}
 	return commandArray
-}
-
-var docFile string
-
-func init() {
-	rootCmd.AddCommand(docsCmd)
-	docFlags := flag.NewFlagSet("", flag.ContinueOnError)
-
-	docFlags.StringVar(&docFile, "docFile", "", "Specify the file to contain the generated documentation.")
-	docsCmd.PersistentFlags().AddFlagSet(docFlags)
 }

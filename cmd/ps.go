@@ -32,32 +32,30 @@ type StackContainer struct {
 	containerName string
 }
 
-// psCmd represents the ps command
-var psCmd = &cobra.Command{
-	Use:   "ps",
-	Short: "List the appsody containers running in the local docker environment",
-	Long:  `This command lists all stack-based containers, that are currently running in the local docker envionment.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+func newPsCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	// psCmd represents the ps command
+	var psCmd = &cobra.Command{
+		Use:   "ps",
+		Short: "List the appsody containers running in the local docker environment",
+		Long:  `This command lists all stack-based containers, that are currently running in the local docker envionment.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		setupErr := setupConfig()
-		if setupErr != nil {
-			return setupErr
-		}
+			containers, err := listContainers()
+			if err != nil {
+				return err
+			}
 
-		containers, err := listContainers()
-		if err != nil {
-			return err
-		}
-
-		table, err := formatTable(containers)
-		if err != nil {
-			return errors.Errorf("%v", err)
-		}
-		if table != "" {
-			Info.log(table)
-		}
-		return nil
-	},
+			table, err := formatTable(containers)
+			if err != nil {
+				return errors.Errorf("%v", err)
+			}
+			if table != "" {
+				Info.log(table)
+			}
+			return nil
+		},
+	}
+	return psCmd
 }
 
 func listContainers() ([]StackContainer, error) {
@@ -125,8 +123,4 @@ func formatTable(containers []StackContainer) (string, error) {
 	}
 
 	return table.String(), nil
-}
-
-func init() {
-	rootCmd.AddCommand(psCmd)
 }
