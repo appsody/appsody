@@ -610,6 +610,7 @@ func GenDeploymentYaml(appName string, imageName string, ports []string) (fileNa
 	type VolumeMount struct {
 		Name      string `yaml:"name"`
 		MountPath string `yaml:"mountPath"`
+		SubPath   string `yaml:"subPath,omitempty"`
 	}
 	type Container struct {
 		Args            []string  `yaml:"args,omitempty"`
@@ -622,8 +623,8 @@ func GenDeploymentYaml(appName string, imageName string, ports []string) (fileNa
 		SecurityContext struct {
 			Privileged bool `yaml:"privileged"`
 		} `yaml:"securityContext,omitempty"`
-		VolumeMounts []*VolumeMount `yaml:"volumeMounts"`
-		WorkingDir   string         `yaml:"workingDir,omitempty"`
+		VolumeMounts []VolumeMount `yaml:"volumeMounts"`
+		WorkingDir   string        `yaml:"workingDir,omitempty"`
 	}
 	type Volume struct {
 		Name                  string `yaml:"name"`
@@ -652,8 +653,9 @@ func GenDeploymentYaml(appName string, imageName string, ports []string) (fileNa
 					Labels map[string]string `yaml:"labels"`
 				} `yaml:"metadata"`
 				Spec struct {
-					Containers []*Container `yaml:"containers"`
-					Volumes    []*Volume    `yaml:"volumes"`
+					ServiceAccountName string       `yaml:"serviceAccountName,omitempty"`
+					Containers         []*Container `yaml:"containers"`
+					Volumes            []*Volume    `yaml:"volumes"`
 				} `yaml:"spec"`
 			} `yaml:"template"`
 		} `yaml:"spec"`
@@ -687,6 +689,14 @@ func GenDeploymentYaml(appName string, imageName string, ports []string) (fileNa
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 	}
+	//Set the workspace volume mount
+	pdir, err := getProjectDir()
+	if err != nil {
+		return "", err
+	}
+	subPath := filepath.Base(pdir)
+	workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
+	yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, workspaceMount)
 
 	Debug.logf("YAML map: \n%v\n", yamlMap)
 	yamlStr, err := yaml.Marshal(&yamlMap)
@@ -696,7 +706,7 @@ func GenDeploymentYaml(appName string, imageName string, ports []string) (fileNa
 	}
 	Debug.logf("Generated YAML: \n%s\n", yamlStr)
 	// Generate file based on supplied config, defaulting to app-deploy.yaml
-	yamlFile := "/workspace/app-deploy.yaml"
+	yamlFile := filepath.Join(pdir, "app-deploy.yaml")
 	if dryrun {
 		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
 		return yamlFile, nil
@@ -735,8 +745,6 @@ spec:
         volumeMounts:
           - name: appsody-controller
             mountPath: /.appsody
-          - name: appsody-workspace
-            mountPath: /project/user-app
       volumes:
         - name: appsody-controller
           persistentVolumeClaim: 
