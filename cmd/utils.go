@@ -697,6 +697,13 @@ func GenDeploymentYaml(appName string, imageName string, ports []string) (fileNa
 	subPath := filepath.Base(pdir)
 	workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, workspaceMount)
+	//Set the deployment selector and pod label
+	projectLabel, err := getProjectName()
+	if err != nil {
+		return "", err
+	}
+	yamlMap.Spec.Selector.MatchLabels["app"] = projectLabel
+	yamlMap.Spec.PodTemplate.Metadata.Labels["app"] = projectLabel
 
 	Debug.logf("YAML map: \n%v\n", yamlMap)
 	yamlStr, err := yaml.Marshal(&yamlMap)
