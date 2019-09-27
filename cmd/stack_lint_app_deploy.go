@@ -60,18 +60,26 @@ func (a *AppDeploy) validateAppDeploy(stackPath string) *AppDeploy {
 		stackLintErrorCount++
 	}
 
-	err = yaml.Unmarshal([]byte(appdeploy), &a) //Unmarshal contents of file into var of type AppDeploy (struct)
+	dynamic := make(map[string]interface{})
+	err = yaml.UnmarshalStrict([]byte(appdeploy), &dynamic) //Unmarshal contents of file into var of type AppDeploy (struct)
 	if err != nil {
 		Error.log("Unmarshal: Error unmarshalling app-deploy.yaml")
 		stackLintErrorCount++
 	}
 
-	a.validateFields()
+	for k, v := range dynamic { 
+		Info.log(k, "    ", v)
+	}
+
+	Info.log(dynamic["metadata"])
+
+
+	validateFields(a)
 
 	return a
 }
 
-func (a *AppDeploy) validateFields() *AppDeploy {
+func validateFields(a interface{}) {
 	v := reflect.ValueOf(a).Elem()
 	yamlValues := make([]interface{}, v.NumField())
 
@@ -93,8 +101,5 @@ func (a *AppDeploy) validateFields() *AppDeploy {
 	// for j := 0; j < t.NumField(); j++ {
 	// 	yamlValues1 = t.Field(j).Interface()
 	// }
-
-	Info.log(a)
-
-	return a
+	
 }
