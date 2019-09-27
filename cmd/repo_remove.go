@@ -21,52 +21,47 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// initCmd represents the init command
-var removeCmd = &cobra.Command{
-	Use:   "remove <name>",
-	Short: "Remove a configured Appsody repository",
-	Long:  ``,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return errors.New("Error, you must specify repository name")
-		}
-		setupErr := setupConfig()
-		if setupErr != nil {
-			return setupErr
-		}
-		var repoName = args[0]
+func newRepoRemoveCmd(config *RootCommandConfig) *cobra.Command {
+	// initCmd represents the init command
+	var removeCmd = &cobra.Command{
+		Use:   "remove <name>",
+		Short: "Remove a configured Appsody repository",
+		Long:  ``,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 {
+				return errors.New("Error, you must specify repository name")
+			}
 
-		var repoFile RepositoryFile
-		_, repoErr := repoFile.getRepos()
-		if repoErr != nil {
-			return repoErr
-		}
-		if dryrun {
-			Info.log("Dry Run - Skipping appsody repo remove ", repoName)
-		} else {
-			if repoFile.Has(repoName) {
-				defaultRepoName, err := repoFile.GetDefaultRepoName()
-				if err != nil {
-					return err
-				}
-				if repoName != defaultRepoName {
-					repoFile.Remove(repoName)
-				} else {
-					Error.log("You cannot remove the default repository " + repoName)
-				}
+			var repoName = args[0]
+
+			var repoFile RepositoryFile
+			_, repoErr := repoFile.getRepos(config)
+			if repoErr != nil {
+				return repoErr
+			}
+			if config.Dryrun {
+				Info.log("Dry Run - Skipping appsody repo remove ", repoName)
 			} else {
-				Error.log("Repository is not in configured list of repositories")
+				if repoFile.Has(repoName) {
+					defaultRepoName, err := repoFile.GetDefaultRepoName(config)
+					if err != nil {
+						return err
+					}
+					if repoName != defaultRepoName {
+						repoFile.Remove(repoName)
+					} else {
+						Error.log("You cannot remove the default repository " + repoName)
+					}
+				} else {
+					Error.log("Repository is not in configured list of repositories")
+				}
+				err := repoFile.WriteFile(getRepoFileLocation(config))
+				if err != nil {
+					log.Fatalf("Failed to write file repository location: %v", err)
+				}
 			}
-			err := repoFile.WriteFile(getRepoFileLocation())
-			if err != nil {
-				log.Fatalf("Failed to write file repository location: %v", err)
-			}
-		}
-		return nil
-	},
-}
-
-func init() {
-	repoCmd.AddCommand(removeCmd)
-
+			return nil
+		},
+	}
+	return removeCmd
 }

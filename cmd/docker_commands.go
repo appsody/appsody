@@ -8,21 +8,21 @@ import (
 	"strings"
 )
 
-func DockerRunAndListen(args []string, logger appsodylogger) (*exec.Cmd, error) {
+func DockerRunAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
 	var runArgs = []string{"run"}
 	runArgs = append(runArgs, args...)
-	return RunDockerCommandAndListen(runArgs, logger)
+	return RunDockerCommandAndListen(runArgs, logger, interactive, verbose, dryrun)
 }
 
-func DockerBuild(args []string, logger appsodylogger) error {
+func DockerBuild(args []string, logger appsodylogger, verbose bool, dryrun bool) error {
 	var buildArgs = []string{"build"}
 	buildArgs = append(buildArgs, args...)
-	return RunDockerCommandAndWait(buildArgs, logger)
+	return RunDockerCommandAndWait(buildArgs, logger, verbose, dryrun)
 }
 
-func RunDockerCommandAndWait(args []string, logger appsodylogger) error {
+func RunDockerCommandAndWait(args []string, logger appsodylogger, verbose bool, dryrun bool) error {
 
-	cmd, err := RunDockerCommandAndListen(args, logger)
+	cmd, err := RunDockerCommandAndListen(args, logger, false, verbose, dryrun)
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func RunDockerCommandAndWait(args []string, logger appsodylogger) error {
 
 }
 
-func RunDockerCommandAndListen(args []string, logger appsodylogger) (*exec.Cmd, error) {
+func RunDockerCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
 	var execCmd *exec.Cmd
 	var command = "docker"
 	var err error
@@ -73,7 +73,7 @@ func RunDockerCommandAndListen(args []string, logger appsodylogger) (*exec.Cmd, 
 			for consoleScanner.Scan() {
 				text := consoleScanner.Text()
 				if lastByteNewline && (verbose || logger != Info) {
-					os.Stdout.WriteString("[" + string(logger) + "] ")
+					os.Stdout.WriteString("[" + logger.name + "] ")
 				}
 				os.Stdout.WriteString(text)
 				lastByteNewline = text == "\n"
