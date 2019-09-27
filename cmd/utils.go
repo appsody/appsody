@@ -447,7 +447,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
-	if buildah {
+	if config.Buildah {
 		cmdName = "buildah"
 		cmdArgs = []string{"inspect", "--format", "{{.Config}}", imageName}
 	}
@@ -468,17 +468,17 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
 	}
-	var config map[string]interface{}
+	var containerConfig map[string]interface{}
 
 	if buildah {
-		config = buildahData["config"].(map[string]interface{})
+		containerConfig = buildahData["config"].(map[string]interface{})
 		Debug.Log("Config inspected by buildah: ", config)
 	} else {
-		config = data[0]["Config"].(map[string]interface{})
+		containerConfig = data[0]["Config"].(map[string]interface{})
 	}
 
 	if dockerConfig["ExposedPorts"] != nil {
-		exposedPorts := dockerConfig["ExposedPorts"].(map[string]interface{})
+		exposedPorts := containerConfig["ExposedPorts"].(map[string]interface{})
 
 		portValues = make([]string, 0, len(exposedPorts))
 		for k := range exposedPorts {
@@ -582,7 +582,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, ports []string) (fileName string, err error) {
+func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, projectLabel string) (fileName string, err error) {
 	// KNative serving YAML representation in a struct
 	type Port struct {
 		Name          string `yaml:"name,omitempty"`
@@ -675,15 +675,12 @@ func GenDeploymentYaml(appName string, imageName string, ports []string) (fileNa
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 	}
 	//Set the workspace volume mount
-	pdir, err := getProjectDir()
-	if err != nil {
-		return "", err
-	}
+
 	subPath := filepath.Base(pdir)
 	workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, workspaceMount)
 	//Set the deployment selector and pod label
-	projectLabel, err := getProjectName()
+
 	if err != nil {
 		return "", err
 	}
@@ -749,7 +746,7 @@ spec:
 }
 
 //GenServiceYaml returns the file name of a generated K8S Service yaml
-func GenServiceYaml(appName string, ports []string) (fileName string, err error) {
+func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (fileName string, err error) {
 	type Port struct {
 		Name       string `yaml:"name,omitempty"`
 		Port       int    `yaml:"port"`
@@ -786,10 +783,6 @@ func GenServiceYaml(appName string, ports []string) (fileName string, err error)
 		service.Spec.Ports[i].TargetPort = iPort
 	}
 
-	pdir, err := getProjectDir()
-	if err != nil {
-		return "", err
-	}
 	yamlStr, err := yaml.Marshal(&service)
 	if err != nil {
 		Error.log("Could not create the YAML string from Map. Exiting.")
@@ -810,7 +803,7 @@ func GenServiceYaml(appName string, ports []string) (fileName string, err error)
 }
 
 //GenRouteYaml returns the file name of a generated K8S Service yaml
-func GenRouteYaml(appName string) (fileName string, err error) {
+func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, err error) {
 
 	type Route struct {
 		APIVersion string `yaml:"apiVersion"`
@@ -833,10 +826,6 @@ func GenRouteYaml(appName string) (fileName string, err error) {
 	route.Spec.To.Kind = "Service"
 	route.Spec.To.Name = fmt.Sprintf("%s-%s", appName, "service")
 
-	pdir, err := getProjectDir()
-	if err != nil {
-		return "", err
-	}
 	yamlStr, err := yaml.Marshal(&route)
 	if err != nil {
 		Error.log("Could not create the YAML string from Map. Exiting.")
