@@ -41,9 +41,13 @@ type AppsodyApplication struct {
 	APIVersion string   `yaml:"apiVersion"`
 	Kind       string   `yaml:"kind"`
 	Metadata   Metadata `yaml:"metadata"`
+	Spec       Spec     `yaml:"spec"`
 }
 type Metadata struct {
 	Name string `yaml:"name"`
+}
+type Spec struct {
+	ApplicationImage string `yaml:"applicationImage"`
 }
 
 func getAppsodyApplication(configFile string) (AppsodyApplication, error) {
@@ -115,17 +119,23 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 					return err
 				}
 			}
+
 			Info.log("Found existing deployment manifest ", configFile)
 			//Retrieve the project name and lowercase it
-			projectName, perr := getProjectName(config.RootCommandConfig)
-			if perr != nil {
-				return errors.Errorf("%v", perr)
+
+			appsodyApplication, err := getAppsodyApplication(configFile)
+			if err != nil {
+				return err
 			}
+			var applicationImage = appsodyApplication.Spec.ApplicationImage
+			Debug.log("Application Image:  ", applicationImage)
 
 			deployImage := config.tag
 			if deployImage == "" {
-				deployImage = "dev.local/" + projectName
+				deployImage = applicationImage
+				// deployImage = "dev.local/" + projectName
 			}
+
 			// Extract code and build the image - and tags it if -t is specified
 			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
 			buildConfig.tag = deployImage
@@ -209,11 +219,6 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
-			var appsodyApplication AppsodyApplication
-			appsodyApplication, err = getAppsodyApplication(configFile)
-			if err != nil {
-				return err
-			}
 			Info.log("Appsody Deployment name is: ", appsodyApplication.Metadata.Name)
 			out, err := KubeGetDeploymentURL(appsodyApplication.Metadata.Name, namespace, dryrun)
 			// Performing the kubectl apply
@@ -346,7 +351,6 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 	if err != nil {
 		Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
-
 	stackImage := projectConfig.Platform
 	Debug.log("Stack image: ", stackImage)
 	Debug.log("Config directory: ", containerConfigDir)
@@ -443,11 +447,24 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 	stack := split[len(split)-2]
 	split = strings.Split(stack, "/")
 	stack = split[len(split)-1]
+
+	imageName := "dev.local/" + projectName
+	if config.tag != "" {
+		imageName = config.tag
+	}
 	if !config.Dryrun {
 		output := bytes.Replace(yamlReader, []byte("APPSODY_PROJECT_NAME"), []byte(projectName), -1)
-		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(projectName), -1)
+		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(imageName), -1)
 		output = bytes.Replace(output, []byte("APPSODY_STACK"), []byte(stack), -1)
 		output = bytes.Replace(output, []byte("APPSODY_PORT"), []byte(portStr), -1)
+		knativeString := "  createKnativeService: " + strconv.FormatBool(config.knative)
+		lastChar := output[len(output)-1:]
+
+		if bytes.Equal([]byte("\n"), lastChar) {
+			output = append(output, []byte(knativeString)...)
+		} else {
+			output = append(output, []byte("\n"+knativeString)...)
+		}
 
 		err = ioutil.WriteFile(configFile, output, 0666)
 		if err != nil {
