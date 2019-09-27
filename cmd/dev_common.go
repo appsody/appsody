@@ -324,7 +324,26 @@ func commonCmd(cmd *cobra.Command, args []string, mode string) error {
 		}
 		//hack
 		namespace = ""
+		//endhack
 		err = KubeApply(deploymentYaml)
+		if err != nil {
+			return err
+		}
+		serviceYaml, err := GenServiceYaml(projectName, portList)
+		if err != nil {
+			return err
+		}
+
+		err = KubeApply(serviceYaml)
+		if err != nil {
+			return err
+		}
+		routeYaml, err := GenRouteYaml(projectName)
+		if err != nil {
+			return err
+		}
+
+		err = KubeApply(routeYaml)
 		if err != nil {
 			return err
 		}

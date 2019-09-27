@@ -762,6 +762,115 @@ spec:
 `
 	return yamltempl
 }
+
+//GenServiceYaml returns the file name of a generated K8S Service yaml
+func GenServiceYaml(appName string, ports []string) (fileName string, err error) {
+	type Port struct {
+		Name       string `yaml:"name,omitempty"`
+		Port       int    `yaml:"port"`
+		TargetPort int    `yaml:"targetPort"`
+	}
+	type Service struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+		Metadata   struct {
+			Name string `yaml:"name"`
+		} `yaml:"metadata"`
+		Spec struct {
+			Selector    map[string]string `yaml:"selector"`
+			ServiceType string            `yaml:"type"`
+			Ports       []Port            `yaml:"ports"`
+		} `yaml:"spec"`
+	}
+
+	var service Service
+	service.APIVersion = "v1"
+	service.Kind = "Service"
+	service.Metadata.Name = fmt.Sprintf("%s-%s", appName, "service")
+	service.Spec.Selector = make(map[string]string, 1)
+	service.Spec.Selector["app"] = appName
+	service.Spec.ServiceType = "NodePort"
+	service.Spec.Ports = make([]Port, len(ports))
+	for i, port := range ports {
+		service.Spec.Ports[i].Name = fmt.Sprintf("port-%d", i)
+		iPort, err := strconv.Atoi(port)
+		if err != nil {
+			return "", err
+		}
+		service.Spec.Ports[i].Port = iPort
+		service.Spec.Ports[i].TargetPort = iPort
+	}
+
+	pdir, err := getProjectDir()
+	if err != nil {
+		return "", err
+	}
+	yamlStr, err := yaml.Marshal(&service)
+	if err != nil {
+		Error.log("Could not create the YAML string from Map. Exiting.")
+		return "", err
+	}
+	Debug.logf("Generated YAML: \n%s\n", yamlStr)
+	// Generate file based on supplied config, defaulting to app-deploy.yaml
+	yamlFile := filepath.Join(pdir, "app-service.yaml")
+	if dryrun {
+		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
+		return yamlFile, nil
+	}
+	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
+	if err != nil {
+		return "", fmt.Errorf("Could not create the yaml file for the service %v", err)
+	}
+	return yamlFile, nil
+}
+
+//GenRouteYaml returns the file name of a generated K8S Service yaml
+func GenRouteYaml(appName string) (fileName string, err error) {
+
+	type Route struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+		Metadata   struct {
+			Name string `yaml:"name"`
+		} `yaml:"metadata"`
+		Spec struct {
+			To struct {
+				Kind string `yaml:"kind"`
+				Name string `yaml:"name"`
+			} `yaml:"to"`
+		} `yaml:"spec"`
+	}
+
+	var route Route
+	route.APIVersion = "v1"
+	route.Kind = "Route"
+	route.Metadata.Name = fmt.Sprintf("%s-%s", appName, "route")
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = fmt.Sprintf("%s-%s", appName, "service")
+
+	pdir, err := getProjectDir()
+	if err != nil {
+		return "", err
+	}
+	yamlStr, err := yaml.Marshal(&route)
+	if err != nil {
+		Error.log("Could not create the YAML string from Map. Exiting.")
+		return "", err
+	}
+	Debug.logf("Generated YAML: \n%s\n", yamlStr)
+	// Generate file based on supplied config, defaulting to app-deploy.yaml
+	yamlFile := filepath.Join(pdir, "app-route.yaml")
+	if dryrun {
+		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
+		return yamlFile, nil
+	}
+	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
+	if err != nil {
+		return "", fmt.Errorf("Could not create the yaml file for the route %v", err)
+	}
+	return yamlFile, nil
+}
+
 func getKNativeTemplate() string {
 	yamltempl := `
 apiVersion: serving.knative.dev/v1alpha1
