@@ -23,6 +23,7 @@ func TestTest(projectDir string) error {
 	_, err := RunAppsodyCmdExec([]string{"test"}, projectDir)
 	if err != nil {
 		Error.log(err)
+		return err
 	}
 
 	return nil

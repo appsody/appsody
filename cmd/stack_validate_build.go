@@ -33,6 +33,7 @@ func TestBuild(projectDir string) error {
 	_, err := RunAppsodyCmdExec([]string{"build", "--tag", imageName}, projectDir)
 	if err != nil {
 		Error.log(err)
+		return err
 	}
 
 	// It will take a while for the image to build, so lets use docker image ls to wait for it
@@ -60,12 +61,14 @@ func TestBuild(projectDir string) error {
 	if !imageBuilt {
 		// *** how to fail the test?
 		Error.log("image was never built")
+		return err
 	}
 
 	//delete the image
 	_, err = RunDockerCmdExec([]string{"image", "rm", imageName})
 	if err != nil {
 		Error.log(err)
+		return err
 	}
 
 	return nil

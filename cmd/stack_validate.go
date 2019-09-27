@@ -40,10 +40,13 @@ var stackValidateCmd = &cobra.Command{
 		}
 
 		// replace incubator with appsodyhub to match current naming convention for repos
-		stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
+		//stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
 
 		// split the appsodyStack env variable
 		stackRaw := strings.Split(stacksList, " ")
+		var testResults []string
+		failCount := 0
+		passCount := 0
 
 		// loop through the stacks, execute all the tests on each stack before moving on to the next one
 		for i := range stackRaw {
@@ -68,11 +71,19 @@ var stackValidateCmd = &cobra.Command{
 				return err
 			}
 
+			testResults = append(testResults, ("PASSED: Init for stack: " + stackRaw[i]))
+			passCount++
+
 			// run
 			err = TestRun(projectDir)
 			if err != nil {
 				//logs error but keeps going
 				Error.log(err)
+				testResults = append(testResults, ("FAILED: Run for stack: " + stackRaw[i]))
+				failCount++
+			} else {
+				testResults = append(testResults, ("PASSED: Run for stack: " + stackRaw[i]))
+				passCount++
 			}
 
 			// test
@@ -80,6 +91,11 @@ var stackValidateCmd = &cobra.Command{
 			if err != nil {
 				//logs error but keeps going
 				Error.log(err)
+				testResults = append(testResults, ("FAILED: Test for stack: " + stackRaw[i]))
+				failCount++
+			} else {
+				testResults = append(testResults, ("PASSED: Test for stack: " + stackRaw[i]))
+				passCount++
 			}
 
 			// build
@@ -87,9 +103,11 @@ var stackValidateCmd = &cobra.Command{
 			if err != nil {
 				//logs error but keeps going
 				Error.log(err)
-
-				//to quit
-				//return err
+				testResults = append(testResults, ("FAILED: Build for stack: " + stackRaw[i]))
+				failCount++
+			} else {
+				testResults = append(testResults, ("PASSED: Build for stack: " + stackRaw[i]))
+				passCount++
 			}
 
 			//cleanup
@@ -98,12 +116,20 @@ var stackValidateCmd = &cobra.Command{
 
 		}
 
+		Info.log("@@@@@@@@@ Validate Summary Start @@@@@@@@@@")
+		for i := range testResults {
+			Info.log(testResults[i])
+		}
+		Info.log("Total PASSED: ", passCount)
+		Info.log("Total FAILED: ", failCount)
+		Info.log("@@@@@@@@@ Validate Summary End @@@@@@@@@@")
+
 		return nil
 	},
 }
 
 func init() {
 	// will use stackCmd eventually
-	rootCmd.AddCommand(stackValidateCmd)
+	stackCmd.AddCommand(stackValidateCmd)
 
 }

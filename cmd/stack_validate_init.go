@@ -22,6 +22,7 @@ func TestInit(stack string, projectDir string) error {
 	Info.log("******************************************")
 	_, err := RunAppsodyCmdExec([]string{"init", stack}, projectDir)
 	if err != nil {
+		Error.log(err)
 		return err
 	}
 	return nil
