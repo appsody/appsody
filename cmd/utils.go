@@ -457,7 +457,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	if inspectErr != nil {
 		return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
 	}
-	if buildah {
+	if config.Buildah {
 		err := json.Unmarshal([]byte(inspectOut), &buildahData)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
@@ -470,14 +470,14 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	}
 	var containerConfig map[string]interface{}
 
-	if buildah {
+	if config.Buildah {
 		containerConfig = buildahData["config"].(map[string]interface{})
 		Debug.Log("Config inspected by buildah: ", config)
 	} else {
 		containerConfig = data[0]["Config"].(map[string]interface{})
 	}
 
-	if dockerConfig["ExposedPorts"] != nil {
+	if containerConfig["ExposedPorts"] != nil {
 		exposedPorts := containerConfig["ExposedPorts"].(map[string]interface{})
 
 		portValues = make([]string, 0, len(exposedPorts))
@@ -582,7 +582,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, projectLabel string) (fileName string, err error) {
+func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, projectLabel string, dryrun bool) (fileName string, err error) {
 	// KNative serving YAML representation in a struct
 	type Port struct {
 		Name          string `yaml:"name,omitempty"`

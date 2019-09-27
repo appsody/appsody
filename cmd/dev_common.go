@@ -271,8 +271,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		cmdArgs = append(cmdArgs, "--no-watcher")
 	}
 	if !config.Buildah {
-		Debug.logf("Attempting to start image %s with container name %s", platformDefinition, containerName)
-
+		Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
 		execCmd, err := DockerRunAndListen(cmdArgs, Container, config.interactive, config.Verbose, config.Dryrun)
 		if config.Dryrun {
 			Info.log("Dry Run - Skipping execCmd.Wait")
@@ -299,6 +298,8 @@ func commonCmd(config *devCommonConfig, mode string) error {
 
 	} else {
 		//This is buildah path - so do a kube apply instead
+		dryrun := config.Dryrun
+
 		portList, portsErr := getExposedPorts(config.RootCommandConfig)
 		if portsErr != nil {
 			return portsErr
@@ -307,32 +308,37 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		deploymentYaml, err := GenDeploymentYaml(projectName, platformDefinition, portList)
+
+		projectDir, err := getProjectDir(config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
+		deploymentYaml, err := GenDeploymentYaml(projectName, platformDefinition, portList, projectDir, projectName, dryrun)
 		if err != nil {
 			return err
 		}
 		//hack
-		namespace = ""
+		namespace := ""
 		//endhack
-		err = KubeApply(deploymentYaml)
+		err = KubeApply(deploymentYaml, namespace, dryrun)
 		if err != nil {
 			return err
 		}
-		serviceYaml, err := GenServiceYaml(projectName, portList)
-		if err != nil {
-			return err
-		}
-
-		err = KubeApply(serviceYaml)
-		if err != nil {
-			return err
-		}
-		routeYaml, err := GenRouteYaml(projectName)
+		serviceYaml, err := GenServiceYaml(projectName, portList, projectDir, dryrun)
 		if err != nil {
 			return err
 		}
 
-		err = KubeApply(routeYaml)
+		err = KubeApply(serviceYaml, namespace, dryrun)
+		if err != nil {
+			return err
+		}
+		routeYaml, err := GenRouteYaml(projectName, projectDir, dryrun)
+		if err != nil {
+			return err
+		}
+
+		err = KubeApply(routeYaml, namespace, dryrun)
 		if err != nil {
 			return err
 		}

@@ -481,7 +481,7 @@ func extractAndInitialize(config *initCommandConfig) error {
 	if containerProjectDirErr != nil {
 		return containerProjectDirErr
 	}
-	if !buildah { //We can skip extract in some cases
+	if !config.RootCommandConfig.Buildah { //We can skip extract in some cases
 		bashCmd := "find " + containerProjectDir + " -type f -name " + scriptFileName
 		cmdOptions := []string{"--rm"}
 		Debug.log("Attempting to run ", bashCmd, " on image ", stackImage, " with options: ", cmdOptions)
