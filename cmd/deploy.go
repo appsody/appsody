@@ -82,7 +82,6 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			namespace := config.namespace
 			knative := config.knative
 			configFile := config.appDeployFile
-			fmt.Println("namespace is: ", namespace)
 			// Check for the Appsody Operator
 			operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(namespace, config.Dryrun)
 			if operatorExistsErr != nil {
