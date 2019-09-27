@@ -813,8 +813,8 @@ func pullCmd(imageToPull string) error {
 		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(pullArgs, " "))
 		return nil
 	}
-	Debug.log("Pulling docker image ", imageToPull)
-	err := execAndWaitReturnErr(cmdName, pullArgs, Debug)
+	Info.log("Pulling docker image ", imageToPull)
+	err := execAndWaitReturnErr(cmdName, pullArgs, Info)
 	if err != nil {
 		Warning.log("Docker image pull failed: ", err)
 		return err
