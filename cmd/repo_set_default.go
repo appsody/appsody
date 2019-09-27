@@ -21,55 +21,51 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// initCmd represents the init command
-var setDefaultCmd = &cobra.Command{
-	Use:   "set-default <name>",
-	Short: "Set desired default repository",
-	Long:  ``,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return errors.New("Error, you must specify desired default repository")
-		}
-		setupErr := setupConfig()
-		if setupErr != nil {
-			return setupErr
-		}
-		var repoName = args[0]
+func newRepoDefaultCmd(config *RootCommandConfig) *cobra.Command {
+	// initCmd represents the init command
+	var setDefaultCmd = &cobra.Command{
+		Use:   "set-default <name>",
+		Short: "Set desired default repository",
+		Long:  ``,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 {
+				return errors.New("Error, you must specify desired default repository")
+			}
 
-		var repoFile RepositoryFile
-		_, repoErr := repoFile.getRepos()
-		if repoErr != nil {
-			return repoErr
-		}
-		if dryrun {
-			Info.log("Dry Run - Skipping appsody repo set-default ", repoName)
-		} else {
-			if repoFile.Has(repoName) {
-				defaultRepoName, err := repoFile.GetDefaultRepoName()
-				if err != nil {
-					return err
-				}
-				if repoName != defaultRepoName {
-					_, repoFileErr := repoFile.SetDefaultRepoName(repoName, defaultRepoName)
-					if repoFileErr != nil {
-						return repoFileErr
+			var repoName = args[0]
+
+			var repoFile RepositoryFile
+			_, repoErr := repoFile.getRepos(config)
+			if repoErr != nil {
+				return repoErr
+			}
+			if config.Dryrun {
+				Info.log("Dry Run - Skipping appsody repo set-default ", repoName)
+			} else {
+				if repoFile.Has(repoName) {
+					defaultRepoName, err := repoFile.GetDefaultRepoName(config)
+					if err != nil {
+						return err
+					}
+					if repoName != defaultRepoName {
+						_, repoFileErr := repoFile.SetDefaultRepoName(repoName, defaultRepoName, config)
+						if repoFileErr != nil {
+							return repoFileErr
+						}
+					} else {
+						Info.log("Your default repository has already been set to " + repoName)
 					}
 				} else {
-					Info.log("Your default repository has already been set to " + repoName)
+					Error.log("Repository is not in configured list of repositories")
 				}
-			} else {
-				Error.log("Repository is not in configured list of repositories")
+				err := repoFile.WriteFile(getRepoFileLocation(config))
+				if err != nil {
+					log.Fatalf("Failed to write file repository location: %v", err)
+				}
 			}
-			err := repoFile.WriteFile(getRepoFileLocation())
-			if err != nil {
-				log.Fatalf("Failed to write file repository location: %v", err)
-			}
-		}
-		return nil
-	},
-}
+			return nil
+		},
+	}
 
-func init() {
-	repoCmd.AddCommand(setDefaultCmd)
-
+	return setDefaultCmd
 }
