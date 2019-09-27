@@ -889,13 +889,6 @@ func execAndListenWithWorkDirReturnErr(command string, args []string, logger app
 	if dryrun {
 		Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
 	} else {
-		// pull | push commands that take some time may cause
-		// inconvenience to users in default logging (info and above)
-		// take an exception here - elevate the logging for pull & push
-		var progress bool
-		if command == "docker" || command == "buildah" {
-			progress = true
-		}
 		Info.log("Running command: ", command, " ", strings.Join(args, " "))
 		execCmd = exec.Command(command, args...)
 		if workdir != "" {
@@ -917,11 +910,7 @@ func execAndListenWithWorkDirReturnErr(command string, args []string, logger app
 		outScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		go func() {
 			for outScanner.Scan() {
-				if progress {
-					Info.log(outScanner.Text())
-				} else {
-					logger.log(outScanner.Text())
-				}
+				logger.log(outScanner.Text())
 			}
 		}()
 
@@ -929,11 +918,7 @@ func execAndListenWithWorkDirReturnErr(command string, args []string, logger app
 		errScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		go func() {
 			for errScanner.Scan() {
-				if progress {
-					Info.log(outScanner.Text())
-				} else {
-					logger.log(outScanner.Text())
-				}
+				logger.log(errScanner.Text())
 			}
 		}()
 
