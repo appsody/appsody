@@ -37,6 +37,8 @@ type initCommandConfig struct {
 	noTemplate bool
 }
 
+var prjName string
+
 // these are global constants
 var whiteListDotDirectories = []string{"github", "vscode", "settings", "metadata"}
 var whiteListDotFiles = []string{"git", "project", "DS_Store", "classpath", "factorypath", "gitattributes", "gitignore", "cw-settings", "cw-extension"}
@@ -74,6 +76,7 @@ setup the local dev environment.`,
 
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
+	initCmd.PersistentFlags().StringVar(&prjName, "project-name", prjName, "Project Name for Kubernetes Service")
 	return initCmd
 }
 

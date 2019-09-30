@@ -33,13 +33,14 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	"github.com/spf13/viper"
+
 	"gopkg.in/yaml.v2"
 )
 
 type ProjectConfig struct {
 	Platform string
+	Name     string
 }
 
 type NotAnAppsodyProject string
@@ -272,15 +273,54 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 
 		}
 		appsodyConfig := filepath.Join(dir, ConfigFile)
+
 		v := viper.New()
 		v.SetConfigFile(appsodyConfig)
 		Debug.log("Project config file set to: ", appsodyConfig)
+
 		err := v.ReadInConfig()
+
 		if err != nil {
 			var tempProjectConfig ProjectConfig
 			return tempProjectConfig, errors.Errorf("Error reading project config %v", err)
 
 		}
+
+		if prjName != "" {
+			prjName = strings.ToLower(prjName)
+			r, _ := regexp.Compile("[^a-z0-9]+")
+			prjName = r.ReplaceAllString(prjName, "-")
+			match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", prjName)
+
+			if !match {
+				return *config.ProjectConfig, errors.Errorf("This is not a valid project name")
+			}
+
+			v.Set("project-name", prjName)
+			err := v.WriteConfig()
+			if err != nil {
+				Error.log(err)
+			}
+
+			Info.log("Your project name is ", prjName)
+		} else {
+			project := "appsody-" + strings.ToLower(filepath.Base(dir)) + "-app"
+			reg, err := regexp.Compile("[^a-z0-9]+")
+			if err != nil {
+				Error.log(err)
+			}
+			projectName := reg.ReplaceAllString(project, "-")
+
+			v.Set("project-name", projectName)
+			err = v.WriteConfig()
+			if err != nil {
+				Error.log(err)
+			}
+
+			Info.log("Your project name is ", projectName)
+		}
+
+		projectName := v.GetString("project-name")
 		stack := v.GetString("stack")
 		Debug.log("Project stack from config file: ", stack)
 		imageRepo := config.CliConfig.GetString("images")
@@ -289,7 +329,7 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 			stack = imageRepo + "/" + stack
 		}
 		Debug.log("Pulling stack image as: ", stack)
-		config.ProjectConfig = &ProjectConfig{stack}
+		config.ProjectConfig = &ProjectConfig{stack, projectName}
 	}
 	return *config.ProjectConfig, nil
 }
@@ -301,13 +341,16 @@ func getOperatorHome(config *RootCommandConfig) string {
 }
 
 func getProjectName(config *RootCommandConfig) (string, error) {
-	projectDir, err := getProjectDir(config)
+	dir, err := getProjectDir(config)
 	if err != nil {
 		return "my-project", err
 	}
-	projectName := strings.ToLower(filepath.Base(projectDir))
-	projectName = strings.ReplaceAll(projectName, "_", "-")
-	return projectName, nil
+
+	appsodyConfig := filepath.Join(dir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err = v.ReadInConfig()
+	return v.GetString("project-name"), err
 }
 
 func execAndWait(command string, args []string, logger appsodylogger, dryrun bool) error {
