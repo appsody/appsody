@@ -15,32 +15,31 @@
 package cmd
 
 import (
-	"path/filepath"
+	"fmt"
 	"io/ioutil"
-	"reflect"
-	"strings"
+	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
 
 //Structure for an app deploy file
 type AppDeploy struct {
-	APIVersion string		`yaml:"apiVersion"`
-	Kind string				`yaml:"kind"`
-	Metadata MetadataField 	`yaml:"metadata"`	
-	Spec SpecField 			`yaml:"spec"`
+	APIVersion string        `yaml:"apiVersion"`
+	Kind       string        `yaml:"kind"`
+	Metadata   MetadataField `yaml:"metadata"`
+	Spec       SpecField     `yaml:"spec"`
 }
 
 type MetadataField struct {
-	Name string   `yaml:"name"`
+	Name string `yaml:"name"`
 }
 
 type SpecField struct {
-	Version string 			`yaml:"version"`
-	ApplicationImage string `yaml:"applicationImage"`
-	Stack string 			`yaml:"stack"`
-	Expose string 			`yaml:"expose"`
-	Service ServiceField 	`yaml:"service"`
+	Version          string       `yaml:"version"`
+	ApplicationImage string       `yaml:"applicationImage"`
+	Stack            string       `yaml:"stack"`
+	Expose           string       `yaml:"expose"`
+	Service          ServiceField `yaml:"service"`
 }
 
 type ServiceField struct {
@@ -48,58 +47,56 @@ type ServiceField struct {
 	Port string `yaml:"port"`
 }
 
-
-func (a *AppDeploy) validateAppDeploy(stackPath string) *AppDeploy {
+func (a *AppDeploy) validateAppDeploy(stackPath string, appDeployKeys []string) int {
+	stackLintErrorCount := 0
 	arg := filepath.Join(stackPath, "image", "config", "app-deploy.yaml")
+	var deployFileContents []string
 
 	Info.log("LINTING app-deploy.yaml: ", arg)
 
-	appdeploy, err := ioutil.ReadFile(arg) //Read app deploy file
+	appdeploy, err := ioutil.ReadFile(arg)
 	if err != nil {
 		Error.log("app deploy err ", err)
 		stackLintErrorCount++
 	}
 
-	dynamic := make(map[string]interface{})
-	err = yaml.UnmarshalStrict([]byte(appdeploy), &dynamic) //Unmarshal contents of file into var of type AppDeploy (struct)
+	appDeployMap := make(map[string]interface{})
+	err = yaml.UnmarshalStrict([]byte(appdeploy), &appDeployMap)
 	if err != nil {
 		Error.log("Unmarshal: Error unmarshalling app-deploy.yaml")
 		stackLintErrorCount++
 	}
 
-	for k, v := range dynamic { 
-		Info.log(k, "    ", v)
-	}
+	mapString := make(map[string]interface{})
 
-	Info.log(dynamic["metadata"])
-
-
-	validateFields(a)
-
-	return a
-}
-
-func validateFields(a interface{}) {
-	v := reflect.ValueOf(a).Elem()
-	yamlValues := make([]interface{}, v.NumField())
-
-	for i := 0; i < v.NumField(); i++ { //Iterate over values, if app-deploy.yaml field is missing - throw error
-		yamlValues[i] = v.Field(i).Interface()
-		if yamlValues[i] == "" {
-			Error.log("Missing value for field: ", strings.ToLower(v.Type().Field(i).Name))
-			stackLintErrorCount++
+	for x, v := range appDeployMap {
+		if b, ok := v.(map[interface{}]interface{}); ok {
+			for key, value := range b {
+				strKey := fmt.Sprintf("%v", key)
+				mapString[strKey] = value
+			}
+			for z := range mapString {
+				deployFileContents = append(deployFileContents, z)
+			}
+		} else {
+			deployFileContents = append(deployFileContents, x)
 		}
 	}
 
-	// if a.Metadata.Name == "" {
-	// 	Error.log("Missing value for field: ", a.Metadata.Name)
-	// }
-	
-	// t := reflect.ValueOf(yamlValues[2]).Elem()
-	// yamlValues1 := make([]interface{}, t.NumField())
+	variableFound := false
 
-	// for j := 0; j < t.NumField(); j++ {
-	// 	yamlValues1 = t.Field(j).Interface()
-	// }
-	
+	for _, keys := range appDeployKeys {
+		for _, key1 := range deployFileContents {
+			if keys == key1 {
+				variableFound = true
+			}
+		}
+		if !variableFound {
+			Error.log("Missing field: ", keys)
+			stackLintErrorCount++
+		}
+		variableFound = false
+	}
+
+	return stackLintErrorCount
 }
