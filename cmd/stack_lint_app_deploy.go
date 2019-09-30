@@ -22,32 +22,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-//Structure for an app deploy file
-type AppDeploy struct {
-	APIVersion string        `yaml:"apiVersion"`
-	Kind       string        `yaml:"kind"`
-	Metadata   MetadataField `yaml:"metadata"`
-	Spec       SpecField     `yaml:"spec"`
-}
-
-type MetadataField struct {
-	Name string `yaml:"name"`
-}
-
-type SpecField struct {
-	Version          string       `yaml:"version"`
-	ApplicationImage string       `yaml:"applicationImage"`
-	Stack            string       `yaml:"stack"`
-	Expose           string       `yaml:"expose"`
-	Service          ServiceField `yaml:"service"`
-}
-
-type ServiceField struct {
-	Type string `yaml:"type"`
-	Port string `yaml:"port"`
-}
-
-func (a *AppDeploy) validateAppDeploy(stackPath string, appDeployKeys []string) int {
+func validateAppDeploy(stackPath string, appDeployKeys []string) int {
 	stackLintErrorCount := 0
 	arg := filepath.Join(stackPath, "image", "config", "app-deploy.yaml")
 	var deployFileContents []string
@@ -69,25 +44,25 @@ func (a *AppDeploy) validateAppDeploy(stackPath string, appDeployKeys []string) 
 
 	mapString := make(map[string]interface{})
 
-	for x, v := range appDeployMap {
-		if b, ok := v.(map[interface{}]interface{}); ok {
-			for key, value := range b {
-				strKey := fmt.Sprintf("%v", key)
-				mapString[strKey] = value
+	for key, value := range appDeployMap {
+		if b, ok := value.(map[interface{}]interface{}); ok {
+			for nestedKey, nestedValue := range b {
+				strKey := fmt.Sprintf("%v", nestedKey)
+				mapString[strKey] = nestedValue
 			}
 			for z := range mapString {
 				deployFileContents = append(deployFileContents, z)
 			}
 		} else {
-			deployFileContents = append(deployFileContents, x)
+			deployFileContents = append(deployFileContents, key)
 		}
 	}
 
 	variableFound := false
 
 	for _, keys := range appDeployKeys {
-		for _, key1 := range deployFileContents {
-			if keys == key1 {
+		for _, content := range deployFileContents {
+			if keys == content {
 				variableFound = true
 			}
 		}
