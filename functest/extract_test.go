@@ -107,8 +107,13 @@ func TestExtract(t *testing.T) {
 		if err != nil {
 			t.Fatal("Error changing directory: ", err)
 		}
-		mounts, _ := cmd.GetEnvVar("APPSODY_MOUNTS")
-		pDir, _ := cmd.GetEnvVar("APPSODY_PROJECT_DIR")
+		config := &cmd.RootCommandConfig{}
+		err = cmd.InitConfig(config)
+		if err != nil {
+			t.Fatal("Could not init appsody config", err)
+		}
+		mounts, _ := cmd.GetEnvVar("APPSODY_MOUNTS", config)
+		pDir, _ := cmd.GetEnvVar("APPSODY_PROJECT_DIR", config)
 
 		err = os.Chdir(oldDir)
 		if err != nil {

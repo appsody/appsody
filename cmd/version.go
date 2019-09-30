@@ -18,16 +18,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// versionCmd represents the version command
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show Appsody CLI version",
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		Info.log(rootCmd.Use, " ", VERSION)
-	},
-}
+func newVersionCmd(rootCmd *cobra.Command) *cobra.Command {
+	// versionCmd represents the version command
+	var versionCmd = &cobra.Command{
+		Use:   "version",
+		Short: "Show Appsody CLI version",
+		Long:  ``,
+		Run: func(cmd *cobra.Command, args []string) {
+			Info.log(rootCmd.Use, " ", VERSION)
+		},
+	}
 
-func init() {
-	rootCmd.AddCommand(versionCmd)
+	return versionCmd
 }

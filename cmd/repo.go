@@ -122,57 +122,51 @@ func (e indexErrors) Error() string {
 	return myerrors
 }
 
-var unsupportedRepos []string
-var (
-	supportedIndexAPIVersion = "v2"
-)
-
-var (
-	appsodyHubURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
-)
-var (
+const (
+	supportedIndexAPIVersion  = "v2"
+	appsodyHubURL             = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
 	experimentalRepositoryURL = "https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml"
 )
 
-// repoCmd represents the repo command
-var repoCmd = &cobra.Command{
-	Use:   "repo",
-	Short: "Manage your Appsody repositories",
-	Long:  ``,
+func newRepoCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	// repoCmd represents the repo command
+	var repoCmd = &cobra.Command{
+		Use:   "repo",
+		Short: "Manage your Appsody repositories",
+		Long:  ``,
+	}
+	repoCmd.AddCommand(
+		newRepoAddCmd(rootConfig),
+		newRepoListCmd(rootConfig),
+		newRepoRemoveCmd(rootConfig),
+		newRepoDefaultCmd(rootConfig),
+	)
+	return repoCmd
 }
 
-func getHome() string {
-	return cliConfig.GetString("home")
+func getHome(rootConfig *RootCommandConfig) string {
+	return rootConfig.CliConfig.GetString("home")
 }
 
-func getRepoDir() string {
-	return filepath.Join(getHome(), "repository")
+func getRepoDir(rootConfig *RootCommandConfig) string {
+	return filepath.Join(getHome(rootConfig), "repository")
 }
 
-func getRepoFileLocation() string {
-	return filepath.Join(getRepoDir(), "repository.yaml")
+func getRepoFileLocation(rootConfig *RootCommandConfig) string {
+	return filepath.Join(getRepoDir(rootConfig), "repository.yaml")
 }
-
-func init() {
-	rootCmd.AddCommand(repoCmd)
-}
-
-var ensureConfigRun = false
 
 // Locate or create config structure in $APPSODY_HOME
-func ensureConfig() error {
-	if ensureConfigRun {
-		return nil
-	}
+func ensureConfig(rootConfig *RootCommandConfig) error {
 	directories := []string{
-		getHome(),
-		getRepoDir(),
+		getHome(rootConfig),
+		getRepoDir(rootConfig),
 	}
 
 	for _, p := range directories {
 		if fi, err := os.Stat(p); err != nil {
 
-			if dryrun {
+			if rootConfig.Dryrun {
 				Info.log("Dry Run - Skipping create of directory ", p)
 			} else {
 				Debug.log("Creating ", p)
@@ -189,10 +183,10 @@ func ensureConfig() error {
 	}
 
 	// Repositories file
-	var repoFileLocation = getRepoFileLocation()
+	var repoFileLocation = getRepoFileLocation(rootConfig)
 	if file, err := os.Stat(repoFileLocation); err != nil {
 
-		if dryrun {
+		if rootConfig.Dryrun {
 			Info.log("Dry Run - Skipping creation of appsodyhub repo: ", appsodyHubURL)
 		} else {
 
@@ -215,9 +209,9 @@ func ensureConfig() error {
 		return errors.Errorf("%s must be a file, not a directory ", repoFileLocation)
 	}
 
-	defaultConfigFile := getDefaultConfigFile()
+	defaultConfigFile := getDefaultConfigFile(rootConfig)
 	if _, err := os.Stat(defaultConfigFile); err != nil {
-		if dryrun {
+		if rootConfig.Dryrun {
 			Info.log("Dry Run - Skip creation of default config file ", defaultConfigFile)
 		} else {
 			Debug.log("Creating ", defaultConfigFile)
@@ -228,18 +222,16 @@ func ensureConfig() error {
 		}
 	}
 
-	if dryrun {
+	if rootConfig.Dryrun {
 		Info.log("Dry Run - Skip writing config file ", defaultConfigFile)
 	} else {
 		Debug.log("Writing config file ", defaultConfigFile)
-		if err := cliConfig.WriteConfig(); err != nil {
+		if err := rootConfig.CliConfig.WriteConfig(); err != nil {
 			return errors.Errorf("Writing default config file %s", err)
 
 		}
 	}
-	ensureConfigRun = true
 	return nil
-
 }
 
 func downloadFile(href string, writer io.Writer) error {
@@ -309,14 +301,14 @@ func downloadIndex(url string) (*RepoIndex, error) {
 	return &index, nil
 }
 
-func (index *RepoIndex) listProjects(repoName string) (string, error) {
+func (index *RepoIndex) listProjects(repoName string, config *RootCommandConfig) (string, error) {
 	var Stacks = []Stack{}
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.Wrap = true
 	if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
-		Debug.log("Adding unsupported repoistory", repoName)
-		unsupportedRepos = append(unsupportedRepos, repoName)
+		Debug.log("Adding unsupported repository", repoName)
+		config.UnsupportedRepos = append(config.UnsupportedRepos, repoName)
 	}
 	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
 
@@ -330,14 +322,14 @@ func (index *RepoIndex) listProjects(repoName string) (string, error) {
 	}
 	return table.String(), nil
 }
-func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
+func (r *RepositoryFile) listRepoProjects(repoName string, config *RootCommandConfig) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
 		index, err := downloadIndex(url)
 		if err != nil {
 			return "", err
 		}
-		tableString, err := index.listProjects(repoName)
+		tableString, err := index.listProjects(repoName, config)
 		if err != nil {
 			return "", err
 		}
@@ -346,8 +338,8 @@ func (r *RepositoryFile) listRepoProjects(repoName string) (string, error) {
 	return "", errors.New("cannot locate repository named " + repoName)
 }
 
-func (r *RepositoryFile) getRepos() (*RepositoryFile, error) {
-	var repoFileLocation = getRepoFileLocation()
+func (r *RepositoryFile) getRepos(rootConfig *RootCommandConfig) (*RepositoryFile, error) {
+	var repoFileLocation = getRepoFileLocation(rootConfig)
 	repoReader, err := ioutil.ReadFile(repoFileLocation)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -365,14 +357,14 @@ func (r *RepositoryFile) getRepos() (*RepositoryFile, error) {
 	return r, nil
 }
 
-func (r *RepositoryFile) listRepos() (string, error) {
+func (r *RepositoryFile) listRepos(rootConfig *RootCommandConfig) (string, error) {
 	var entries = []RepositoryEntry{}
 	table := uitable.New()
-	table.MaxColWidth = 120
+	table.MaxColWidth = 1024
 	table.AddRow("NAME", "URL")
 	for _, value := range r.Repositories {
 		repoName := value.Name
-		defaultRepoName, err := r.GetDefaultRepoName()
+		defaultRepoName, err := r.GetDefaultRepoName(rootConfig)
 		if err != nil {
 			return "", err
 		}
@@ -428,7 +420,7 @@ func (r *RepositoryFile) HasURL(url string) bool {
 	}
 	return false
 }
-func (r *RepositoryFile) GetDefaultRepoName() (string, error) {
+func (r *RepositoryFile) GetDefaultRepoName(rootConfig *RootCommandConfig) (string, error) {
 	// Check if there are any repos first
 	if len(r.Repositories) < 1 {
 		return "", errors.New("your $HOME/.appsody/repository/repository.yaml contains no repositories")
@@ -452,7 +444,7 @@ func (r *RepositoryFile) GetDefaultRepoName() (string, error) {
 		repo.IsDefault = true
 		repoName = repo.Name
 	}
-	if err := r.WriteFile(getRepoFileLocation()); err != nil {
+	if err := r.WriteFile(getRepoFileLocation(rootConfig)); err != nil {
 		return "", err
 	}
 	Info.log("Your default repository is now set to ", repoName)
@@ -469,7 +461,7 @@ func (r *RepositoryFile) Remove(name string) {
 	}
 }
 
-func (r *RepositoryFile) SetDefaultRepoName(name string, defaultRepoName string) (string, error) {
+func (r *RepositoryFile) SetDefaultRepoName(name string, defaultRepoName string, rootConfig *RootCommandConfig) (string, error) {
 	var repoName string
 	for index, rf := range r.Repositories {
 		//set current default repo to false
@@ -482,7 +474,7 @@ func (r *RepositoryFile) SetDefaultRepoName(name string, defaultRepoName string)
 			repoName = rf.Name
 		}
 	}
-	if err := r.WriteFile(getRepoFileLocation()); err != nil {
+	if err := r.WriteFile(getRepoFileLocation(rootConfig)); err != nil {
 		return "", err
 	}
 	Info.log("Your default repository is now set to ", repoName)
@@ -559,7 +551,7 @@ func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([
 	return Stacks, nil
 }
 
-func (r *RepositoryFile) listProjects() (string, error) {
+func (r *RepositoryFile) listProjects(rootConfig *RootCommandConfig) (string, error) {
 	var Stacks = []Stack{}
 	table := uitable.New()
 	table.MaxColWidth = 60
@@ -575,8 +567,8 @@ func (r *RepositoryFile) listProjects() (string, error) {
 		for repoName, index := range indices {
 
 			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
-				Debug.log("Adding unsupported repoistory", repoName)
-				unsupportedRepos = append(unsupportedRepos, repoName)
+				Debug.log("Adding unsupported repository", repoName)
+				rootConfig.UnsupportedRepos = append(rootConfig.UnsupportedRepos, repoName)
 			}
 
 			var errStack error
@@ -590,7 +582,7 @@ func (r *RepositoryFile) listProjects() (string, error) {
 	} else {
 		return "", errors.New("there are no repositories in your configuration")
 	}
-	defaultRepoName, err := r.GetDefaultRepoName()
+	defaultRepoName, err := r.GetDefaultRepoName(rootConfig)
 	if err != nil {
 		return "", err
 	}
