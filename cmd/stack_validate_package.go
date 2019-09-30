@@ -54,6 +54,11 @@ var stackPackageCmd = &cobra.Command{
 	Long:  `This builds a stack and creates an index and adds it to the repository`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
+		setupErr := setupConfig()
+		if setupErr != nil {
+			return setupErr
+		}
+
 		Info.log("******************************************")
 		Info.log("Running appsody stack package")
 		Info.log("******************************************")
@@ -61,20 +66,31 @@ var stackPackageCmd = &cobra.Command{
 		stackPath, _ := os.Getwd()
 		Info.log("stackPath is: ", stackPath)
 
-		appsodyHome := getHome()
-		Info.log("appsodyHome is:", appsodyHome)
-
-		err := os.Chdir(filepath.Join("..", "..", "ci", "assets")))
-
-		err := os.Chdir(filepath.Join("..", "..", "ci", "assets"))
+		// check for temeplates dir, error out if its not there
+		err := os.Chdir("templates")
 		if err != nil {
-			// if we can't find the assets directory then we are not starting from a valid root of the stack directory
-			Error.log("Unable to reach assets directory. Current directory must be the root of the stack.")
+			// if we can't find the templates directory then we are not starting from a valid root of the stack directory
+			Error.log("Unable to reach templates directory. Current directory must be the root of the stack.")
 			return err
 		}
 
-		assetsDir, _ := os.Getwd()
-		Info.log("assetsDir is: ", assetsDir)
+		appsodyHome := getHome()
+		Info.log("appsodyHome is:", appsodyHome)
+
+		devLocal := appsodyHome + string(filepath.Separator) + "stacks" + string(filepath.Separator) + "dev.local" + string(filepath.Separator)
+		Info.log("devLocal is: ", devLocal)
+
+		err = os.MkdirAll(devLocal, os.FileMode(0777))
+
+		// err = os.Chdir(filepath.Join("..", "..", "ci", "assets"))
+		// if err != nil {
+		// 	// if we can't find the assets directory then we are not starting from a valid root of the stack directory
+		// 	Error.log("Unable to reach assets directory. Current directory must be the root of the stack.")
+		// 	return err
+		// }
+
+		// assetsDir, _ := os.Getwd()
+		// Info.log("assetsDir is: ", assetsDir)
 
 		stackPathSplit := strings.Split(stackPath, string(filepath.Separator))
 		stackName := stackPathSplit[len(stackPathSplit)-1]
@@ -83,10 +99,10 @@ var stackPackageCmd = &cobra.Command{
 		repoName := stackPathSplit[len(stackPathSplit)-2]
 		Info.log("repoName is: ", repoName)
 
-		indexFileLocal := filepath.Join(assetsDir, repoName) + "-index-local.yaml"
+		indexFileLocal := filepath.Join(devLocal + "index-dev-local.yaml")
 		Info.log("indexFileLocal is: ", indexFileLocal)
 
-		err = os.Chdir(stackPath)
+		err = os.Chdir(devLocal)
 		check(err)
 
 		// create incubator-index.yaml and put it in ci/assets
@@ -97,7 +113,7 @@ var stackPackageCmd = &cobra.Command{
 		n, err := f.WriteString("apiVersion: v2\n")
 		check(err)
 		Info.log("wrote bytes: ", n)
-		n, err = f.WriteString("stacks\n")
+		n, err = f.WriteString("stacks:\n")
 		check(err)
 		Info.log("wrote bytes: ", n)
 		n, err = f.WriteString("  - id: " + stackName + "\n")
@@ -105,6 +121,8 @@ var stackPackageCmd = &cobra.Command{
 		Info.log("wrote bytes: ", n)
 
 		var stackYaml StackYaml
+		err = os.Chdir(stackPath)
+		check(err)
 		source, err := ioutil.ReadFile("stack.yaml")
 		check(err)
 
@@ -174,7 +192,7 @@ var stackPackageCmd = &cobra.Command{
 
 		// docker build
 
-		buildImage := "appsody/appsody-index:SNAPSHOT"
+		buildImage := "dev.local/" + stackName + ":SNAPSHOT"
 
 		err = os.Chdir(filepath.Join(stackPath, "image"))
 		check(err)
@@ -211,7 +229,7 @@ var stackPackageCmd = &cobra.Command{
 			sourceDir := stackPath + string(filepath.Separator) + "templates" + string(filepath.Separator) + templates[i]
 			Info.log("sourceDir is: ", sourceDir)
 
-			versionedArchive := assetsDir + string(filepath.Separator) + repoName + "." + stackName + ".v" + stackYaml.Version + ".templates."
+			versionedArchive := devLocal + string(filepath.Separator) + stackName + ".v" + stackYaml.Version + ".templates."
 			Info.log("versionedArdhive is: ", versionedArchive)
 
 			versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
@@ -225,11 +243,40 @@ var stackPackageCmd = &cobra.Command{
 			check(err)
 			Info.log("wrote bytes: ", n)
 
-			err := Targz(sourceDir, versionedArchive)
+			// create .appsody-config.yaml in the templates directory
+			//
+			configYaml := templatePath + string(filepath.Separator) + templates[i] + ".appsody-config.yaml"
+			Info.log("configYaml is: ", configYaml)
+
+			g, err := os.Create(configYaml)
+			check(err)
+			g.Close()
+
+			n, err = g.WriteString("stack: " + buildImage)
+			check(err)
+			Info.log("wrote bytes: ", n)
+
+			g.Close()
+
+			// tar the files
+			err = Targz(sourceDir, versionedArchive)
+			check(err)
+
+			// remove the .appsody-config.yaml file
+			err = os.Remove(configYaml)
 			check(err)
 		}
 
 		t.Close()
+
+		// remove .appsody-config.yaml in the templates directory
+		// *******
+
+		// add the dev-local repo
+		// appsody repo add dev-local file:///Users/tnixa/.appsody/stacks/dev.local/index-dev-local.yaml
+		yamlPath := "file://" + indexFileLocal
+		_, err = RunAppsodyCmdExec([]string{"repo", "add", "dev-local", yamlPath}, stackPath)
+		check(err)
 
 		return nil
 
