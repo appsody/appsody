@@ -260,25 +260,23 @@ func install(config *initCommandConfig) error {
 	if err != nil {
 		return errors.Errorf("%v", err)
 	}
-	if err == nil {
-		projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
-		if configErr != nil {
-			return configErr
-		}
-		platformDefinition := projectConfig.Platform
+	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
+	if configErr != nil {
+		return configErr
+	}
+	platformDefinition := projectConfig.Platform
 
-		Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
+	Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
-		err := extractAndInitialize(config)
-		if err != nil {
-			// For some reason without this sleep, the [InitScript] output log would get cut off and
-			// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
-			time.Sleep(100 * time.Millisecond)
-			Warning.log("The stack init script failed: ", err)
-			Warning.log("Your local IDE may not build properly, but the Appsody container should still work.")
-			Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
-			os.Exit(0)
-		}
+	err := extractAndInitialize(config)
+	if err != nil {
+		// For some reason without this sleep, the [InitScript] output log would get cut off and
+		// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
+		time.Sleep(100 * time.Millisecond)
+		Warning.log("The stack init script failed: ", err)
+		Warning.log("Your local IDE may not build properly, but the Appsody container should still work.")
+		Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
+		os.Exit(0)
 	}
 	return nil
 }

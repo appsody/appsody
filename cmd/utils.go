@@ -371,7 +371,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 	appsodyConfig := filepath.Join(dir, ConfigFile)
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
-	err = v.ReadInConfig()
+	v.ReadInConfig()
 	projectName := v.GetString("project-name")
 
 	if projectName != "" {
@@ -385,9 +385,8 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 				return "", err
 			}
 			return "my-project", err
-		} else {
-			return projectName, err
 		}
+		return projectName, err
 	}
 
 	projectName = "appsody-" + strings.ToLower(filepath.Base(dir)) + "-app"
