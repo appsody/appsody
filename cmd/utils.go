@@ -396,7 +396,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 			return "", err
 		}
 
-		Info.log("Your Appsody project name is now ", projectName)
+		Warning.log("Your Appsody project name is now ", projectName)
 
 	} else {
 		return "", errors.Errorf("This is not a valid project name")
