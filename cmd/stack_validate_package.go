@@ -81,6 +81,7 @@ var stackPackageCmd = &cobra.Command{
 		Info.log("devLocal is: ", devLocal)
 
 		err = os.MkdirAll(devLocal, os.FileMode(0777))
+		check(err)
 
 		// err = os.Chdir(filepath.Join("..", "..", "ci", "assets"))
 		// if err != nil {
@@ -229,7 +230,7 @@ var stackPackageCmd = &cobra.Command{
 			sourceDir := stackPath + string(filepath.Separator) + "templates" + string(filepath.Separator) + templates[i]
 			Info.log("sourceDir is: ", sourceDir)
 
-			versionedArchive := devLocal + string(filepath.Separator) + stackName + ".v" + stackYaml.Version + ".templates."
+			versionedArchive := devLocal + stackName + ".v" + stackYaml.Version + ".templates."
 			Info.log("versionedArdhive is: ", versionedArchive)
 
 			versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
@@ -245,12 +246,11 @@ var stackPackageCmd = &cobra.Command{
 
 			// create .appsody-config.yaml in the templates directory
 			//
-			configYaml := templatePath + string(filepath.Separator) + templates[i] + ".appsody-config.yaml"
+			configYaml := templatePath + string(filepath.Separator) + templates[i] + string(filepath.Separator) + ".appsody-config.yaml"
 			Info.log("configYaml is: ", configYaml)
 
 			g, err := os.Create(configYaml)
 			check(err)
-			g.Close()
 
 			n, err = g.WriteString("stack: " + buildImage)
 			check(err)
@@ -275,7 +275,7 @@ var stackPackageCmd = &cobra.Command{
 		// add the dev-local repo
 		// appsody repo add dev-local file:///Users/tnixa/.appsody/stacks/dev.local/index-dev-local.yaml
 		yamlPath := "file://" + indexFileLocal
-		_, err = RunAppsodyCmdExec([]string{"repo", "add", "dev-local", yamlPath}, stackPath)
+		_, err = RunAppsodyCmdExec([]string{"repo", "add", "dev.local", yamlPath}, stackPath)
 		check(err)
 
 		return nil
