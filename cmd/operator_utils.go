@@ -21,30 +21,30 @@ import (
 )
 
 //RunKubeGet issues kubectl get <arg>
-func RunKubeGet(args []string) (string, error) {
+func RunKubeGet(args []string, dryrun bool) (string, error) {
 	Info.log("Attempting to get resource from Kubernetes ...")
 	kargs := []string{"get"}
 	kargs = append(kargs, args...)
-	return RunKube(kargs)
+	return RunKube(kargs, dryrun)
 
 }
 
 //RunKubeDelete issues kubectl delete <args>
-func RunKubeDelete(args []string) (string, error) {
+func RunKubeDelete(args []string, dryrun bool) (string, error) {
 	Info.log("Attempting to delete resource from Kubernetes ...")
 	kargs := []string{"delete"}
 	kargs = append(kargs, args...)
-	return RunKube(kargs)
+	return RunKube(kargs, dryrun)
 }
 
 //RunKube runs a generic kubectl command
-func RunKube(kargs []string) (string, error) {
+func RunKube(kargs []string, dryrun bool) (string, error) {
 	kcmd := "kubectl"
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return "", nil
 	}
-	Info.log("Running command: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 
@@ -118,13 +118,13 @@ func downloadRBACYaml(url string, operatorNamespace string, target string) (stri
 	return target, nil
 }
 */
-func operatorExistsInNamespace(operatorNamespace string) (bool, error) {
+func operatorExistsInNamespace(operatorNamespace string, dryrun bool) (bool, error) {
 
 	// check to see if this namespace already has an appsody-operator
 	//var args = []string{"deployment", "appsody-operator", "-n", operatorNamespace}
 	var args = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.namespace}'", "-n", operatorNamespace}
 
-	getOutput, getErr := RunKubeGet(args)
+	getOutput, getErr := RunKubeGet(args, dryrun)
 	if getErr != nil {
 		Debug.log("Received an err: ", getErr)
 		return false, getErr
@@ -139,10 +139,10 @@ func operatorExistsInNamespace(operatorNamespace string) (bool, error) {
 }
 
 // Check to see if any other operator is watching the watchNameSpace
-func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
+func operatorExistsWithWatchspace(watchNamespace string, dryrun bool) (bool, string, error) {
 	Debug.log("Looking for an operator matching watchspace: ", watchNamespace)
 	var deploymentsWithOperatorsGetArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.namespace}'", "--all-namespaces"}
-	getOutput, getErr := RunKubeGet(deploymentsWithOperatorsGetArgs)
+	getOutput, getErr := RunKubeGet(deploymentsWithOperatorsGetArgs, dryrun)
 	if getErr != nil {
 		return false, "", getErr
 	}
@@ -159,7 +159,7 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 	Debug.log("deployments with operators: ", deployments)
 	for _, deploymentNamespace := range deployments {
 		var getDeploymentWatchNamespaceArgs = []string{"deployment", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].value}'", "-n", deploymentNamespace}
-		getOutput, getErr = RunKubeGet(getDeploymentWatchNamespaceArgs)
+		getOutput, getErr = RunKubeGet(getDeploymentWatchNamespaceArgs, dryrun)
 		Debug.logf("Deployment: %s is watching namespace %s", deploymentNamespace, getOutput)
 		if getErr != nil {
 			return false, "", getErr
@@ -177,40 +177,40 @@ func operatorExistsWithWatchspace(watchNamespace string) (bool, string, error) {
 	}
 	return false, "", nil
 }
-func operatorCount() (int, error) {
+func operatorCount(dryrun bool) (int, error) {
 	var getAllOperatorsArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.name}'", "--all-namespaces"}
-	getOutput, getErr := RunKubeGet(getAllOperatorsArgs)
+	getOutput, getErr := RunKubeGet(getAllOperatorsArgs, dryrun)
 	if getErr != nil {
 		return 0, getErr
 	}
 	return strings.Count(getOutput, "appsody-operator"), nil
 }
 
-func appsodyApplicationCount(namespace string) (int, error) {
+func appsodyApplicationCount(namespace string, dryrun bool) (int, error) {
 	var getAppsodyAppsArgs = []string{"AppsodyApplication", "-o=jsonpath='{.items[*].kind}'"}
 	if namespace == "" {
 		getAppsodyAppsArgs = append(getAppsodyAppsArgs, "--all-namespaces")
 	} else {
 		getAppsodyAppsArgs = append(getAppsodyAppsArgs, "-n", namespace)
 	}
-	getOutput, getErr := RunKubeGet(getAppsodyAppsArgs)
+	getOutput, getErr := RunKubeGet(getAppsodyAppsArgs, dryrun)
 	if getErr != nil {
 		return 0, getErr
 	}
 	return strings.Count(getOutput, "AppsodyApplication"), nil
 }
 
-func deleteAppsodyApps(namespace string) (string, error) {
+func deleteAppsodyApps(namespace string, dryrun bool) (string, error) {
 	var deleteAppsodyAppsArgs = []string{"AppsodyApplication", "--all"}
 	if namespace != "" {
 		deleteAppsodyAppsArgs = append(deleteAppsodyAppsArgs, "-n", namespace)
 	}
-	return RunKubeDelete(deleteAppsodyAppsArgs)
+	return RunKubeDelete(deleteAppsodyAppsArgs, dryrun)
 
 }
 
-func getOperatorWatchspace(namespace string) (string, error) {
-	operatorExists, existsErr := operatorExistsInNamespace(namespace)
+func getOperatorWatchspace(namespace string, dryrun bool) (string, error) {
+	operatorExists, existsErr := operatorExistsInNamespace(namespace, dryrun)
 	if existsErr != nil {
 		return "", existsErr
 	}
@@ -219,12 +219,12 @@ func getOperatorWatchspace(namespace string) (string, error) {
 	}
 	var args = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].value}'", "-n", namespace}
 
-	getOutput, getErr := RunKubeGet(args)
+	getOutput, getErr := RunKubeGet(args, dryrun)
 	if getErr != nil {
 		Debug.log("Received an err: ", getErr)
 		return "", getErr
 	}
-	watchspace = strings.Trim(getOutput, "'")
+	watchspace := strings.Trim(getOutput, "'")
 	if watchspace == "" {
 		Debug.log("This operator watches the entire cluster ")
 	}

@@ -18,17 +18,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func dockerStop(imageName string) error {
+func dockerStop(imageName string, dryrun bool) error {
 	cmdName := "docker"
 	cmdArgs := []string{"stop", imageName}
-	err := execAndWait(cmdName, cmdArgs, Debug)
+	err := execAndWait(cmdName, cmdArgs, Debug, dryrun)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func containerRemove(imageName string) error {
+func containerRemove(imageName string, buildah bool, dryrun bool) error {
 	cmdName := "docker"
 	//Added "-f" to force removal if container is still running or image has containers
 	cmdArgs := []string{"rm", imageName, "-f"}
@@ -36,7 +36,7 @@ func containerRemove(imageName string) error {
 		cmdName = "buildah"
 		cmdArgs = []string{"rm", imageName}
 	}
-	err := execAndWait(cmdName, cmdArgs, Debug)
+	err := execAndWait(cmdName, cmdArgs, Debug, dryrun)
 	if err != nil {
 		return err
 	}
@@ -44,20 +44,21 @@ func containerRemove(imageName string) error {
 
 }
 
-// runCmd represents the run command
-var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Run the local Appsody environment for your project",
-	Long:  `This starts a docker based continuous build environment for your project.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+func newRunCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	config := &devCommonConfig{RootCommandConfig: rootConfig}
+	// runCmd represents the run command
+	var runCmd = &cobra.Command{
+		Use:   "run",
+		Short: "Run the local Appsody environment for your project",
+		Long:  `This starts a docker based continuous build environment for your project.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		Info.log("Running development environment...")
-		return commonCmd(cmd, args, "run")
+			Info.log("Running development environment...")
+			return commonCmd(config, "run")
 
-	},
-}
+		},
+	}
 
-func init() {
-	rootCmd.AddCommand(runCmd)
-	addDevCommonFlags(runCmd)
+	addDevCommonFlags(runCmd, config)
+	return runCmd
 }

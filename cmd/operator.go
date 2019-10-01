@@ -26,9 +26,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var operatorYamlName = "appsody-app-operator.yaml"
-var appsodyCRDName = "appsody-app-crd.yaml"
-var operatorRBACName = "appsody-app-cluster-rbac.yaml"
+const operatorYamlName = "appsody-app-operator.yaml"
+const appsodyCRDName = "appsody-app-crd.yaml"
+const operatorRBACName = "appsody-app-cluster-rbac.yaml"
+
+type operatorCommandConfig struct {
+	*RootCommandConfig
+	namespace string
+}
+
+func newOperatorCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	operatorConfig := &operatorCommandConfig{RootCommandConfig: rootConfig}
+	var operatorCmd = &cobra.Command{
+		Use:   "operator",
+		Short: "Install or uninstall the Appsody operator from your Kubernetes cluster.",
+		Long:  `This command allows you to "install" or "uninstall" the Appsody operator from the configured Kubernetes cluster. An installed Appsody operator is required to deploy your Appsody projects.`,
+	}
+
+	// rootCmd.AddCommand(operatorCmd)
+	//operatorCmd.AddCommand(installCmd)
+	//operatorCmd.AddCommand(uninstallCmd)
+	operatorCmd.PersistentFlags().StringVarP(&operatorConfig.namespace, "namespace", "n", "default", "The namespace in which the operator will run.")
+	//operatorCmd.PersistentFlags().StringVarP(&watchspace, "watchspace", "w", "''", "The namespace which the operator will watch. Use '' for all namespaces.")
+	operatorCmd.AddCommand(newOperatorInstallCmd(operatorConfig))
+	operatorCmd.AddCommand(newOperatorUninstallCmd(operatorConfig))
+	return operatorCmd
+}
 
 func downloadOperatorYaml(url string, operatorNamespace string, watchNamespace string, target string) (string, error) {
 
@@ -57,7 +80,7 @@ func downloadOperatorYaml(url string, operatorNamespace string, watchNamespace s
 	return target, nil
 }
 
-func downloadRBACYaml(url string, operatorNamespace string, target string) (string, error) {
+func downloadRBACYaml(url string, operatorNamespace string, target string, dryrun bool) (string, error) {
 	if dryrun {
 		Info.log("Skipping download of RBAC yaml: ", url)
 		return "", nil
@@ -116,9 +139,9 @@ func downloadCRDYaml(url string, target string) (string, error) {
 	return file, nil
 }
 
-func getDeployConfigDir() (string, error) {
-	deployConfigDir := filepath.Join(getHome(), "deploy")
-	deployConfigDirExists, err := exists(deployConfigDir)
+func getDeployConfigDir(rootConfig *RootCommandConfig) (string, error) {
+	deployConfigDir := filepath.Join(getHome(rootConfig), "deploy")
+	deployConfigDirExists, err := Exists(deployConfigDir)
 	if err != nil {
 		return "", errors.Errorf("Error checking directory: %v", err)
 	}
@@ -132,18 +155,4 @@ func getDeployConfigDir() (string, error) {
 
 	}
 	return deployConfigDir, nil
-}
-
-var operatorCmd = &cobra.Command{
-	Use:   "operator",
-	Short: "Install or uninstall the Appsody operator from your Kubernetes cluster.",
-	Long:  `This command allows you to "install" or "uninstall" the Appsody operator from the configured Kubernetes cluster. An installed Appsody operator is required to deploy your Appsody projects.`,
-}
-
-func init() {
-	rootCmd.AddCommand(operatorCmd)
-	//operatorCmd.AddCommand(installCmd)
-	//operatorCmd.AddCommand(uninstallCmd)
-	operatorCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default", "The namespace in which the operator will run.")
-	//operatorCmd.PersistentFlags().StringVarP(&watchspace, "watchspace", "w", "''", "The namespace which the operator will watch. Use '' for all namespaces.")
 }

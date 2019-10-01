@@ -18,31 +18,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// repo list represent repo list cmd
-var repoListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List configured Appsody repositories",
-	Long:  `List configured Appsody repositories. An asterisk denotes the default repository.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var repos RepositoryFile
-		setupErr := setupConfig()
-		if setupErr != nil {
-			return setupErr
-		}
-		_, repoErr := repos.getRepos()
-		if repoErr != nil {
-			return repoErr
-		}
-		repoList, err := repos.listRepos()
-		if err != nil {
-			return err
-		}
-		Info.log("\n", repoList)
-		return nil
-	},
-}
+func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
+	// repo list represent repo list cmd
+	var repoListCmd = &cobra.Command{
+		Use:   "list",
+		Short: "List configured Appsody repositories",
+		Long:  `List configured Appsody repositories. An asterisk denotes the default repository.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var repos RepositoryFile
 
-func init() {
-	repoCmd.AddCommand(repoListCmd)
-
+			_, repoErr := repos.getRepos(config)
+			if repoErr != nil {
+				return repoErr
+			}
+			repoList, err := repos.listRepos(config)
+			if err != nil {
+				return err
+			}
+			Info.log("\n", repoList)
+			return nil
+		},
+	}
+	return repoListCmd
 }

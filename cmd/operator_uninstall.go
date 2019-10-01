@@ -25,62 +25,69 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// uninstallCmd represents the "appsody deploy uninstall" command
-var uninstallCmd = &cobra.Command{
-	Use:   "uninstall",
-	Short: "Uninstall the Appsody Operator from the configured Kubernetes cluster",
-	Long:  ``,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		err := initConfig()
-		if err != nil {
-			return err
-		}
-
-		operatorNamespace := "default"
-		if namespace != "" {
-			operatorNamespace = namespace
-		}
-
-		removeErr := removeOperator(operatorNamespace)
-		if removeErr != nil {
-			return removeErr
-		}
-
-		operCount, operCountErr := operatorCount()
-		Debug.log("Appsody operator count is: ", operCount)
-		if operCountErr != nil {
-			return operCountErr
-		}
-		//If no more operators, remove the CRDs
-		//
-		if operCount == 0 {
-			if err := removeOperatorCRDs(); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	},
+type operatorUninstallCommandConfig struct {
+	*operatorCommandConfig
+	force bool
 }
 
-func removeOperatorCRDs() error {
-	deployConfigDir, err := getDeployConfigDir()
+func newOperatorUninstallCmd(operatorConfig *operatorCommandConfig) *cobra.Command {
+	config := &operatorUninstallCommandConfig{operatorCommandConfig: operatorConfig}
+	// uninstallCmd represents the "appsody deploy uninstall" command
+	var uninstallCmd = &cobra.Command{
+		Use:   "uninstall",
+		Short: "Uninstall the Appsody Operator from the configured Kubernetes cluster",
+		Long:  ``,
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			operatorNamespace := "default"
+			if config.namespace != "" {
+				operatorNamespace = config.namespace
+			}
+
+			removeErr := removeOperator(operatorNamespace, config)
+			if removeErr != nil {
+				return removeErr
+			}
+
+			operCount, operCountErr := operatorCount(config.Dryrun)
+			Debug.log("Appsody operator count is: ", operCount)
+			if operCountErr != nil {
+				return operCountErr
+			}
+			//If no more operators, remove the CRDs
+			//
+			if operCount == 0 {
+				if err := removeOperatorCRDs(config); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		},
+	}
+
+	uninstallCmd.PersistentFlags().BoolVar(&config.force, "force", false, "Force removal of appsody apps if present")
+	return uninstallCmd
+}
+
+func removeOperatorCRDs(config *operatorUninstallCommandConfig) error {
+	deployConfigDir, err := getDeployConfigDir(config.RootCommandConfig)
 	if err != nil {
 		return errors.Errorf("Error getting deploy config dir: %v", err)
 	}
 	appsodyCRD := filepath.Join(deployConfigDir, appsodyCRDName)
 	//Download the CRD yaml
-	var crdURL = getOperatorHome() + "/" + appsodyCRDName
+	var crdURL = getOperatorHome(config.RootCommandConfig) + "/" + appsodyCRDName
 	_, err = downloadCRDYaml(crdURL, appsodyCRD)
 	if err != nil {
 		return err
 
 	}
-	err = KubeDelete(appsodyCRD)
+	err = KubeDelete(appsodyCRD, config.namespace, config.Dryrun)
 	if err != nil {
 		return err
 	}
-	if !dryrun {
+	if !config.Dryrun {
 		err = os.Remove(appsodyCRD)
 		if err != nil {
 			return err
@@ -88,25 +95,25 @@ func removeOperatorCRDs() error {
 	}
 	return nil
 }
-func removeOperatorRBAC(operatorNamespace string) error {
-	deployConfigDir, err := getDeployConfigDir()
+func removeOperatorRBAC(operatorNamespace string, config *operatorUninstallCommandConfig) error {
+	deployConfigDir, err := getDeployConfigDir(config.RootCommandConfig)
 	if err != nil {
 		return errors.Errorf("Error getting deploy config dir: %v", err)
 	}
 	appsodyRBAC := filepath.Join(deployConfigDir, operatorRBACName)
 	// Download the RBAC file
-	var rbacURL = getOperatorHome() + "/" + operatorRBACName
-	_, err = downloadRBACYaml(rbacURL, operatorNamespace, appsodyRBAC)
+	var rbacURL = getOperatorHome(config.RootCommandConfig) + "/" + operatorRBACName
+	_, err = downloadRBACYaml(rbacURL, operatorNamespace, appsodyRBAC, config.Dryrun)
 	if err != nil {
 		return err
 
 	}
-	err = KubeDelete(appsodyRBAC)
+	err = KubeDelete(appsodyRBAC, config.namespace, config.Dryrun)
 	if err != nil {
 		Debug.log("Error in KubeDelete: ", err)
 		return err
 	}
-	if !dryrun {
+	if !config.Dryrun {
 		err = os.Remove(appsodyRBAC)
 		if err != nil {
 			return err
@@ -115,15 +122,15 @@ func removeOperatorRBAC(operatorNamespace string) error {
 	return nil
 }
 
-func removeOperator(operatorNamespace string) error {
+func removeOperator(operatorNamespace string, config *operatorUninstallCommandConfig) error {
 	var watchNamespace string
-	deployConfigDir, err := getDeployConfigDir()
+	deployConfigDir, err := getDeployConfigDir(config.RootCommandConfig)
 	if err != nil {
 		return errors.Errorf("Error getting deploy config dir: %v", err)
 	}
 	operatorYaml := filepath.Join(deployConfigDir, operatorYamlName)
-	if !dryrun {
-		watchNamespace, err = getOperatorWatchspace(operatorNamespace)
+	if !config.Dryrun {
+		watchNamespace, err = getOperatorWatchspace(operatorNamespace, config.Dryrun)
 		Debug.logf("Operator is watching the '%s' namespace", watchNamespace)
 		if err != nil {
 			return err
@@ -132,13 +139,13 @@ func removeOperator(operatorNamespace string) error {
 		Info.log("Dry run - skipping execution of: getOperatorWatchspace(" + operatorNamespace + ")")
 	}
 	// If there are running apps...
-	appsCount, err := appsodyApplicationCount(watchNamespace)
+	appsCount, err := appsodyApplicationCount(watchNamespace, config.Dryrun)
 	if err != nil {
 		return errors.Errorf("Could not determine if there are AppsodyApplication instances: %v", err)
 	}
 	if appsCount > 0 {
-		if force {
-			deleteOut, err := deleteAppsodyApps(watchNamespace)
+		if config.force {
+			deleteOut, err := deleteAppsodyApps(watchNamespace, config.Dryrun)
 			if err != nil {
 				return errors.Errorf("Could not remove appsody apps: %v %s", err, deleteOut)
 			}
@@ -149,8 +156,8 @@ func removeOperator(operatorNamespace string) error {
 	}
 
 	// If the operator is watching a different namespace, remove RBACs
-	if watchspace != operatorNamespace {
-		if err := removeOperatorRBAC(operatorNamespace); err != nil {
+	if watchNamespace != operatorNamespace {
+		if err := removeOperatorRBAC(operatorNamespace, config); err != nil {
 			Debug.logf("Error from removeOperatorRBAC: %s", fmt.Sprintf("%v", err))
 			if !strings.Contains(fmt.Sprintf("%v", err), "(NotFound)") {
 				return err
@@ -158,17 +165,17 @@ func removeOperator(operatorNamespace string) error {
 		}
 	}
 
-	var operatorURL = getOperatorHome() + "/" + operatorYamlName
+	var operatorURL = getOperatorHome(config.RootCommandConfig) + "/" + operatorYamlName
 	_, err = downloadOperatorYaml(operatorURL, operatorNamespace, watchNamespace, operatorYaml)
 	if err != nil {
 		return err
 	}
 
-	err = KubeDelete(operatorYaml)
+	err = KubeDelete(operatorYaml, config.namespace, config.Dryrun)
 	if err != nil {
 		return err
 	}
-	if !dryrun {
+	if !config.Dryrun {
 		err = os.Remove(operatorYaml)
 		if err != nil {
 			return err
@@ -177,10 +184,4 @@ func removeOperator(operatorNamespace string) error {
 
 	Info.log("Appsody operator removed from Kubernetes")
 	return nil
-}
-
-func init() {
-
-	operatorCmd.AddCommand(uninstallCmd)
-	uninstallCmd.PersistentFlags().BoolVar(&force, "force", false, "Force removal of appsody apps if present")
 }

@@ -48,20 +48,15 @@ type NotAnAppsodyProject string
 
 func (e NotAnAppsodyProject) Error() string { return string(e) }
 
-var (
-	ConfigFile = ".appsody-config.yaml"
-)
+const ConfigFile = ".appsody-config.yaml"
 
-var (
-	LatestVersionURL = "https://github.com/appsody/appsody/releases/latest"
-)
-
-var imagePulled = make(map[string]bool)
-var projectConfig *ProjectConfig
+const LatestVersionURL = "https://github.com/appsody/appsody/releases/latest"
 
 const workDirNotSet = ""
 
-func exists(path string) (bool, error) {
+// Checks whether an inode (it does not bother
+// about file or folder) exists or not.
+func Exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
@@ -72,25 +67,25 @@ func exists(path string) (bool, error) {
 	return true, err
 }
 
-func getEnvVar(searchEnvVar string) (string, error) {
+func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	// TODO cache this so the buildah / docker inspect command only runs once per cli invocation
 
 	// Docker and Buildah produce slightly different output
 	// for `inspect` command. Array of maps vs. maps
 	var dataBuildah map[string]interface{}
 	var dataDocker []map[string]interface{}
-	projectConfig, projectConfigErr := getProjectConfig()
+	projectConfig, projectConfigErr := getProjectConfig(config)
 	if projectConfigErr != nil {
 		return "", projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	pullErrs := pullImage(imageName)
+	pullErrs := pullImage(imageName, config)
 	if pullErrs != nil {
 		return "", pullErrs
 	}
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
-	if buildah {
+	if config.Buildah {
 		cmdName = "buildah"
 		cmdArgs = []string{"inspect", "--format={{.Config}}", imageName}
 	}
@@ -104,13 +99,13 @@ func getEnvVar(searchEnvVar string) (string, error) {
 
 	var err error
 	var envVars []interface{}
-	if buildah {
+	if config.Buildah {
 		err = json.Unmarshal([]byte(inspectOut), &dataBuildah)
 		if err != nil {
 			return "", errors.New("error unmarshaling data from inspect command - exiting")
 		}
-		config := dataBuildah["config"].(map[string]interface{})
-		envVars = config["Env"].([]interface{})
+		buildahConfig := dataBuildah["config"].(map[string]interface{})
+		envVars = buildahConfig["Env"].([]interface{})
 
 	} else {
 		err = json.Unmarshal([]byte(inspectOut), &dataDocker)
@@ -118,9 +113,9 @@ func getEnvVar(searchEnvVar string) (string, error) {
 			return "", errors.New("error unmarshaling data from inspect command - exiting")
 
 		}
-		config := dataDocker[0]["Config"].(map[string]interface{})
+		dockerConfig := dataDocker[0]["Config"].(map[string]interface{})
 
-		envVars = config["Env"].([]interface{})
+		envVars = dockerConfig["Env"].([]interface{})
 	}
 
 	Debug.log("Number of environment variables in stack image: ", len(envVars))
@@ -144,17 +139,17 @@ func getEnvVar(searchEnvVar string) (string, error) {
 
 }
 
-func getEnvVarBool(searchEnvVar string) (bool, error) {
-	strVal, envErr := getEnvVar(searchEnvVar)
+func getEnvVarBool(searchEnvVar string, config *RootCommandConfig) (bool, error) {
+	strVal, envErr := GetEnvVar(searchEnvVar, config)
 	if envErr != nil {
 		return false, envErr
 	}
 	return strings.Compare(strings.TrimSpace(strings.ToUpper(strVal)), "TRUE") == 0, nil
 }
 
-func getEnvVarInt(searchEnvVar string) (int, error) {
+func getEnvVarInt(searchEnvVar string, config *RootCommandConfig) (int, error) {
 
-	strVal, envErr := getEnvVar(searchEnvVar)
+	strVal, envErr := GetEnvVar(searchEnvVar, config)
 	if envErr != nil {
 		return 0, envErr
 	}
@@ -166,8 +161,8 @@ func getEnvVarInt(searchEnvVar string) (int, error) {
 
 }
 
-func getExtractDir() (string, error) {
-	extractDir, envErr := getEnvVar("APPSODY_PROJECT_DIR")
+func getExtractDir(config *RootCommandConfig) (string, error) {
+	extractDir, envErr := GetEnvVar("APPSODY_PROJECT_DIR", config)
 	if envErr != nil {
 		return "", envErr
 	}
@@ -178,9 +173,9 @@ func getExtractDir() (string, error) {
 	return extractDir, nil
 }
 
-func getVolumeArgs() ([]string, error) {
+func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 	volumeArgs := []string{}
-	stackMounts, envErr := getEnvVar("APPSODY_MOUNTS")
+	stackMounts, envErr := GetEnvVar("APPSODY_MOUNTS", config)
 	if envErr != nil {
 		return nil, envErr
 	}
@@ -197,7 +192,7 @@ func getVolumeArgs() ([]string, error) {
 		homeDir = homeDirOverride
 		homeDirOverridden = true
 	}
-	projectDir, perr := getProjectDir()
+	projectDir, perr := getProjectDir(config)
 	if perr != nil {
 		return volumeArgs, perr
 
@@ -252,71 +247,63 @@ func mountExistsLocally(mount string) bool {
 		}
 	}
 	Debug.log("Checking for existence of local file or directory to mount: ", localFile[0])
-	fileExists, _ := exists(localFile[0])
+	fileExists, _ := Exists(localFile[0])
 	return fileExists
 }
 
-func getProjectDir() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		Error.log("Error getting current directory: ", err)
-		return "", err
-	}
-	appsodyConfig := filepath.Join(dir, ConfigFile)
-	projectDir, err := exists(appsodyConfig)
+func getProjectDir(config *RootCommandConfig) (string, error) {
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	projectDir, err := Exists(appsodyConfig)
 	if err != nil {
 		Error.log(err)
 		return "", err
 	}
 	if !projectDir {
-
-		Debug.log("Current dir is not an appsody project.")
-		// +
-		// "Run `appsody init <stack>` to setup an appsody project. Run `appsody list` to see the available stacks.")
 		var e NotAnAppsodyProject = "The current directory is not a valid appsody project. Run `appsody init <stack>` to create one. Run `appsody list` to see the available stacks."
 		return "", &e
 	}
-	return dir, nil
+	return config.ProjectDir, nil
 }
 
-func getProjectConfig() (ProjectConfig, error) {
-	if projectConfig == nil {
-		dir, perr := getProjectDir()
+func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
+	if config.ProjectConfig == nil {
+		dir, perr := getProjectDir(config)
 		if perr != nil {
 			var tempProjectConfig ProjectConfig
 			return tempProjectConfig, errors.Errorf("The current directory is not a valid appsody project. Run appsody init <stack> to create one: %v", perr)
 
 		}
 		appsodyConfig := filepath.Join(dir, ConfigFile)
-		viper.SetConfigFile(appsodyConfig)
+		v := viper.New()
+		v.SetConfigFile(appsodyConfig)
 		Debug.log("Project config file set to: ", appsodyConfig)
-		err := viper.ReadInConfig()
+		err := v.ReadInConfig()
 		if err != nil {
 			var tempProjectConfig ProjectConfig
 			return tempProjectConfig, errors.Errorf("Error reading project config %v", err)
 
 		}
-		stack := viper.GetString("stack")
+		stack := v.GetString("stack")
 		Debug.log("Project stack from config file: ", stack)
-		imageRepo := cliConfig.GetString("images")
+		imageRepo := config.CliConfig.GetString("images")
 		Debug.log("Image repository set to: ", imageRepo)
 		if imageRepo != "index.docker.io" {
 			stack = imageRepo + "/" + stack
 		}
 		Debug.log("Pulling stack image as: ", stack)
-		projectConfig = &ProjectConfig{stack}
+		config.ProjectConfig = &ProjectConfig{stack}
 	}
-	return *projectConfig, nil
+	return *config.ProjectConfig, nil
 }
 
-func getOperatorHome() string {
-	operatorHome := cliConfig.GetString("operator")
+func getOperatorHome(config *RootCommandConfig) string {
+	operatorHome := config.CliConfig.GetString("operator")
 	Debug.log("Operator home set to: ", operatorHome)
 	return operatorHome
 }
 
-func getProjectName() (string, error) {
-	projectDir, err := getProjectDir()
+func getProjectName(config *RootCommandConfig) (string, error) {
+	projectDir, err := getProjectDir(config)
 	if err != nil {
 		return "my-project", err
 	}
@@ -325,13 +312,13 @@ func getProjectName() (string, error) {
 	return projectName, nil
 }
 
-func execAndWait(command string, args []string, logger appsodylogger) error {
+func execAndWait(command string, args []string, logger appsodylogger, dryrun bool) error {
 
-	return execAndWaitWithWorkDir(command, args, logger, workDirNotSet)
+	return execAndWaitWithWorkDir(command, args, logger, workDirNotSet, dryrun)
 }
-func execAndWaitWithWorkDir(command string, args []string, logger appsodylogger, workdir string) error {
+func execAndWaitWithWorkDir(command string, args []string, logger appsodylogger, workdir string, dryrun bool) error {
 
-	err := execAndWaitWithWorkDirReturnErr(command, args, logger, workdir)
+	err := execAndWaitWithWorkDirReturnErr(command, args, logger, workdir, dryrun)
 	if err != nil {
 		return errors.Errorf("Error running %s command: %v", command, err)
 
@@ -445,16 +432,16 @@ func UserHomeDir() string {
 	return homeDir
 }
 
-func getExposedPorts() ([]string, error) {
+func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	// TODO cache this so the docker inspect command only runs once per cli invocation
 	var data []map[string]interface{}
 	var portValues []string
-	projectConfig, projectConfigErr := getProjectConfig()
+	projectConfig, projectConfigErr := getProjectConfig(config)
 	if projectConfigErr != nil {
 		return nil, projectConfigErr
 	}
 	imageName := projectConfig.Platform
-	pullErrs := pullImage(imageName)
+	pullErrs := pullImage(imageName, config)
 	if pullErrs != nil {
 		return nil, pullErrs
 	}
@@ -472,10 +459,10 @@ func getExposedPorts() ([]string, error) {
 		return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 	}
 
-	config := data[0]["Config"].(map[string]interface{})
+	dockerConfig := data[0]["Config"].(map[string]interface{})
 
-	if config["ExposedPorts"] != nil {
-		exposedPorts := config["ExposedPorts"].(map[string]interface{})
+	if dockerConfig["ExposedPorts"] != nil {
+		exposedPorts := dockerConfig["ExposedPorts"].(map[string]interface{})
 
 		portValues = make([]string, 0, len(exposedPorts))
 		for k := range exposedPorts {
@@ -488,7 +475,7 @@ func getExposedPorts() ([]string, error) {
 }
 
 //GenKnativeYaml generates a simple yaml for KNative serving
-func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, deployImage string, pullImage bool) (fileName string, yamlErr error) {
+func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, deployImage string, pullImage bool, configFile string, dryrun bool) (fileName string, yamlErr error) {
 	// KNative serving YAML representation in a struct
 	type Y struct {
 		APIVersion string `yaml:"apiVersion"`
@@ -599,12 +586,12 @@ spec:
 }
 
 // DockerTag tags a docker image
-func DockerTag(imageToTag string, tag string) error {
+func DockerTag(imageToTag string, tag string, dryrun bool) error {
 	Info.log("Tagging Docker image as ", tag)
 	cmdName := "docker"
 	cmdArgs := []string{"image", "tag", imageToTag, tag}
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", cmdName, " ", cmdArgs)
+		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
 		return nil
 	}
 	tagCmd := exec.Command(cmdName, cmdArgs...)
@@ -618,12 +605,12 @@ func DockerTag(imageToTag string, tag string) error {
 }
 
 //DockerPush pushes a docker image to a docker registry (assumes that the user has done docker login)
-func DockerPush(imageToPush string) error {
+func DockerPush(imageToPush string, dryrun bool) error {
 	Info.log("Pushing docker image ", imageToPush)
 	cmdName := "docker"
 	cmdArgs := []string{"push", imageToPush}
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", cmdName, " ", cmdArgs)
+		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
 		return nil
 	}
 	pushCmd := exec.Command(cmdName, cmdArgs...)
@@ -637,10 +624,10 @@ func DockerPush(imageToPush string) error {
 }
 
 // DockerRunBashCmd issues a shell command in a docker image, overriding its entrypoint
-func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput string, err error) {
+func DockerRunBashCmd(options []string, image string, bashCmd string, config *RootCommandConfig) (cmdOutput string, err error) {
 	cmdName := "docker"
 	var cmdArgs []string
-	pullErrs := pullImage(image)
+	pullErrs := pullImage(image, config)
 	if pullErrs != nil {
 		return "", pullErrs
 	}
@@ -650,7 +637,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput
 		cmdArgs = []string{"run"}
 	}
 	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/bash", image, "-c", bashCmd)
-	Info.log("Running command: ", cmdName, cmdArgs)
+	Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
 	dockerOutBytes, err := dockerCmd.Output()
 	if err != nil {
@@ -662,7 +649,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string) (cmdOutput
 }
 
 //KubeGet issues kubectl get <arg>
-func KubeGet(args []string) (string, error) {
+func KubeGet(args []string, namespace string, dryrun bool) (string, error) {
 	Info.log("Attempting to get resource from Kubernetes ...")
 	kcmd := "kubectl"
 	kargs := []string{"get"}
@@ -672,10 +659,10 @@ func KubeGet(args []string) (string, error) {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return "", nil
 	}
-	Info.log("Running command: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
@@ -685,7 +672,7 @@ func KubeGet(args []string) (string, error) {
 }
 
 //KubeApply issues kubectl apply -f <filename>
-func KubeApply(fileToApply string) error {
+func KubeApply(fileToApply string, namespace string, dryrun bool) error {
 	Info.log("Attempting to apply resource in Kubernetes ...")
 	kcmd := "kubectl"
 	kargs := []string{"apply", "-f", fileToApply}
@@ -694,10 +681,10 @@ func KubeApply(fileToApply string) error {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return nil
 	}
-	Info.log("Running command: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
@@ -709,7 +696,7 @@ func KubeApply(fileToApply string) error {
 }
 
 //KubeDelete issues kubectl delete -f <filename>
-func KubeDelete(fileToApply string) error {
+func KubeDelete(fileToApply string, namespace string, dryrun bool) error {
 	Info.log("Attempting to delete resource from Kubernetes...")
 	kcmd := "kubectl"
 	kargs := []string{"delete", "-f", fileToApply}
@@ -718,10 +705,10 @@ func KubeDelete(fileToApply string) error {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return nil
 	}
-	Info.log("Running command: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	var stderr bytes.Buffer
 	execCmd.Stderr = &stderr
@@ -737,10 +724,10 @@ func KubeDelete(fileToApply string) error {
 }
 
 //KubeGetNodePortURL kubectl get svc <service> -o jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort} and prints the return URL
-func KubeGetNodePortURL(service string) (url string, err error) {
+func KubeGetNodePortURL(service string, namespace string, dryrun bool) (url string, err error) {
 	kargs := append([]string{"svc"}, service)
 	kargs = append(kargs, "-o", "jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort}")
-	out, err := KubeGet(kargs)
+	out, err := KubeGet(kargs, namespace, dryrun)
 	// Performing the kubectl apply
 	if err != nil {
 		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
@@ -749,10 +736,10 @@ func KubeGetNodePortURL(service string) (url string, err error) {
 }
 
 //KubeGetRouteURL issues kubectl get svc <service> -o jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort} and prints the return URL
-func KubeGetRouteURL(service string) (url string, err error) {
+func KubeGetRouteURL(service string, namespace string, dryrun bool) (url string, err error) {
 	kargs := append([]string{"route"}, service)
 	kargs = append(kargs, "-o", "jsonpath={.status.ingress[0].host}")
-	out, err := KubeGet(kargs)
+	out, err := KubeGet(kargs, namespace, dryrun)
 	// Performing the kubectl apply
 	if err != nil {
 		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
@@ -761,7 +748,7 @@ func KubeGetRouteURL(service string) (url string, err error) {
 }
 
 //KubeGetKnativeURL issues kubectl get rt <service> -o jsonpath="{.status.url}" and prints the return URL
-func KubeGetKnativeURL(service string) (url string, err error) {
+func KubeGetKnativeURL(service string, namespace string, dryrun bool) (url string, err error) {
 	kcmd := "kubectl"
 	kargs := append([]string{"get", "rt"}, service)
 	kargs = append(kargs, "-o", "jsonpath=\"{.status.url}\"")
@@ -770,10 +757,10 @@ func KubeGetKnativeURL(service string) (url string, err error) {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", kargs)
+		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return "", nil
 	}
-	Info.log("Running command: ", kcmd, kargs)
+	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 	if kerr != nil {
@@ -783,16 +770,16 @@ func KubeGetKnativeURL(service string) (url string, err error) {
 }
 
 //KubeGetDeploymentURL searches for an exposed hostname and port for the deployed service
-func KubeGetDeploymentURL(service string) (url string, err error) {
-	url, err = KubeGetKnativeURL(service)
+func KubeGetDeploymentURL(service string, namespace string, dryrun bool) (url string, err error) {
+	url, err = KubeGetKnativeURL(service, namespace, dryrun)
 	if err == nil {
 		return url, nil
 	}
-	url, err = KubeGetRouteURL(service)
+	url, err = KubeGetRouteURL(service, namespace, dryrun)
 	if err == nil {
 		return url, nil
 	}
-	url, err = KubeGetNodePortURL(service)
+	url, err = KubeGetNodePortURL(service, namespace, dryrun)
 	if err == nil {
 		return url, nil
 	}
@@ -803,18 +790,18 @@ func KubeGetDeploymentURL(service string) (url string, err error) {
 //pullCmd
 // enable extract to use `buildah` sequences for image extraction.
 // Pull the given docker image
-func pullCmd(imageToPull string) error {
+func pullCmd(imageToPull string, buildah bool, dryrun bool) error {
 	cmdName := "docker"
 	if buildah {
 		cmdName = "buildah"
 	}
 	pullArgs := []string{"pull", imageToPull}
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", cmdName, " ", pullArgs)
+		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(pullArgs, " "))
 		return nil
 	}
-	Debug.log("Pulling docker image ", imageToPull)
-	err := execAndWaitReturnErr(cmdName, pullArgs, Debug)
+	Info.log("Pulling docker image ", imageToPull)
+	err := execAndWaitReturnErr(cmdName, pullArgs, Info, dryrun)
 	if err != nil {
 		Warning.log("Docker image pull failed: ", err)
 		return err
@@ -843,14 +830,16 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 //pullImage
 // pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
-func pullImage(imageToPull string) error {
-
-	Debug.logf("%s image pulled status: %t", imageToPull, imagePulled[imageToPull])
-	if imagePulled[imageToPull] {
+func pullImage(imageToPull string, config *RootCommandConfig) error {
+	if config.imagePulled == nil {
+		config.imagePulled = make(map[string]bool)
+	}
+	Debug.logf("%s image pulled status: %t", imageToPull, config.imagePulled[imageToPull])
+	if config.imagePulled[imageToPull] {
 		Debug.log("Image has been pulled already: ", imageToPull)
 		return nil
 	}
-	imagePulled[imageToPull] = true
+	config.imagePulled[imageToPull] = true
 
 	localImageFound := false
 	pullPolicyAlways := true
@@ -866,7 +855,7 @@ func pullImage(imageToPull string) error {
 	}
 
 	if pullPolicyAlways || (!pullPolicyAlways && !localImageFound) {
-		err := pullCmd(imageToPull)
+		err := pullCmd(imageToPull, config.Buildah, config.Dryrun)
 		if err != nil {
 			if pullPolicyAlways {
 				localImageFound = checkDockerImageExistsLocally(imageToPull)
@@ -883,13 +872,13 @@ func pullImage(imageToPull string) error {
 	return nil
 }
 
-func execAndListenWithWorkDirReturnErr(command string, args []string, logger appsodylogger, workdir string) (*exec.Cmd, error) {
+func execAndListenWithWorkDirReturnErr(command string, args []string, logger appsodylogger, workdir string, dryrun bool) (*exec.Cmd, error) {
 	var execCmd *exec.Cmd
 	var err error
 	if dryrun {
-		Info.log("Dry Run - Skipping command: ", command, args)
+		Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
 	} else {
-		Info.log("Running command: ", command, args)
+		Info.log("Running command: ", command, " ", strings.Join(args, " "))
 		execCmd = exec.Command(command, args...)
 		if workdir != "" {
 			execCmd.Dir = workdir
@@ -931,16 +920,16 @@ func execAndListenWithWorkDirReturnErr(command string, args []string, logger app
 	return execCmd, err
 }
 
-func execAndWaitReturnErr(command string, args []string, logger appsodylogger) error {
-	return execAndWaitWithWorkDirReturnErr(command, args, logger, "")
+func execAndWaitReturnErr(command string, args []string, logger appsodylogger, dryrun bool) error {
+	return execAndWaitWithWorkDirReturnErr(command, args, logger, "", dryrun)
 }
-func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appsodylogger, workdir string) error {
+func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appsodylogger, workdir string, dryrun bool) error {
 	var err error
 	var execCmd *exec.Cmd
 	if dryrun {
-		Info.log("Dry Run - Skipping command: ", command, args)
+		Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
 	} else {
-		execCmd, err = execAndListenWithWorkDirReturnErr(command, args, logger, workdir)
+		execCmd, err = execAndListenWithWorkDirReturnErr(command, args, logger, workdir, dryrun)
 		if err != nil {
 			return err
 		}
@@ -990,69 +979,62 @@ func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
 
 func getLatestVersion() string {
 	var version string
+	Debug.log("Getting latest version ", LatestVersionURL)
 	resp, err := http.Get(LatestVersionURL)
 	if err != nil {
 		Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
-		version = "none"
 	} else {
 		url := resp.Request.URL.String()
-		r, _ := regexp.Compile(`\d.\d.\d`)
+		r, _ := regexp.Compile(`[\d]+\.[\d]+\.[\d]+$`)
 
 		version = r.FindString(url)
 	}
+	Debug.log("Got version ", version)
 	return version
 }
 
-func doVersionCheck(data []byte, old string, new string, file string) {
+func doVersionCheck(config *RootCommandConfig) {
 	var latest = getLatestVersion()
-	if VERSION != "vlatest" && VERSION != latest {
-		Info.log("*\n*\n*\n\nA new CLI update is available.\nPlease go to " + LatestVersionURL + " and update from " + VERSION + " --> " + latest + ".\n\n*\n*\n*")
-	}
-	output := bytes.Replace(data, []byte(old), []byte(new), -1)
-	err := ioutil.WriteFile(file, output, 0666)
-	if err != nil {
-		Warning.log("Error writing to config file")
-	}
-}
+	var currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 
-func getLastCheckTime() string {
-	return cliConfig.GetString("lastversioncheck")
-}
-
-func checkTime() {
-	var lastCheckTime string
-	var currentTime string
-
-	var configFile = getDefaultConfigFile()
-
-	data, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		Warning.log("Unable to read config file")
-	}
-
-	lastCheckTime = getLastCheckTime()
-	currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
-
-	if getLatestVersion() != "none" {
-		if lastCheckTime == "none" {
-			doVersionCheck(data, lastCheckTime, currentTime, configFile)
-		} else {
-			lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
-			if err != nil {
-				fmt.Println(err)
-			}
-			if time.Since(lastTime).Hours() > 24 {
-				doVersionCheck(data, lastCheckTime, currentTime, configFile)
-			}
+	if latest != "" && VERSION != "vlatest" && VERSION != latest {
+		switch os := runtime.GOOS; os {
+		case "darwin":
+			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease run `brew upgrade appsody` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
+		default:
+			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
 		}
 	}
+
+	config.CliConfig.Set("lastversioncheck", currentTime)
+	if err := config.CliConfig.WriteConfig(); err != nil {
+		Error.logf("Writing default config file %s", err)
+
+	}
+}
+
+func getLastCheckTime(config *RootCommandConfig) string {
+	return config.CliConfig.GetString("lastversioncheck")
+}
+
+func checkTime(config *RootCommandConfig) {
+	var lastCheckTime = getLastCheckTime(config)
+
+	lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
+	if err != nil {
+		Debug.logf("Could not parse the config file's lastversioncheck: %v. Continuing with a new version check...", err)
+		doVersionCheck(config)
+	} else if time.Since(lastTime).Hours() > 24 {
+		doVersionCheck(config)
+	}
+
 }
 
 // TEMPORARY CODE: sets the old v1 index to point to the new v2 index (latest)
 // this code should be removed when we think everyone is using the latest index.
-func setNewIndexURL() {
+func setNewIndexURL(config *RootCommandConfig) {
 
-	var repoFile = getRepoFileLocation()
+	var repoFile = getRepoFileLocation(config)
 	var oldIndexURL = "https://raw.githubusercontent.com/appsody/stacks/master/index.yaml"
 	var newIndexURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
 

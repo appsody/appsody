@@ -19,13 +19,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	// for logging
 	"k8s.io/klog"
-
-	//  homedir "github.com/mitchellh/go-homedir"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
@@ -34,16 +33,27 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	// VERSION is set during build
-	VERSION         string
-	cfgFile         string
-	cliConfig       *viper.Viper
-	APIVersionV1    = "v1"
-	dryrun          bool
-	verbose         bool
-	klogInitialized = false
-)
+var VERSION string
+
+const APIVersionV1 = "v1"
+
+type RootCommandConfig struct {
+	CfgFile          string
+	Dryrun           bool
+	Verbose          bool
+	CliConfig        *viper.Viper
+	Buildah          bool
+	ProjectConfig    *ProjectConfig
+	ProjectDir       string
+	UnsupportedRepos []string
+
+	// package scoped, these are mostly for caching
+	setupConfigRun bool
+	imagePulled    map[string]bool
+}
+
+// Regular expression to match ANSI terminal commands so that we can remove them from the log
+const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[-a-zA-Z\\d\\/#&.:=?%@~_\\s]*)*)?(\u0007|^G))|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))"
 
 func homeDir() (string, error) {
 	home, err := homedir.Dir()
@@ -54,74 +64,79 @@ func homeDir() (string, error) {
 	return home, nil
 }
 
-var operatorHome = "https://github.com/appsody/appsody-operator/releases/latest/download"
+const operatorHome = "https://github.com/appsody/appsody-operator/releases/latest/download"
 
-var rootCmd = &cobra.Command{
-	Use:           "appsody",
-	SilenceErrors: true,
-	SilenceUsage:  true,
-	Short:         "Appsody CLI",
-	Long: `The Appsody command-line tool (CLI) enables the rapid development of cloud native applications.
+func newRootCmd(projectDir string, args []string) (*cobra.Command, error) {
+	rootConfig := &RootCommandConfig{}
+	rootConfig.ProjectDir = projectDir
+	rootCmd := &cobra.Command{
+		Use:           "appsody",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		Short:         "Appsody CLI",
+		Long: `The Appsody command-line tool (CLI) enables the rapid development of cloud native applications.
 
 Complete documentation is available at https://appsody.dev`,
-	//Run: no run action for the root command
+		//Run: no run action for the root command
+	}
+
+	rootCmd.PersistentFlags().StringVar(&rootConfig.CfgFile, "config", "", "config file (default is $HOME/.appsody/.appsody.yaml)")
+	rootCmd.PersistentFlags().BoolVarP(&rootConfig.Verbose, "verbose", "v", false, "Turns on debug output and logging to a file in $HOME/.appsody/logs")
+	rootCmd.PersistentFlags().BoolVar(&rootConfig.Dryrun, "dryrun", false, "Turns on dry run mode")
+
+	// parse the root flags and init logging before adding all the other commands in case those log messages
+	rootCmd.SetArgs(args)
+	_ = rootCmd.ParseFlags(args) // ignore flag errors here because we haven't added all the commands
+	initLogging(rootConfig)
+
+	rootCmd.AddCommand(
+		newInitCmd(rootConfig),
+		newBuildCmd(rootConfig),
+		newExtractCmd(rootConfig),
+		newCompletionCmd(rootCmd),
+		newDebugCmd(rootConfig),
+		newDeployCmd(rootConfig),
+		newDocsCmd(rootConfig, rootCmd),
+		newListCmd(rootConfig),
+		newOperatorCmd(rootConfig),
+		newPsCmd(rootConfig),
+		newRepoCmd(rootConfig),
+		newRunCmd(rootConfig),
+		newStackCmd(rootConfig),
+		newStopCmd(rootConfig),
+		newTestCmd(rootConfig),
+		newVersionCmd(rootCmd),
+	)
+
+	setupErr := setupConfig(args, rootConfig)
+	if setupErr != nil {
+		return rootCmd, setupErr
+	}
+	return rootCmd, nil
 }
 
-func setupConfig() error {
-	err := initConfig()
+func setupConfig(args []string, config *RootCommandConfig) error {
+	if config.setupConfigRun {
+		return nil
+	}
+	err := InitConfig(config)
 	if err != nil {
 		return err
 	}
-	err = ensureConfig()
+	err = ensureConfig(config)
 	if err != nil {
 		return err
 	}
 
-	checkTime()
-	setNewIndexURL()
+	checkTime(config)
+	setNewIndexURL(config)
+	config.setupConfigRun = true
 	return nil
 }
 
-func init() {
-	// Don't run this on help commands
-	// TODO - instead of the isHelpCommand() check, we should delay the config init/ensure until we really need the config
-	if !isHelpCommand() {
-		cobra.OnInitialize(initLogging)
-		//cobra.OnInitialize(initConfig)
-		//cobra.OnInitialize(ensureConfig)
-	}
+func InitConfig(config *RootCommandConfig) error {
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.appsody/.appsody.yaml)")
-	// Added for logging
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Turns on debug output and logging to a file in $HOME/.appsody/logs")
-
-	rootCmd.PersistentFlags().BoolVar(&dryrun, "dryrun", false, "Turns on dry run mode")
-
-}
-
-func isHelpCommand() bool {
-	if len(os.Args) <= 1 {
-		return true
-	}
-	if os.Args[1] == "help" {
-		return true
-	}
-	for _, arg := range os.Args {
-		if arg == "-h" || arg == "--help" {
-			return true
-		}
-	}
-	return false
-}
-
-var initConfigRun = false
-
-func initConfig() error {
-	Debug.log("Running with command line args: appsody ", strings.Join(os.Args[1:], " "))
-	if initConfigRun {
-		return nil
-	}
-	cliConfig = viper.New()
+	cliConfig := viper.New()
 	homeDirectory, dirErr := homeDir()
 	if dirErr != nil {
 		return dirErr
@@ -131,9 +146,9 @@ func initConfig() error {
 	cliConfig.SetDefault("operator", operatorHome)
 	cliConfig.SetDefault("tektonserver", "")
 	cliConfig.SetDefault("lastversioncheck", "none")
-	if cfgFile != "" {
+	if config.CfgFile != "" {
 		// Use config file from the flag.
-		cliConfig.SetConfigFile(cfgFile)
+		cliConfig.SetConfigFile(config.CfgFile)
 	} else {
 		// Search config in home directory with name ".hello-cobra" (without extension).
 		cliConfig.AddConfigPath(cliConfig.GetString("home"))
@@ -146,60 +161,102 @@ func initConfig() error {
 	// If a config file is found, read it in.
 	// Ignore errors, if the config isn't found, we will create a default later
 	_ = cliConfig.ReadInConfig()
-	initConfigRun = true
+	config.CliConfig = cliConfig
 	return nil
 }
 
-func getDefaultConfigFile() string {
-	return filepath.Join(cliConfig.GetString("home"), ".appsody.yaml")
+func getDefaultConfigFile(config *RootCommandConfig) string {
+	return filepath.Join(config.CliConfig.GetString("home"), ".appsody.yaml")
 }
 
 func Execute(version string) {
-	VERSION = version
-
-	if err := rootCmd.Execute(); err != nil {
-		Error.log(err)
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Println("Error getting current directory: ", err)
+		os.Exit(1)
+	}
+	if err := ExecuteE(version, dir, os.Args); err != nil {
 		os.Exit(1)
 	}
 }
 
-type appsodylogger string
+func ExecuteE(version string, projectDir string, args []string) error {
+	VERSION = version
+	rootCmd, err := newRootCmd(projectDir, args[1:])
+	if err != nil {
+		Error.log(err)
+	}
+	Debug.log("Running with command line args: appsody ", strings.Join(args[1:], " "))
+	err = rootCmd.Execute()
+	if err != nil {
+		Error.log(err)
+	}
+	return err
+}
+
+type appsodylogger struct {
+	name            string
+	verbose         bool
+	klogInitialized bool
+}
 type stackTracer interface {
 	StackTrace() errors.StackTrace
 }
 
 // define the logging levels
 var (
-	Info       appsodylogger = "Info"
-	Warning    appsodylogger = "Warning"
-	Error      appsodylogger = "Error"
-	Debug      appsodylogger = "Debug"
-	Container  appsodylogger = "Container"
-	InitScript appsodylogger = "InitScript"
-	DockerLog  appsodylogger = "Docker"
+	Info       = appsodylogger{name: "Info"}
+	Warning    = appsodylogger{name: "Warning"}
+	Error      = appsodylogger{name: "Error"}
+	Debug      = appsodylogger{name: "Debug"}
+	Container  = appsodylogger{name: "Container"}
+	InitScript = appsodylogger{name: "InitScript"}
+	DockerLog  = appsodylogger{name: "Docker"}
 )
+
+var allLoggers = []*appsodylogger{&Info, &Warning, &Error, &Debug, &Container, &InitScript, &DockerLog}
 
 func (l appsodylogger) log(args ...interface{}) {
 	msgString := fmt.Sprint(args...)
-	l.internalLog(msgString, args...)
+	l.internalLog(msgString, false, args...)
 }
 
 func (l appsodylogger) logf(fmtString string, args ...interface{}) {
 	msgString := fmt.Sprintf(fmtString, args...)
-	l.internalLog(msgString, args...)
+	l.internalLog(msgString, false, args...)
 }
 
-func (l appsodylogger) internalLog(msgString string, args ...interface{}) {
-	if l == Debug && !verbose {
+func (l appsodylogger) Log(args ...interface{}) {
+	msgString := fmt.Sprint(args...)
+	l.internalLog(msgString, false, args...)
+}
+
+func (l appsodylogger) Logf(fmtString string, args ...interface{}) {
+	msgString := fmt.Sprintf(fmtString, args...)
+	l.internalLog(msgString, false, args...)
+}
+
+func (l appsodylogger) LogSkipConsole(args ...interface{}) {
+	msgString := fmt.Sprint(args...)
+	l.internalLog(msgString, true, args...)
+}
+
+func (l appsodylogger) LogfSkipConsole(fmtString string, args ...interface{}) {
+	msgString := fmt.Sprintf(fmtString, args...)
+	l.internalLog(msgString, true, args...)
+}
+
+func (l appsodylogger) internalLog(msgString string, skipConsole bool, args ...interface{}) {
+	if l == Debug && !l.verbose {
 		return
 	}
 
-	if verbose || l != Info {
-		msgString = "[" + string(l) + "] " + msgString
+	if l.verbose || l != Info {
+		msgString = "[" + string(l.name) + "] " + msgString
 	}
 
 	// if verbose and any of the args are of type error, print the stack traces
-	if verbose {
+	if l.verbose {
 		for _, arg := range args {
 			st, ok := arg.(stackTracer)
 			if ok {
@@ -208,24 +265,32 @@ func (l appsodylogger) internalLog(msgString string, args ...interface{}) {
 		}
 	}
 
-	// Print to console
-	if l == Info {
-		fmt.Fprintln(os.Stdout, msgString)
-	} else {
-		fmt.Fprintln(os.Stderr, msgString)
+	if !skipConsole {
+		// Print to console
+		if l == Info {
+			fmt.Fprintln(os.Stdout, msgString)
+		} else if l == Container {
+			fmt.Fprint(os.Stdout, msgString)
+		} else {
+			fmt.Fprintln(os.Stderr, msgString)
+		}
 	}
 
 	// Print to log file
-	if verbose && klogInitialized {
+	if l.verbose && l.klogInitialized {
+		// Remove ansi commands
+		ansiRegexp := regexp.MustCompile(ansi)
+		msgString = ansiRegexp.ReplaceAllString(msgString, "")
 		klog.InfoDepth(2, msgString)
 		klog.Flush()
 	}
 }
 
-func initLogging() {
-
-	if verbose {
-		// this is an initizer method and currently you can not return an error from them
+func initLogging(config *RootCommandConfig) {
+	if config.Verbose {
+		for _, l := range allLoggers {
+			l.verbose = true
+		}
 
 		homeDirectory, dirErr := homeDir()
 		if dirErr != nil {
@@ -253,7 +318,10 @@ func initLogging() {
 		_ = klogFlags.Set("log_file", pathString)
 		_ = klogFlags.Set("logtostderr", "false")
 		_ = klogFlags.Set("alsologtostderr", "false")
-		klogInitialized = true
+
+		for _, l := range allLoggers {
+			l.klogInitialized = true
+		}
 		Debug.log("Logging to file ", pathString)
 	}
 }

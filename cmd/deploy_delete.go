@@ -19,34 +19,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var deployConfigFile string
+func newDeleteDeploymentCmd(deployConfig *deployCommandConfig) *cobra.Command {
+	var deployConfigFile string
+	var deleteDeploymentCmd = &cobra.Command{
+		Use:   "delete",
+		Short: "Delete your deployed Appsody project from a Kubernetes cluster",
+		Long:  `This command deletes your deployed Appsody project from the configured Kubernetes cluster using your existing deployment manifest.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-var deleteDeploymentCmd = &cobra.Command{
-	Use:   "delete",
-	Short: "Delete your deployed Appsody project from a Kubernetes cluster",
-	Long:  `This command deletes your deployed Appsody project from the configured Kubernetes cluster using your existing deployment manifest.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+			exists, err := Exists(deployConfigFile)
+			if err != nil {
+				return errors.Errorf("Error checking status of %s", deployConfigFile)
+			}
+			if !deployConfig.Dryrun && !exists {
+				return errors.Errorf("Cannot delete deployment. Deployment manifest not found: %s", deployConfigFile)
+			}
 
-		exists, err := exists(deployConfigFile)
-		if err != nil {
-			return errors.Errorf("Error checking status of %s", deployConfigFile)
-		}
-		if !dryrun && !exists {
-			return errors.Errorf("Cannot delete deployment. Deployment manifest not found: %s", deployConfigFile)
-		}
+			Info.log("Deleting deployment using deployment manifest ", deployConfigFile)
+			err = KubeDelete(deployConfigFile, deployConfig.namespace, deployConfig.Dryrun)
+			if err != nil {
+				return err
+			}
+			Info.log("Deployment deleted")
+			return nil
+		},
+	}
 
-		Info.log("Deleting deployment using deployment manifest ", deployConfigFile)
-		err = KubeDelete(deployConfigFile)
-		if err != nil {
-			return err
-		}
-		Info.log("Deployment deleted")
-		return nil
-	},
-}
-
-func init() {
-	deployCmd.AddCommand(deleteDeploymentCmd)
 	deleteDeploymentCmd.PersistentFlags().StringVarP(&deployConfigFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
-
+	return deleteDeploymentCmd
 }

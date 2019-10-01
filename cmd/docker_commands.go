@@ -2,24 +2,27 @@ package cmd
 
 import (
 	"bufio"
+	"io"
+	"os"
 	"os/exec"
+	"strings"
 )
 
-func DockerRunAndListen(args []string, logger appsodylogger) (*exec.Cmd, error) {
+func DockerRunAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
 	var runArgs = []string{"run"}
 	runArgs = append(runArgs, args...)
-	return RunDockerCommandAndListen(runArgs, logger)
+	return RunDockerCommandAndListen(runArgs, logger, interactive, verbose, dryrun)
 }
 
-func DockerBuild(args []string, logger appsodylogger) error {
+func DockerBuild(args []string, logger appsodylogger, verbose bool, dryrun bool) error {
 	var buildArgs = []string{"build"}
 	buildArgs = append(buildArgs, args...)
-	return RunDockerCommandAndWait(buildArgs, logger)
+	return RunDockerCommandAndWait(buildArgs, logger, verbose, dryrun)
 }
 
-func RunDockerCommandAndWait(args []string, logger appsodylogger) error {
+func RunDockerCommandAndWait(args []string, logger appsodylogger, verbose bool, dryrun bool) error {
 
-	cmd, err := RunDockerCommandAndListen(args, logger)
+	cmd, err := RunDockerCommandAndListen(args, logger, false, verbose, dryrun)
 	if err != nil {
 		return err
 	}
@@ -32,47 +35,54 @@ func RunDockerCommandAndWait(args []string, logger appsodylogger) error {
 
 }
 
-func RunDockerCommandAndListen(args []string, logger appsodylogger) (*exec.Cmd, error) {
+func RunDockerCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
 	var execCmd *exec.Cmd
 	var command = "docker"
 	var err error
 	if dryrun {
-		Info.log("Dry Run - Skipping docker command: ", command, args)
+		Info.log("Dry Run - Skipping docker command: ", command, " ", strings.Join(args, " "))
 	} else {
-		Info.log("Running docker command: ", command, args)
+		Info.log("Running docker command: ", command, " ", strings.Join(args, " "))
 		execCmd = exec.Command(command, args...)
 
-		cmdReader, err := execCmd.StdoutPipe()
-		if err != nil {
-			Error.log("Error creating StdoutPipe for docker Cmd ", err)
-			return nil, err
+		// Create io pipes for the command
+		logReader, logWriter := io.Pipe()
+		consoleReader, consoleWriter := io.Pipe()
+		execCmd.Stdout = io.MultiWriter(logWriter, consoleWriter)
+		execCmd.Stderr = io.MultiWriter(logWriter, consoleWriter)
+		if interactive {
+			execCmd.Stdin = os.Stdin
 		}
 
-		errReader, err := execCmd.StderrPipe()
-		if err != nil {
-			Error.log("Error creating StderrPipe for docker Cmd ", err)
-			return nil, err
-		}
-
-		outScanner := bufio.NewScanner(cmdReader)
-		outScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		// Create a scanner for both the log and the console
+		// The log will be written when a newline is encountered
+		logScanner := bufio.NewScanner(logReader)
+		logScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		go func() {
-			for outScanner.Scan() {
-				logger.log(outScanner.Text())
+			for logScanner.Scan() {
+				logger.LogSkipConsole(logScanner.Text())
 			}
 		}()
 
-		errScanner := bufio.NewScanner(errReader)
-		errScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		// The console will be written on every byte
+		consoleScanner := bufio.NewScanner(consoleReader)
+		consoleScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		consoleScanner.Split(bufio.ScanBytes)
 		go func() {
-			for errScanner.Scan() {
-				logger.log(errScanner.Text())
+			lastByteNewline := true
+			for consoleScanner.Scan() {
+				text := consoleScanner.Text()
+				if lastByteNewline && (verbose || logger != Info) {
+					os.Stdout.WriteString("[" + logger.name + "] ")
+				}
+				os.Stdout.WriteString(text)
+				lastByteNewline = text == "\n"
 			}
 		}()
 
 		err = execCmd.Start()
 		if err != nil {
-			Debug.log("Error running ", command, " command: ", errScanner.Text(), err)
+			Debug.log("Error running ", command, " command: ", logScanner.Text(), err)
 			return nil, err
 		}
 
