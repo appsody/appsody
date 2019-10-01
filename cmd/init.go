@@ -268,7 +268,7 @@ func install(config *initCommandConfig) error {
 
 	Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
-	err := extractAndInitialize(config)
+	err = extractAndInitialize(config)
 	if err != nil {
 		// For some reason without this sleep, the [InitScript] output log would get cut off and
 		// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
