@@ -257,6 +257,9 @@ func install(config *initCommandConfig) error {
 
 	}
 	err := setProjectName(config.RootCommandConfig, config.projectName)
+	if err != nil {
+		return errors.Errorf("%v", err)
+	}
 	if err == nil {
 		projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
 		if configErr != nil {
@@ -276,8 +279,6 @@ func install(config *initCommandConfig) error {
 			Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
 			os.Exit(0)
 		}
-	} else {
-		return errors.Errorf("%v", err)
 	}
 	return nil
 }

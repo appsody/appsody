@@ -372,21 +372,32 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
 	err = v.ReadInConfig()
+	projectName := v.GetString("project-name")
 
-	match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", v.GetString("project-name"))
+	if projectName != "" {
+		match, err := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
 
-	if match {
-		return v.GetString("project-name"), err
+		if !match {
+			v.Set("project-name", "my-project")
+			err = v.WriteConfig()
+
+			if err != nil {
+				return "", err
+			}
+			return "my-project", err
+		} else {
+			return projectName, err
+		}
 	}
 
-	projectName := "appsody-" + strings.ToLower(filepath.Base(dir)) + "-app"
+	projectName = "appsody-" + strings.ToLower(filepath.Base(dir)) + "-app"
 	reg, err := regexp.Compile("[^a-z0-9]+")
 	if err != nil {
 		return "", err
 	}
 	projectName = reg.ReplaceAllString(projectName, "-")
 
-	match, _ = regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+	match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
 
 	if match {
 		v.Set("project-name", projectName)
@@ -397,12 +408,12 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 		}
 
 		Warning.log("Your Appsody project name is now ", projectName)
-
 	} else {
 		return "", errors.Errorf("This is not a valid project name")
 	}
 
-	return v.GetString("project-name"), err
+	return projectName, nil
+
 }
 
 func execAndWait(command string, args []string, logger appsodylogger, dryrun bool) error {
