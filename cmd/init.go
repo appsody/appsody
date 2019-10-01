@@ -33,11 +33,10 @@ import (
 
 type initCommandConfig struct {
 	*RootCommandConfig
-	overwrite  bool
-	noTemplate bool
+	overwrite   bool
+	noTemplate  bool
+	projectName string
 }
-
-var prjName string
 
 // these are global constants
 var whiteListDotDirectories = []string{"github", "vscode", "settings", "metadata"}
@@ -76,12 +75,11 @@ setup the local dev environment.`,
 
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
-	initCmd.PersistentFlags().StringVar(&prjName, "project-name", prjName, "Project Name for Kubernetes Service")
+	initCmd.PersistentFlags().StringVar(&config.projectName, "project-name", "", "Project Name for Kubernetes Service")
 	return initCmd
 }
 
 func initAppsody(stack string, template string, config *initCommandConfig) error {
-
 	noTemplate := config.noTemplate
 	if noTemplate {
 		Warning.log("The --no-template flag has been deprecated.  Please specify a template value of \"none\" instead.")
@@ -258,23 +256,28 @@ func install(config *initCommandConfig) error {
 		return errors.Errorf("%v", perr)
 
 	}
-	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
-	if configErr != nil {
-		return configErr
-	}
-	platformDefinition := projectConfig.Platform
+	err := setProjectName(config.RootCommandConfig, config.projectName)
+	if err == nil {
+		projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
+		if configErr != nil {
+			return configErr
+		}
+		platformDefinition := projectConfig.Platform
 
-	Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
+		Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
-	err := extractAndInitialize(config)
-	if err != nil {
-		// For some reason without this sleep, the [InitScript] output log would get cut off and
-		// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
-		time.Sleep(100 * time.Millisecond)
-		Warning.log("The stack init script failed: ", err)
-		Warning.log("Your local IDE may not build properly, but the Appsody container should still work.")
-		Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
-		os.Exit(0)
+		err := extractAndInitialize(config)
+		if err != nil {
+			// For some reason without this sleep, the [InitScript] output log would get cut off and
+			// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
+			time.Sleep(100 * time.Millisecond)
+			Warning.log("The stack init script failed: ", err)
+			Warning.log("Your local IDE may not build properly, but the Appsody container should still work.")
+			Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
+			os.Exit(0)
+		}
+	} else {
+		return errors.Errorf("%v", err)
 	}
 	return nil
 }
