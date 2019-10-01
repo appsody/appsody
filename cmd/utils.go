@@ -312,7 +312,10 @@ func setProjectName(config *RootCommandConfig, projectName string) error {
 
 			Info.log("Your Appsody project name is ", projectName)
 
+		} else {
+			return errors.Errorf("This is not a valid project name")
 		}
+
 	}
 	return nil
 }
@@ -395,6 +398,8 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 
 		Info.log("Your Appsody project name is now ", projectName)
 
+	} else {
+		return "", errors.Errorf("This is not a valid project name")
 	}
 
 	return v.GetString("project-name"), err
