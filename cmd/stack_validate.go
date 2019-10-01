@@ -16,43 +16,60 @@ package cmd
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-// get the list of stacks
-var stacksList = os.Getenv("STACKSLIST")
+// stack validate is a suite of validation tests for a local stack
+// stack validate does the following...
+// 1. stack lint test, can be turned off with --no-lint
+// 2. stack package, can be turned off with --no-package
+// 3. appsody init
+// 4. appsody run
+// 5. appsody test
+// 6. appsody build
 
-// stackValidateCmd represents the validate command
-var stackValidateCmd = &cobra.Command{
-	Use:   "validate",
-	Short: "Run validation tests of a stack in the local Appsody environment",
-	Long:  `This runs a set of validation tests for a stack.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
-		Info.log("Running test environment")
-		Info.log("stacksList is: ", stacksList)
+	// vars for --no-package and --no-lint parms
+	var noPackage bool
+	var noLint bool
 
-		// if stacksList is empty there is nothing to test so return
-		if stacksList == "" {
-			Error.log("STACKSLIST is empty")
-		}
+	var stackValidateCmd = &cobra.Command{
+		Use:   "validate",
+		Short: "Run validation tests of a stack in the local Appsody environment",
+		Long:  `This runs a set of validation tests for a stack.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		// replace incubator with appsodyhub to match current naming convention for repos
-		//stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
+			// vars to store test results
+			var testResults []string
+			failCount := 0
+			passCount := 0
 
-		// split the appsodyStack env variable
-		stackRaw := strings.Split(stacksList, " ")
-		var testResults []string
-		failCount := 0
-		passCount := 0
+			stackPath := rootConfig.ProjectDir
+			Info.Log("stackPath is: ", stackPath)
 
-		// loop through the stacks, execute all the tests on each stack before moving on to the next one
-		for i := range stackRaw {
-			Info.log("#################################################")
-			Info.log("Testing stack: ", stackRaw[i])
-			Info.log("#################################################")
+			// check for temeplates dir, error out if its not there
+			err := os.Chdir("templates")
+			if err != nil {
+				// if we can't find the templates directory then we are not starting from a valid root of the stack directory
+				Error.Log("Unable to reach templates directory. Current directory must be the root of the stack.")
+				return err
+			}
+
+			// get the stack name and repo name from the stack path
+			stackPathSplit := strings.Split(stackPath, string(filepath.Separator))
+			stackName := stackPathSplit[len(stackPathSplit)-1]
+			Info.Log("stackName is: ", stackName)
+
+			repoName := stackPathSplit[len(stackPathSplit)-2]
+			Info.Log("repoName is: ", repoName)
+
+			Info.Log("#################################################")
+			Info.Log("Validating stack: ", stackName)
+			Info.Log("#################################################")
 
 			// create a temporary dir to create the project and run the test
 			projectDir, err := ioutil.TempDir("", "appsody-build-simple-test")
@@ -60,29 +77,57 @@ var stackValidateCmd = &cobra.Command{
 				return err
 			}
 
-			Info.log("Created project dir: " + projectDir)
+			Info.Log("Created project dir: " + projectDir)
 
 			// call tests...
 
+			// lint
+			if !noLint {
+				_, err = RunAppsodyCmdExec([]string{"stack", "lint"}, stackPath)
+				if err != nil {
+					//logs error but keeps going
+					Error.Log(err)
+					testResults = append(testResults, ("FAILED: Lint for stack: " + stackName))
+					failCount++
+				} else {
+					testResults = append(testResults, ("PASSED: Lint for stack: " + stackName))
+					passCount++
+				}
+			}
+
+			// package
+			if !noPackage {
+				_, err = RunAppsodyCmdExec([]string{"stack", "package"}, stackPath)
+				if err != nil {
+					//logs error but keeps going
+					Error.Log(err)
+					testResults = append(testResults, ("FAILED: Package for stack: " + stackName))
+					failCount++
+				} else {
+					testResults = append(testResults, ("PASSED: Package for stack: " + stackName))
+					passCount++
+				}
+			}
+
 			// init
-			err = TestInit(stackRaw[i], projectDir)
+			err = TestInit("dev-local/"+stackName, projectDir)
 			if err != nil {
 				// quit everything if init fails as the other tests rely on init to succeed
 				return err
 			}
 
-			testResults = append(testResults, ("PASSED: Init for stack: " + stackRaw[i]))
+			testResults = append(testResults, ("PASSED: Init for stack: " + stackName))
 			passCount++
 
 			// run
 			err = TestRun(projectDir)
 			if err != nil {
 				//logs error but keeps going
-				Error.log(err)
-				testResults = append(testResults, ("FAILED: Run for stack: " + stackRaw[i]))
+				Error.Log(err)
+				testResults = append(testResults, ("FAILED: Run for stack: " + stackName))
 				failCount++
 			} else {
-				testResults = append(testResults, ("PASSED: Run for stack: " + stackRaw[i]))
+				testResults = append(testResults, ("PASSED: Run for stack: " + stackName))
 				passCount++
 			}
 
@@ -90,11 +135,11 @@ var stackValidateCmd = &cobra.Command{
 			err = TestTest(projectDir)
 			if err != nil {
 				//logs error but keeps going
-				Error.log(err)
-				testResults = append(testResults, ("FAILED: Test for stack: " + stackRaw[i]))
+				Error.Log(err)
+				testResults = append(testResults, ("FAILED: Test for stack: " + stackName))
 				failCount++
 			} else {
-				testResults = append(testResults, ("PASSED: Test for stack: " + stackRaw[i]))
+				testResults = append(testResults, ("PASSED: Test for stack: " + stackName))
 				passCount++
 			}
 
@@ -102,34 +147,34 @@ var stackValidateCmd = &cobra.Command{
 			err = TestBuild(projectDir)
 			if err != nil {
 				//logs error but keeps going
-				Error.log(err)
-				testResults = append(testResults, ("FAILED: Build for stack: " + stackRaw[i]))
+				Error.Log(err)
+				testResults = append(testResults, ("FAILED: Build for stack: " + stackName))
 				failCount++
 			} else {
-				testResults = append(testResults, ("PASSED: Build for stack: " + stackRaw[i]))
+				testResults = append(testResults, ("PASSED: Build for stack: " + stackName))
 				passCount++
 			}
 
 			//cleanup
-			Info.log("Removing project dir: " + projectDir)
+			Info.Log("Removing project dir: " + projectDir)
 			os.RemoveAll(projectDir)
 
-		}
+			//}
 
-		Info.log("@@@@@@@@@ Validate Summary Start @@@@@@@@@@")
-		for i := range testResults {
-			Info.log(testResults[i])
-		}
-		Info.log("Total PASSED: ", passCount)
-		Info.log("Total FAILED: ", failCount)
-		Info.log("@@@@@@@@@ Validate Summary End @@@@@@@@@@")
+			Info.Log("@@@@@@@@@ Validate Summary Start @@@@@@@@@@")
+			for i := range testResults {
+				Info.Log(testResults[i])
+			}
+			Info.Log("Total PASSED: ", passCount)
+			Info.Log("Total FAILED: ", failCount)
+			Info.Log("@@@@@@@@@ Validate Summary End @@@@@@@@@@")
 
-		return nil
-	},
-}
+			return nil
+		},
+	}
 
-func init() {
-	// will use stackCmd eventually
-	stackCmd.AddCommand(stackValidateCmd)
+	stackValidateCmd.PersistentFlags().BoolVar(&noPackage, "no-package", false, "Skips running appsody stack package")
+	stackValidateCmd.PersistentFlags().BoolVar(&noLint, "no-lint", false, "Skips running appsody stack lint")
 
+	return stackValidateCmd
 }

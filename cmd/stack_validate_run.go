@@ -28,9 +28,9 @@ func TestRun(projectDir string) error {
 	runChannel := make(chan error)
 	containerName := "testRunContainer"
 	go func() {
-		Info.log("******************************************")
-		Info.log("Running appsody run")
-		Info.log("******************************************")
+		Info.Log("******************************************")
+		Info.Log("Running appsody run")
+		Info.Log("******************************************")
 		_, err := RunAppsodyCmdExec([]string{"run", "--name", containerName}, projectDir)
 		runChannel <- err
 	}()
@@ -38,6 +38,7 @@ func TestRun(projectDir string) error {
 	// check to see if we get an error from appsody run
 	// log appsody ps output
 	// if appsody run doesn't fail after the loop time then assume it passed
+	// appsody ps will show a running container even if the app does not run successfully so it is not reliable
 	// endpoint checking would be a better way to verify appsody run
 	healthCheckFrequency := 2 // in seconds
 	healthCheckTimeout := 60  // in seconds
@@ -47,43 +48,42 @@ func TestRun(projectDir string) error {
 		select {
 		case err := <-runChannel:
 			// appsody run exited, probably with an error
-			Error.log("Appsody run failed")
+			Error.Log("Appsody run failed")
 			return err
 		case <-time.After(time.Duration(healthCheckFrequency) * time.Second):
 			// see if appsody ps has a container
 			healthCheckWait += healthCheckFrequency
 
-			Info.log("about to run appsody ps")
+			Info.Log("about to run appsody ps")
 			stopOutput, errStop := RunAppsodyCmdExec([]string{"ps"}, projectDir)
 			if !strings.Contains(stopOutput, "CONTAINER") {
-				Info.log("appsody ps output doesn't contain header line")
+				Info.Log("appsody ps output doesn't contain header line")
 			}
 			if !strings.Contains(stopOutput, containerName) {
-				Info.log("appsody ps output doesn't contain correct container name")
+				Info.Log("appsody ps output doesn't contain correct container name")
 			} else {
-				Info.log("appsody ps contains correct container name")
+				Info.Log("appsody ps contains correct container name")
 				isHealthy = true
 			}
 			if errStop != nil {
-				Error.log(errStop)
+				Error.Log(errStop)
 				return errStop
 			}
 		}
 	}
 
 	if !isHealthy {
-		Error.log("appsody ps never found the correct container")
+		Error.Log("appsody ps never found the correct container")
 		return errors.New("appsody ps never found the correct container")
 	}
 
-	Info.log("Appsody run did not fail")
+	Info.Log("Appsody run did not fail")
 
 	// stop and clean up after the run
 	func() {
 		_, err := RunAppsodyCmdExec([]string{"stop", "--name", "testRunContainer"}, projectDir)
 		if err != nil {
-			Error.log("appsody stop failed")
-			//return err ***this fails for some reason
+			Error.Log("appsody stop failed")
 		}
 	}()
 

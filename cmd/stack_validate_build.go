@@ -27,12 +27,12 @@ func TestBuild(projectDir string) error {
 
 	imageName := "testbuildimage"
 
-	Info.log("******************************************")
-	Info.log("Running appsody build")
-	Info.log("******************************************")
+	Info.Log("******************************************")
+	Info.Log("Running appsody build")
+	Info.Log("******************************************")
 	_, err := RunAppsodyCmdExec([]string{"build", "--tag", imageName}, projectDir)
 	if err != nil {
-		Error.log(err)
+		Error.Log(err)
 		return err
 	}
 
@@ -43,11 +43,12 @@ func TestBuild(projectDir string) error {
 	for {
 		dockerOutput, dockerErr := RunDockerCmdExec([]string{"image", "ls", imageName})
 		if dockerErr != nil {
-			Info.log("Ignoring error running docker image ls "+imageName, dockerErr)
-			// *** not sure why we ignore errors here
+			Error.Log("Ignoring error running docker image ls "+imageName, dockerErr)
+			return dockerErr
+
 		}
 		if strings.Contains(dockerOutput, imageName) {
-			Info.log("docker image " + imageName + " was found")
+			Info.Log("docker image " + imageName + " was found")
 			imageBuilt = true
 		} else {
 			time.Sleep(2 * time.Second)
@@ -60,14 +61,14 @@ func TestBuild(projectDir string) error {
 
 	if !imageBuilt {
 		// *** how to fail the test?
-		Error.log("image was never built")
+		Error.Log("image was never built")
 		return err
 	}
 
 	//delete the image
 	_, err = RunDockerCmdExec([]string{"image", "rm", imageName})
 	if err != nil {
-		Error.log(err)
+		Error.Log(err)
 		return err
 	}
 

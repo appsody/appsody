@@ -17,12 +17,12 @@ package cmd
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
 func TestTest(projectDir string) error {
 
-	Info.log("******************************************")
-	Info.log("Running appsody test")
-	Info.log("******************************************")
+	Info.Log("******************************************")
+	Info.Log("Running appsody test")
+	Info.Log("******************************************")
 	_, err := RunAppsodyCmdExec([]string{"test"}, projectDir)
 	if err != nil {
-		Error.log(err)
+		Error.Log(err)
 		return err
 	}
 
