@@ -82,7 +82,6 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			namespace := config.namespace
 			knative := config.knative
 			configFile := config.appDeployFile
-
 			// Check for the Appsody Operator
 			operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(namespace, config.Dryrun)
 			if operatorExistsErr != nil {
@@ -94,8 +93,9 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			// Performing the kubectl apply
 			if !operatorExists {
 				Debug.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
-				operatorInstallConfig := &operatorInstallCommandConfig{}
-				operatorInstallConfig.RootCommandConfig = config.RootCommandConfig
+				operatorConfig := &operatorCommandConfig{config.RootCommandConfig, namespace}
+				operatorInstallConfig := &operatorInstallCommandConfig{operatorCommandConfig: operatorConfig}
+				//	operatorInstallConfig.RootCommandConfig = operatorConfig.RootCommandConfig
 				err := operatorInstall(operatorInstallConfig)
 				if err != nil {
 					return errors.Errorf("Failed to install an Appsody operator in namespace %s watching namespace %s. Error was: %v", namespace, namespace, err)
@@ -238,7 +238,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "Only generate the deployment configuration file. Do not deploy the project.")
 	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
 	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "Force the reuse of the deployment configuration file if one exists.")
-	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "", "Target namespace in your Kubernetes cluster")
+	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "default", "Target namespace in your Kubernetes cluster")
 	deployCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push this image to an external Docker registry. Assumes that you have previously successfully done docker login")
 	deployCmd.PersistentFlags().BoolVar(&config.knative, "knative", false, "Deploy as a Knative Service")
