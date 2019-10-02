@@ -15,20 +15,20 @@ package cmd
 
 import "github.com/spf13/cobra"
 
-// debug Cmd represents the debug command
-var debugCmd = &cobra.Command{
-	Use:   "debug",
-	Short: "Run the local Appsody environment in debug mode",
-	Long:  `This starts a docker based continuous build environment for your project with debugging enabled.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+func newDebugCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	config := &devCommonConfig{RootCommandConfig: rootConfig}
+	// debug Cmd represents the debug command
+	var debugCmd = &cobra.Command{
+		Use:   "debug",
+		Short: "Run the local Appsody environment in debug mode",
+		Long:  `This starts a docker based continuous build environment for your project with debugging enabled.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		Info.log("Running debug environment")
-		return commonCmd(cmd, args, "debug")
-	},
-}
+			Info.log("Running debug environment")
+			return commonCmd(config, "debug")
+		},
+	}
 
-func init() {
-	rootCmd.AddCommand(debugCmd)
-	addDevCommonFlags(debugCmd)
-
+	addDevCommonFlags(debugCmd, config)
+	return debugCmd
 }

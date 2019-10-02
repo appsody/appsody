@@ -18,13 +18,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var stackCmd = &cobra.Command{
-	Use:   "stack",
-	Short: "Tools to help create and test Appsody stacks",
-	Long:  ``,
-}
-
-func init() {
-	rootCmd.AddCommand(stackCmd)
-
+func newStackCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	var stackCmd = &cobra.Command{
+		Use:   "stack",
+		Short: "Tools to help create and test Appsody stacks",
+		Long:  ``,
+	}
+	stackCmd.AddCommand(newStackLintCmd(rootConfig))
+	return stackCmd
 }

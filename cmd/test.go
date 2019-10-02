@@ -15,20 +15,20 @@ package cmd
 
 import "github.com/spf13/cobra"
 
-// testCmd represents the test command
-var testCmd = &cobra.Command{
-	Use:   "test",
-	Short: "Test your project in the local Appsody environment",
-	Long:  `This starts a docker container for your project and runs your test in it.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+func newTestCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	config := &devCommonConfig{RootCommandConfig: rootConfig}
+	// testCmd represents the test command
+	var testCmd = &cobra.Command{
+		Use:   "test",
+		Short: "Test your project in the local Appsody environment",
+		Long:  `This starts a docker container for your project and runs your test in it.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		Info.log("Running test environment")
-		return commonCmd(cmd, args, "test")
-	},
-}
+			Info.log("Running test environment")
+			return commonCmd(config, "test")
+		},
+	}
 
-func init() {
-	rootCmd.AddCommand(testCmd)
-	addDevCommonFlags(testCmd)
-
+	addDevCommonFlags(testCmd, config)
+	return testCmd
 }

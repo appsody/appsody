@@ -23,75 +23,70 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// initCmd represents the init command
-var addCmd = &cobra.Command{
-	Use:   "add <name> <url>",
-	Short: "Add an Appsody repository",
-	Long:  ``,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) < 2 {
+func newRepoAddCmd(config *RootCommandConfig) *cobra.Command {
+	// initCmd represents the init command
+	var addCmd = &cobra.Command{
+		Use:   "add <name> <url>",
+		Short: "Add an Appsody repository",
+		Long:  ``,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 2 {
 
-			return errors.New("Error, you must specify repository name and URL")
-		}
-		setupErr := setupConfig()
-		if setupErr != nil {
-			return setupErr
-		}
-		var repoName = args[0]
-		var repoURL = args[1]
-
-		if len(repoName) > 50 {
-			return errors.Errorf("Invalid repository name. The <name> must be less than 50 characters")
-
-		}
-		match, _ := regexp.MatchString("^[a-zA-Z0-9\\-_]{1,50}$", repoName)
-		if !match {
-			return errors.Errorf("Invalid repository name. The <name> may only contain digits, numbers, dashes '-', and underscores '_'.")
-
-		}
-
-		var repoFile RepositoryFile
-
-		_, repoErr := repoFile.getRepos()
-		if repoErr != nil {
-			return repoErr
-		}
-		if repoFile.Has(repoName) {
-			return errors.Errorf("A repository with the name '%s' already exists.", repoName)
-
-		}
-		if repoFile.HasURL(repoURL) {
-			return errors.Errorf("A repository with the URL '%s' already exists.", repoURL)
-
-		}
-		index, err := downloadIndex(repoURL)
-		if err != nil {
-
-			return err
-		}
-		if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
-			Warning.log("The repository " + repoName + " contains an APIVersion in its .yaml file more recent than the current Appsody CLI supports(" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
-		}
-
-		if dryrun {
-			Info.logf("Dry Run - Skipping appsody repo add repository Name: %s, URL: %s", repoName, repoURL)
-		} else {
-			var newEntry = RepositoryEntry{
-				Name: repoName,
-				URL:  repoURL,
+				return errors.New("Error, you must specify repository name and URL")
 			}
 
-			repoFile.Add(&newEntry)
-			err = repoFile.WriteFile(getRepoFileLocation())
+			var repoName = args[0]
+			var repoURL = args[1]
+
+			if len(repoName) > 50 {
+				return errors.Errorf("Invalid repository name. The <name> must be less than 50 characters")
+
+			}
+			match, _ := regexp.MatchString("^[a-zA-Z0-9\\-_]{1,50}$", repoName)
+			if !match {
+				return errors.Errorf("Invalid repository name. The <name> may only contain digits, numbers, dashes '-', and underscores '_'.")
+
+			}
+
+			var repoFile RepositoryFile
+
+			_, repoErr := repoFile.getRepos(config)
+			if repoErr != nil {
+				return repoErr
+			}
+			if repoFile.Has(repoName) {
+				return errors.Errorf("A repository with the name '%s' already exists.", repoName)
+
+			}
+			if repoFile.HasURL(repoURL) {
+				return errors.Errorf("A repository with the URL '%s' already exists.", repoURL)
+
+			}
+			index, err := downloadIndex(repoURL)
 			if err != nil {
-				return errors.Errorf("Failed to write file to repository location: %v", err)
+
+				return err
 			}
-		}
-		return nil
-	},
-}
+			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
+				Warning.log("The repository " + repoName + " contains an APIVersion in its .yaml file more recent than the current Appsody CLI supports(" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
+			}
 
-func init() {
-	repoCmd.AddCommand(addCmd)
+			if config.Dryrun {
+				Info.logf("Dry Run - Skipping appsody repo add repository Name: %s, URL: %s", repoName, repoURL)
+			} else {
+				var newEntry = RepositoryEntry{
+					Name: repoName,
+					URL:  repoURL,
+				}
 
+				repoFile.Add(&newEntry)
+				err = repoFile.WriteFile(getRepoFileLocation(config))
+				if err != nil {
+					return errors.Errorf("Failed to write file to repository location: %v", err)
+				}
+			}
+			return nil
+		},
+	}
+	return addCmd
 }
