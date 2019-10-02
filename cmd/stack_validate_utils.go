@@ -20,6 +20,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 )
 
 // RunAppsodyCmdExec runs the appsody CLI with the given args in a new process
@@ -131,4 +133,30 @@ func RunDockerCmdExec(args []string) (string, error) {
 	err = execCmd.Wait()
 
 	return outBuffer.String(), err
+}
+
+// AddLocalFileRepo calls the repo add command with the repo index located
+// at the local file path. The path may be relative to the current working
+// directory.
+// Returns the URL of the repo added.
+// Returns a function which should be deferred by the caller to cleanup
+// the repo list when finished.
+func AddLocalFileRepo(repoName string, repoFilePath string) (string, error) {
+	absPath, err := filepath.Abs(repoFilePath)
+	if err != nil {
+		return "", err
+	}
+	var repoURL string
+	if runtime.GOOS == "windows" {
+		// for windows, add a leading slash and convert to unix style slashes
+		absPath = "/" + filepath.ToSlash(absPath)
+	}
+	repoURL = "file://" + absPath
+	// add a new repo
+	_, err = RunAppsodyCmdExec([]string{"repo", "add", repoName, repoURL}, ".")
+	if err != nil {
+		return "", err
+	}
+
+	return repoURL, err
 }
