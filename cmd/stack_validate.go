@@ -14,11 +14,14 @@
 package cmd
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -45,6 +48,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// vars to store test results
 			var testResults []string
+			var initFail bool // if init fails we can skip the rest of the tests
 			failCount := 0
 			passCount := 0
 
@@ -52,20 +56,16 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			Info.Log("stackPath is: ", stackPath)
 
 			// check for temeplates dir, error out if its not there
-			err := os.Chdir("templates")
-			if err != nil {
+			check, err := Exists("templates")
+			if !check {
 				// if we can't find the templates directory then we are not starting from a valid root of the stack directory
 				Error.Log("Unable to reach templates directory. Current directory must be the root of the stack.")
 				return err
 			}
 
-			// get the stack name and repo name from the stack path
-			stackPathSplit := strings.Split(stackPath, string(filepath.Separator))
-			stackName := stackPathSplit[len(stackPathSplit)-1]
+			// get the stack name from the stack path
+			stackName := filepath.Base(stackPath)
 			Info.Log("stackName is: ", stackName)
-
-			repoName := stackPathSplit[len(stackPathSplit)-2]
-			Info.Log("repoName is: ", repoName)
 
 			Info.Log("#################################################")
 			Info.Log("Validating stack: ", stackName)
@@ -112,47 +112,56 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// init
 			err = TestInit("dev-local/"+stackName, projectDir)
 			if err != nil {
-				// quit everything if init fails as the other tests rely on init to succeed
-				return err
+				Error.Log(err)
+				testResults = append(testResults, ("FAILED: Init for stack: " + stackName))
+				failCount++
+				initFail = true
+			} else {
+				testResults = append(testResults, ("PASSED: Init for stack: " + stackName))
+				passCount++
+				initFail = false
 			}
 
-			testResults = append(testResults, ("PASSED: Init for stack: " + stackName))
-			passCount++
-
 			// run
-			err = TestRun(projectDir)
-			if err != nil {
-				//logs error but keeps going
-				Error.Log(err)
-				testResults = append(testResults, ("FAILED: Run for stack: " + stackName))
-				failCount++
-			} else {
-				testResults = append(testResults, ("PASSED: Run for stack: " + stackName))
-				passCount++
+			if !initFail {
+				err = TestRun(projectDir)
+				if err != nil {
+					//logs error but keeps going
+					Error.Log(err)
+					testResults = append(testResults, ("FAILED: Run for stack: " + stackName))
+					failCount++
+				} else {
+					testResults = append(testResults, ("PASSED: Run for stack: " + stackName))
+					passCount++
+				}
 			}
 
 			// test
-			err = TestTest(projectDir)
-			if err != nil {
-				//logs error but keeps going
-				Error.Log(err)
-				testResults = append(testResults, ("FAILED: Test for stack: " + stackName))
-				failCount++
-			} else {
-				testResults = append(testResults, ("PASSED: Test for stack: " + stackName))
-				passCount++
+			if !initFail {
+				err = TestTest(projectDir)
+				if err != nil {
+					//logs error but keeps going
+					Error.Log(err)
+					testResults = append(testResults, ("FAILED: Test for stack: " + stackName))
+					failCount++
+				} else {
+					testResults = append(testResults, ("PASSED: Test for stack: " + stackName))
+					passCount++
+				}
 			}
 
 			// build
-			err = TestBuild(projectDir)
-			if err != nil {
-				//logs error but keeps going
-				Error.Log(err)
-				testResults = append(testResults, ("FAILED: Build for stack: " + stackName))
-				failCount++
-			} else {
-				testResults = append(testResults, ("PASSED: Build for stack: " + stackName))
-				passCount++
+			if !initFail {
+				err = TestBuild(stackName, projectDir)
+				if err != nil {
+					//logs error but keeps going
+					Error.Log(err)
+					testResults = append(testResults, ("FAILED: Build for stack: " + stackName))
+					failCount++
+				} else {
+					testResults = append(testResults, ("PASSED: Build for stack: " + stackName))
+					passCount++
+				}
 			}
 
 			//cleanup
@@ -177,4 +186,133 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	stackValidateCmd.PersistentFlags().BoolVar(&noLint, "no-lint", false, "Skips running appsody stack lint")
 
 	return stackValidateCmd
+}
+
+// Simple test for appsody init command
+func TestInit(stack string, projectDir string) error {
+
+	Info.Log("******************************************")
+	Info.Log("Running appsody init")
+	Info.Log("******************************************")
+	_, err := RunAppsodyCmdExec([]string{"init", stack}, projectDir)
+	return err
+}
+
+// Simple test for appsody run command. A future enhancement would be to verify the image that gets built.
+func TestRun(projectDir string) error {
+
+	runChannel := make(chan error)
+	containerName := "testRunContainer"
+	go func() {
+		Info.Log("******************************************")
+		Info.Log("Running appsody run")
+		Info.Log("******************************************")
+		_, err := RunAppsodyCmdExec([]string{"run", "--name", containerName}, projectDir)
+		runChannel <- err
+	}()
+
+	// check to see if we get an error from appsody run
+	// log appsody ps output
+	// if appsody run doesn't fail after the loop time then assume it passed
+	// appsody ps will show a running container even if the app does not run successfully so it is not reliable
+	// endpoint checking would be a better way to verify appsody run
+	healthCheckFrequency := 2 // in seconds
+	healthCheckTimeout := 60  // in seconds
+	healthCheckWait := 0
+	isHealthy := false
+	for !(healthCheckWait >= healthCheckTimeout) {
+		select {
+		case err := <-runChannel:
+			// appsody run exited, probably with an error
+			Error.Log("Appsody run failed")
+			return err
+		case <-time.After(time.Duration(healthCheckFrequency) * time.Second):
+			// see if appsody ps has a container
+			healthCheckWait += healthCheckFrequency
+
+			Info.Log("about to run appsody ps")
+			stopOutput, errStop := RunAppsodyCmdExec([]string{"ps"}, projectDir)
+			if !strings.Contains(stopOutput, "CONTAINER") {
+				Info.Log("appsody ps output doesn't contain header line")
+			}
+			if !strings.Contains(stopOutput, containerName) {
+				Info.Log("appsody ps output doesn't contain correct container name")
+			} else {
+				Info.Log("appsody ps contains correct container name")
+				isHealthy = true
+			}
+			if errStop != nil {
+				Error.Log(errStop)
+				return errStop
+			}
+		}
+	}
+
+	if !isHealthy {
+		Error.Log("appsody ps never found the correct container")
+		return errors.New("appsody ps never found the correct container")
+	}
+
+	Info.Log("Appsody run did not fail")
+
+	// stop and clean up after the run
+	_, err := RunAppsodyCmdExec([]string{"stop", "--name", "testRunContainer"}, projectDir)
+	if err != nil {
+		Error.Log("appsody stop failed")
+	}
+
+	return nil
+}
+
+// Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
+func TestTest(projectDir string) error {
+
+	Info.Log("******************************************")
+	Info.Log("Running appsody test")
+	Info.Log("******************************************")
+	_, err := RunAppsodyCmdExec([]string{"test"}, projectDir)
+	return err
+}
+
+// Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
+func TestBuild(stack string, projectDir string) error {
+
+	imageName := "dev.local/" + stack
+
+	Info.Log("******************************************")
+	Info.Log("Running appsody build")
+	Info.Log("******************************************")
+	_, err := RunAppsodyCmdExec([]string{"build", "--tag", imageName}, projectDir)
+	if err != nil {
+		Error.Log(err)
+		return err
+	}
+
+	// use docker image ls to check for the image
+	fmt.Println("calling docker image ls to check for the image")
+	imageBuilt := false
+	dockerOutput, dockerErr := RunDockerCmdExec([]string{"image", "ls", imageName})
+	if dockerErr != nil {
+		Error.Log("Error running docker image ls "+imageName, dockerErr)
+		return dockerErr
+
+	}
+	if strings.Contains(dockerOutput, imageName) {
+		Info.Log("docker image " + imageName + " was found")
+		imageBuilt = true
+	}
+
+	if !imageBuilt {
+		Error.Log("image was never built")
+		return err
+	}
+
+	//delete the image
+	_, err = RunDockerCmdExec([]string{"image", "rm", imageName})
+	if err != nil {
+		Error.Log(err)
+		return err
+	}
+
+	return nil
 }

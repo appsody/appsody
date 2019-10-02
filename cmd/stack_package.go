@@ -17,7 +17,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -62,9 +61,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			stackPath := rootConfig.ProjectDir
 			Info.Log("stackPath is: ", stackPath)
 
-			// check for temeplates dir, error out if its not there
-			err := os.Chdir("templates")
-			if err != nil {
+			// check for templates dir, error out if its not there
+			check, err := Exists("templates")
+			if !check {
 				// if we can't find the templates directory then we are not starting from a valid root of the stack directory
 				Error.Log("Unable to reach templates directory. Current directory must be the root of the stack.")
 				return err
@@ -77,18 +76,14 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			Info.Log("devLocal is: ", devLocal)
 
 			// create the devLocal directory in appsody home
-			err = os.MkdirAll(devLocal, os.FileMode(0777))
+			err = os.MkdirAll(devLocal, os.FileMode(0755))
 			if err != nil {
 				return errors.Errorf("Error creating directory: %v", err)
 			}
 
-			// get the stack name and repo name from the stack path
-			stackPathSplit := strings.Split(stackPath, string(filepath.Separator))
-			stackName := stackPathSplit[len(stackPathSplit)-1]
+			// get the stack name from the stack path
+			stackName := filepath.Base(stackPath)
 			Info.Log("stackName is: ", stackName)
-
-			repoName := stackPathSplit[len(stackPathSplit)-2]
-			Info.Log("repoName is: ", repoName)
 
 			indexFileLocal := filepath.Join(devLocal, "index-dev-local.yaml")
 			Info.Log("indexFileLocal is: ", indexFileLocal)
