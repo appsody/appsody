@@ -209,18 +209,18 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	controllerMount := destController + ":/appsody/appsody-controller"
 	Debug.log("Adding controller to volume mounts: ", controllerMount)
 	volumeMaps = append(volumeMaps, "-v", controllerMount)
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		err := dockerStop(config.containerName, config.Dryrun)
-		if err != nil {
-			Error.log(err)
-		}
-		//containerRemove(containerName) is not needed due to --rm flag
-	}()
-
+	if !config.Buildah {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			<-c
+			err := dockerStop(config.containerName, config.Dryrun)
+			if err != nil {
+				Error.log(err)
+			}
+			//containerRemove(containerName) is not needed due to --rm flag
+		}()
+	}
 	cmdArgs = []string{"--rm"}
 	validPorts, portError := checkPortInput(config.ports)
 	if !validPorts {
@@ -270,30 +270,79 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.disableWatcher {
 		cmdArgs = append(cmdArgs, "--no-watcher")
 	}
-	Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
-	execCmd, err := DockerRunAndListen(cmdArgs, Container, config.interactive, config.Verbose, config.Dryrun)
-	if config.Dryrun {
-		Info.log("Dry Run - Skipping execCmd.Wait")
-	} else {
-		if err == nil {
-			err = execCmd.Wait()
-		}
-	}
-	if err != nil {
-		// 'signal: interrupt'
-		// TODO presumably you can query the error itself
-		error := fmt.Sprintf("%s", err)
-		//Linux and Windows return a different error on Ctrl-C
-		if error == "signal: interrupt" || error == "exit status 2" {
-			Info.log("Closing down, development environment was interrupted.")
+	if !config.Buildah {
+		Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
+		execCmd, err := DockerRunAndListen(cmdArgs, Container, config.interactive, config.Verbose, config.Dryrun)
+		if config.Dryrun {
+			Info.log("Dry Run - Skipping execCmd.Wait")
 		} else {
-			return errors.Errorf("Error in 'appsody %s': %s", mode, error)
+			if err == nil {
+				err = execCmd.Wait()
+			}
+		}
+		if err != nil {
+			// 'signal: interrupt'
+			// TODO presumably you can query the error itself
+			error := fmt.Sprintf("%s", err)
+			//Linux and Windows return a different error on Ctrl-C
+			if error == "signal: interrupt" || error == "exit status 2" {
+				Info.log("Closing down, development environment was interrupted.")
+			} else {
+				return errors.Errorf("Error in 'appsody %s': %s", mode, error)
 
+			}
+
+		} else {
+			Info.log("Closing down development environment.")
 		}
 
 	} else {
-		Info.log("Closing down development environment.")
-	}
+		//This is buildah path - so do a kube apply instead
+		dryrun := config.Dryrun
+
+		portList, portsErr := getExposedPorts(config.RootCommandConfig)
+		if portsErr != nil {
+			return portsErr
+		}
+		projectName, err := getProjectName(config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
+
+		projectDir, err := getProjectDir(config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
+		deploymentYaml, err := GenDeploymentYaml(projectName, platformDefinition, portList, projectDir, projectName, dryrun)
+		if err != nil {
+			return err
+		}
+		//hack
+		namespace := ""
+		//endhack
+		err = KubeApply(deploymentYaml, namespace, dryrun)
+		if err != nil {
+			return err
+		}
+		serviceYaml, err := GenServiceYaml(projectName, portList, projectDir, dryrun)
+		if err != nil {
+			return err
+		}
+
+		err = KubeApply(serviceYaml, namespace, dryrun)
+		if err != nil {
+			return err
+		}
+		routeYaml, err := GenRouteYaml(projectName, projectDir, dryrun)
+		if err != nil {
+			return err
+		}
+
+		err = KubeApply(routeYaml, namespace, dryrun)
+		if err != nil {
+			return err
+		}
+	} //end of buildah path
 	return nil
 
 }
