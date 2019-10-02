@@ -15,10 +15,18 @@
 package cmd
 
 import (
+	"encoding/json"
+
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
+type repoListCommandConfig struct {
+	output string
+}
+
 func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
+	repoListConfig := &repoListCommandConfig{}
 	// repo list represent repo list cmd
 	var repoListCmd = &cobra.Command{
 		Use:   "list",
@@ -27,7 +35,7 @@ func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var repos RepositoryFile
 
-			_, repoErr := repos.getRepos(config)
+			list, repoErr := repos.getRepos(config)
 			if repoErr != nil {
 				return repoErr
 			}
@@ -35,9 +43,29 @@ func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			Info.log("\n", repoList)
+
+			if repoListConfig.output == "" {
+				Info.log("\n", repoList)
+			} else if repoListConfig.output == "yaml" {
+				bytes, err := yaml.Marshal(&list)
+				if err != nil {
+					return err
+				}
+				result := string(bytes)
+				Info.log("\n", result)
+			} else if repoListConfig.output == "json" {
+				bytes, err := json.Marshal(&list)
+				if err != nil {
+					return err
+				}
+				result := string(bytes)
+				Info.log("\n", result)
+			}
+
 			return nil
 		},
 	}
+
+	repoListCmd.PersistentFlags().StringVarP(&repoListConfig.output, "output", "o", "", "Output repo list in yaml or json format")
 	return repoListCmd
 }

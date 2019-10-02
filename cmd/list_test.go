@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -94,4 +95,67 @@ func TestListV2(t *testing.T) {
 		t.Error("Failed to flag non-existing repo")
 	}
 
+}
+
+func TestListJson(t *testing.T) {
+	args := []string{"list", "-o", "json"}
+	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := cmdtest.ParseListJSON(cmdtest.ParseJSON(output))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testContentsListOutput(t, list, output)
+}
+
+func TestListYaml(t *testing.T) {
+	args := []string{"list", "-o", "yaml"}
+	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := cmdtest.ParseListYAML(cmdtest.ParseYAML(output))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testContentsListOutput(t, list, output)
+}
+
+func testContentsListOutput(t *testing.T, list []cmd.RepositoryOutputFormat, output string) {
+
+	if len(list) != 2 {
+		t.Errorf("Expected two repositories! CLI output:\n%s", output)
+	}
+
+	for _, repo := range list {
+		if len(repo.Stacks) < 1 {
+			t.Errorf("Expected repository %s to contain stacks! CLI output:\n%s", repo.Name, output)
+		}
+
+		for _, stack := range repo.Stacks {
+			if stack.ID == "" {
+				t.Errorf("Found stack with missing ID! CLI output:\n%s", output)
+			}
+
+			if stack.Version == "" {
+				t.Errorf("Found stack with missing Version! CLI output:\n%s", output)
+			}
+			if stack.Description == "" {
+				t.Errorf("Found stack with missing Description! CLI output:\n%s", output)
+			}
+			if stack.Templates == "" {
+				t.Errorf("Found stack with missing Templates! CLI output:\n%s", output)
+			}
+		}
+	}
 }

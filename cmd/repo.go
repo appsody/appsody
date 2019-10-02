@@ -302,7 +302,6 @@ func downloadIndex(url string) (*RepoIndex, error) {
 }
 
 func (index *RepoIndex) listProjects(repoName string, config *RootCommandConfig) (string, error) {
-	var Stacks = []Stack{}
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.Wrap = true
@@ -312,7 +311,7 @@ func (index *RepoIndex) listProjects(repoName string, config *RootCommandConfig)
 	}
 	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
 
-	Stacks, err := index.buildStacksFromIndex(repoName, Stacks)
+	Stacks, err := index.buildStacksFromIndex(repoName)
 	if err != nil {
 		return "", err
 	}
@@ -507,10 +506,10 @@ func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
 	return indices, nil
 }
 
-func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([]Stack, error) {
+func (index *RepoIndex) buildStacksFromIndex(repoName string) ([]Stack, error) {
+	var Stacks []Stack
 
 	for id, value := range index.Projects {
-
 		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, "*" + value[0].DefaultTemplate})
 	}
 	for _, value := range index.Stacks {
@@ -552,7 +551,7 @@ func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) ([
 }
 
 func (r *RepositoryFile) listProjects(rootConfig *RootCommandConfig) (string, error) {
-	var Stacks = []Stack{}
+	var Stacks []Stack
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.Wrap = true
@@ -572,7 +571,7 @@ func (r *RepositoryFile) listProjects(rootConfig *RootCommandConfig) (string, er
 			}
 
 			var errStack error
-			Stacks, errStack = index.buildStacksFromIndex(repoName, Stacks)
+			Stacks, errStack = index.buildStacksFromIndex(repoName)
 			if errStack != nil {
 				return "", errStack
 			}
@@ -594,4 +593,30 @@ func (r *RepositoryFile) listProjects(rootConfig *RootCommandConfig) (string, er
 		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
 	}
 	return table.String(), nil
+}
+
+// Type for outputting stacks of a repository in JSON and YAML
+type RepositoryOutputFormat struct {
+	Name   string `json:"RepositoryName" yaml:"repositoryName"`
+	Stacks []Stack
+}
+
+func (r *RepositoryFile) getRepositories() ([]RepositoryOutputFormat, error) {
+	// Rename this
+	var repositories []RepositoryOutputFormat
+	indices, err := r.GetIndices()
+	if err != nil {
+		return nil, errors.Errorf("Could not read indices: %v", err)
+	}
+
+	if len(indices) != 0 {
+		for repoName, index := range indices {
+			stacks, err := index.buildStacksFromIndex(repoName)
+			if err != nil {
+				return nil, err
+			}
+			repositories = append(repositories, RepositoryOutputFormat{Name: repoName, Stacks: stacks})
+		}
+	}
+	return repositories, nil
 }

@@ -15,11 +15,19 @@
 package cmd
 
 import (
+	"encoding/json"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
+type listCommandConfig struct {
+	output string
+}
+
 func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	listConfig := &listCommandConfig{}
 	// listCmd represents the list command
 	var listCmd = &cobra.Command{
 		Use:   "list [repository]",
@@ -40,7 +48,30 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				if len(rootConfig.UnsupportedRepos) > 0 {
 					Warning.log("The following repositories .yaml have an  APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
 				}
-				Info.log("\n", projects)
+
+				list, err := repos.getRepositories()
+				if err != nil {
+					return err
+				}
+
+				if listConfig.output == "" {
+					Info.log("\n", projects)
+				} else if listConfig.output == "yaml" {
+					bytes, err := yaml.Marshal(&list)
+					if err != nil {
+						return err
+					}
+					result := string(bytes)
+					Info.log("\n", result)
+				} else if listConfig.output == "json" {
+					bytes, err := json.Marshal(&list)
+					if err != nil {
+						return err
+					}
+					result := string(bytes)
+					Info.log("\n", result)
+				}
+
 			} else {
 				repoName := args[0]
 				_, err := repos.getRepos(rootConfig)
@@ -61,5 +92,7 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			return nil
 		},
 	}
+
+	listCmd.PersistentFlags().StringVarP(&listConfig.output, "output", "o", "", "Output list in yaml or json format")
 	return listCmd
 }

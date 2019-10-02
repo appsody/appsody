@@ -16,6 +16,7 @@ package cmdtest
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -26,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/appsody/appsody/cmd"
+	"gopkg.in/yaml.v2"
 )
 
 // Repository struct represents an appsody repository
@@ -175,6 +177,78 @@ func ParseRepoList(repoListString string) []Repository {
 		}
 	}
 	return repos
+}
+
+// ParseJSON finds the json on the output string
+func ParseJSON(repoListString string) string {
+	jsonString := ""
+	repoStrings := strings.Split(repoListString, "\n")
+	for _, repoStr := range repoStrings {
+		if strings.HasPrefix(repoStr, "{") || strings.HasPrefix(repoStr, "[{") {
+			jsonString = repoStr
+			break
+		}
+	}
+	return jsonString
+}
+
+// ParseYAML finds the start of the yaml string
+func ParseYAML(output string) string {
+	var outputLines = strings.Split(output, "\n")
+	var splitIndex int
+	for index, line := range outputLines {
+		if (strings.HasPrefix(line, "-") || strings.Contains(line, ":")) && !strings.HasPrefix(line, "[") {
+			splitIndex = index
+			break
+		}
+	}
+
+	return strings.Join(outputLines[splitIndex:], "\n")
+}
+
+// ParseRepoListJSON takes the json from 'appsody repo list -o json'
+// and returns a RepositoryFile from the string.
+func ParseRepoListJSON(jsonString string) (cmd.RepositoryFile, error) {
+	var repos cmd.RepositoryFile
+	e := json.Unmarshal([]byte(jsonString), &repos)
+	if e != nil {
+		return repos, e
+	}
+	return repos, nil
+}
+
+// ParseRepoListYAML takes the yaml from 'appsody repo list -o yaml'
+// and returns a RepositoryFile from the string.
+func ParseRepoListYAML(yamlString string) (cmd.RepositoryFile, error) {
+	var repos cmd.RepositoryFile
+	yamlString = strings.Replace(yamlString, "\n\n", "\n", -1)
+	e := yaml.Unmarshal([]byte(yamlString), &repos)
+	if e != nil {
+		return repos, e
+	}
+	return repos, nil
+}
+
+// ParseListJSON takes the json from 'appsody list -o json'
+// and returns an array of RepositoryOutputFormat from the string.
+func ParseListJSON(jsonString string) ([]cmd.RepositoryOutputFormat, error) {
+	var repos []cmd.RepositoryOutputFormat
+	err := json.Unmarshal([]byte(jsonString), &repos)
+	if err != nil {
+		return repos, err
+	}
+	return repos, nil
+}
+
+// ParseListYAML takes the yaml from 'appsody list -o yaml'
+// and returns an array of RepositoryOutputFormat from the string.
+func ParseListYAML(yamlString string) ([]cmd.RepositoryOutputFormat, error) {
+	var repos []cmd.RepositoryOutputFormat
+	err := yaml.Unmarshal([]byte(yamlString), &repos)
+	if err != nil {
+		return repos, err
+	}
+	return repos, nil
 }
 
 // AddLocalFileRepo calls the repo add command with the repo index located
