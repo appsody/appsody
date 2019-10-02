@@ -20,6 +20,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+//RunKubeExec issues kubectl exec <arg>
+func RunKubeExec(args []string, dryrun bool) (string, error) {
+	Info.log("Attempting to get resource from Kubernetes ...")
+	kargs := []string{"exec"}
+	kargs = append(kargs, args...)
+	return RunKube(kargs, dryrun)
+
+}
+
 //RunKubeGet issues kubectl get <arg>
 func RunKubeGet(args []string, dryrun bool) (string, error) {
 	Info.log("Attempting to get resource from Kubernetes ...")
@@ -141,6 +150,55 @@ func operatorExistsInNamespace(operatorNamespace string, dryrun bool) (bool, err
 // Check to see if any other operator is watching the watchNameSpace
 func operatorExistsWithWatchspace(watchNamespace string, dryrun bool) (bool, string, error) {
 	Debug.log("Looking for an operator matching watchspace: ", watchNamespace)
+	var namespacesWithOperatorsGetArgs = []string{"pods", "-o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}’", "--all-namespaces"}
+	getNamespacesOutput, getNamespacesErr := RunKubeGet(namespacesWithOperatorsGetArgs, dryrun)
+
+	if getNamespacesErr != nil {
+		return false, "", getNamespacesErr
+	}
+	getNamespacesOutput = strings.Trim(getNamespacesOutput, "'’\n")
+
+	if getNamespacesOutput == "" {
+		Info.log("There are no deployments with appsody-operator")
+		return false, "", nil
+	}
+	if watchNamespace == "" && getNamespacesOutput != "" {
+		watchAllErr := errors.Errorf("You specified --watch-all, but there are already instances of the appsody operator on the cluster")
+		return true, "", watchAllErr
+	}
+
+	namespaces := strings.Split(getNamespacesOutput, " ")
+	Debug.log("namespaces with operators: ", namespaces)
+	for _, podNamespace := range namespaces {
+
+		podWatchSpace, watchspaceErr := getOperatorWatchspace(podNamespace, dryrun)
+		if watchspaceErr != nil {
+			return false, "", watchspaceErr
+		}
+		// the operator is watching all namespaces
+		if podWatchSpace == "" {
+			Info.logf("An operator exists in namespace %s, that is watching all namespaces", podNamespace)
+			return true, podNamespace, nil
+		}
+		// split the podwatchSpace by using new function
+		// do the iff "" check first
+		// loop around this if check
+		watchSpaces := getWatchSpaces(podWatchSpace, dryrun)
+		for _, value := range watchSpaces {
+			if value == watchNamespace {
+				Debug.logf("An operator that is watching namespace %s already exists in namespace %s", watchNamespace, podNamespace)
+				return true, podNamespace, nil
+			}
+		}
+
+	}
+	return false, "", nil
+}
+
+/*
+
+func operatorExistsWithWatchspace(watchNamespace string, dryrun bool) (bool, string, error) {
+	Debug.log("Looking for an operator matching watchspace: ", watchNamespace)
 	var deploymentsWithOperatorsGetArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.namespace}'", "--all-namespaces"}
 	getOutput, getErr := RunKubeGet(deploymentsWithOperatorsGetArgs, dryrun)
 	if getErr != nil {
@@ -177,6 +235,9 @@ func operatorExistsWithWatchspace(watchNamespace string, dryrun bool) (bool, str
 	}
 	return false, "", nil
 }
+
+*/
+
 func operatorCount(dryrun bool) (int, error) {
 	var getAllOperatorsArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.name}'", "--all-namespaces"}
 	getOutput, getErr := RunKubeGet(getAllOperatorsArgs, dryrun)
@@ -217,16 +278,44 @@ func getOperatorWatchspace(namespace string, dryrun bool) (string, error) {
 	if !operatorExists {
 		return "", errors.Errorf("An appsody operator could not be found in namespace: %s", namespace)
 	}
-	var args = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].value}'", "-n", namespace}
 
-	getOutput, getErr := RunKubeGet(args, dryrun)
-	if getErr != nil {
-		Debug.log("Received an err: ", getErr)
-		return "", getErr
+	var getPodWatchNamespaceArgs = []string{"pod", "-o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.name}'", "-n", namespace}
+
+	getPodsOutput, getPodsErr := RunKubeGet(getPodWatchNamespaceArgs, dryrun)
+
+	if getPodsErr != nil {
+		return "", getPodsErr
 	}
-	watchspace := strings.Trim(getOutput, "'")
-	if watchspace == "" {
+	// we should now have the pod name
+	podName := strings.Trim(getPodsOutput, "'’\n")
+
+	getWatchspaceArgs := []string{"-n", namespace, "-it", podName, "--", "/bin/printenv", "WATCH_NAMESPACE"}
+
+	getWatchspaceOutput, getWatchspaceErr := RunKubeExec(getWatchspaceArgs, dryrun)
+
+	if getWatchspaceErr != nil {
+		return "", getWatchspaceErr
+	}
+
+	watchspaceForOperator := strings.Trim(getWatchspaceOutput, "'’\n")
+	if watchspaceForOperator == "" {
 		Debug.log("This operator watches the entire cluster ")
 	}
-	return watchspace, nil
+	Debug.Logf("Pod: %s in namespace: %s is watching namespace: %s", podName, namespace, watchspaceForOperator)
+
+	return watchspaceForOperator, nil
+}
+
+// create a function to parse the watchlist
+func getWatchSpaces(csvList string, dryrun bool) []string {
+	if csvList == "" {
+		return nil
+	}
+	// split the string and clean up any issues
+	watchList := strings.Split(csvList, ",")
+	for index := range watchList {
+		watchList[index] = strings.Trim(watchList[index], " '’\n")
+
+	}
+	return watchList
 }
