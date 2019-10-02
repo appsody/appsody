@@ -55,12 +55,14 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			stackPath := rootConfig.ProjectDir
 			Info.Log("stackPath is: ", stackPath)
 
-			// check for temeplates dir, error out if its not there
+			// check for templates dir, error out if its not there
 			check, err := Exists("templates")
+			if err != nil {
+				return errors.New("Error checking stack root directory: " + err.Error())
+			}
 			if !check {
 				// if we can't find the templates directory then we are not starting from a valid root of the stack directory
-				Error.Log("Unable to reach templates directory. Current directory must be the root of the stack.")
-				return err
+				return errors.New("Unable to reach templates directory. Current directory must be the root of the stack")
 			}
 
 			// get the stack name from the stack path

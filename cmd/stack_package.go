@@ -63,10 +63,12 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// check for templates dir, error out if its not there
 			check, err := Exists("templates")
+			if err != nil {
+				return errors.New("Error checking stack root directory: " + err.Error())
+			}
 			if !check {
 				// if we can't find the templates directory then we are not starting from a valid root of the stack directory
-				Error.Log("Unable to reach templates directory. Current directory must be the root of the stack.")
-				return err
+				return errors.New("Unable to reach templates directory. Current directory must be the root of the stack")
 			}
 
 			appsodyHome := getHome(rootConfig)
