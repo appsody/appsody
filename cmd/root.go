@@ -113,7 +113,10 @@ Complete documentation is available at https://appsody.dev`,
 	if setupErr != nil {
 		return rootCmd, setupErr
 	}
-	rootConfig.Buildah = true
+	appsodyOnK8S := os.Getenv("APPSODY_K8S_EXPERIMENTAL")
+	if appsodyOnK8S == "TRUE" {
+		rootConfig.Buildah = true
+	}
 	return rootCmd, nil
 }
 
