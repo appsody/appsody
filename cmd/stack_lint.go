@@ -154,7 +154,9 @@ This command can be run from the base directory of your stack or you can supply 
 			stackLintErrorCount += s.validateYaml(stackPath)
 
 			appDeployKeys := []string{"apiVersion", "kind", "name", "version", "applicationImage", "stack", "expose"}
-			stackLintErrorCount += validateAppDeploy(stackPath, appDeployKeys)
+			appDeployPath := filepath.Join(stackPath, "image", "config", "app-deploy.yaml")
+			appDeployWarningCount := validateAppDeploy(appDeployPath, appDeployKeys)
+			stackLintWarningCount += appDeployWarningCount
 
 			Info.log("TOTAL ERRORS: ", stackLintErrorCount)
 			Info.log("TOTAL WARNINGS: ", stackLintWarningCount)

@@ -17,29 +17,27 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
 
-func validateAppDeploy(stackPath string, appDeployKeys []string) int {
-	stackLintErrorCount := 0
-	arg := filepath.Join(stackPath, "image", "config", "app-deploy.yaml")
+func validateAppDeploy(appDeployPath string, appDeployKeys []string) int {
+	stackLintWarningCount := 0
 	var deployFileContents []string
 
-	Info.log("LINTING app-deploy.yaml: ", arg)
+	Info.log("LINTING app-deploy.yaml: ", appDeployPath)
 
-	appdeploy, err := ioutil.ReadFile(arg)
+	appdeploy, err := ioutil.ReadFile(appDeployPath)
 	if err != nil {
-		Error.log("app deploy err ", err)
-		stackLintErrorCount++
+		Warning.log("app deploy err ", err)
+		stackLintWarningCount++
 	}
 
 	appDeployMap := make(map[string]interface{})
 	err = yaml.UnmarshalStrict([]byte(appdeploy), &appDeployMap)
 	if err != nil {
-		Error.log("Unmarshal: Error unmarshalling app-deploy.yaml")
-		stackLintErrorCount++
+		Warning.log("Unmarshal: Error unmarshalling app-deploy.yaml")
+		stackLintWarningCount++
 	}
 
 	mapString := make(map[string]interface{})
@@ -67,11 +65,11 @@ func validateAppDeploy(stackPath string, appDeployKeys []string) int {
 			}
 		}
 		if !variableFound {
-			Error.log("Missing field: ", keys)
-			stackLintErrorCount++
+			Warning.log("Missing field: ", keys)
+			stackLintWarningCount++
 		}
 		variableFound = false
 	}
 
-	return stackLintErrorCount
+	return stackLintWarningCount
 }

@@ -285,6 +285,11 @@ func TestLintWithMissingConfig(t *testing.T) {
 	}
 
 	RestoreSampleStack(removeArray)
+	appDeployContents := []byte("apiVersion: appsody.dev/v1beta1\nkind: AppsodyApplication\nmetadata:\n  name: APPSODY_PROJECT_NAME\nspec:\n  version: 1.0.0\n  applicationImage: APPSODY_DOCKER_IMAGE\n  stack: APPSODY_STACK\n  service:\n    type: NodePort\n    port: APPSODY_PORT\n  expose: true")
+	writeAppDeploy := ioutil.WriteFile(filepath.Join(removeConf, "app-deploy.yaml"), appDeployContents, 0644)
+	if writeAppDeploy != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLintWithMissingProject(t *testing.T) {
