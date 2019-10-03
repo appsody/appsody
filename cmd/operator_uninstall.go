@@ -138,30 +138,40 @@ func removeOperator(operatorNamespace string, config *operatorUninstallCommandCo
 	} else {
 		Info.log("Dry run - skipping execution of: getOperatorWatchspace(" + operatorNamespace + ")")
 	}
-	// If there are running apps...
-	appsCount, err := appsodyApplicationCount(watchNamespace, config.Dryrun)
-	if err != nil {
-		return errors.Errorf("Could not determine if there are AppsodyApplication instances: %v", err)
-	}
-	if appsCount > 0 {
-		if config.force {
-			deleteOut, err := deleteAppsodyApps(watchNamespace, config.Dryrun)
-			if err != nil {
-				return errors.Errorf("Could not remove appsody apps: %v %s", err, deleteOut)
-			}
-		} else {
-			Debug.log("There are outstanding appsody applications for this operator - resubmit the command with --force if you want to remove them.")
-			return errors.Errorf("There are outstanding appsody applications for this operator - resubmit the command with --force if you want to remove them.")
-		}
-	}
 
-	// If the operator is watching a different namespace, remove RBACs
-	if watchNamespace != operatorNamespace {
-		if err := removeOperatorRBAC(operatorNamespace, config); err != nil {
-			Debug.logf("Error from removeOperatorRBAC: %s", fmt.Sprintf("%v", err))
-			if !strings.Contains(fmt.Sprintf("%v", err), "(NotFound)") {
-				return err
+	watchSpaces := getWatchSpaces(watchNamespace, config.Dryrun)
+	if watchSpaces == nil {
+		watchSpaces = append(watchSpaces, "")
+	}
+	for _, currentWatchSpace := range watchSpaces {
+		// If there are running apps...
+		appsCount, err := appsodyApplicationCount(currentWatchSpace, config.Dryrun)
+		if err != nil {
+			return errors.Errorf("Could not determine if there are AppsodyApplication instances: %v", err)
+		}
+		if appsCount > 0 {
+			if config.force {
+				deleteOut, err := deleteAppsodyApps(currentWatchSpace, config.Dryrun)
+				if err != nil {
+					return errors.Errorf("Could not remove appsody apps: %v %s", err, deleteOut)
+				}
+			} else {
+				Debug.log("There are outstanding appsody applications for this operator - resubmit the command with --force if you want to remove them.")
+				return errors.Errorf("There are outstanding appsody applications for this operator - resubmit the command with --force if you want to remove them.")
 			}
+		}
+
+	}
+	// If the operator is watching a different namespace, remove RBACs
+	for _, currentWatchSpace := range watchSpaces {
+		if currentWatchSpace != operatorNamespace {
+			if err := removeOperatorRBAC(operatorNamespace, config); err != nil {
+				Debug.logf("Error from removeOperatorRBAC: %s", fmt.Sprintf("%v", err))
+				if !strings.Contains(fmt.Sprintf("%v", err), "(NotFound)") {
+					return err
+				}
+			}
+			break
 		}
 	}
 
