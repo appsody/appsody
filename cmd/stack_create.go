@@ -23,56 +23,89 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
+type stackCreateCommandConfig struct {
+	*RootCommandConfig
+	copy string
+}
+
 func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	config := &stackCreateCommandConfig{RootCommandConfig: rootConfig}
+
 	var stackCmd = &cobra.Command{
 		Use:   "create",
 		Short: "Create a new stack as a copy of an existing stack",
 		Long:  ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			downloadFolderToDisk("https://github.com/appsody/stacks/archive/master.zip", getHome(rootConfig)+"/extract/hello.zip")
-
-			unzip(getHome(rootConfig)+"/extract/hello.zip", "output-folder")
-			os.Remove(getHome(rootConfig) + "/extract/hello.zip")
-
-			err := os.Rename("output-folder/stacks-master/incubator/nodejs/", "nodejs")
-			if err != nil {
-				log.Fatal(err)
+			if len(args) < 1 {
+				return errors.New("Stack create command should have a stack name. Run `appsody stack create <name>` to create one")
 			}
 
-			os.RemoveAll("output-folder")
+			stack := args[0]
 
-			err = os.Rename("nodejs", "output-folder")
-			if err != nil {
-				log.Fatal(err)
+			exists, _ := Exists(stack)
+
+			if exists {
+				return errors.New("This stack named " + stack + " already exists")
+			}
+
+			downloadFolderToDisk("https://github.com/appsody/stacks/archive/master.zip", getHome(rootConfig)+"/extract/repo.zip")
+
+			if config.copy != "" {
+				repoIndex := strings.Index(config.copy, "/")
+
+				copiedStack := config.copy[repoIndex+1:]
+
+				unzip(getHome(rootConfig)+"/extract/repo.zip", stack, config.copy)
+				os.Remove(getHome(rootConfig) + "/extract/repo.zip")
+
+				err := os.Rename(stack+"/stacks-master/"+config.copy, copiedStack)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				os.RemoveAll(stack)
+
+				err = os.Rename(copiedStack, stack)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+			} else {
+				unzip(getHome(rootConfig)+"/extract/repo.zip", stack, "")
+				os.Remove(getHome(rootConfig) + "/extract/repo.zip")
+
+				err := os.Rename(stack+"/stacks-master/samples/sample-stack/", "sample-stack")
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				os.RemoveAll(stack)
+
+				err = os.Rename("sample-stack", stack)
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
 
 			return nil
 		},
 	}
+	stackCmd.PersistentFlags().StringVar(&config.copy, "copy", "", "Copy existing stack")
 	return stackCmd
 }
 
-func downloadFolderToDisk(url string, destFile string) error {
-	outFile, err := os.Create(destFile)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	err = downloadFile(url, outFile)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// Unzip will decompress a zip archive, moving all files and folders
+// Unzip will decompress a zip archive
 // within the zip file (parameter 1) to an output directory (parameter 2).
-func unzip(src string, dest string) ([]string, error) {
+func unzip(src string, dest string, copy string) ([]string, error) {
+
+	if copy == "" {
+		copy = "samples/sample-stack/"
+	}
 
 	var filenames []string
 
@@ -93,7 +126,7 @@ func unzip(src string, dest string) ([]string, error) {
 		}
 
 		fileName := strings.Replace(f.Name, "/stacks-master", "", -1)
-		if !strings.HasPrefix(fileName, "stacks-master/incubator/nodejs/") {
+		if !strings.HasPrefix(fileName, "stacks-master/"+copy) {
 			continue
 		}
 

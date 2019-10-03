@@ -17,16 +17,14 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"sort"
 	"strings"
 
 	//"math/rand"
-	"net/http"
+
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/gosuri/uitable"
@@ -231,52 +229,6 @@ func ensureConfig(rootConfig *RootCommandConfig) error {
 
 		}
 	}
-	return nil
-}
-
-func downloadFile(href string, writer io.Writer) error {
-
-	// allow file:// scheme
-	t := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-	}
-	Debug.log("Proxy function for HTTP transport set to: ", &t.Proxy)
-	if runtime.GOOS == "windows" {
-		// For Windows, remove the root url. It seems to work fine with an empty string.
-		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("")))
-	} else {
-		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
-	}
-
-	httpClient := &http.Client{Transport: t}
-
-	req, err := http.NewRequest("GET", href, nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		buf, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			Debug.log("Could not read contents of response body: ", err)
-		} else {
-			Debug.logf("Contents http response:\n%s", buf)
-		}
-		resp.Body.Close()
-		return fmt.Errorf("Could not download %s: %s", href, resp.Status)
-	}
-
-	_, err = io.Copy(writer, resp.Body)
-	if err != nil {
-		return fmt.Errorf("Could not copy http response body to writer: %s", err)
-	}
-	resp.Body.Close()
 	return nil
 }
 
