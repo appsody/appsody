@@ -17,6 +17,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -225,9 +226,15 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
 				Info.Log("versionedArdhiveTar is: ", versionArchiveTar)
 
+				if runtime.GOOS == "windows" {
+					// for windows, add a leading slash and convert to unix style slashes
+					versionArchiveTar = "/" + filepath.ToSlash(versionArchiveTar)
+				}
+				versionArchiveTar = "file://" + versionArchiveTar
+
 				// create the template tar data string
 				templateTarStr := "      - id: " + templates[i] + "\n"
-				templateTarStr += "        url: file://" + versionArchiveTar + "\n"
+				templateTarStr += "        url: " + versionArchiveTar + "\n"
 
 				// write the template url in the index yaml
 				_, err = f.WriteString(templateTarStr)
@@ -267,8 +274,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			t.Close()
 
 			// create an appsody repo for the stack
-			yamlPath := "file://" + indexFileLocal
-			_, err = RunAppsodyCmdExec([]string{"repo", "add", "dev-local", yamlPath}, stackPath)
+			_, err = AddLocalFileRepo("dev-local", indexFileLocal)
 			if err != nil {
 				return errors.Errorf("Error running appsody command: %v", err)
 			}
