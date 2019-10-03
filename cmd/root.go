@@ -68,6 +68,7 @@ const operatorHome = "https://github.com/appsody/appsody-operator/releases/lates
 
 func newRootCmd(projectDir string, args []string) (*cobra.Command, error) {
 	rootConfig := &RootCommandConfig{}
+
 	rootConfig.ProjectDir = projectDir
 	rootCmd := &cobra.Command{
 		Use:           "appsody",
@@ -111,6 +112,10 @@ Complete documentation is available at https://appsody.dev`,
 	setupErr := setupConfig(args, rootConfig)
 	if setupErr != nil {
 		return rootCmd, setupErr
+	}
+	appsodyOnK8S := os.Getenv("APPSODY_K8S_EXPERIMENTAL")
+	if appsodyOnK8S == "TRUE" {
+		rootConfig.Buildah = true
 	}
 	return rootCmd, nil
 }
