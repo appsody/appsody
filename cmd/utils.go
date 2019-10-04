@@ -266,12 +266,8 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	return config.ProjectDir, nil
 }
 
-func setProjectName(config *RootCommandConfig, projectName string) error {
-	dir, perr := getProjectDir(config)
-	if perr != nil {
-		return errors.Errorf("The current directory is not a valid appsody project. Run appsody init <stack> to create one: %v", perr)
-	}
-	appsodyConfig := filepath.Join(dir, ConfigFile)
+func setProjectName(projectDir string, projectName string) error {
+	appsodyConfig := filepath.Join(projectDir, ConfigFile)
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
 	err := v.ReadInConfig()
@@ -295,7 +291,7 @@ func setProjectName(config *RootCommandConfig, projectName string) error {
 
 		Info.log("Your Appsody project name is ", projectName)
 	} else {
-		projectName := "appsody-" + strings.ToLower(filepath.Base(dir)) + "-app"
+		projectName := "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-app"
 		reg, err := regexp.Compile("[^a-z0-9]+")
 		if err != nil {
 			return err
@@ -385,13 +381,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 		match, err := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
 
 		if !match {
-			v.Set("project-name", "my-project")
-			err = v.WriteConfig()
-
-			if err != nil {
-				return "", err
-			}
-			return "my-project", err
+			return "", errors.Errorf("This is not a valid project name, maybe you have accidentally changed the project name")
 		}
 		return projectName, err
 	}

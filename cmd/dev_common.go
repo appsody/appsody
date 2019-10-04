@@ -62,10 +62,10 @@ func checkDockerRunOptions(options []string) error {
 func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
 	projectName, perr := getProjectName(config)
 	if perr != nil {
-		if pmsg, ok := perr.(*NotAnAppsodyProject); ok {
+		if _, ok := perr.(*NotAnAppsodyProject); ok {
 			//Debug.log("Cannot retrieve the project name - continuing: ", perr)
 		} else {
-			Error.logf("Error occurred retrieving project name... exiting: %s", pmsg)
+			Error.logf("Error occurred retrieving project name... exiting: %s", perr)
 			os.Exit(1)
 		}
 	}
@@ -78,10 +78,10 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 
 	projectName, perr := getProjectName(config.RootCommandConfig)
 	if perr != nil {
-		if pmsg, ok := perr.(*NotAnAppsodyProject); ok {
+		if _, ok := perr.(*NotAnAppsodyProject); ok {
 			// Debug.log("Cannot retrieve the project name - continuing: ", perr)
 		} else {
-			Error.logf("Error occurred retrieving project name... exiting: %s", pmsg)
+			Error.logf("Error occurred retrieving project name... exiting: %s", perr)
 			os.Exit(1)
 		}
 	}
