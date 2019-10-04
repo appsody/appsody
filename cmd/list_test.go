@@ -75,12 +75,11 @@ func TestListV2(t *testing.T) {
 		t.Error("list command should contain id 'java-microprofile'")
 	}
 
-	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list", "appsodyhub"}, ".")
-
 	// we expect 2 instances
-	if !(strings.Count(output, "java-microprofile") == 1) {
-		t.Error("list command should contain id 'java-microprofile'")
+	if !(strings.Count(output, "java-microprofile") == 2) {
+		t.Error("list command should contain 2 'java-microprofile' stacks")
 	}
+
 	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
 
 	// we expect 2 instances

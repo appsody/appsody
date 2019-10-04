@@ -302,6 +302,7 @@ func downloadIndex(url string) (*RepoIndex, error) {
 }
 
 func (index *RepoIndex) listProjects(repoName string, config *RootCommandConfig) (string, error) {
+	var Stacks []Stack
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.Wrap = true
@@ -311,10 +312,7 @@ func (index *RepoIndex) listProjects(repoName string, config *RootCommandConfig)
 	}
 	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
 
-	Stacks, err := index.buildStacksFromIndex(repoName)
-	if err != nil {
-		return "", err
-	}
+	Stacks = index.buildStacksFromIndex(repoName, Stacks)
 
 	for _, value := range Stacks {
 		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
@@ -506,8 +504,7 @@ func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
 	return indices, nil
 }
 
-func (index *RepoIndex) buildStacksFromIndex(repoName string) ([]Stack, error) {
-	var Stacks []Stack
+func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) []Stack {
 
 	for id, value := range index.Projects {
 		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, "*" + value[0].DefaultTemplate})
@@ -547,7 +544,7 @@ func (index *RepoIndex) buildStacksFromIndex(repoName string) ([]Stack, error) {
 		return false
 	})
 
-	return Stacks, nil
+	return Stacks
 }
 
 func (r *RepositoryFile) listProjects(rootConfig *RootCommandConfig) (string, error) {
@@ -570,17 +567,14 @@ func (r *RepositoryFile) listProjects(rootConfig *RootCommandConfig) (string, er
 				rootConfig.UnsupportedRepos = append(rootConfig.UnsupportedRepos, repoName)
 			}
 
-			var errStack error
-			Stacks, errStack = index.buildStacksFromIndex(repoName)
-			if errStack != nil {
-				return "", errStack
-			}
+			Stacks = index.buildStacksFromIndex(repoName, Stacks)
 
 		}
 
 	} else {
 		return "", errors.New("there are no repositories in your configuration")
 	}
+
 	defaultRepoName, err := r.GetDefaultRepoName(rootConfig)
 	if err != nil {
 		return "", err
@@ -611,11 +605,10 @@ func (r *RepositoryFile) getRepositories() ([]RepositoryOutputFormat, error) {
 
 	if len(indices) != 0 {
 		for repoName, index := range indices {
-			stacks, err := index.buildStacksFromIndex(repoName)
-			if err != nil {
-				return nil, err
-			}
-			repositories = append(repositories, RepositoryOutputFormat{Name: repoName, Stacks: stacks})
+			var Stacks []Stack
+			Stacks = index.buildStacksFromIndex(repoName, Stacks)
+
+			repositories = append(repositories, RepositoryOutputFormat{Name: repoName, Stacks: Stacks})
 		}
 	}
 	return repositories, nil
