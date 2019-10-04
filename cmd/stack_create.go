@@ -68,7 +68,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				}
 
 				if !valid {
-					return errors.Errorf("This is not a valid stack. Please specify existing stack as <repo>/<stack ")
+					return errors.Errorf("This is not a valid stack. Please specify any existing stack as <repo>/<stack>")
 				}
 				os.Remove(getHome(rootConfig) + "/extract/repo.zip")
 
@@ -92,7 +92,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				}
 
 				if !valid {
-					return errors.Errorf("This is not a valid stack. Please specify existing stack as <repo>/<stack>")
+					return errors.Errorf("This is not a valid stack. Please specify any existing stack as <repo>/<stack>")
 				}
 				os.Remove(getHome(rootConfig) + "/extract/repo.zip")
 
