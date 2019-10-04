@@ -18,7 +18,6 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +37,9 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var stackCmd = &cobra.Command{
 		Use:   "create",
 		Short: "Create a new stack as a copy of an existing stack",
-		Long:  ``,
+		Long: `This command will create a new stack as a copy of an existing sample stack in the current directory that has the structure of an Appsody stack.
+        
+		If a copy flag is specified, stack create command will create a new stack as a copy of that existing stack.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
@@ -60,35 +61,51 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 				copiedStack := config.copy[repoIndex+1:]
 
-				unzip(getHome(rootConfig)+"/extract/repo.zip", stack, config.copy)
+				valid, unzipErr := unzip(getHome(rootConfig)+"/extract/repo.zip", stack, config.copy)
+
+				if unzipErr != nil {
+					return unzipErr
+				}
+
+				if !valid {
+					return errors.Errorf("This is not a valid stack. Please specify existing stack as <repo>/<stack ")
+				}
 				os.Remove(getHome(rootConfig) + "/extract/repo.zip")
 
 				err := os.Rename(stack+"/stacks-master/"+config.copy, copiedStack)
 				if err != nil {
-					log.Fatal(err)
+					return err
 				}
 
 				os.RemoveAll(stack)
 
 				err = os.Rename(copiedStack, stack)
 				if err != nil {
-					log.Fatal(err)
+					return err
 				}
 
 			} else {
-				unzip(getHome(rootConfig)+"/extract/repo.zip", stack, "")
+				valid, unzipErr := unzip(getHome(rootConfig)+"/extract/repo.zip", stack, "")
+
+				if unzipErr != nil {
+					return unzipErr
+				}
+
+				if !valid {
+					return errors.Errorf("This is not a valid stack. Please specify existing stack as <repo>/<stack>")
+				}
 				os.Remove(getHome(rootConfig) + "/extract/repo.zip")
 
 				err := os.Rename(stack+"/stacks-master/samples/sample-stack/", "sample-stack")
 				if err != nil {
-					log.Fatal(err)
+					return err
 				}
 
 				os.RemoveAll(stack)
 
 				err = os.Rename("sample-stack", stack)
 				if err != nil {
-					log.Fatal(err)
+					return err
 				}
 			}
 
@@ -101,17 +118,19 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 // Unzip will decompress a zip archive
 // within the zip file (parameter 1) to an output directory (parameter 2).
-func unzip(src string, dest string, copy string) ([]string, error) {
+func unzip(src string, dest string, copy string) (bool, error) {
+	valid := false
 
 	if copy == "" {
-		copy = "samples/sample-stack/"
+		copy = "samples/sample-stack"
+		valid = true
 	}
 
 	var filenames []string
 
 	r, err := zip.OpenReader(src)
 	if err != nil {
-		return filenames, err
+		return valid, err
 	}
 	defer r.Close()
 
@@ -122,12 +141,14 @@ func unzip(src string, dest string, copy string) ([]string, error) {
 
 		// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
 		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return filenames, fmt.Errorf("%s: illegal file path", fpath)
+			return valid, fmt.Errorf("%s: illegal file path", fpath)
 		}
 
 		fileName := strings.Replace(f.Name, "/stacks-master", "", -1)
-		if !strings.HasPrefix(fileName, "stacks-master/"+copy) {
+		if !strings.HasPrefix(fileName, "stacks-master/"+copy+"/") {
 			continue
+		} else {
+			valid = true
 		}
 
 		filenames = append(filenames, fpath)
@@ -140,17 +161,17 @@ func unzip(src string, dest string, copy string) ([]string, error) {
 
 		// Make File
 		if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
-			return filenames, err
+			return valid, err
 		}
 
 		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
-			return filenames, err
+			return valid, err
 		}
 
 		rc, err := f.Open()
 		if err != nil {
-			return filenames, err
+			return valid, err
 		}
 
 		_, err = io.Copy(outFile, rc)
@@ -160,8 +181,8 @@ func unzip(src string, dest string, copy string) ([]string, error) {
 		rc.Close()
 
 		if err != nil {
-			return filenames, err
+			return valid, err
 		}
 	}
-	return filenames, nil
+	return valid, nil
 }
