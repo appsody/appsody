@@ -41,7 +41,7 @@ type GitInfo struct {
 const trimChars = "' \r\n"
 
 func stringBefore(value string, searchValue string) string {
-	// Get substring after a string.
+	// Get substring before a string.
 
 	gitURLElements := strings.Split(value, searchValue)
 	if len(gitURLElements) == 0 {
@@ -116,8 +116,8 @@ func GetGitInfo(dryrun bool) (GitInfo, error) {
 		if strings.Trim(value, trimChars) != "" {
 
 			if strings.HasPrefix(value, branchPrefix) {
-				gitInfo.Branch = strings.Trim(stringBetween(value, branchPrefix, "..."), trimChars)
-				gitInfo.Upstream = strings.Trim(stringAfter(value, "..."), trimChars)
+				gitInfo.Branch = strings.Trim(stringBetween(value, branchPrefix, branchSeparatorString), trimChars)
+				gitInfo.Upstream = strings.Trim(stringAfter(value, branchSeparatorString), trimChars)
 				branchFound = true
 			}
 			if strings.Contains(value, noCommits) {
