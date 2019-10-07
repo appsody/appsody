@@ -1379,7 +1379,6 @@ func downloadFile(href string, writer io.Writer) error {
 		} else {
 			Debug.logf("Contents http response:\n%s", buf)
 		}
-		resp.Body.Close()
 		return fmt.Errorf("Could not download %s: %s", href, resp.Status)
 	}
 
@@ -1387,7 +1386,6 @@ func downloadFile(href string, writer io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("Could not copy http response body to writer: %s", err)
 	}
-	resp.Body.Close()
 	return nil
 }
 
