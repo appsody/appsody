@@ -163,7 +163,7 @@
         - `kubectl create ns test`
         - `kubectl create ns test2`
     - Steps:
-        1. `appsody operator install --watchspace --watch-all`
+        1. `appsody operator install --watch-all`
             - operator should be installed in namespace default watching all namespaces
         2. `appsody operator install --namespace test`
            - this should fail with an error saying "operator exists in namespace default watching namespace test"
@@ -210,7 +210,7 @@
             - this should fail with an error saying "no operator exists in namespace default"
         7. `appsody operator uninstall --namespace test`
             - this should fail with an error saying "unable to uninstall operator with running apps. use --force option to force the uninstall and remove apps"
-        8. `appsody operator uninstall --force`
+        8. `appsody operator uninstall --namespace test --force`
             - app in namespace default should be removed
             - app in namespace test should be removed
             - app in namespace test2 should be removed
@@ -260,13 +260,17 @@
 - Test number: 371
     - Title: WATCH_NAMESPACE uses valueFrom
     - Issue: 371
+    - Prereq:
+        - start from new project directory
+        - `appsody init <stack>`
+        - `kubectl create ns kabtest`
+        - `kubectl create ns test`
+        - `kubectl create ns test1`
     - Steps:
-        1. `kubectl create namespace kabtest`
-        2. `kubectl create namespace test`
-        3. `kubectl create namespace test1`
-        4. `appsody operator install -n kabtest`
-            -  Outcome: Operator should install in namespace kabtest
-        5. `kubectl edit deploy -n kabtest appsody-operator`
+        1. `appsody operator install -n kabtest`
+            - operator should be installed in namespace kabtest watching namespace kabtest
+        2. `kubectl edit deploy -n kabtest appsody-operator`
+        
             Change:
 
                     - name: WATCH_NAMESPACE
@@ -278,59 +282,63 @@
                         fieldRef:
                         apiVersion: v1
                         fieldPath: metadata.namespace
-        6. End the editing session with ESC :wq
-        7. `appsody operator install -n test`
-            - An operator should be created in namespace test
-        8. `appsody operator install -n test1 -w kabtest`
-             - This should fail with a message that an operator in namespace kabtest is watching namespace kabtest
-        9. `mkdir test`
-        10. `cd test`
-        11. `appsody init nodejs-express`
-        12. `appsody deploy -n kabtest`
-            - the application should be created in namespace kabtest
-        13. `appsody operator uninstall -n kabtest`
-            - The operator in namespace kabtest should fail
-        14. `appsody operator uninstall -n kabtest --force`
-            - The operator in namespace kabtest should be removed along with the appsody application in kabtest
-        15. appsody operator uninstall -n test 
-            - The operator in namespace test should be removed
+        3. End the editing session with ESC :wq
+        4. `appsody operator install -n test`
+            - operator should be installed in namespace test
+        5. `appsody operator install -n test1 -w kabtest`
+             - this should fail with a message that an operator in namespace kabtest is watching namespace kabtest
+        6. `appsody deploy -n kabtest`
+            - app should be deployed to namespace kabtest
+        7. `appsody operator uninstall -n kabtest`
+            - this should fail with an error saying "unable to uninstall operator with running apps. use --force option to force the uninstall and remove apps"
+        8. `appsody operator uninstall -n kabtest --force`
+            - operator should be removed from namespace kabtest
+            - app should be removed from namespace kabtest
+        9. `appsody operator uninstall -n test`
+            - operator should be removed from namespace test
 
 - Test 376:  
     - Title: Test with an operator that is watching multiple namespaces
     - Issue: 376
+    - Prereq:
+        - start from new project directory
+        - `appsody init <stack>`
+        - `kubectl create ns kabtest2`
+        - `kubectl create ns testa`
+        - `kubectl create ns testa1`
+        - `kubectl create ns testa2`
     - Steps:
-        1. `kubectl create namespace kabtest2`
-        2. `kubectl create namespace testa`
-        3. `kubectl create namespace testa1`
-        4. `kubectl create namespace testa2`
-        5. appsody operator install -n kabtest2
-            - Operator should install in namespace kabtest2
-        6. kubectl edit deploy -n kabtest2 appsody-operator
+        1. `appsody operator install -n kabtest2`
+            - operator should be installed in namespace kabtest2 watching namespace kabtest2
+        2. `kubectl edit deploy -n kabtest2 appsody-operator`
+
         Change:
-        - name: WATCH_NAMESPACE
-          value: kabtest2
+
+                - name: WATCH_NAMESPACE
+                value: kabtest2
         To: 
-        - name: WATCH_NAMESPACE
-          value: kabtest2,testa,testa1
-        7. End the editing session with ESC :wq
-        8. `appsody operator install -n testa1`
+
+                - name: WATCH_NAMESPACE
+                value: kabtest2,testa,testa1
+        3. End the editing session with ESC :wq
+        4. `appsody operator install -n testa1`
             - This should fail with the message that an operator in namespace kabtest2 is watching namespace,testa
-        9. `appsody operator install -n testa1 -w kabtest2`
-        - This should fail with a message that an operator in namespace kabtest2 is watching namespace kabtest2,testA,testa1
-        10. Create a new directory testa2
-        11. cd to testa2
-        12. `appsody init nodejs-express`
-        13. `appsody deploy -n testa2`
-        - The there should be a new operator in namespace testa2 and an appsody application
-        14. `appsody deploy -n testa1`
-        - should deploy an application in namespace testa1 and no new operator
-        15. `appsody deploy delete -n testa2`
-        16. `appsody operator uninstall -n testa2`
-        - The appsody application and operator should be removed from namespace testa2
-        17. `appsody operator uninstall -n kabtest2`
-        18. `appsody operator uninstall -n kabtest2 -force`
-        - There will be have an kubectl delete failure for rbac.yaml , but that is ok, the reason for this is that we edited the watch spaces outside the appsody operator install code, therefore no cluster rbac gets created.
+        5. `appsody operator install -n testa1 -w kabtest2`
+            - This should fail with a message that an operator in namespace kabtest2 is watching namespace kabtest2,testA,testa1
+        6. `appsody deploy -n testa2`
+            - operator should installed in namespace testa2
+            - app should be deployed in namespace testa2
+        7. `appsody deploy -n testa1`
+            - should deploy an application in namespace testa1 and no new operator
+        8. `appsody deploy delete -n testa2`
+            - app should be deleted from namespace testa2
+        9. `appsody operator uninstall -n testa2`
+            - operator should be removed from namespace testa2
+        10. `appsody operator uninstall -n kabtest2`
+            - this should fail with an error saying "unable to uninstall operator with running apps. use --force option to force the uninstall and remove apps"
+        11. `appsody operator uninstall -n kabtest2 --force`
+            - there will be a kubectl delete failure for rbac.yaml, but that is ok, the reason for this is that we edited the watch spaces outside the appsody operator install code, therefore no cluster rbac gets created.
 
-        [Error] Error from server (NotFound): error when deleting "/Users/kewegnerus.ibm.com/.appsody/deploy/appsody-app-cluster-rbac.yaml": clusterroles.rbac.authorization.k8s.io "appsody-operator-kabtest2" not found
-
-        The operator and crd yamls should be removed 
+            `[Error] Error from server (NotFound): error when deleting "/Users/kewegnerus.ibm.com/.appsody/deploy/appsody-app-cluster-rbac.yaml": clusterroles.rbac.authorization.k8s.io "appsody-operator-kabtest2" not found`
+            
+            - the operator and crd yamls should be removed 
