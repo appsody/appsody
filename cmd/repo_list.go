@@ -40,6 +40,7 @@ func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
 			if repoErr != nil {
 				return repoErr
 			}
+
 			repoList, err := repos.listRepos(config)
 			if err != nil {
 				return err

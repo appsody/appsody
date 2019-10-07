@@ -147,7 +147,7 @@ func testContentsListOutput(t *testing.T, list []cmd.RepositoryOutputFormat, out
 			if stack.Description == "" {
 				t.Errorf("Found stack with missing Description! CLI output:\n%s", output)
 			}
-			if stack.Templates == "" {
+			if len(stack.Templates) == 0 {
 				t.Errorf("Found stack with missing Templates! CLI output:\n%s", output)
 			}
 		}
