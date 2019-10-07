@@ -291,16 +291,32 @@ func setProjectName(projectDir string, projectName string) error {
 
 		Info.log("Your Appsody project name is ", projectName)
 	} else {
-		projectName := "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-app"
-		reg, err := regexp.Compile("[^a-z0-9]+")
-		if err != nil {
-			return err
-		}
-		projectName = reg.ReplaceAllString(projectName, "-")
-
+		projectName = strings.ToLower(filepath.Base(projectDir))
 		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+		if !match {
+			projectName := "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-app"
+			reg, err := regexp.Compile("[^a-z0-9]+")
+			if err != nil {
+				return err
+			}
+			projectName = reg.ReplaceAllString(projectName, "-")
 
-		if match {
+			match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+
+			if match {
+				v.Set("project-name", projectName)
+				err = v.WriteConfig()
+
+				if err != nil {
+					return err
+				}
+
+				Info.log("Your Appsody project name is ", projectName)
+
+			} else {
+				return errors.Errorf("This is not a valid project name")
+			}
+		} else {
 			v.Set("project-name", projectName)
 			err = v.WriteConfig()
 
@@ -309,11 +325,7 @@ func setProjectName(projectDir string, projectName string) error {
 			}
 
 			Info.log("Your Appsody project name is ", projectName)
-
-		} else {
-			return errors.Errorf("This is not a valid project name")
 		}
-
 	}
 	return nil
 }
