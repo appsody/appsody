@@ -45,6 +45,7 @@ type RootCommandConfig struct {
 	Buildah          bool
 	ProjectConfig    *ProjectConfig
 	ProjectDir       string
+	projectName      string
 	UnsupportedRepos []string
 
 	// package scoped, these are mostly for caching
