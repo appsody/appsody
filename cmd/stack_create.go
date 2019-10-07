@@ -54,7 +54,10 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.New("This stack named " + stack + " already exists")
 			}
 
-			downloadFolderToDisk("https://github.com/appsody/stacks/archive/master.zip", getHome(rootConfig)+"/extract/repo.zip")
+			err := downloadFolderToDisk("https://github.com/appsody/stacks/archive/master.zip", getHome(rootConfig)+"/extract/repo.zip")
+			if err != nil {
+				return err
+			}
 
 			if config.copy != "" {
 				repoIndex := strings.Index(config.copy, "/")
@@ -126,8 +129,6 @@ func unzip(src string, dest string, copy string) (bool, error) {
 		valid = true
 	}
 
-	var filenames []string
-
 	r, err := zip.OpenReader(src)
 	if err != nil {
 		return valid, err
@@ -151,11 +152,12 @@ func unzip(src string, dest string, copy string) (bool, error) {
 			valid = true
 		}
 
-		filenames = append(filenames, fpath)
-
 		if f.FileInfo().IsDir() {
 			// Make Folder
-			os.MkdirAll(fpath, os.ModePerm)
+			err := os.MkdirAll(fpath, os.ModePerm)
+			if err != nil {
+				return valid, err
+			}
 			continue
 		}
 
