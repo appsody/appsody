@@ -37,10 +37,10 @@ import (
 
 type Stack struct {
 	repoName    string
-	ID          string
-	Version     string
-	Description string
-	Templates   string
+	ID          string     `yaml:"id,omitempty" json:"id,omniempty"`
+	Version     string     `yaml:"version" json:"version"`
+	Description string     `yaml:"description" json:"description"`
+	Templates   []Template `yaml:"templates,omitempty" json:"templates,omitempty"`
 }
 
 type RepoIndex struct {
@@ -73,20 +73,21 @@ type ProjectVersion struct {
 }
 
 type RepositoryFile struct {
-	APIVersion   string             `yaml:"apiVersion"`
-	Generated    time.Time          `yaml:"generated"`
-	Repositories []*RepositoryEntry `yaml:"repositories"`
+	APIVersion   string             `yaml:"apiVersion" json:"apiVersion"`
+	Generated    time.Time          `yaml:"generated" json:"generated"`
+	Repositories []*RepositoryEntry `yaml:"repositories" json:"repositories"`
 }
 
 type RepositoryEntry struct {
-	Name      string `yaml:"name"`
-	URL       string `yaml:"url"`
-	IsDefault bool   `yaml:"default,omitempty"`
+	Name      string `yaml:"name" json:"name"`
+	URL       string `yaml:"url" json:"url"`
+	IsDefault bool   `yaml:"default,omitempty" json:"default,omnitempty"`
 }
 
 type Template struct {
-	ID  string `yaml:"id"`
-	URL string `yaml:"url"`
+	ID        string `yaml:"id" json:"id"`
+	URL       string `yaml:"url" json:"url"`
+	IsDefault bool   `yaml:"default,omitempty" json:"default,omnitempty"`
 }
 
 func findTemplateURL(projectVersion ProjectVersion, templateName string) string {
@@ -315,10 +316,12 @@ func (index *RepoIndex) listProjects(repoName string, config *RootCommandConfig)
 	Stacks = index.buildStacksFromIndex(repoName, Stacks)
 
 	for _, value := range Stacks {
-		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
+		templatesListString := convertTemplatesArrayToString(value.Templates)
+		table.AddRow(value.repoName, value.ID, value.Version, templatesListString, value.Description)
 	}
 	return table.String(), nil
 }
+
 func (r *RepositoryFile) listRepoProjects(repoName string, config *RootCommandConfig) (string, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
@@ -369,7 +372,6 @@ func (r *RepositoryFile) listRepos(rootConfig *RootCommandConfig) (string, error
 			repoName = "*" + repoName
 		}
 		entries = append(entries, RepositoryEntry{repoName, value.URL, value.IsDefault})
-
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	for _, value := range entries {
@@ -504,33 +506,44 @@ func (r *RepositoryFile) GetIndices() (RepoIndices, error) {
 	return indices, nil
 }
 
+func convertTemplatesArrayToString(Templates []Template) string {
+	templatesListString := ""
+	if len(Templates) > 0 {
+		sort.Slice(Templates, func(i, j int) bool { return Templates[i].ID < Templates[j].ID })
+
+		for _, template := range Templates {
+			defaultMarker := ""
+			if template.IsDefault {
+				defaultMarker = "*"
+			}
+			if templatesListString != "" {
+				templatesListString += ", " + defaultMarker + template.ID
+			} else {
+				templatesListString = defaultMarker + template.ID
+			}
+
+		}
+	}
+
+	return templatesListString
+}
+
+func setDefaultTemplate(Templates []Template, DefaultTemplate string) {
+	for index, template := range Templates {
+		if template.ID == DefaultTemplate {
+			Templates[index].IsDefault = true
+		}
+	}
+}
 func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) []Stack {
 
 	for id, value := range index.Projects {
-		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, "*" + value[0].DefaultTemplate})
+		setDefaultTemplate(value[0].Templates[:], value[0].DefaultTemplate)
+		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, value[0].Templates})
 	}
 	for _, value := range index.Stacks {
-		Templates := value.Templates
-
-		templatesListString := ""
-		if value.Templates != nil {
-			sort.Slice(Templates, func(i, j int) bool { return Templates[i].ID < Templates[j].ID })
-
-			for _, template := range Templates {
-				defaultMarker := ""
-				if template.ID == value.DefaultTemplate {
-					defaultMarker = "*"
-				}
-				if templatesListString != "" {
-					templatesListString += ", " + defaultMarker + template.ID
-				} else {
-					templatesListString = defaultMarker + template.ID
-				}
-
-			}
-		}
-
-		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, templatesListString})
+		setDefaultTemplate(value.Templates[:], value.DefaultTemplate)
+		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, value.Templates})
 	}
 
 	sort.Slice(Stacks, func(i, j int) bool {
@@ -584,7 +597,9 @@ func (r *RepositoryFile) listProjects(rootConfig *RootCommandConfig) (string, er
 		if value.repoName == defaultRepoName {
 			value.repoName = "*" + value.repoName
 		}
-		table.AddRow(value.repoName, value.ID, value.Version, value.Templates, value.Description)
+
+		templatesListString := convertTemplatesArrayToString(value.Templates)
+		table.AddRow(value.repoName, value.ID, value.Version, templatesListString, value.Description)
 	}
 	return table.String(), nil
 }

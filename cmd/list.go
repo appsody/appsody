@@ -23,11 +23,12 @@ import (
 )
 
 type listCommandConfig struct {
+	*RootCommandConfig
 	output string
 }
 
 func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
-	listConfig := &listCommandConfig{}
+	listConfig := &listCommandConfig{RootCommandConfig: rootConfig}
 	// listCmd represents the list command
 	var listCmd = &cobra.Command{
 		Use:   "list [repository]",
