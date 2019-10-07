@@ -14,8 +14,10 @@
 package cmd
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -433,6 +435,7 @@ func UserHomeDir() string {
 func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	// TODO cache this so the docker inspect command only runs once per cli invocation
 	var data []map[string]interface{}
+	var buildahData map[string]interface{}
 	var portValues []string
 	projectConfig, projectConfigErr := getProjectConfig(config)
 	if projectConfigErr != nil {
@@ -443,24 +446,41 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	if pullErrs != nil {
 		return nil, pullErrs
 	}
+
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
-
+	if config.Buildah {
+		cmdName = "buildah"
+		cmdArgs = []string{"inspect", "--format", "{{.Config}}", imageName}
+	}
+	Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
 	inspectOut, inspectErr := inspectCmd.Output()
 	if inspectErr != nil {
 		return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
 	}
+	if config.Buildah {
+		err := json.Unmarshal([]byte(inspectOut), &buildahData)
+		if err != nil {
+			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+		}
+	} else {
+		err := json.Unmarshal([]byte(inspectOut), &data)
+		if err != nil {
+			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+		}
+	}
+	var containerConfig map[string]interface{}
 
-	err := json.Unmarshal([]byte(inspectOut), &data)
-	if err != nil {
-		return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+	if config.Buildah {
+		containerConfig = buildahData["config"].(map[string]interface{})
+		Debug.Log("Config inspected by buildah: ", config)
+	} else {
+		containerConfig = data[0]["Config"].(map[string]interface{})
 	}
 
-	dockerConfig := data[0]["Config"].(map[string]interface{})
-
-	if dockerConfig["ExposedPorts"] != nil {
-		exposedPorts := dockerConfig["ExposedPorts"].(map[string]interface{})
+	if containerConfig["ExposedPorts"] != nil {
+		exposedPorts := containerConfig["ExposedPorts"].(map[string]interface{})
 
 		portValues = make([]string, 0, len(exposedPorts))
 		for k := range exposedPorts {
@@ -559,6 +579,270 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
 	if err != nil {
 		return "", fmt.Errorf("Could not create the yaml file for KNative deployment %v", err)
+	}
+	return yamlFile, nil
+}
+
+//GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
+func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, projectLabel string, dryrun bool) (fileName string, err error) {
+	// KNative serving YAML representation in a struct
+	type Port struct {
+		Name          string `yaml:"name,omitempty"`
+		ContainerPort int    `yaml:"containerPort"`
+	}
+	type EnvVar struct {
+		Name  string `yaml:"name,omitempty"`
+		Value string `yaml:"value,omitempty"`
+	}
+	type VolumeMount struct {
+		Name      string `yaml:"name"`
+		MountPath string `yaml:"mountPath"`
+		SubPath   string `yaml:"subPath,omitempty"`
+	}
+	type Container struct {
+		Args            []string  `yaml:"args,omitempty"`
+		Command         []string  `yaml:"command,omitempty"`
+		Env             []*EnvVar `yaml:"env,omitempty"`
+		Image           string    `yaml:"image"`
+		ImagePullPolicy string    `yaml:"imagePullPolicy,omitempty"`
+		Name            string    `yaml:"name,omitempty"`
+		Ports           []*Port   `yaml:"ports,omitempty"`
+		SecurityContext struct {
+			Privileged bool `yaml:"privileged"`
+		} `yaml:"securityContext,omitempty"`
+		VolumeMounts []VolumeMount `yaml:"volumeMounts"`
+		WorkingDir   string        `yaml:"workingDir,omitempty"`
+	}
+	type Volume struct {
+		Name                  string `yaml:"name"`
+		PersistentVolumeClaim struct {
+			ClaimName string `yaml:"claimName"`
+		} `yaml:"persistentVolumeClaim,omitempty"`
+		EmptyDir struct {
+			Medium string `yaml:"medium"`
+		} `yaml:"emptyDir,omitempty"`
+	}
+
+	type Deployment struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+		Metadata   struct {
+			Name      string `yaml:"name"`
+			Namespace string `yaml:"namespace,omitempty"`
+		} `yaml:"metadata"`
+		Spec struct {
+			Selector struct {
+				MatchLabels map[string]string `yaml:"matchLabels"`
+			} `yaml:"selector"`
+			Replicas    int `yaml:"replicas"`
+			PodTemplate struct {
+				Metadata struct {
+					Labels map[string]string `yaml:"labels"`
+				} `yaml:"metadata"`
+				Spec struct {
+					ServiceAccountName string       `yaml:"serviceAccountName,omitempty"`
+					Containers         []*Container `yaml:"containers"`
+					Volumes            []*Volume    `yaml:"volumes"`
+				} `yaml:"spec"`
+			} `yaml:"template"`
+		} `yaml:"spec"`
+	}
+
+	yamlMap := Deployment{}
+	yamlTemplate := getDeploymentTemplate()
+	err = yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
+	if err != nil {
+		Error.log("Could not create the YAML structure from template. Exiting.")
+		return "", err
+	}
+	//Set the name
+	yamlMap.Metadata.Name = appName
+	//Set the image
+	yamlMap.Spec.PodTemplate.Spec.Containers[0].Name = appName
+	yamlMap.Spec.PodTemplate.Spec.Containers[0].Image = imageName
+
+	//Set the containerPort
+	containerPorts := make([]*Port, 0)
+	for i, port := range ports {
+		//KNative only allows a single port entry
+		if i == 0 {
+			yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = containerPorts
+		}
+		Debug.Log("Adding port to yaml: ", port)
+		newContainerPort := new(Port)
+		newContainerPort.ContainerPort, err = strconv.Atoi(port)
+		if err != nil {
+			return "", err
+		}
+		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
+	}
+	//Set the workspace volume mount
+
+	subPath := filepath.Base(pdir)
+	workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
+	yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, workspaceMount)
+	//Set the deployment selector and pod label
+
+	if err != nil {
+		return "", err
+	}
+	yamlMap.Spec.Selector.MatchLabels["app"] = projectLabel
+	yamlMap.Spec.PodTemplate.Metadata.Labels["app"] = projectLabel
+
+	Debug.logf("YAML map: \n%v\n", yamlMap)
+	yamlStr, err := yaml.Marshal(&yamlMap)
+	if err != nil {
+		Error.log("Could not create the YAML string from Map. Exiting.")
+		return "", err
+	}
+	Debug.logf("Generated YAML: \n%s\n", yamlStr)
+	// Generate file based on supplied config, defaulting to app-deploy.yaml
+	yamlFile := filepath.Join(pdir, "app-deploy.yaml")
+	if dryrun {
+		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
+		return yamlFile, nil
+	}
+	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
+	if err != nil {
+		return "", fmt.Errorf("Could not create the yaml file for deployment %v", err)
+	}
+	return yamlFile, nil
+}
+func getDeploymentTemplate() string {
+	yamltempl := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: APPSODY_APP_NAME
+spec:
+  selector:
+    matchLabels:
+      app: appsody
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: appsody
+    spec:
+      serviceAccountName: appsody-sa
+      containers:
+      - name: APPSODY_APP_NAME
+        image: APPSODY_STACK
+        imagePullPolicy: Always
+        command: ["/.appsody/appsody-controller"]
+        env:
+          - name: HOME
+            value: /.appsody
+        volumeMounts:
+          - name: appsody-controller
+            mountPath: /.appsody
+      volumes:
+        - name: appsody-controller
+          persistentVolumeClaim: 
+            claimName: appsody-controller
+        - name: appsody-workspace
+          persistentVolumeClaim: 
+            claimName: appsody-workspace
+`
+	return yamltempl
+}
+
+//GenServiceYaml returns the file name of a generated K8S Service yaml
+func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (fileName string, err error) {
+	type Port struct {
+		Name       string `yaml:"name,omitempty"`
+		Port       int    `yaml:"port"`
+		TargetPort int    `yaml:"targetPort"`
+	}
+	type Service struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+		Metadata   struct {
+			Name string `yaml:"name"`
+		} `yaml:"metadata"`
+		Spec struct {
+			Selector    map[string]string `yaml:"selector"`
+			ServiceType string            `yaml:"type"`
+			Ports       []Port            `yaml:"ports"`
+		} `yaml:"spec"`
+	}
+
+	var service Service
+	service.APIVersion = "v1"
+	service.Kind = "Service"
+	service.Metadata.Name = fmt.Sprintf("%s-%s", appName, "service")
+	service.Spec.Selector = make(map[string]string, 1)
+	service.Spec.Selector["app"] = appName
+	service.Spec.ServiceType = "NodePort"
+	service.Spec.Ports = make([]Port, len(ports))
+	for i, port := range ports {
+		service.Spec.Ports[i].Name = fmt.Sprintf("port-%d", i)
+		iPort, err := strconv.Atoi(port)
+		if err != nil {
+			return "", err
+		}
+		service.Spec.Ports[i].Port = iPort
+		service.Spec.Ports[i].TargetPort = iPort
+	}
+
+	yamlStr, err := yaml.Marshal(&service)
+	if err != nil {
+		Error.log("Could not create the YAML string from Map. Exiting.")
+		return "", err
+	}
+	Debug.logf("Generated YAML: \n%s\n", yamlStr)
+	// Generate file based on supplied config, defaulting to app-deploy.yaml
+	yamlFile := filepath.Join(pdir, "app-service.yaml")
+	if dryrun {
+		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
+		return yamlFile, nil
+	}
+	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
+	if err != nil {
+		return "", fmt.Errorf("Could not create the yaml file for the service %v", err)
+	}
+	return yamlFile, nil
+}
+
+//GenRouteYaml returns the file name of a generated K8S Service yaml
+func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, err error) {
+
+	type Route struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+		Metadata   struct {
+			Name string `yaml:"name"`
+		} `yaml:"metadata"`
+		Spec struct {
+			To struct {
+				Kind string `yaml:"kind"`
+				Name string `yaml:"name"`
+			} `yaml:"to"`
+		} `yaml:"spec"`
+	}
+
+	var route Route
+	route.APIVersion = "v1"
+	route.Kind = "Route"
+	route.Metadata.Name = fmt.Sprintf("%s-%s", appName, "route")
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = fmt.Sprintf("%s-%s", appName, "service")
+
+	yamlStr, err := yaml.Marshal(&route)
+	if err != nil {
+		Error.log("Could not create the YAML string from Map. Exiting.")
+		return "", err
+	}
+	Debug.logf("Generated YAML: \n%s\n", yamlStr)
+	// Generate file based on supplied config, defaulting to app-deploy.yaml
+	yamlFile := filepath.Join(pdir, "app-route.yaml")
+	if dryrun {
+		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
+		return yamlFile, nil
+	}
+	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
+	if err != nil {
+		return "", fmt.Errorf("Could not create the yaml file for the route %v", err)
 	}
 	return yamlFile, nil
 }
@@ -1119,4 +1403,68 @@ func downloadFolderToDisk(url string, destFile string) error {
 		return err
 	}
 	return nil
+}
+
+// tar and zip a directory into .tar.gz
+func Targz(source, target string) error {
+	filename := filepath.Base(source)
+	Info.log("source is: ", source)
+	Info.log("filename is: ", filename)
+	Info.log("target is: ", target)
+	target = target + filename + ".tar.gz"
+	//target = filepath.Join(target, fmt.Sprintf("%s.tar.gz", filename))
+	Info.log("new target is: ", target)
+	tarfile, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+	defer tarfile.Close()
+
+	var fileWriter io.WriteCloser = tarfile
+	fileWriter = gzip.NewWriter(tarfile)
+	defer fileWriter.Close()
+
+	tarball := tar.NewWriter(fileWriter)
+	defer tarball.Close()
+
+	info, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+
+	var baseDir string
+	if info.IsDir() {
+		baseDir = filepath.Base(source)
+	}
+
+	return filepath.Walk(source,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			header, err := tar.FileInfoHeader(info, info.Name())
+			if err != nil {
+				return err
+			}
+
+			if baseDir != "" {
+				header.Name = "." + strings.TrimPrefix(path, source)
+			}
+
+			if err := tarball.WriteHeader(header); err != nil {
+				return err
+			}
+
+			if info.IsDir() {
+				return nil
+			}
+
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			_, err = io.Copy(tarball, file)
+			return err
+		})
 }

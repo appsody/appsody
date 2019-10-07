@@ -26,5 +26,7 @@ func newStackCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	}
 	stackCmd.AddCommand(newStackLintCmd(rootConfig))
 	stackCmd.AddCommand(newStackCreateCmd(rootConfig))
+	stackCmd.AddCommand(newStackValidateCmd(rootConfig))
+	stackCmd.AddCommand(newStackPackageCmd(rootConfig))
 	return stackCmd
 }
