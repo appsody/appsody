@@ -254,3 +254,16 @@ func RunDockerCmdExec(args []string) (string, error) {
 
 	return outBuffer.String(), err
 }
+
+// Checks whether an inode (it does not bother
+// about file or folder) exists or not.
+func Exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, err
+}
