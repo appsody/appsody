@@ -35,9 +35,18 @@ func RunDockerCommandAndWait(args []string, logger appsodylogger, verbose bool, 
 
 }
 
+func RunKubeCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
+	command := "kubectl"
+	return RunCommandAndListen(command, args, logger, interactive, verbose, dryrun)
+}
 func RunDockerCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
+	command := "docker"
+	return RunCommandAndListen(command, args, logger, interactive, verbose, dryrun)
+}
+
+func RunCommandAndListen(commandValue string, args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
 	var execCmd *exec.Cmd
-	var command = "docker"
+	var command = commandValue
 	var err error
 	if dryrun {
 		Info.log("Dry Run - Skipping docker command: ", command, " ", strings.Join(args, " "))
