@@ -16,12 +16,17 @@ package cmd_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
 func TestStackCreateSampleStack(t *testing.T) {
+	if err := os.MkdirAll(filepath.Dir("Users/travis/.appsody/extract"), os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+
 	err := os.RemoveAll("../../testing-stack")
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +51,10 @@ func TestStackCreateSampleStack(t *testing.T) {
 }
 
 func TestStackCreateWithCopyTag(t *testing.T) {
+	if err := os.MkdirAll(filepath.Dir("Users/travis/.appsody/extract"), os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+
 	err := os.RemoveAll("../../testing-stack")
 	if err != nil {
 		t.Fatal(err)
@@ -150,6 +159,10 @@ func TestStackCreateInvalidStackCase4(t *testing.T) {
 }
 
 func TestStackAlreadyExists(t *testing.T) {
+	if err := os.MkdirAll(filepath.Dir("Users/travis/.appsody/extract"), os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+
 	err := os.RemoveAll("../../testing-stack")
 	if err != nil {
 		t.Fatal(err)
