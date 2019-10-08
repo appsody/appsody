@@ -291,22 +291,9 @@ func setProjectName(projectDir string, projectName string) error {
 
 		Info.log("Your Appsody project name is ", projectName)
 	} else {
-		projectName = strings.ToLower(filepath.Base(projectDir))
-		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
-		if !match {
-			_, err = setProjectNameBasedonDirectoryName(projectDir)
-			if err != nil {
-				return err
-			}
-		} else {
-			v.Set("project-name", projectName)
-			err = v.WriteConfig()
-
-			if err != nil {
-				return err
-			}
-
-			Info.log("Your Appsody project name is ", projectName)
+		_, err = setProjectNameBasedonDirectoryName(projectDir)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -321,28 +308,44 @@ func setProjectNameBasedonDirectoryName(projectDir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	projectName := "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-app"
-	reg, err := regexp.Compile("[^a-z0-9]+")
-	if err != nil {
-		return "", err
-	}
-	projectName = reg.ReplaceAllString(projectName, "-")
 
+	projectName := strings.ToLower(filepath.Base(projectDir))
 	match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
-
 	if match {
 		v.Set("project-name", projectName)
 		err = v.WriteConfig()
 
 		if err != nil {
 			return "", err
+
+		}
+		Info.log("Your Appsody project name is ", projectName)
+	} else {
+		projectName = "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-app"
+		reg, err := regexp.Compile("[^a-z0-9]+")
+		if err != nil {
+			return "", err
+		}
+		projectName = reg.ReplaceAllString(projectName, "-")
+
+		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+
+		if match {
+			v.Set("project-name", projectName)
+			err = v.WriteConfig()
+
+			if err != nil {
+				return "", err
+			}
+
+			Info.log("Your Appsody project name is ", projectName)
+
+		} else {
+			return projectName, errors.Errorf("This is not a valid project name")
 		}
 
-		Info.log("Your Appsody project name is ", projectName)
-
-	} else {
-		return projectName, errors.Errorf("This is not a valid project name")
 	}
+
 	return projectName, nil
 }
 
