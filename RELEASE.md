@@ -12,7 +12,7 @@ When the Appsody CLI is released, the build process also updates the Appsody web
 # Appsody CLI Release Process
 Follow this process to create a new release of the Appsody CLI.
 
-### Create a GitHub release
+## Create a GitHub release
 The Appsody CLI is made available by creating a tagged GitHub release
 1. If there is a new dependent controller, a Pull Request with the `CONTROLLER_VERSION` changes to the `Makefile` needs to be created and merged before continuing
 1. Navigate to https://github.com/appsody/appsody/releases
@@ -24,7 +24,7 @@ The Appsody CLI is made available by creating a tagged GitHub release
 1. Check the box for _This is a pre-release_
 1. Click _Publish release_
 
-### Monitor the build
+## Monitor the build
 1. Watch the [Travis build](https://travis-ci.com/appsody/appsody) for the release and ensure it passes. The build will include the `deploy` stage of the build process as defined in `.travis.yml`. The `deploy` stage, if successful, will produce the following results:
     * The release page will be populated with the build artifacts (see next step)
     * A new branch will be created in the homebrew-appsody repo (further steps below)
@@ -39,15 +39,13 @@ The Appsody CLI is made available by creating a tagged GitHub release
     * appsody_x.y.z_amd64.deb
 1. Edit the release and uncheck _This is a pre-relsease_ then click _Update relsease_
 
-### Create a PR in the homebrew repo
+## Create a PR in the homebrew repo
 1. Go to the [appsody/homebrew-appsody](https://github.com/appsody/homebrew-appsody/branches) repo and create a PR for the new Travis build branch.
 1. Review and merge the PR.
 
-### Create a PR in the website repo
+## Create a PR in the website repo
 1. Go to the [appsody/website](https://github.com/appsody/website/branches) repo and create a PR for the new Travis build branch.
 1. Review and merge the PR.
 
 # Release schedule
 We plan to release the Appsody CLI at the end of each sprint - approximately every two weeks.
-
-
