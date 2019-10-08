@@ -343,7 +343,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 
-		deploymentName := "deployment/" + projectName
+		deploymentName := "deployment/" + config.containerName
 		kubeArgs := []string{"logs", deploymentName, "-f", "--pod-running-timeout=2m"}
 		execCmd, kubeErr := RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
 		if config.Dryrun {
