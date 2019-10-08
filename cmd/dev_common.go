@@ -304,6 +304,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if portsErr != nil {
 			return portsErr
 		}
+
 		projectName, err := getProjectName(config.RootCommandConfig)
 		if err != nil {
 			return err
@@ -313,7 +314,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		deploymentYaml, err := GenDeploymentYaml(projectName, platformDefinition, portList, projectDir, projectName, dryrun)
+		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, projectName, dryrun)
 		if err != nil {
 			return err
 		}
@@ -324,7 +325,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		serviceYaml, err := GenServiceYaml(projectName, portList, projectDir, dryrun)
+		serviceYaml, err := GenServiceYaml(config.containerName, portList, projectDir, dryrun)
 		if err != nil {
 			return err
 		}
@@ -333,7 +334,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		routeYaml, err := GenRouteYaml(projectName, projectDir, dryrun)
+		routeYaml, err := GenRouteYaml(config.containerName, projectDir, dryrun)
 		if err != nil {
 			return err
 		}
