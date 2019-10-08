@@ -104,6 +104,7 @@ func GetGitInfo(dryrun bool) (GitInfo, error) {
 	if runtime.GOOS == "windows" {
 		lineSeparator = "\r\n"
 	}
+	output = strings.Trim(output, trimChars)
 	outputLines := strings.Split(output, lineSeparator)
 
 	const noCommits = "## No commits yet on "
@@ -127,11 +128,6 @@ func GetGitInfo(dryrun bool) (GitInfo, error) {
 	changesMade := false
 	outputLength := len(outputLines)
 
-	if outputLength >= 1 {
-		if outputLines[len(outputLines)-1] == "" {
-			outputLength = outputLength - 1
-		}
-	}
 	if outputLength > 1 {
 		changesMade = true
 
