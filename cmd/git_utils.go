@@ -30,10 +30,10 @@ type CommitInfo struct {
 }
 
 type GitInfo struct {
-	Branch      string
-	Upstream    string
-	RemoteURL   string
-	Changes     []string
+	Branch    string
+	Upstream  string
+	RemoteURL string
+
 	ChangesMade bool
 	Commit      CommitInfo
 }
@@ -106,34 +106,38 @@ func GetGitInfo(dryrun bool) (GitInfo, error) {
 	}
 	outputLines := strings.Split(output, lineSeparator)
 
-	var changeLines []string
 	const noCommits = "## No commits yet on "
 	const branchPrefix = "## "
 	const branchSeparatorString = "..."
-	for _, value := range outputLines {
 
-		branchFound := false
-		if strings.Trim(value, trimChars) != "" {
+	value := strings.Trim(outputLines[0], trimChars)
 
-			if strings.HasPrefix(value, branchPrefix) {
-				gitInfo.Branch = strings.Trim(stringBetween(value, branchPrefix, branchSeparatorString), trimChars)
-				gitInfo.Upstream = strings.Trim(stringAfter(value, branchSeparatorString), trimChars)
-				branchFound = true
-			}
-			if strings.Contains(value, noCommits) {
-
-				branchFound = true
-				gitInfo.Branch = stringAfter(value, noCommits)
-
-			}
-			// this must be a change line
-			if !branchFound {
-				changeLines = append(changeLines, value)
-			}
+	if strings.HasPrefix(value, branchPrefix) {
+		if strings.Contains(value, branchSeparatorString) {
+			gitInfo.Branch = strings.Trim(stringBetween(value, branchPrefix, branchSeparatorString), trimChars)
+			gitInfo.Upstream = strings.Trim(stringAfter(value, branchSeparatorString), trimChars)
+		} else {
+			gitInfo.Branch = strings.Trim(stringAfter(value, branchPrefix), trimChars)
 		}
 
 	}
-	gitInfo.Changes = append(gitInfo.Changes, changeLines...)
+	if strings.Contains(value, noCommits) {
+		gitInfo.Branch = stringAfter(value, noCommits)
+	}
+	changesMade := false
+	outputLength := len(outputLines)
+
+	if outputLength >= 1 {
+		if outputLines[len(outputLines)-1] == "" {
+			outputLength = outputLength - 1
+		}
+	}
+	if outputLength > 1 {
+		changesMade = true
+
+	}
+	gitInfo.ChangesMade = changesMade
+
 	if gitInfo.Upstream != "" {
 		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(gitInfo.Upstream, dryrun)
 		if gitErr != nil {
@@ -149,11 +153,6 @@ func GetGitInfo(dryrun bool) (GitInfo, error) {
 		Info.log("Received error getting current commit: ", gitErr)
 		//return gitInfo, gitErr
 	}
-	changesMade := false
-	if len(changeLines) != 0 {
-		changesMade = true
-	}
-	gitInfo.ChangesMade = changesMade
 
 	return gitInfo, nil
 }
