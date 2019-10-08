@@ -230,25 +230,25 @@ func ParseRepoListYAML(yamlString string) (cmd.RepositoryFile, error) {
 }
 
 // ParseListJSON takes the json from 'appsody list -o json'
-// and returns an array of RepositoryOutputFormat from the string.
-func ParseListJSON(jsonString string) ([]cmd.RepositoryOutputFormat, error) {
-	var repos []cmd.RepositoryOutputFormat
-	err := json.Unmarshal([]byte(jsonString), &repos)
+// and returns an array of IndexOutputFormat from the string.
+func ParseListJSON(jsonString string) (cmd.IndexOutputFormat, error) {
+	var index cmd.IndexOutputFormat
+	err := json.Unmarshal([]byte(jsonString), &index)
 	if err != nil {
-		return repos, err
+		return index, err
 	}
-	return repos, nil
+	return index, nil
 }
 
 // ParseListYAML takes the yaml from 'appsody list -o yaml'
-// and returns an array of RepositoryOutputFormat from the string.
-func ParseListYAML(yamlString string) ([]cmd.RepositoryOutputFormat, error) {
-	var repos []cmd.RepositoryOutputFormat
-	err := yaml.Unmarshal([]byte(yamlString), &repos)
+// and returns an array of IndexOutputFormat from the string.
+func ParseListYAML(yamlString string) (cmd.IndexOutputFormat, error) {
+	var index cmd.IndexOutputFormat
+	err := yaml.Unmarshal([]byte(yamlString), &index)
 	if err != nil {
-		return repos, err
+		return index, err
 	}
-	return repos, nil
+	return index, nil
 }
 
 // AddLocalFileRepo calls the repo add command with the repo index located

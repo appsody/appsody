@@ -125,13 +125,16 @@ func TestListYaml(t *testing.T) {
 	testContentsListOutput(t, list, output)
 }
 
-func testContentsListOutput(t *testing.T, list []cmd.RepositoryOutputFormat, output string) {
+func testContentsListOutput(t *testing.T, list cmd.IndexOutputFormat, output string) {
+	if list.APIVersion != "" {
 
-	if len(list) != 2 {
+	}
+
+	if len(list.Repositories) != 2 {
 		t.Errorf("Expected two repositories! CLI output:\n%s", output)
 	}
 
-	for _, repo := range list {
+	for _, repo := range list.Repositories {
 		if len(repo.Stacks) < 1 {
 			t.Errorf("Expected repository %s to contain stacks! CLI output:\n%s", repo.Name, output)
 		}

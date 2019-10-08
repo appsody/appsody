@@ -605,17 +605,23 @@ func (r *RepositoryFile) listProjects(rootConfig *RootCommandConfig) (string, er
 }
 
 // Type for outputting stacks of a repository in JSON and YAML
+type IndexOutputFormat struct {
+	APIVersion   string                   `yaml:"apiVersion" json:"apiVersion"`
+	Generated    time.Time                `yaml:"generated" json:"generated"`
+	Repositories []RepositoryOutputFormat `yaml:"repositories" json:"repositories"`
+}
 type RepositoryOutputFormat struct {
-	Name   string `json:"RepositoryName" yaml:"repositoryName"`
-	Stacks []Stack
+	Name   string  `yaml:"repositoryName" json:"repositoryName"`
+	Stacks []Stack `yaml:"stacks" json:"stacks"`
 }
 
-func (r *RepositoryFile) getRepositories() ([]RepositoryOutputFormat, error) {
-	// Rename this
-	var repositories []RepositoryOutputFormat
+func (r *RepositoryFile) getRepositories() (IndexOutputFormat, error) {
+	var indexOutput IndexOutputFormat
+	indexOutput.APIVersion = r.APIVersion
+	indexOutput.Generated = r.Generated
 	indices, err := r.GetIndices()
 	if err != nil {
-		return nil, errors.Errorf("Could not read indices: %v", err)
+		return indexOutput, errors.Errorf("Could not read indices: %v", err)
 	}
 
 	if len(indices) != 0 {
@@ -623,8 +629,8 @@ func (r *RepositoryFile) getRepositories() ([]RepositoryOutputFormat, error) {
 			var Stacks []Stack
 			Stacks = index.buildStacksFromIndex(repoName, Stacks)
 
-			repositories = append(repositories, RepositoryOutputFormat{Name: repoName, Stacks: Stacks})
+			indexOutput.Repositories = append(indexOutput.Repositories, RepositoryOutputFormat{Name: repoName, Stacks: Stacks})
 		}
 	}
-	return repositories, nil
+	return indexOutput, nil
 }
