@@ -276,25 +276,6 @@ func install(config *initCommandConfig) error {
 	return nil
 }
 
-func downloadFileToDisk(url string, destFile string, dryrun bool) error {
-	if dryrun {
-		Info.logf("Dry Run -Skipping download of url: %s to destination %s", url, destFile)
-
-	} else {
-		outFile, err := os.Create(destFile)
-		if err != nil {
-			return err
-		}
-		defer outFile.Close()
-
-		err = downloadFile(url, outFile)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func untar(file string, noTemplate bool, overwrite bool, dryrun bool) error {
 
 	if dryrun {

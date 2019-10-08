@@ -1389,16 +1389,21 @@ func downloadFile(href string, writer io.Writer) error {
 	return nil
 }
 
-func downloadFolderToDisk(url string, destFile string) error {
-	outFile, err := os.Create(destFile)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
+func downloadFileToDisk(url string, destFile string, dryrun bool) error {
+	if dryrun {
+		Info.logf("Dry Run -Skipping download of url: %s to destination %s", url, destFile)
 
-	err = downloadFile(url, outFile)
-	if err != nil {
-		return err
+	} else {
+		outFile, err := os.Create(destFile)
+		if err != nil {
+			return err
+		}
+		defer outFile.Close()
+
+		err = downloadFile(url, outFile)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

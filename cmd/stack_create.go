@@ -35,7 +35,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	config := &stackCreateCommandConfig{RootCommandConfig: rootConfig}
 
 	var stackCmd = &cobra.Command{
-		Use:   "create",
+		Use:   "create <name>",
 		Short: "Create a new stack as a copy of an existing stack",
 		Long: `This command will create a new stack as a copy of an existing sample stack in the current directory that has the structure of an Appsody stack.
         
@@ -48,74 +48,52 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			stack := args[0]
 
-			exists, _ := Exists(stack)
+			exists, err := Exists(stack)
+
+			if err != nil {
+				return err
+			}
 
 			if exists {
 				return errors.New("This stack named " + stack + " already exists")
 			}
 
-			err := downloadFolderToDisk("https://github.com/appsody/stacks/archive/master.zip", getHome(rootConfig)+"/extract/repo.zip")
+			err = downloadFileToDisk("https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "/extract/repo.zip"), config.Dryrun)
+			if err != nil {
+				return err
+			}
+			_, projectType, err := parseProjectParm(config.copy, config.RootCommandConfig)
 			if err != nil {
 				return err
 			}
 
-			if config.copy != "" {
-				repoIndex := strings.Index(config.copy, "/")
+			valid, unzipErr := unzip(filepath.Join(getHome(rootConfig), "/extract/repo.zip"), stack, config.copy)
 
-				copiedStack := config.copy[repoIndex+1:]
+			if unzipErr != nil {
+				return unzipErr
+			}
 
-				valid, unzipErr := unzip(getHome(rootConfig)+"/extract/repo.zip", stack, config.copy)
+			if !valid {
+				return errors.Errorf("This is not a valid stack. Please specify any existing stack as <repo>/<stack>")
+			}
+			os.Remove(filepath.Join(getHome(rootConfig), "/extract/repo.zip"))
 
-				if unzipErr != nil {
-					return unzipErr
-				}
+			err = os.Rename(filepath.Join(stack, "/stacks-master/", config.copy), projectType)
+			if err != nil {
+				return err
+			}
 
-				if !valid {
-					return errors.Errorf("This is not a valid stack. Please specify any existing stack as <repo>/<stack>")
-				}
-				os.Remove(getHome(rootConfig) + "/extract/repo.zip")
+			os.RemoveAll(stack)
 
-				err := os.Rename(stack+"/stacks-master/"+config.copy, copiedStack)
-				if err != nil {
-					return err
-				}
-
-				os.RemoveAll(stack)
-
-				err = os.Rename(copiedStack, stack)
-				if err != nil {
-					return err
-				}
-
-			} else {
-				valid, unzipErr := unzip(getHome(rootConfig)+"/extract/repo.zip", stack, "")
-
-				if unzipErr != nil {
-					return unzipErr
-				}
-
-				if !valid {
-					return errors.Errorf("This is not a valid stack. Please specify any existing stack as <repo>/<stack>")
-				}
-				os.Remove(getHome(rootConfig) + "/extract/repo.zip")
-
-				err := os.Rename(stack+"/stacks-master/samples/sample-stack/", "sample-stack")
-				if err != nil {
-					return err
-				}
-
-				os.RemoveAll(stack)
-
-				err = os.Rename("sample-stack", stack)
-				if err != nil {
-					return err
-				}
+			err = os.Rename(projectType, stack)
+			if err != nil {
+				return err
 			}
 
 			return nil
 		},
 	}
-	stackCmd.PersistentFlags().StringVar(&config.copy, "copy", "", "Copy existing stack")
+	stackCmd.PersistentFlags().StringVar(&config.copy, "copy", "samples/sample-stack", "Copy existing stack")
 	return stackCmd
 }
 
@@ -146,7 +124,7 @@ func unzip(src string, dest string, copy string) (bool, error) {
 		}
 
 		fileName := strings.Replace(f.Name, "/stacks-master", "", -1)
-		if !strings.HasPrefix(fileName, "stacks-master/"+copy+"/") {
+		if !strings.HasPrefix(fileName, filepath.Join("stacks-master/", copy, "/")) {
 			continue
 		} else {
 			valid = true
