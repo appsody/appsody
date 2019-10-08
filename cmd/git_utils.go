@@ -151,7 +151,7 @@ func GetGitInfo(dryrun bool) (GitInfo, error) {
 	gitInfo.Commit, gitErr = RunGitGetLastCommit(gitInfo.RemoteURL, dryrun)
 	if gitErr != nil {
 		Info.log("Received error getting current commit: ", gitErr)
-		//return gitInfo, gitErr
+
 	}
 
 	return gitInfo, nil
