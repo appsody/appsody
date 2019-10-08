@@ -126,8 +126,8 @@ func TestListYaml(t *testing.T) {
 }
 
 func testContentsListOutput(t *testing.T, list cmd.IndexOutputFormat, output string) {
-	if list.APIVersion != "" {
-
+	if list.APIVersion == "" {
+		t.Errorf("Could not find APIVersion! CLI output:\n%s", output)
 	}
 
 	if len(list.Repositories) != 2 {
