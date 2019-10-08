@@ -23,7 +23,7 @@ import (
 )
 
 func TestStackCreateSampleStack(t *testing.T) {
-	if err := os.MkdirAll(filepath.Dir("Users/travis/.appsody/extract"), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir("Users/travis/ .appsody/extract"), os.ModePerm); err != nil {
 		t.Fatal(err)
 	}
 
@@ -51,7 +51,7 @@ func TestStackCreateSampleStack(t *testing.T) {
 }
 
 func TestStackCreateWithCopyTag(t *testing.T) {
-	if err := os.MkdirAll(filepath.Dir("Users/travis/.appsody/extract"), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir("Users/travis/ .appsody/extract"), os.ModePerm); err != nil {
 		t.Fatal(err)
 	}
 
@@ -159,7 +159,7 @@ func TestStackCreateInvalidStackCase4(t *testing.T) {
 }
 
 func TestStackAlreadyExists(t *testing.T) {
-	if err := os.MkdirAll(filepath.Dir("Users/travis/.appsody/extract"), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir("Users/travis/ .appsody/extract"), os.ModePerm); err != nil {
 		t.Fatal(err)
 	}
 
