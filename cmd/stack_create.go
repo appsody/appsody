@@ -76,15 +76,20 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			if !valid {
 				return errors.Errorf("This is not a valid stack. Please specify any existing stack as <repo>/<stack>")
 			}
+
+			//deleting the stacks repo zip
 			os.Remove(filepath.Join(getHome(rootConfig), "/extract/repo.zip"))
 
+			//moving out the stack which we need
 			err = os.Rename(filepath.Join(stack, "/stacks-master/", config.copy), projectType)
 			if err != nil {
 				return err
 			}
 
+			//deleting the folder from which stack is extracted
 			os.RemoveAll(stack)
 
+			//rename the stack to the name which user want
 			err = os.Rename(projectType, stack)
 			if err != nil {
 				return err
