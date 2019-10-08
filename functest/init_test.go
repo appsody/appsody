@@ -369,7 +369,7 @@ func TestInitV2WithDefaultRepoSpecifiedTemplateNonDefault(t *testing.T) {
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "appsodyhub/nodejs-express", "skaffold"}, projectDir)
+	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "appsodyhub/nodejs-express", "scaffold"}, projectDir)
 	if err != nil {
 		t.Error(err)
 	}

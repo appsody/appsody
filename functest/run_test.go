@@ -27,9 +27,6 @@ import (
 )
 
 // get the STACKSLIST environment variable
-// for testing locally we need to set the stacksList manually
-//var stacksList = ""
-//var stacksList = "incubator/java-microprofile incubator/nodejs experimental/nodejs-functions"
 var stacksList = os.Getenv("STACKSLIST")
 
 // Test appsody run of the nodejs-express stack and check the http://localhost:3000/health endpoint
@@ -180,26 +177,11 @@ func TestRunSimple(t *testing.T) {
 			t.Fatal("container never appeared to start")
 		}
 
-		// now run appsody ps and see if we can spot the container
-		fmt.Println("about to run appsody ps")
-		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"ps"}, projectDir)
-		if !strings.Contains(stopOutput, "CONTAINER") {
-			t.Fatal("output doesn't contain header line")
-		}
-		if !strings.Contains(stopOutput, containerName) {
-			t.Fatal("output doesn't contain correct container name")
-		}
-		if errStop != nil {
-			log.Printf("Ignoring error running appsody ps: %s", errStop)
-		}
-
 		// stop and clean up after the run
-		func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", "testRunSimpleContainer"}, projectDir)
-			if err != nil {
-				fmt.Printf("Ignoring error running appsody stop: %s", err)
-			}
-		}()
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", containerName}, projectDir)
+		if err != nil {
+			fmt.Printf("Ignoring error running appsody stop: %s", err)
+		}
 
 		cleanup()
 	}

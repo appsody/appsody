@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"io/ioutil"
-	"os"
 	"path"
 	"path/filepath"
 
@@ -24,145 +23,146 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var stackLintErrorCount int
-var stackLintWarningCount int
-
-var lintCmd = &cobra.Command{
-	Use:   "lint",
-	Short: "Lint your stack to verify that it conforms to the standard of an Appsody stack",
-	Long: `This command will validate that your stack has the structure of an Appsody stack. It will inform you of files/directories
+func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	var lintCmd = &cobra.Command{
+		Use:   "lint",
+		Short: "Lint your stack to verify that it conforms to the standard of an Appsody stack",
+		Long: `This command will validate that your stack has the structure of an Appsody stack. It will inform you of files/directories
 missing and warn you if your stack could be enhanced.
 
 This command can be run from the base directory of your stack or you can supply a path to the stack as an argument.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		stackPath, _ := os.Getwd()
+			var stackLintErrorCount int
+			var stackLintWarningCount int
 
-		if len(args) > 0 {
-			stackPath = args[0]
-		}
+			stackPath := rootConfig.ProjectDir
 
-		imagePath := filepath.Join(stackPath, "image")
-		templatePath := filepath.Join(stackPath, "/templates")
-		configPath := filepath.Join(imagePath, "/config")
-		projectPath := filepath.Join(imagePath, "/project")
+			if len(args) > 0 {
+				stackPath = args[0]
+			}
 
-		Info.log("LINTING ", path.Base(stackPath))
+			imagePath := filepath.Join(stackPath, "image")
+			templatePath := filepath.Join(stackPath, "/templates")
+			configPath := filepath.Join(imagePath, "/config")
+			projectPath := filepath.Join(imagePath, "/project")
 
-		fileCheck, err := Exists(filepath.Join(stackPath, "/README.md"))
-		if err != nil {
-			Error.log("Error attempting to determine file: ", err)
-			stackLintErrorCount++
-		} else if !fileCheck {
-			Error.log("Missing README.md in: ", stackPath)
-			stackLintErrorCount++
-		}
-		fileCheck, err = Exists(filepath.Join(stackPath, "/stack.yaml"))
-		if err != nil {
-			Error.log("Error attempting to determine file: ", err)
-			stackLintErrorCount++
-		} else if !fileCheck {
-			Error.log("Missing stack.yaml in: ", stackPath)
-			stackLintErrorCount++
-		}
+			Info.log("LINTING ", path.Base(stackPath))
 
-		fileCheck, err = Exists(imagePath)
-		if err != nil {
-			Error.log("Error attempting to determine file: ", err)
-			stackLintErrorCount++
-		} else if !fileCheck {
-			Error.log("Missing image directory in ", stackPath)
-			stackLintErrorCount++
-		}
-
-		fileCheck, err = Exists(filepath.Join(imagePath, "/Dockerfile-stack"))
-		if err != nil {
-			Error.log("Error attempting to determine file: ", err)
-			stackLintErrorCount++
-		} else if !fileCheck {
-			Error.log("Missing Dockerfile-stack in ", imagePath)
-			stackLintErrorCount++
-		}
-
-		fileCheck, err = Exists(filepath.Join(imagePath, "/LICENSE"))
-		if err != nil {
-			Error.log("Error attempting to determine file: ", err)
-			stackLintErrorCount++
-		} else if !fileCheck {
-			Error.log("Missing LICENSE in ", imagePath)
-			stackLintErrorCount++
-		}
-
-		fileCheck, err = Exists(configPath)
-		if err != nil {
-			Error.log("Error attempting to determine file: ", err)
-			stackLintErrorCount++
-		} else if !fileCheck {
-			Warning.log("Missing config directory in ", imagePath, " (Knative deployment will be used over Kubernetes)")
-			stackLintWarningCount++
-		}
-
-		fileCheck, err = Exists(filepath.Join(configPath, "/app-deploy.yaml"))
-		if err != nil {
-			Error.log("Error attempting to determine file: ", err)
-			stackLintErrorCount++
-		} else if !fileCheck {
-			Warning.log("Missing app-deploy.yaml in ", configPath, " (Knative deployment will be used over Kubernetes)")
-			stackLintWarningCount++
-		}
-
-		fileCheck, err = Exists(filepath.Join(projectPath, "/Dockerfile"))
-		if err != nil {
-			Error.log("Error attempting to determine file: ", err)
-			stackLintErrorCount++
-		} else if !fileCheck {
-			Warning.log("Missing Dockerfile in ", projectPath)
-			stackLintWarningCount++
-		}
-
-		fileCheck, err = Exists(templatePath)
-		if err != nil {
-			Error.log("Error attempting to determine file: ", err)
-			stackLintErrorCount++
-		} else if !fileCheck {
-			Error.log("Missing template directory in: ", stackPath)
-			stackLintErrorCount++
-		}
-
-		if IsEmptyDir(templatePath) {
-			Error.log("No templates found in: ", templatePath)
-			stackLintErrorCount++
-		}
-
-		templates, _ := ioutil.ReadDir(templatePath)
-		for _, f := range templates {
-			fileCheck, err = Exists(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml"))
-			if (err != nil) && f.Name() != ".DS_Store" {
+			fileCheck, err := Exists(filepath.Join(stackPath, "/README.md"))
+			if err != nil {
 				Error.log("Error attempting to determine file: ", err)
 				stackLintErrorCount++
-			} else if fileCheck && f.Name() != ".DS_Store" {
-				Error.log("Unexpected .appsody-config.yaml in ", filepath.Join(templatePath, f.Name()))
+			} else if !fileCheck {
+				Error.log("Missing README.md in: ", stackPath)
 				stackLintErrorCount++
 			}
-		}
+			fileCheck, err = Exists(filepath.Join(stackPath, "/stack.yaml"))
+			if err != nil {
+				Error.log("Error attempting to determine file: ", err)
+				stackLintErrorCount++
+			} else if !fileCheck {
+				Error.log("Missing stack.yaml in: ", stackPath)
+				stackLintErrorCount++
+			}
 
-		lintDockerFileStack(stackPath)
+			fileCheck, err = Exists(imagePath)
+			if err != nil {
+				Error.log("Error attempting to determine file: ", err)
+				stackLintErrorCount++
+			} else if !fileCheck {
+				Error.log("Missing image directory in ", stackPath)
+				stackLintErrorCount++
+			}
 
-		var s StackDetails
-		s.validateYaml(stackPath)
+			fileCheck, err = Exists(filepath.Join(imagePath, "/Dockerfile-stack"))
+			if err != nil {
+				Error.log("Error attempting to determine file: ", err)
+				stackLintErrorCount++
+			} else if !fileCheck {
+				Error.log("Missing Dockerfile-stack in ", imagePath)
+				stackLintErrorCount++
+			}
 
-		Info.log("TOTAL ERRORS: ", stackLintErrorCount)
-		Info.log("TOTAL WARNINGS: ", stackLintWarningCount)
+			fileCheck, err = Exists(filepath.Join(imagePath, "/LICENSE"))
+			if err != nil {
+				Error.log("Error attempting to determine file: ", err)
+				stackLintErrorCount++
+			} else if !fileCheck {
+				Error.log("Missing LICENSE in ", imagePath)
+				stackLintErrorCount++
+			}
 
-		if stackLintErrorCount > 0 {
-			return errors.Errorf("LINT TEST FAILED")
-		}
+			fileCheck, err = Exists(configPath)
+			if err != nil {
+				Error.log("Error attempting to determine file: ", err)
+				stackLintErrorCount++
+			} else if !fileCheck {
+				Warning.log("Missing config directory in ", imagePath, " (Knative deployment will be used over Kubernetes)")
+				stackLintWarningCount++
+			}
 
-		Info.log("LINT TEST PASSED")
-		return nil
-	},
-}
+			fileCheck, err = Exists(filepath.Join(configPath, "/app-deploy.yaml"))
+			if err != nil {
+				Error.log("Error attempting to determine file: ", err)
+				stackLintErrorCount++
+			} else if !fileCheck {
+				Warning.log("Missing app-deploy.yaml in ", configPath, " (Knative deployment will be used over Kubernetes)")
+				stackLintWarningCount++
+			}
 
-func init() {
-	stackCmd.AddCommand(lintCmd)
+			fileCheck, err = Exists(filepath.Join(projectPath, "/Dockerfile"))
+			if err != nil {
+				Error.log("Error attempting to determine file: ", err)
+				stackLintErrorCount++
+			} else if !fileCheck {
+				Warning.log("Missing Dockerfile in ", projectPath)
+				stackLintWarningCount++
+			}
+
+			fileCheck, err = Exists(templatePath)
+			if err != nil {
+				Error.log("Error attempting to determine file: ", err)
+				stackLintErrorCount++
+			} else if !fileCheck {
+				Error.log("Missing template directory in: ", stackPath)
+				stackLintErrorCount++
+			}
+
+			if IsEmptyDir(templatePath) {
+				Error.log("No templates found in: ", templatePath)
+				stackLintErrorCount++
+			}
+
+			templates, _ := ioutil.ReadDir(templatePath)
+			for _, f := range templates {
+				fileCheck, err = Exists(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml"))
+				if (err != nil) && f.Name() != ".DS_Store" {
+					Error.log("Error attempting to determine file: ", err)
+					stackLintErrorCount++
+				} else if fileCheck && f.Name() != ".DS_Store" {
+					Error.log("Unexpected .appsody-config.yaml in ", filepath.Join(templatePath, f.Name()))
+					stackLintErrorCount++
+				}
+			}
+
+			dockerFileErrorCount, dockerFileWarningCount := lintDockerFileStack(stackPath)
+			stackLintErrorCount += dockerFileErrorCount
+			stackLintWarningCount += dockerFileWarningCount
+
+			var s StackDetails
+			stackLintErrorCount += s.validateYaml(stackPath)
+
+			Info.log("TOTAL ERRORS: ", stackLintErrorCount)
+			Info.log("TOTAL WARNINGS: ", stackLintWarningCount)
+
+			if stackLintErrorCount > 0 {
+				return errors.Errorf("LINT TEST FAILED")
+			}
+
+			Info.log("LINT TEST PASSED")
+			return nil
+		},
+	}
+	return lintCmd
 }
