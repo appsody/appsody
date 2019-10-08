@@ -764,7 +764,9 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 			Ports       []Port            `yaml:"ports"`
 		} `yaml:"spec"`
 	}
-
+	//Hack
+	namespace := "k8s-appsody"
+	//
 	var service Service
 	service.APIVersion = "v1"
 	service.Kind = "Service"
@@ -805,35 +807,50 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 //GenRouteYaml returns the file name of a generated K8S Service yaml
 func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, err error) {
 
-	type Route struct {
+	type Ingress struct {
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
 			Name string `yaml:"name"`
 		} `yaml:"metadata"`
 		Spec struct {
-			To struct {
-				Kind string `yaml:"kind"`
-				Name string `yaml:"name"`
-			} `yaml:"to"`
+			Rules []Rule `yaml:"rules"`
 		} `yaml:"spec"`
 	}
 
-	var route Route
-	route.APIVersion = "v1"
-	route.Kind = "Route"
-	route.Metadata.Name = fmt.Sprintf("%s-%s", appName, "route")
-	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = fmt.Sprintf("%s-%s", appName, "service")
+	type Rule struct {
+		Host  string        `yaml:"host"`
+		Paths []IngressPath `yaml:"paths"`
+	}
 
-	yamlStr, err := yaml.Marshal(&route)
+	type IngressPath struct {
+		Path    string `yaml:"path"`
+		Backend struct {
+			ServiceName string `yaml:"serviceName"`
+			ServicePort int    `yaml:"servicePort"`
+		}
+	}
+
+	var ingress Ingress
+	ingress.APIVersion = "extensions/v1beta1"
+	ingress.Kind = "Ingress"
+	ingress.Metadata.Name = fmt.Sprintf("%s-%s", appName, "ingress")
+
+	ingress.Rules = make([]Rule, 1)
+	ingress.Rules[0].Host = fmt.Sprintf("%s-%s.%s.%s", appname, namespace, getK8sMasterIP(), "nip.io")
+	ingress.Rules[0].Paths = make([]IngressPath, 1)
+	ingress.Rules[0].Paths[0].path = "/"
+	ingress.Rules[0].Paths[0].Backend.serviceName = fmt.Sprintf("%s-%s", appName, "service")
+	ingress.Rules[0].Paths[0].Backend.servicePort = getIngressPort()
+
+	yamlStr, err := yaml.Marshal(&ingress)
 	if err != nil {
 		Error.log("Could not create the YAML string from Map. Exiting.")
 		return "", err
 	}
 	Debug.logf("Generated YAML: \n%s\n", yamlStr)
 	// Generate file based on supplied config, defaulting to app-deploy.yaml
-	yamlFile := filepath.Join(pdir, "app-route.yaml")
+	yamlFile := filepath.Join(pdir, "app-ingress.yaml")
 	if dryrun {
 		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
 		return yamlFile, nil
@@ -843,6 +860,10 @@ func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, er
 		return "", fmt.Errorf("Could not create the yaml file for the route %v", err)
 	}
 	return yamlFile, nil
+}
+
+func getK8sMasterIP() string {
+	return "9.42.9.149"
 }
 
 func getKNativeTemplate() string {
