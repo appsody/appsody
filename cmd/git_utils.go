@@ -177,7 +177,10 @@ func RunGitGetLastCommit(URL string, dryrun bool) (CommitInfo, error) {
 	if gitErr != nil {
 		return commitInfo, gitErr
 	}
-	json.Unmarshal([]byte(strings.Trim(commitStringInfo, trimChars)), &commitInfo)
+	err := json.Unmarshal([]byte(strings.Trim(commitStringInfo, trimChars)), &commitInfo)
+	if err != nil {
+		return commitInfo, errors.Errorf("JSON Unmarshall error: %v", err)
+	}
 	if URL != "" {
 		commitInfo.URL = stringBefore(URL, ".git") + "/commit/" + commitInfo.SHA
 	}
