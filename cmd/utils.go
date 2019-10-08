@@ -764,9 +764,7 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 			Ports       []Port            `yaml:"ports"`
 		} `yaml:"spec"`
 	}
-	//Hack
-	namespace := "k8s-appsody"
-	//
+
 	var service Service
 	service.APIVersion = "v1"
 	service.Kind = "Service"
@@ -806,6 +804,17 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 
 //GenRouteYaml returns the file name of a generated K8S Service yaml
 func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, err error) {
+	type IngressPath struct {
+		Path    string `yaml:"path"`
+		Backend struct {
+			ServiceName string `yaml:"serviceName"`
+			ServicePort int    `yaml:"servicePort"`
+		} `yaml:"backend"`
+	}
+	type IngressRule struct {
+		Host  string        `yaml:"host"`
+		Paths []IngressPath `yaml:"paths"`
+	}
 
 	type Ingress struct {
 		APIVersion string `yaml:"apiVersion"`
@@ -814,21 +823,8 @@ func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, er
 			Name string `yaml:"name"`
 		} `yaml:"metadata"`
 		Spec struct {
-			Rules []Rule `yaml:"rules"`
+			Rules []IngressRule `yaml:"rules"`
 		} `yaml:"spec"`
-	}
-
-	type Rule struct {
-		Host  string        `yaml:"host"`
-		Paths []IngressPath `yaml:"paths"`
-	}
-
-	type IngressPath struct {
-		Path    string `yaml:"path"`
-		Backend struct {
-			ServiceName string `yaml:"serviceName"`
-			ServicePort int    `yaml:"servicePort"`
-		}
 	}
 
 	var ingress Ingress
@@ -836,12 +832,12 @@ func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, er
 	ingress.Kind = "Ingress"
 	ingress.Metadata.Name = fmt.Sprintf("%s-%s", appName, "ingress")
 
-	ingress.Rules = make([]Rule, 1)
-	ingress.Rules[0].Host = fmt.Sprintf("%s-%s.%s.%s", appname, namespace, getK8sMasterIP(), "nip.io")
-	ingress.Rules[0].Paths = make([]IngressPath, 1)
-	ingress.Rules[0].Paths[0].path = "/"
-	ingress.Rules[0].Paths[0].Backend.serviceName = fmt.Sprintf("%s-%s", appName, "service")
-	ingress.Rules[0].Paths[0].Backend.servicePort = getIngressPort()
+	ingress.Spec.Rules = make([]IngressRule, 1)
+	ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(), "nip.io")
+	ingress.Spec.Rules[0].Paths = make([]IngressPath, 1)
+	ingress.Spec.Rules[0].Paths[0].Path = "/"
+	ingress.Spec.Rules[0].Paths[0].Backend.ServiceName = fmt.Sprintf("%s-%s", appName, "service")
+	ingress.Spec.Rules[0].Paths[0].Backend.ServicePort = getIngressPort()
 
 	yamlStr, err := yaml.Marshal(&ingress)
 	if err != nil {
@@ -864,6 +860,10 @@ func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, er
 
 func getK8sMasterIP() string {
 	return "9.42.9.149"
+}
+
+func getIngressPort() int {
+	return 3000
 }
 
 func getKNativeTemplate() string {
