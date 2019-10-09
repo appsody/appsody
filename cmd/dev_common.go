@@ -313,7 +313,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, projectName, dryrun)
+		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, config.containerName, dryrun)
 		if err != nil {
 			return err
 		}
