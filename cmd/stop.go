@@ -44,7 +44,7 @@ To see a list of all your running docker containers, run the command "docker ps"
 				// Note for k8s the containerName does not need -dev
 				serviceArgName := containerName + "-service"
 				ingressArgName := containerName + "-ingress"
-				deploymentArgName := containerName + "-deployment"
+				deploymentArgName := containerName
 				serviceArgs := []string{"service", serviceArgName}
 				deploymentArgs := []string{"deployment", deploymentArgName}
 				ingressArgs := []string{"ingress", ingressArgName}
