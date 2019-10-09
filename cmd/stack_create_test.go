@@ -75,26 +75,6 @@ func TestStackCreateInvalidStackCase1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--copy", "incubator/nodej"}
-	_, err = cmdtest.RunAppsodyCmdExec(args, ".")
-
-	if err == nil {
-		t.Fatal(err)
-	}
-
-	exists, err := cmdtest.Exists("testing-stack")
-
-	if exists {
-		t.Fatal(err)
-	}
-}
-
-func TestStackCreateInvalidStackCase2(t *testing.T) {
-	err := os.RemoveAll("testing-stack")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	args := []string{"stack", "create", "testing-stack", "--copy", "nodejs"}
 	_, err = cmdtest.RunAppsodyCmdExec(args, ".")
 
@@ -109,27 +89,7 @@ func TestStackCreateInvalidStackCase2(t *testing.T) {
 	}
 }
 
-func TestStackCreateInvalidStackCase3(t *testing.T) {
-	err := os.RemoveAll("testing-stack")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	args := []string{"stack", "create", "testing-stack", "--copy", "experimental/nodejs"}
-	_, err = cmdtest.RunAppsodyCmdExec(args, ".")
-
-	if err == nil {
-		t.Fatal(err)
-	}
-
-	exists, err := cmdtest.Exists("testing-stack")
-
-	if exists {
-		t.Fatal(err)
-	}
-}
-
-func TestStackCreateInvalidStackCase4(t *testing.T) {
+func TestStackCreateInvalidStackCase2(t *testing.T) {
 	err := os.RemoveAll("testing-stack")
 	if err != nil {
 		t.Fatal(err)
