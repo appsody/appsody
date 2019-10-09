@@ -344,7 +344,9 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-
+		Info.log("Waiting 30 seconds for the container to start")
+		time.Sleep(30 * time.Second)
+		logSuccess := false
 		deploymentName := "deployment/" + config.containerName
 		var timeout = "2m"
 		kubeArgs := []string{"logs", deploymentName, "-f", "--pod-running-timeout=" + timeout}
@@ -355,17 +357,12 @@ func commonCmd(config *devCommonConfig, mode string) error {
 				Info.log("Dry Run - Skipping execCmd.Wait")
 			} else {
 				if kubeErr == nil {
+					logSuccess = true
 					err = execCmd.Wait()
 
 					if err != nil {
-						if logCount < 3 {
-							Debug.logf("Wait error, could not obtain logs, pod may not have started.  Sleeping and retrying %b", logCount)
-							time.Sleep(120 * time.Second)
 
-						} else {
-							return err
-						}
-
+						return err
 					}
 				} else {
 					if logCount < 3 {
@@ -378,11 +375,14 @@ func commonCmd(config *devCommonConfig, mode string) error {
 
 					}
 
-				} //end not dry run
-			} // end for loop
-		} //end of buildah path
+				}
+			} // end if not dryrun
+			if logSuccess {
+				break
+			}
+		} //end of for loop
 
-	}
+	} // end of buildah path
 	return nil
 }
 
