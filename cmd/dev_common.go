@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -346,24 +347,42 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		deploymentName := "deployment/" + config.containerName
 		var timeout = "2m"
 		kubeArgs := []string{"logs", deploymentName, "-f", "--pod-running-timeout=" + timeout}
-		execCmd, kubeErr := RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
-		if config.Dryrun {
-			Info.log("Dry Run - Skipping execCmd.Wait")
-		} else {
-			if kubeErr == nil {
-				err = execCmd.Wait()
-				if err != nil {
-					return err
-					//return errors.Errorf("kubectl logs command wait returned error: %v", err)
-				}
-			} else {
-				return kubeErr
-				//return errors.Errorf("kubectl logs command returned error: %v", kubeErr)
-			}
-		}
-	} //end of buildah path
-	return nil
+		for logCount := 0; logCount < 3; logCount++ {
 
+			execCmd, kubeErr := RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
+			if config.Dryrun {
+				Info.log("Dry Run - Skipping execCmd.Wait")
+			} else {
+				if kubeErr == nil {
+					err = execCmd.Wait()
+
+					if err != nil {
+						if logCount < 3 {
+							Debug.logf("Wait error, could not obtain logs, pod may not have started.  Sleeping and retrying %b", logCount)
+							time.Sleep(120 * time.Second)
+
+						} else {
+							return err
+						}
+
+					}
+				} else {
+					if logCount < 3 {
+						Debug.logf("kubectl error, could not obtain logs, pod may not have started.  Sleeping and retrying %b", logCount)
+
+						time.Sleep(120 * time.Second)
+
+					} else {
+						return kubeErr
+
+					}
+
+				} //end not dry run
+			} // end for loop
+		} //end of buildah path
+
+	}
+	return nil
 }
 
 func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {

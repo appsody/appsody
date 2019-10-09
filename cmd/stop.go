@@ -42,22 +42,23 @@ To see a list of all your running docker containers, run the command "docker ps"
 			} else {
 				// this is the k8s path, runs kubectl delete for the ingress, service and deployment
 				// Note for k8s the containerName does not need -dev
-
-				serviceArgs := []string{containerName + "-service"}
-				deploymentArgs := []string{containerName + "-deployment"}
-				ingressArgs := []string{containerName + "-ingress"}
+				serviceArgName := containerName + "-service"
+				ingressArgName := containerName + "-ingress"
+				deploymentArgName := containerName + "-deployment"
+				serviceArgs := []string{"service", serviceArgName}
+				deploymentArgs := []string{"deployment", deploymentArgName}
+				ingressArgs := []string{"ingress", ingressArgName}
 				_, err := RunKubeDelete(ingressArgs, rootConfig.Dryrun)
 				if err != nil {
-					return err
+					Error.logf("kubectl delete failed for ingress %s, due to %v", ingressArgName, err)
 				}
-
 				_, err = RunKubeDelete(serviceArgs, rootConfig.Dryrun)
 				if err != nil {
-					return err
+					Error.logf("kubectl delete failed for service %s, due to %v", serviceArgName, err)
 				}
 				_, err = RunKubeDelete(deploymentArgs, rootConfig.Dryrun)
 				if err != nil {
-					return err
+					Error.logf("kubectl delete failed for deployment %s, due to %v", deploymentArgName, err)
 				}
 			}
 			return nil
