@@ -31,14 +31,35 @@ If --name is not specified, the container name is determined from the current wo
 To see a list of all your running docker containers, run the command "docker ps". The name is in the last column.`,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !rootConfig.Buildah {
+				Info.log("Stopping development environment")
+				err := dockerStop(containerName, rootConfig.Dryrun)
+				if err != nil {
+					return err
+				}
+				//dockerRemove(imageName) is not needed due to --rm flag
+				//os.Exit(1)
+			} else {
+				// this is the k8s path, runs kubectl delete for the ingress, service and deployment
+				// Note for k8s the containerName does not need -dev
 
-			Info.log("Stopping development environment")
-			err := dockerStop(containerName, rootConfig.Dryrun)
-			if err != nil {
-				return err
+				serviceArgs := []string{containerName + "-service"}
+				deploymentArgs := []string{containerName + "-deployment"}
+				ingressArgs := []string{containerName + "-ingress"}
+				_, err := RunKubeDelete(ingressArgs, rootConfig.Dryrun)
+				if err != nil {
+					return err
+				}
+
+				_, err = RunKubeDelete(serviceArgs, rootConfig.Dryrun)
+				if err != nil {
+					return err
+				}
+				_, err = RunKubeDelete(deploymentArgs, rootConfig.Dryrun)
+				if err != nil {
+					return err
+				}
 			}
-			//dockerRemove(imageName) is not needed due to --rm flag
-			//os.Exit(1)
 			return nil
 		},
 	}

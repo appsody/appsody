@@ -342,6 +342,25 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
+
+		deploymentName := "deployment/" + config.containerName
+		var timeout = "2m"
+		kubeArgs := []string{"logs", deploymentName, "-f", "--pod-running-timeout=" + timeout}
+		execCmd, kubeErr := RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
+		if config.Dryrun {
+			Info.log("Dry Run - Skipping execCmd.Wait")
+		} else {
+			if kubeErr == nil {
+				err = execCmd.Wait()
+				if err != nil {
+					return err
+					//return errors.Errorf("kubectl logs command wait returned error: %v", err)
+				}
+			} else {
+				return kubeErr
+				//return errors.Errorf("kubectl logs command returned error: %v", kubeErr)
+			}
+		}
 	} //end of buildah path
 	return nil
 
