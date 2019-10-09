@@ -304,10 +304,6 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if portsErr != nil {
 			return portsErr
 		}
-<<<<<<< HEAD
-
-=======
->>>>>>> 4d7ee6a52b97b6381bf9ecfd6705faeb62121474
 		projectName, err := getProjectName(config.RootCommandConfig)
 		if err != nil {
 			return err
