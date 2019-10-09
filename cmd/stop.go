@@ -45,7 +45,7 @@ To see a list of all your running docker containers, run the command "docker ps"
 
 				serviceArgs := []string{containerName + "-service"}
 				deploymentArgs := []string{containerName + "-deployment"}
-				ingressArgs := []string{containerName + "-ingres"}
+				ingressArgs := []string{containerName + "-ingress"}
 				_, err := RunKubeDelete(ingressArgs, rootConfig.Dryrun)
 				if err != nil {
 					return err

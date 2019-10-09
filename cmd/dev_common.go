@@ -344,7 +344,8 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		}
 
 		deploymentName := "deployment/" + config.containerName
-		kubeArgs := []string{"logs", deploymentName, "-f", "--pod-running-timeout=2m"}
+		var timeout = "2m"
+		kubeArgs := []string{"logs", deploymentName, "-f", "--pod-running-timeout=" + timeout}
 		execCmd, kubeErr := RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
 		if config.Dryrun {
 			Info.log("Dry Run - Skipping execCmd.Wait")
