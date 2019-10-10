@@ -126,7 +126,7 @@ func unzip(src string, dest string, copy string) (bool, error) {
 
 		if runtime.GOOS == "windows" {
 			if strings.Contains(copy, "/") {
-				copy = strings.Replace(copy, "/", "\\", -1)
+				copy = strings.Replace(copy, "/", string(os.PathSeparator), -1)
 			}
 		}
 		fileName := strings.Replace(f.Name, string(os.PathSeparator)+"stacks-master", "", -1)
