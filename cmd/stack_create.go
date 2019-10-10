@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -58,7 +59,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.New("This stack named " + stack + " already exists")
 			}
 
-			err = downloadFileToDisk("https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "/extract/repo.zip"), config.Dryrun)
+			err = downloadFileToDisk("https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
 			if err != nil {
 				return err
 			}
@@ -67,7 +68,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return err
 			}
 
-			valid, unzipErr := unzip(filepath.Join(getHome(rootConfig), "/extract/repo.zip"), stack, config.copy)
+			valid, unzipErr := unzip(filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy)
 
 			if unzipErr != nil {
 				return unzipErr
@@ -78,10 +79,10 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			//deleting the stacks repo zip
-			os.Remove(filepath.Join(getHome(rootConfig), "/extract/repo.zip"))
+			os.Remove(filepath.Join(getHome(rootConfig), "extract", "repo.zip"))
 
 			//moving out the stack which we need
-			err = os.Rename(filepath.Join(stack, "/stacks-master/", config.copy), projectType)
+			err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType)
 			if err != nil {
 				return err
 			}
@@ -123,6 +124,11 @@ func unzip(src string, dest string, copy string) (bool, error) {
 			return valid, fmt.Errorf("%s: illegal file path", fpath)
 		}
 
+		if runtime.GOOS == "windows" {
+			if strings.Contains(copy, "/") {
+				copy = strings.Replace(copy, "/", "\\", -1)
+			}
+		}
 		fileName := strings.Replace(f.Name, string(os.PathSeparator)+"stacks-master", "", -1)
 		if !strings.HasPrefix(fileName, filepath.Join("stacks-master", string(os.PathSeparator), copy)+string(os.PathSeparator)) {
 			continue
