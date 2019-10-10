@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -123,14 +124,20 @@ func unzip(src string, dest string, copy string) (bool, error) {
 			return valid, fmt.Errorf("%s: illegal file path", fpath)
 		}
 
-		fileName := strings.Replace(f.Name, "/stacks-master", "", -1)
-		Debug.log(fileName)
-
-		Info.log("stacks-master/" + copy + "/")
-		if !strings.HasPrefix(fileName, "stacks-master/"+copy+"/") {
-			continue
+		if runtime.GOOS == "windows" {
+			fileName := strings.Replace(f.Name, "/stacks-master", "", -1)
+			if !strings.HasPrefix(fileName, "stacks-master/"+copy+"/") {
+				continue
+			} else {
+				valid = true
+			}
 		} else {
-			valid = true
+			fileName := strings.Replace(f.Name, string(os.PathSeparator)+"stacks-master", "", -1)
+			if !strings.HasPrefix(fileName, filepath.Join("stacks-master", string(os.PathSeparator), copy)+string(os.PathSeparator)) {
+				continue
+			} else {
+				valid = true
+			}
 		}
 
 		if f.FileInfo().IsDir() {
