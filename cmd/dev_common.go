@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -342,9 +343,46 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-	} //end of buildah path
-	return nil
+		Info.log("Waiting 30 seconds for the container to start")
+		time.Sleep(30 * time.Second)
+		logSuccess := false
+		deploymentName := "deployment/" + config.containerName
+		var timeout = "2m"
+		kubeArgs := []string{"logs", deploymentName, "-f", "--pod-running-timeout=" + timeout}
+		for logCount := 0; logCount < 3; logCount++ {
 
+			execCmd, kubeErr := RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
+			if config.Dryrun {
+				Info.log("Dry Run - Skipping execCmd.Wait")
+			} else {
+				if kubeErr == nil {
+					logSuccess = true
+					err = execCmd.Wait()
+
+					if err != nil {
+
+						return err
+					}
+				} else {
+					if logCount < 3 {
+						Debug.logf("kubectl error, could not obtain logs, pod may not have started.  Sleeping and retrying %b", logCount)
+
+						time.Sleep(120 * time.Second)
+
+					} else {
+						return kubeErr
+
+					}
+
+				}
+			} // end if not dryrun
+			if logSuccess {
+				break
+			}
+		} //end of for loop
+
+	} // end of buildah path
+	return nil
 }
 
 func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {
