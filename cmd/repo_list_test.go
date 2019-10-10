@@ -16,6 +16,7 @@ package cmd_test
 import (
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -48,5 +49,48 @@ func TestRepoList(t *testing.T) {
 			}
 		})
 
+	}
+}
+
+func TestRepoListJson(t *testing.T) {
+	args := []string{"repo", "list", "--config", "testdata/multiple_repository_config/config.yaml", "-o", "json"}
+	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := cmdtest.ParseRepoListJSON(cmdtest.ParseJSON(output))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testContentsRepoListOutput(t, list, output)
+}
+
+func TestRepoListYaml(t *testing.T) {
+	args := []string{"repo", "list", "--config", "testdata/multiple_repository_config/config.yaml", "-o", "yaml"}
+	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := cmdtest.ParseRepoListYAML(cmdtest.ParseYAML(output))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testContentsRepoListOutput(t, list, output)
+}
+
+func testContentsRepoListOutput(t *testing.T, list cmd.RepositoryFile, output string) {
+	if list.APIVersion == "" {
+		t.Errorf("Could not find APIVersion! CLI output:\n%s", output)
+	}
+
+	if list.Repositories == nil {
+		t.Errorf("Could not find Repositories! CLI output:\n%s", output)
+	}
+
+	if len(list.Repositories) != 2 {
+		t.Errorf("Expected 2 repos! CLI output:\n%s", output)
 	}
 }
