@@ -123,10 +123,10 @@ func unzip(src string, dest string, copy string) (bool, error) {
 			return valid, fmt.Errorf("%s: illegal file path", fpath)
 		}
 
-		fileName := strings.Replace(f.Name, string(os.PathSeparator)+"stacks-master", "", -1)
+		fileName := strings.Replace(f.Name, "/stacks-master", "", -1)
 		Debug.log(fileName)
 
-		Info.log(filepath.Join("stacks-master", string(os.PathSeparator), copy) + string(os.PathSeparator))
+		Info.log("stacks-master/" + copy + "/")
 		if !strings.HasPrefix(fileName, "stacks-master/"+copy+"/") {
 			continue
 		} else {
