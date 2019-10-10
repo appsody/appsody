@@ -272,7 +272,7 @@ func TestTest(projectDir string) error {
 	Info.Log("******************************************")
 	Info.Log("Running appsody test")
 	Info.Log("******************************************")
-	_, err := RunAppsodyCmdExec([]string{"test"}, projectDir)
+	_, err := RunAppsodyCmdExec([]string{"test", "--no-watcher"}, projectDir)
 	return err
 }
 
