@@ -75,7 +75,8 @@ setup the local dev environment.`,
 
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
-	initCmd.PersistentFlags().StringVar(&config.projectName, "project-name", "", "Project Name for Kubernetes Service")
+	defaultName := defaultProjectName(rootConfig)
+	initCmd.PersistentFlags().StringVar(&config.projectName, "project-name", defaultName, "Project Name for Kubernetes Service")
 	return initCmd
 }
 
@@ -574,4 +575,18 @@ func parseProjectParm(projectParm string, config *RootCommandConfig) (string, st
 	}
 
 	return "", "", errors.New("malformed project parameter - something unusual happened")
+}
+
+func defaultProjectName(config *RootCommandConfig) string {
+	projectName, perr := getProjectName(config)
+
+	if perr != nil {
+		if _, ok := perr.(*NotAnAppsodyProject); ok {
+			//Debug.log("Cannot retrieve the project name - continuing: ", perr)
+		} else {
+			Error.log("Error occurred retrieving project name... exiting: ", perr)
+			os.Exit(1)
+		}
+	}
+	return projectName
 }

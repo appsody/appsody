@@ -276,7 +276,7 @@ func setProjectName(projectDir string, projectName string) error {
 		return err
 	}
 
-	if projectName != "" {
+	if projectName != "" && projectName != "my-project" {
 		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
 
 		if !match {
@@ -354,7 +354,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 	if err != nil {
 		return "my-project", err
 	}
-	if config.projectName != "" {
+	if config.projectName != "" && config.projectName != "my-project" {
 		match, err := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", config.projectName)
 
 		if !match {
@@ -373,7 +373,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 
 	projectName := v.GetString("project-name")
 
-	if projectName != "" {
+	if projectName != "" && projectName != "my-project" {
 		match, err := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
 
 		if !match {
