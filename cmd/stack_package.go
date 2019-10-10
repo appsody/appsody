@@ -14,6 +14,7 @@
 package cmd
 
 import (
+	"html/template"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -121,6 +122,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			//   if the stack id exists then delete it
 			// append new stack to index file
 
+			// check for existing index yaml file
 			check, err = Exists(indexFileLocal)
 			if err != nil {
 				return errors.New("Error checking index file: " + err.Error())
@@ -196,11 +198,51 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 						newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
 
-						// write the template data
-						_, err = h.WriteString(stackYamlTemplateStr)
+						// loop through the Templates
+
+						templatePath := filepath.Join(stackPath, "templates")
+
+						t, err := os.Open(templatePath)
 						if err != nil {
-							return errors.Errorf("Error trying to write: %v", err)
+							return errors.Errorf("Error opening directory: %v", err)
 						}
+
+						templates, err := t.Readdirnames(0)
+						if err != nil {
+							return errors.Errorf("Error reading directories: %v", err)
+						}
+
+						// loop through the template directories and create the id and url
+						for i := range templates {
+							Info.Log("template is: ", templates[i])
+
+							// create name for the tar files
+							versionedArchive := filepath.Join(devLocal, stackName+".v"+stackYaml.Version+".templates.")
+							Info.Log("versionedArchive is: ", versionedArchive)
+
+							versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
+							Info.Log("versionedArdhiveTar is: ", versionArchiveTar)
+
+							if runtime.GOOS == "windows" {
+								// for windows, add a leading slash and convert to unix style slashes
+								versionArchiveTar = "/" + filepath.ToSlash(versionArchiveTar)
+							}
+							versionArchiveTar = "file://" + versionArchiveTar
+
+							for _, template := range newStackStruct.Templates {
+								template.ID = "      - id: " + templates[i] + "\n"
+								template.URL = "        url: " + versionArchiveTar + "\n"
+							}
+						}
+
+						tempIndexFileLocal := filepath.Join(devLocal, "temp-index-dev-local.yaml")
+						Info.Log("tempIndexFileLocal is: ", tempIndexFileLocal)
+
+						err = yaml.Marshal(&newStackStruct, tempIndexFileLocal)
+						if err != nil {
+							return errors.Errorf("Error trying to marshall: %v", err)
+						}
+
 
 						// we still need the url for the index but we will write it while taring the templates
 
