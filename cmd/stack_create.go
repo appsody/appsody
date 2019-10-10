@@ -127,10 +127,9 @@ func unzip(src string, dest string, copy string) (bool, error) {
 		Debug.log(fileName)
 
 		Info.log(filepath.Join("stacks-master", string(os.PathSeparator), copy) + string(os.PathSeparator))
-		if !strings.HasPrefix(fileName, filepath.Join("stacks-master", string(os.PathSeparator), copy)+string(os.PathSeparator)) {
+		if !strings.HasPrefix(fileName, "stacks-master/"+copy+"/") {
 			continue
 		} else {
-			Info.log("Inside Else----------------------")
 			valid = true
 		}
 
