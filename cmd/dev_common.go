@@ -335,14 +335,18 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		routeYaml, err := GenRouteYaml(config.containerName, projectDir, dryrun)
-		if err != nil {
-			return err
-		}
+		port := getIngressPort(config.RootCommandConfig)
+		// Generate the Ingress only if it makes sense - i.e. there's a port to expose
+		if port > 0 {
+			routeYaml, err := GenRouteYaml(config.containerName, projectDir, port, dryrun)
+			if err != nil {
+				return err
+			}
 
-		err = KubeApply(routeYaml, namespace, dryrun)
-		if err != nil {
-			return err
+			err = KubeApply(routeYaml, namespace, dryrun)
+			if err != nil {
+				return err
+			}
 		}
 		Info.log("Waiting 30 seconds for the container to start")
 		time.Sleep(30 * time.Second)

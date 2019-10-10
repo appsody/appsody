@@ -805,7 +805,7 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 }
 
 //GenRouteYaml returns the file name of a generated K8S Service yaml
-func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, err error) {
+func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName string, err error) {
 	type IngressPath struct {
 		Path    string `yaml:"path"`
 		Backend struct {
@@ -837,11 +837,11 @@ func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, er
 	ingress.Metadata.Name = fmt.Sprintf("%s-%s", appName, "ingress")
 
 	ingress.Spec.Rules = make([]IngressRule, 1)
-	ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(), "nip.io")
+	ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
 	ingress.Spec.Rules[0].HTTP.Paths = make([]IngressPath, 1)
 	ingress.Spec.Rules[0].HTTP.Paths[0].Path = "/"
 	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServiceName = fmt.Sprintf("%s-%s", appName, "service")
-	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServicePort = getIngressPort()
+	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServicePort = port
 
 	yamlStr, err := yaml.Marshal(&ingress)
 	if err != nil {
@@ -862,12 +862,48 @@ func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, er
 	return yamlFile, nil
 }
 
-func getK8sMasterIP() string {
-	return "9.42.9.149"
+func getK8sMasterIP(dryrun bool) string {
+	cmdParms := []string{"node", "--selector", "node-role.kubernetes.io/master", "-o", "jsonpath={.items[0].status.addresses[?(.type==\"InternalIP\")].address}"}
+	ip, err := KubeGet(cmdParms, "", dryrun)
+	if err == nil {
+		return ip
+	}
+	Debug.log("Could not retrieve the master IP address - returning x.x.x.x: ", err)
+	return "x.x.x.x"
 }
 
-func getIngressPort() int {
-	return 3000
+func getIngressPort(config *RootCommandConfig) int {
+	ports, err := getExposedPorts(config)
+
+	knownHTTPPorts := []string{"80", "8080", "8008", "3000", "9080"}
+	if err != nil {
+		Debug.Log("Error trying to obtain the exposed ports: ", err)
+		return 0
+	}
+	if len(ports) < 1 {
+		Debug.log("Container doesn't expose any port - returning 0")
+		return 0
+	}
+	iPort := 0
+	for _, port := range ports {
+		for _, knownPort := range knownHTTPPorts {
+			if port == knownPort {
+				iPort, err := strconv.Atoi(port)
+				if err == nil {
+					return iPort
+				}
+			}
+		}
+	}
+	//If we haven't returned yet, there was no match
+	//Pick the first port and return it
+	Debug.Log("No known HTTP port detected, returning the first one on the list.")
+	iPort, err = strconv.Atoi(ports[0])
+	if err == nil {
+		return iPort
+	}
+	Debug.Logf("Error converting port %s - returning 0: %v", ports[0], err)
+	return 0
 }
 
 func getKNativeTemplate() string {
