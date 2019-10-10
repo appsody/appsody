@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -74,12 +75,6 @@ func TestListV2(t *testing.T) {
 		t.Error("list command should contain id 'java-microprofile'")
 	}
 
-	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list", "appsodyhub"}, ".")
-
-	// we expect 2 instances
-	if !(strings.Count(output, "java-microprofile") == 1) {
-		t.Error("list command should contain id 'java-microprofile'")
-	}
 	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
 
 	// we expect 2 instances
@@ -94,4 +89,70 @@ func TestListV2(t *testing.T) {
 		t.Error("Failed to flag non-existing repo")
 	}
 
+}
+
+func TestListJson(t *testing.T) {
+	args := []string{"list", "-o", "json"}
+	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := cmdtest.ParseListJSON(cmdtest.ParseJSON(output))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testContentsListOutput(t, list, output)
+}
+
+func TestListYaml(t *testing.T) {
+	args := []string{"list", "-o", "yaml"}
+	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := cmdtest.ParseListYAML(cmdtest.ParseYAML(output))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testContentsListOutput(t, list, output)
+}
+
+func testContentsListOutput(t *testing.T, list cmd.IndexOutputFormat, output string) {
+	if list.APIVersion == "" {
+		t.Errorf("Could not find APIVersion! CLI output:\n%s", output)
+	}
+
+	if len(list.Repositories) != 2 {
+		t.Errorf("Expected two repositories! CLI output:\n%s", output)
+	}
+
+	for _, repo := range list.Repositories {
+		if len(repo.Stacks) < 1 {
+			t.Errorf("Expected repository %s to contain stacks! CLI output:\n%s", repo.Name, output)
+		}
+
+		for _, stack := range repo.Stacks {
+			if stack.ID == "" {
+				t.Errorf("Found stack with missing ID! CLI output:\n%s", output)
+			}
+
+			if stack.Version == "" {
+				t.Errorf("Found stack with missing Version! CLI output:\n%s", output)
+			}
+			if stack.Description == "" {
+				t.Errorf("Found stack with missing Description! CLI output:\n%s", output)
+			}
+			if len(stack.Templates) == 0 {
+				t.Errorf("Found stack with missing Templates! CLI output:\n%s", output)
+			}
+		}
+	}
 }
