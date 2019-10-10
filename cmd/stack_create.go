@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -107,11 +108,6 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 func unzip(src string, dest string, copy string) (bool, error) {
 	valid := false
 
-	if copy == "" {
-		copy = "samples/sample-stack"
-		valid = true
-	}
-
 	r, err := zip.OpenReader(src)
 	if err != nil {
 		return valid, err
@@ -129,10 +125,18 @@ func unzip(src string, dest string, copy string) (bool, error) {
 		}
 
 		fileName := strings.Replace(f.Name, "/stacks-master", "", -1)
-		if !strings.HasPrefix(fileName, filepath.Join("stacks-master/", copy)+"/") {
-			continue
+		if runtime.GOOS == "windows" {
+			if !strings.HasPrefix(fileName, filepath.Join("stacks-master/", copy, "\\")) {
+				continue
+			} else {
+				valid = true
+			}
 		} else {
-			valid = true
+			if !strings.HasPrefix(fileName, filepath.Join("stacks-master/", copy)+"/") {
+				continue
+			} else {
+				valid = true
+			}
 		}
 
 		if f.FileInfo().IsDir() {
