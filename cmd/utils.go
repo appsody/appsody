@@ -68,7 +68,11 @@ func Exists(path string) (bool, error) {
 }
 
 func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
-	if value, present := cachedEnvVars[searchEnvVar]; present {
+	if config.cachedEnvVars == nil {
+		config.cachedEnvVars = make(map[string]string)
+	}
+
+	if value, present := config.cachedEnvVars[searchEnvVar]; present {
 		Debug.logf("Environment variable found cached: %s Value: %s", searchEnvVar, value)
 		return value, nil
 	}
@@ -127,14 +131,14 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	for _, envVar := range envVars {
 		nameValuePair := strings.SplitN(envVar.(string), "=", 2)
 		name, value := nameValuePair[0], nameValuePair[1]
-		cachedEnvVars[name] = value
+		config.cachedEnvVars[name] = value
 		if name == searchEnvVar {
 			varFound = true
 		}
 	}
 	if varFound {
-		Debug.logf("Environment variable found: %s Value: %s", searchEnvVar, cachedEnvVars[searchEnvVar])
-		return cachedEnvVars[searchEnvVar], nil
+		Debug.logf("Environment variable found: %s Value: %s", searchEnvVar, config.cachedEnvVars[searchEnvVar])
+		return config.cachedEnvVars[searchEnvVar], nil
 	}
 	Debug.log("Could not find env var: ", searchEnvVar)
 	return "", nil
