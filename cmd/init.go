@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -579,33 +578,40 @@ func parseProjectParm(projectParm string, config *RootCommandConfig) (string, st
 }
 
 func defaultProjectName(config *RootCommandConfig) string {
-	projectDirPath, err := os.Getwd()
+	projectName, _ := getProjectName(config)
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	if projectName == "" || projectName == "my-project" {
 
-	indexPathSeparator := strings.LastIndex(projectDirPath, string(os.PathSeparator))
+		projectDirPath, err := os.Getwd()
 
-	projectName := projectDirPath[indexPathSeparator+1:]
-
-	projectName = strings.ToLower(filepath.Base(projectName))
-	match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
-	if match {
-		return projectName
-	} else {
-		projectName = "appsody-" + strings.ToLower(filepath.Base(projectName)) + "-app"
-		reg, err := regexp.Compile("[^a-z0-9]+")
 		if err != nil {
-			return ""
+			Error.log(err)
+			os.Exit(1)
 		}
-		projectName = reg.ReplaceAllString(projectName, "-")
 
+		indexPathSeparator := strings.LastIndex(projectDirPath, string(os.PathSeparator))
+
+		projectName := projectDirPath[indexPathSeparator+1:]
+
+		projectName = strings.ToLower(filepath.Base(projectName))
 		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
-
 		if match {
 			return projectName
+		} else {
+			projectName = "appsody-" + strings.ToLower(filepath.Base(projectName)) + "-app"
+			reg, err := regexp.Compile("[^a-z0-9]+")
+			if err != nil {
+				return ""
+			}
+			projectName = reg.ReplaceAllString(projectName, "-")
+
+			match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+
+			if match {
+				return projectName
+			}
 		}
+		return "my-project"
 	}
-	return "my-project"
+	return projectName
 }
