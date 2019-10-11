@@ -41,7 +41,7 @@ import (
 )
 
 type ProjectConfig struct {
-	Platform string
+	Stack string
 }
 
 type NotAnAppsodyProject string
@@ -85,7 +85,7 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	if projectConfigErr != nil {
 		return "", projectConfigErr
 	}
-	imageName := projectConfig.Platform
+	imageName := projectConfig.Stack
 	pullErrs := pullImage(imageName, config)
 	if pullErrs != nil {
 		return "", pullErrs
@@ -437,50 +437,161 @@ func UserHomeDir() string {
 	return homeDir
 }
 
+func getConfigLabels(config *RootCommandConfig) (map[string]string, error) {
+	var labels = make(map[string]string)
+
+	projectConfig, projectConfigErr := getProjectConfig(config)
+	if projectConfigErr != nil {
+		return labels, projectConfigErr
+	}
+
+	labels["appsody.requested-stack"] = projectConfig.Stack
+
+	return labels, nil
+}
+
+func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
+	gitInfo, err := GetGitInfo(config.Dryrun)
+	if err != nil {
+		return nil, err
+	}
+
+	var labels = make(map[string]string)
+
+	gitString := "git."
+	if gitInfo.Branch != "" {
+		labels[gitString+"branch"] = gitInfo.Branch
+	}
+
+	if gitInfo.Upstream != "" {
+		labels[gitString+"upstream"] = gitInfo.Upstream
+	}
+
+	if gitInfo.RemoteURL != "" {
+		labels[gitString+"remoteurl"] = gitInfo.RemoteURL
+	}
+
+	if gitInfo.ChangesMade == true {
+		labels[gitString+"changesmade"] = "true"
+	} else {
+		labels[gitString+"changesmade"] = "false"
+	}
+
+	var commitInfo = gitInfo.Commit
+	commitString := "git.commit."
+	if commitInfo.Author != "" {
+		labels[commitString+"author"] = commitInfo.Author
+	}
+
+	if commitInfo.SHA != "" {
+		labels[commitString+"sha"] = commitInfo.SHA
+	}
+
+	if commitInfo.Date != "" {
+		labels[commitString+"date"] = commitInfo.Date
+	}
+
+	if commitInfo.URL != "" {
+		labels[commitString+"url"] = commitInfo.URL
+	}
+
+	return labels, nil
+}
+
+func getDockerLabels(config *RootCommandConfig) (map[string]string, error) {
+	if config.cachedDockerLabels == nil {
+		config.cachedDockerLabels = make(map[string]string)
+		var data []map[string]interface{}
+		var buildahData map[string]interface{}
+		var containerConfig map[string]interface{}
+		projectConfig, projectConfigErr := getProjectConfig(config)
+		if projectConfigErr != nil {
+			return nil, projectConfigErr
+		}
+		imageName := projectConfig.Stack
+		pullErrs := pullImage(imageName, config)
+		if pullErrs != nil {
+			return nil, pullErrs
+		}
+
+		if config.Buildah {
+			cmdName := "buildah"
+			cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
+			Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
+			inspectCmd := exec.Command(cmdName, cmdArgs...)
+			inspectOut, inspectErr := inspectCmd.Output()
+			if inspectErr != nil {
+				return config.cachedDockerLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
+			}
+			err := json.Unmarshal([]byte(inspectOut), &buildahData)
+			if err != nil {
+				return config.cachedDockerLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+			}
+			containerConfig = buildahData["config"].(map[string]interface{})
+			Debug.Log("Config inspected by buildah: ", config)
+		} else {
+			inspectOut, inspectErr := RunDockerInspect(imageName)
+			if inspectErr != nil {
+				return config.cachedDockerLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
+			}
+			err := json.Unmarshal([]byte(inspectOut), &data)
+			if err != nil {
+				return config.cachedDockerLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+			}
+			containerConfig = data[0]["Config"].(map[string]interface{})
+		}
+
+		if containerConfig["Labels"] != nil {
+			labelsMap := containerConfig["Labels"].(map[string]interface{})
+
+			for key, value := range labelsMap {
+				config.cachedDockerLabels[key] = value.(string)
+			}
+		}
+	}
+	return config.cachedDockerLabels, nil
+}
+
 func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	// TODO cache this so the docker inspect command only runs once per cli invocation
 	var data []map[string]interface{}
 	var buildahData map[string]interface{}
 	var portValues []string
+	var containerConfig map[string]interface{}
 	projectConfig, projectConfigErr := getProjectConfig(config)
 	if projectConfigErr != nil {
 		return nil, projectConfigErr
 	}
-	imageName := projectConfig.Platform
+	imageName := projectConfig.Stack
 	pullErrs := pullImage(imageName, config)
 	if pullErrs != nil {
 		return nil, pullErrs
 	}
 
-	cmdName := "docker"
-	cmdArgs := []string{"image", "inspect", imageName}
 	if config.Buildah {
-		cmdName = "buildah"
-		cmdArgs = []string{"inspect", "--format", "{{.Config}}", imageName}
-	}
-	Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
-	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := inspectCmd.Output()
-	if inspectErr != nil {
-		return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
-	}
-	if config.Buildah {
+		cmdName := "buildah"
+		cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
+		Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
+		inspectCmd := exec.Command(cmdName, cmdArgs...)
+		inspectOut, inspectErr := inspectCmd.Output()
+		if inspectErr != nil {
+			return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
+		}
 		err := json.Unmarshal([]byte(inspectOut), &buildahData)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
+		containerConfig = buildahData["config"].(map[string]interface{})
+		Debug.Log("Config inspected by buildah: ", config)
 	} else {
+		inspectOut, inspectErr := RunDockerInspect(imageName)
+		if inspectErr != nil {
+			return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
+		}
 		err := json.Unmarshal([]byte(inspectOut), &data)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
-	}
-	var containerConfig map[string]interface{}
-
-	if config.Buildah {
-		containerConfig = buildahData["config"].(map[string]interface{})
-		Debug.Log("Config inspected by buildah: ", config)
-	} else {
 		containerConfig = data[0]["Config"].(map[string]interface{})
 	}
 

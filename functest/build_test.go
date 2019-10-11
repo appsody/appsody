@@ -14,6 +14,13 @@
 package functest
 
 import (
+<<<<<<< HEAD
+||||||| merged common ancestors
+	"fmt"
+=======
+	"encoding/json"
+	"fmt"
+>>>>>>> Adding Labels
 	"io/ioutil"
 	"os"
 	"strings"
@@ -101,14 +108,122 @@ func TestBuildSimple(t *testing.T) {
 		}
 
 		//delete the image
+<<<<<<< HEAD
 		func() {
 			_, err = cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName})
 			if err != nil {
 				t.Logf("Ignoring error running docker image rm: %s", err)
 			}
 		}()
+||||||| merged common ancestors
+		func() {
+			_, err = cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName})
+			if err != nil {
+				fmt.Printf("Ignoring error running docker image rm: %s", err)
+			}
+		}()
+=======
+		deleteImage(imageName)
+>>>>>>> Adding Labels
 
 		// clean up
 		cleanup()
+	}
+}
+
+func TestBuildLabels(t *testing.T) {
+	// first add the test repo index
+	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-build-labels-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.RemoveAll(projectDir)
+	log.Println("Created project dir: " + projectDir)
+
+	// appsody init
+	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	log.Println("Running appsody init...")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// appsody build
+	runChannel := make(chan error)
+	imageName := "testbuildimage"
+	go func() {
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"build", "--tag", imageName}, projectDir)
+		runChannel <- err
+	}()
+
+	// It will take a while for the image to build, so lets use docker image ls to wait for it
+	fmt.Println("calling docker image ls to wait for the image")
+	imageBuilt := false
+	count := 900
+	for {
+		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"image", "ls", imageName})
+		if dockerErr != nil {
+			log.Print("Ignoring error running docker image ls "+imageName, dockerErr)
+		}
+		if strings.Contains(dockerOutput, imageName) {
+			fmt.Println("docker image " + imageName + " was found")
+			imageBuilt = true
+		} else {
+			time.Sleep(2 * time.Second)
+			count = count - 1
+		}
+		if count == 0 || imageBuilt {
+			break
+		}
+	}
+
+	if !imageBuilt {
+		t.Fatal("image was never built")
+	}
+
+	inspectOutput, inspectErr := cmdtest.RunDockerCmdExec([]string{"inspect", imageName})
+	if inspectErr != nil {
+		t.Fatal(inspectErr)
+	}
+
+	var inspect []map[string]interface{}
+
+	err = json.Unmarshal([]byte(inspectOutput), &inspect)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config := inspect[0]["Config"].(map[string]interface{})
+	labelsMap := config["Labels"].(map[string]interface{})
+
+	if labelsMap["appsody.stack"] == nil {
+		t.Error("Could not find stack label in Docker image!")
+	}
+
+	if labelsMap["appsody.requested-stack"] == nil {
+		t.Error("Could not find requested stack label in Docker image!")
+	}
+
+	if labelsMap["org.opencontainers.image.created"] == nil || labelsMap["org.opencontainers.image.version"] == nil || labelsMap["org.opencontainers.image.revision"] == nil {
+		t.Error("Could not find opencontainers image labels in Docker image!")
+	}
+
+	//delete the image
+	deleteImage(imageName)
+
+	// clean up
+	cleanup()
+}
+
+func deleteImage(imageName string) {
+	_, err := cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName})
+	if err != nil {
+		fmt.Printf("Ignoring error running docker image rm: %s", err)
 	}
 }

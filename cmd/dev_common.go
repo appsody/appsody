@@ -115,7 +115,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
 
-	platformDefinition := projectConfig.Platform
+	platformDefinition := projectConfig.Stack
 	Debug.log("Stack image: ", platformDefinition)
 	Debug.log("Project directory: ", projectDir)
 

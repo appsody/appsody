@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -82,11 +83,11 @@ func build(config *buildCommandConfig) error {
 	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
 	dockerfile := filepath.Join(extractDir, "Dockerfile")
 	buildImage := projectName //Lowercased
+
 	// If a tag is specified, change the buildImage
 	if config.tag != "" {
 		buildImage = config.tag
 	}
-	//cmdName := "docker"
 	cmdArgs := []string{"-t", buildImage}
 
 	if config.dockerBuildOptions != "" {
@@ -98,8 +99,16 @@ func build(config *buildCommandConfig) error {
 			return err
 		}
 		cmdArgs = append(cmdArgs, options...)
-
 	}
+
+	labels, err := getLabels(config)
+	if err != nil {
+		return errors.Errorf("%v", err)
+	}
+	for _, label := range labels {
+		cmdArgs = append(cmdArgs, "--label", label)
+	}
+
 	cmdArgs = append(cmdArgs, "-f", dockerfile, extractDir)
 	Debug.log("final cmd args", cmdArgs)
 	execError := DockerBuild(cmdArgs, DockerLog, config.Verbose, config.Dryrun)
@@ -111,4 +120,41 @@ func build(config *buildCommandConfig) error {
 		Info.log("Built docker image ", buildImage)
 	}
 	return nil
+}
+
+func getLabels(config *buildCommandConfig) ([]string, error) {
+	var labels []string
+
+	dockerLabels, err := getDockerLabels(config.RootCommandConfig)
+	if err != nil {
+		return labels, err
+	}
+
+	configLabels, err := getConfigLabels(config.RootCommandConfig)
+	if err != nil {
+		return labels, err
+	}
+
+	gitLabels, err := getGitLabels(config.RootCommandConfig)
+	if err != nil {
+		Warning.log(err)
+	}
+
+	for key, value := range dockerLabels {
+		delete(configLabels, key)
+		labelString := fmt.Sprintf("%s=%s", key, value)
+		labels = append(labels, labelString)
+	}
+
+	for key, value := range configLabels {
+		labelString := fmt.Sprintf("%s=%s", key, value)
+		labels = append(labels, labelString)
+	}
+
+	for key, value := range gitLabels {
+		labelString := fmt.Sprintf("%s=%s", key, value)
+		labels = append(labels, labelString)
+	}
+
+	return labels, nil
 }

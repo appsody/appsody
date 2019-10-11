@@ -35,6 +35,11 @@ func RunDockerCommandAndWait(args []string, logger appsodylogger, verbose bool, 
 
 }
 
+func RunDockerInspect(imageName string) (string, error) {
+	var cmdArgs = []string{"image", "inspect", imageName}
+	return RunDockerCmdExec(cmdArgs)
+}
+
 func RunKubeCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
 	command := "kubectl"
 	return RunCommandAndListen(command, args, logger, interactive, verbose, dryrun)
