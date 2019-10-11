@@ -15,7 +15,6 @@ package functest
 
 import (
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -34,7 +33,7 @@ func TestPortMap(t *testing.T) {
 	}
 	defer os.RemoveAll(projectDir)
 
-	log.Println("Created project dir: " + projectDir)
+	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
@@ -61,7 +60,7 @@ func TestPublishAll(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-	log.Println("Created project dir: " + projectDir)
+	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
@@ -89,7 +88,7 @@ func TestRunWithNetwork(t *testing.T) {
 
 	defer os.RemoveAll(projectDir)
 
-	log.Println("Created project dir: " + projectDir)
+	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
@@ -116,7 +115,7 @@ func TestRunWithDockerOptions(t *testing.T) {
 
 	defer os.RemoveAll(projectDir)
 
-	log.Println("Created project dir: " + projectDir)
+	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
