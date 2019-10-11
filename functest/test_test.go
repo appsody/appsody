@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
@@ -61,8 +62,8 @@ func TestTestSimple(t *testing.T) {
 		log.Println("Created project dir: " + projectDir)
 
 		// appsody init
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
 		log.Println("Running appsody init...")
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,17 +71,37 @@ func TestTestSimple(t *testing.T) {
 		// appsody test
 		runChannel := make(chan error)
 		go func() {
+			log.Println("Running appsody test...")
 			_, err = cmdtest.RunAppsodyCmdExec([]string{"test"}, projectDir)
 			runChannel <- err
 		}()
 
-		// stop and cleanup
-		func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
-			if err != nil {
-				fmt.Printf("Ignoring error running appsody stop: %s", err)
+		waitForError := 20 // in seconds
+		stillWaiting := true
+		log.Println("Waiting to see if test will fail...")
+		for stillWaiting {
+			select {
+			case err = <-runChannel:
+				if err != nil {
+					// appsody run exited, probably with an error
+					t.Fatalf("appsody test quit unexpectedly: %s", err)
+				} else {
+					fmt.Println("appsody test exited successfully")
+					stillWaiting = false
+				}
+			case <-time.After(time.Duration(waitForError) * time.Second):
+				fmt.Printf("appsody test kept running for %d seconds with no error so consider this passed\n", waitForError)
+				stillWaiting = false
+				// stop the container if it is still up
+				_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
+				if err != nil {
+					fmt.Printf("Ignoring error running appsody stop: %s", err)
+				}
 			}
-		}()
+		}
+
+		// stop and cleanup
+
 		cleanup()
 		os.RemoveAll(projectDir)
 	}
