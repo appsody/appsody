@@ -17,6 +17,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -123,10 +124,13 @@ func TestRunWithDockerOptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--docker-options \"-m 4g\"", "--publish-all", "--dryrun"}, projectDir)
+	runOutput, err = cmdtest.RunAppsodyCmdExec([]string{"run", "--docker-options", "-m 4g", "--publish-all", "--dryrun"}, projectDir)
 
-	if !strings.Contains(runOutput, "--docker-options \"-m 4g\"") {
-		t.Fatal("docker-options flag is not found in output as:  --docker-options \"-m 4g\"")
-
+	if err != nil {
+		t.Fatal("Error running appsody run: ", err)
+	}
+	dockerOptsRegex := regexp.MustCompile("docker run.*-m 4g")
+	if !dockerOptsRegex.MatchString(runOutput) {
+		t.Fatal("docker-options -m 4g flag is not found in docker run command")
 	}
 }
