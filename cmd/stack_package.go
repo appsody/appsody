@@ -14,7 +14,6 @@
 package cmd
 
 import (
-	"html/template"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -78,7 +77,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		- Creates an index file named "index-dev-local.yaml" and stores it in .appsody/stacks/dev.local
 		- Creates a tar.gz for each stack template and stores it in .appsody/stacks/dev.local
 		- Builds a Docker image named "dev.local/[stack name]:SNAPSHOT
-		- Creates an Appsody repository named "dev-local"`,
+		- Creates an Appsody repository named "dev-local"
+		- Adds the "dev-local" repository to your Appsody configuration`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.Log("******************************************")
@@ -117,10 +117,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			indexFileLocal := filepath.Join(devLocal, "index-dev-local.yaml")
 			Info.Log("indexFileLocal is: ", indexFileLocal)
 
-			// check for existing index file
-			// if it exists then check for existing stack id
-			//   if the stack id exists then delete it
-			// append new stack to index file
+			// create IndexYaml struct and populate the APIVersion and Stacks header
+			var indexYaml IndexYaml
 
 			// check for existing index yaml file
 			check, err = Exists(indexFileLocal)
@@ -128,8 +126,18 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.New("Error checking index file: " + err.Error())
 			}
 			if check {
-				// index file exists already so see if it contains the stack data
+				// index file exists already so see if it contains the stack data and remove it if found
 				fmt.Println("***index file exists already***")
+
+				source, err := ioutil.ReadFile(indexFileLocal)
+				if err != nil {
+					return errors.Errorf("Error trying to read: %v", err)
+				}
+
+				err = yaml.Unmarshal(source, &indexYaml)
+				if err != nil {
+					return errors.Errorf("Error trying to unmarshall: %v", err)
+				}
 
 				// find the index of the stack
 				foundStack := -1
@@ -140,383 +148,90 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					}
 				}
 
-				// delete index foundStack from indexYaml.Stacks
+				// delete index foundStack from indexYaml.Stacks as we will append the new stack later
 				if foundStack != -1 {
-					indexYaml.Stacks[foundStack] = IndexYaml.Stacks[len(index.Yaml.Stacks) -1]
-					indexYaml.Stacks[len(index.Yaml.Stacks) -1] = ""
-					indexYaml.Stacks = indexYaml.Stacks[:len(index.Yaml.Stacks) -1]
+
+					//indexYaml.Stacks = append(indexYaml.Stacks[:foundStack], indexYaml.Stacks[foundStack+1]...)
+
+					indexYaml.Stacks = indexYaml.Stacks[:foundStack+copy(indexYaml.Stacks[foundStack:], indexYaml.Stacks[foundStack+1:])]
+					// indexYaml.Stacks[foundStack] = indexYaml.Stacks[len(indexYaml.Stacks)-1]
+					// //indexYaml.Stacks[len(indexYaml.Stacks)-1] = nil
+					// indexYaml.Stacks = indexYaml.Stacks[:len(indexYaml.Stacks)-1]
 				}
+			} else {
+				indexYaml = IndexYaml{}
+				indexYaml.APIVersion = "v2"
+				indexYaml.Stacks = make([]IndexYamlStack, 0, 1)
 			}
 
 			// build up stack struct for the new stack
 
 			newStackStruct := IndexYamlStack{}
 
-			
+			// get the necessary data from the current stack.yaml
+			var stackYaml StackYaml
 
-				// append stack to indexYaml.Stacks
+			source, err := ioutil.ReadFile(filepath.Join(stackPath, "stack.yaml"))
+			if err != nil {
+				return errors.Errorf("Error trying to read: %v", err)
+			}
 
-				// write it to a file using marshall
+			err = yaml.Unmarshal(source, &stackYaml)
+			if err != nil {
+				return errors.Errorf("Error trying to unmarshall: %v", err)
+			}
 
+			newStackStruct.ID = stackName
+			newStackStruct.Name = stackYaml.Name
+			newStackStruct.Version = stackYaml.Version
+			newStackStruct.Description = stackYaml.Description
+			newStackStruct.License = stackYaml.License
+			newStackStruct.Language = stackYaml.License
 
-						// get the necessary data from the current stack yaml
-						var stackYaml StackYaml
+			newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
 
-						source, err = ioutil.ReadFile(filepath.Join(stackPath, "stack.yaml"))
-						if err != nil {
-							return errors.Errorf("Error trying to read: %v", err)
-						}
+			newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
 
-						err = yaml.Unmarshal(source, &stackYaml)
-						if err != nil {
-							return errors.Errorf("Error trying to unmarshall: %v", err)
-						}
+			// find and open the template path so we can loop through the templates
 
-						Info.Logf("StackYaml Name: %#v", stackYaml.Name)
-						Info.Logf("StackYaml Version: %#v", stackYaml.Version)
-						Info.Logf("StackYaml Description: %#v", stackYaml.Description)
-						Info.Logf("StackYaml License: %#v", stackYaml.License)
-						Info.Logf("StackYaml Language: %#v", stackYaml.Language)
-						Info.Logf("StackYaml DefaultTemplate: %#v", stackYaml.DefaultTemplate)
+			templatePath := filepath.Join(stackPath, "templates")
 
-						newStackStruct.ID = stackName
-						newStackStruct.Name = stackYaml.Name
-						newStackStruct.Version = stackYaml.Version
-						newStackStruct.Description = stackYaml.Description
-						newStackStruct.License = stackYaml.License
-						newStackStruct.Language = stackYaml.License
+			t, err := os.Open(templatePath)
+			if err != nil {
+				return errors.Errorf("Error opening directory: %v", err)
+			}
 
-						// loop through the Maintainers
-						for _, maintainer := range stackYaml.Maintainers {
-							Info.Logf("Maintainers Name: %#v", maintainer.Name)
-							Info.Logf("Maintainers Email: %#v", maintainer.Email)
-							Info.Logf("Maintainers GithubID: %#v", maintainer.GithubID)
+			templates, err := t.Readdirnames(0)
+			if err != nil {
+				return errors.Errorf("Error reading directories: %v", err)
+			}
 
-							newStackStruct.Maintainers = append(newStackStruct.Maintainers, maintainer)
+			// loop through the template directories and create the id and url
+			for i := range templates {
+				Info.Log("template is: ", templates[i])
 
-						}
+				sourceDir := filepath.Join(stackPath, "templates", templates[i])
+				Info.Log("sourceDir is: ", sourceDir)
 
-						newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
+				// create name for the tar files
+				versionedArchive := filepath.Join(devLocal, stackName+".v"+stackYaml.Version+".templates.")
+				Info.Log("versionedArchive is: ", versionedArchive)
 
-						// loop through the Templates
+				versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
+				Info.Log("versionedArdhiveTar is: ", versionArchiveTar)
 
-						templatePath := filepath.Join(stackPath, "templates")
-
-						t, err := os.Open(templatePath)
-						if err != nil {
-							return errors.Errorf("Error opening directory: %v", err)
-						}
-
-						templates, err := t.Readdirnames(0)
-						if err != nil {
-							return errors.Errorf("Error reading directories: %v", err)
-						}
-
-						// loop through the template directories and create the id and url
-						for i := range templates {
-							Info.Log("template is: ", templates[i])
-
-							// create name for the tar files
-							versionedArchive := filepath.Join(devLocal, stackName+".v"+stackYaml.Version+".templates.")
-							Info.Log("versionedArchive is: ", versionedArchive)
-
-							versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
-							Info.Log("versionedArdhiveTar is: ", versionArchiveTar)
-
-							if runtime.GOOS == "windows" {
-								// for windows, add a leading slash and convert to unix style slashes
-								versionArchiveTar = "/" + filepath.ToSlash(versionArchiveTar)
-							}
-							versionArchiveTar = "file://" + versionArchiveTar
-
-							for _, template := range newStackStruct.Templates {
-								template.ID = "      - id: " + templates[i] + "\n"
-								template.URL = "        url: " + versionArchiveTar + "\n"
-							}
-						}
-
-						tempIndexFileLocal := filepath.Join(devLocal, "temp-index-dev-local.yaml")
-						Info.Log("tempIndexFileLocal is: ", tempIndexFileLocal)
-
-						err = yaml.Marshal(&newStackStruct, tempIndexFileLocal)
-						if err != nil {
-							return errors.Errorf("Error trying to marshall: %v", err)
-						}
-
-
-						// we still need the url for the index but we will write it while taring the templates
-
-						// docker build
-
-						// create the image name to be used for the docker image
-						buildImage := "dev.local/" + stackName + ":SNAPSHOT"
-
-						imageDir := filepath.Join(stackPath, "image")
-						Info.Log("imageDir is: ", imageDir)
-
-						dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
-						Info.Log("dockerFile is: ", dockerFile)
-
-						cmdArgs := []string{"-t", buildImage}
-
-						cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
-						Info.Log("cmdArgs is: ", cmdArgs)
-
-						err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
-						if err != nil {
-							return errors.Errorf("Error during docker build: %v", err)
-						}
-
-						// tar the templates
-
-						templatePath := filepath.Join(stackPath, "templates")
-
-						t, err := os.Open(templatePath)
-						if err != nil {
-							return errors.Errorf("Error opening directory: %v", err)
-						}
-
-						templates, err := t.Readdirnames(0)
-						if err != nil {
-							return errors.Errorf("Error reading directories: %v", err)
-						}
-
-						// loop through the template directories
-						// write the template url in the index yaml
-						// create a tar.gz for each template
-						for i := range templates {
-							Info.Log("template is: ", templates[i])
-
-							sourceDir := filepath.Join(stackPath, "templates", templates[i])
-							Info.Log("sourceDir is: ", sourceDir)
-
-							// create name for the tar files
-							versionedArchive := filepath.Join(devLocal, stackName+".v"+stackYaml.Version+".templates.")
-							Info.Log("versionedArchive is: ", versionedArchive)
-
-							versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
-							Info.Log("versionedArdhiveTar is: ", versionArchiveTar)
-
-							if runtime.GOOS == "windows" {
-								// for windows, add a leading slash and convert to unix style slashes
-								versionArchiveTar = "/" + filepath.ToSlash(versionArchiveTar)
-							}
-							versionArchiveTar = "file://" + versionArchiveTar
-
-							// create the template tar data string
-							templateTarStr := "      - id: " + templates[i] + "\n"
-							templateTarStr += "        url: " + versionArchiveTar + "\n"
-
-							// write the template url in the index yaml
-							_, err = h.WriteString(templateTarStr)
-							if err != nil {
-								return errors.Errorf("Error trying to write: %v", err)
-							}
-
-							// create a config yaml file for the tarball
-							configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
-							Info.Log("configYaml is: ", configYaml)
-
-							k, err := os.Create(configYaml)
-							if err != nil {
-								return errors.Errorf("Error trying to create file: %v", err)
-							}
-
-							_, err = k.WriteString("stack: " + buildImage)
-							if err != nil {
-								return errors.Errorf("Error trying to write: %v", err)
-							}
-
-							k.Close()
-
-							// tar the files
-							err = Targz(sourceDir, versionedArchive)
-							if err != nil {
-								return errors.Errorf("Error trying to tar: %v", err)
-							}
-
-							// remove the config yaml file
-							err = os.Remove(configYaml)
-							if err != nil {
-								return errors.Errorf("Error trying to remove file: %v", err)
-							}
-						}
-
-						t.Close()
-
-					} else {
-						// the stack does not match the one in the index 
-
-						// create the stack yaml string to write
-
-						tempStackYamlStr := "  - id: " + stack.ID + "\n"
-						tempStackYamlStr += "    name: " + stack.Name + "\n"
-						tempStackYamlStr += "    version: " + stack.Version + "\n"
-						tempStackYamlStr += "    description: " + stack.Description + "\n"
-						tempStackYamlStr += "    license: " + stack.License + "\n"
-						tempStackYamlStr += "    language: " + stack.Language + "\n"
-						tempStackYamlStr += "    maintainers:\n"
-
-						// write the stack yaml data we have so far
-						_, err = h.WriteString(tempStackYamlStr)
-						if err != nil {
-							return errors.Errorf("Error trying to write: %v", err)
-						}
-
-						// loop through the Maintainers
-						for _, maintainer := range stack.Maintainers {
-
-							// create maintainer data string
-							tempStackYamlMaintainersStr := "     - name: " + maintainer.Name + "\n"
-							tempStackYamlMaintainersStr += "       email: " + maintainer.Email + "\n"
-							tempStackYamlMaintainersStr += "       github-id: " + maintainer.GithubID + "\n"
-
-							// write the maintainer data
-							_, err = h.WriteString(tempStackYamlMaintainersStr)
-							if err != nil {
-								return errors.Errorf("Error trying to write: %v", err)
-							}
-						}
-
-						// create template data string
-						tempStackYamlTemplateStr := "    default-template: " + stack.DefaultTemplate + "\n"
-						tempStackYamlTemplateStr += "    templates:\n"
-
-						// write the template data
-						_, err = h.WriteString(tempStackYamlTemplateStr)
-						if err != nil {
-							return errors.Errorf("Error trying to write: %v", err)
-						}
-
-						// loop through Templates
-						for _, template := range stack.Templates {
-
-							// create templdate data string
-							tempTemplateStr := "      - id: " + template.ID + "\n"
-							tempTemplateStr += "        url: " + template.URL + "\n"
-
-							// write the template data
-							_, err = h.WriteString(tempTemplateStr)
-							if err != nil {
-								return errors.Errorf("Error trying to write: %v", err)
-							}
-						}
-					}
-
+				if runtime.GOOS == "windows" {
+					// for windows, add a leading slash and convert to unix style slashes
+					versionArchiveTar = "/" + filepath.ToSlash(versionArchiveTar)
 				}
-				// 		Info.Logf("IndexYaml Id: %#v", stack.ID)
-				// 		Info.Logf("IndexYaml Name: %#v", stack.Name)
-				// 		Info.Logf("IndexYaml Version: %#v", stack.Version)
-				// 		Info.Logf("IndexYaml Description: %#v", stack.Description)
-				// 		Info.Logf("IndexYaml License: %#v", stack.License)
-				// 		Info.Logf("IndexYaml Language: %#v", stack.Language)
-				// 		Info.Logf("IndexYaml DefaultTemplate: %#v", stack.DefaultTemplate)
+				versionArchiveTar = "file://" + versionArchiveTar
 
-				// 		for _, template := range stack.Templates {
-				// 			Info.Logf("IndexYamlStackTemplate Id: %#v", template.ID)
-				// 			Info.Logf("IndexYamlStackTemplate Url: %#v", template.URL)
-				// 		}
-				// 		for _, maintainer := range stack.Maintainers {
-				// 			Info.Logf("IndexYamlStackMaintainer Name: %#v", maintainer.Name)
-				// 			Info.Logf("IndexYamlStackMaintainer Email: %#v", maintainer.Email)
-				// 			Info.Logf("IndexYamlStackMaintainer Github-id: %#v", maintainer.GithubID)
-				// 		}
-				// 	}
-				// }
+				// add the template data to the struct
+				newTemplateStruct := IndexYamlStackTemplate{}
+				newTemplateStruct.ID = templates[i]
+				newTemplateStruct.URL = versionArchiveTar
 
-			} else {
-				// index file did not exist so create a new one
-				f, err := os.Create(indexFileLocal)
-				if err != nil {
-					return errors.Errorf("Error creating file: %v", err)
-				}
-				defer f.Close()
-
-				// create and write the index yaml
-
-				indexFileStr := "apiVersion: v2\n"
-				indexFileStr += "stacks:\n"
-				indexFileStr += "  - id: " + stackName + "\n"
-
-				f, err = os.Create(indexFileLocal)
-				if err != nil {
-					return errors.Errorf("Error creating file: %v", err)
-				}
-				defer f.Close()
-
-				_, err = f.WriteString(indexFileStr)
-				if err != nil {
-					return errors.Errorf("Error trying to write: %v", err)
-				}
-
-				// get the necessary data from the current stack yaml
-				var stackYaml StackYaml
-
-				source, err := ioutil.ReadFile(filepath.Join(stackPath, "stack.yaml"))
-				if err != nil {
-					return errors.Errorf("Error trying to read: %v", err)
-				}
-
-				err = yaml.Unmarshal(source, &stackYaml)
-				if err != nil {
-					return errors.Errorf("Error trying to unmarshall: %v", err)
-				}
-
-				Info.Logf("StackYaml Name: %#v", stackYaml.Name)
-				Info.Logf("StackYaml Version: %#v", stackYaml.Version)
-				Info.Logf("StackYaml Description: %#v", stackYaml.Description)
-				Info.Logf("StackYaml License: %#v", stackYaml.License)
-				Info.Logf("StackYaml Language: %#v", stackYaml.Language)
-				Info.Logf("StackYaml DefaultTemplate: %#v", stackYaml.DefaultTemplate)
-
-				for _, maintainer := range stackYaml.Maintainers {
-
-					//for i := range stackYaml.Maintainers {
-					Info.Logf("Maintainers Name: %#v", maintainer.Name)
-					Info.Logf("Maintainers Email: %#v", maintainer.Email)
-					Info.Logf("Maintainers GithubID: %#v", maintainer.GithubID)
-				}
-
-				// create the stack yaml string to write
-				stackYamlStr := "    name: " + stackYaml.Name + "\n"
-				stackYamlStr += "    version: " + stackYaml.Version + "\n"
-				stackYamlStr += "    description: " + stackYaml.Description + "\n"
-				stackYamlStr += "    license: " + stackYaml.License + "\n"
-				stackYamlStr += "    language: " + stackYaml.Language + "\n"
-				stackYamlStr += "    maintainers:\n"
-
-				// write the stack yaml data we have so far
-				_, err = f.WriteString(stackYamlStr)
-				if err != nil {
-					return errors.Errorf("Error trying to write: %v", err)
-				}
-
-				// loop through the Maintainers
-				for _, maintainer := range stackYaml.Maintainers {
-
-					// create maintainer data string
-					stackYamlMaintainersStr := "     - name: " + maintainer.Name + "\n"
-					stackYamlMaintainersStr += "       email: " + maintainer.Email + "\n"
-					stackYamlMaintainersStr += "       github-id: " + maintainer.GithubID + "\n"
-
-					// write the maintainer data
-					_, err = f.WriteString(stackYamlMaintainersStr)
-					if err != nil {
-						return errors.Errorf("Error trying to write: %v", err)
-					}
-				}
-
-				// create template data string
-				stackYamlTemplateStr := "    default-template: " + stackYaml.DefaultTemplate + "\n"
-				stackYamlTemplateStr += "    templates:\n"
-
-				// write the template data
-				_, err = f.WriteString(stackYamlTemplateStr)
-				if err != nil {
-					return errors.Errorf("Error trying to write: %v", err)
-				}
-
-				// we still need the url for the index but we will write it while taring the templates
+				newStackStruct.Templates = append(newStackStruct.Templates, newTemplateStruct)
 
 				// docker build
 
@@ -539,92 +254,51 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					return errors.Errorf("Error during docker build: %v", err)
 				}
 
-				// tar the templates
+				// create a config yaml file for the tarball
+				configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
+				Info.Log("configYaml is: ", configYaml)
 
-				templatePath := filepath.Join(stackPath, "templates")
-
-				t, err := os.Open(templatePath)
+				g, err := os.Create(configYaml)
 				if err != nil {
-					return errors.Errorf("Error opening directory: %v", err)
+					return errors.Errorf("Error trying to create file: %v", err)
 				}
 
-				templates, err := t.Readdirnames(0)
+				_, err = g.WriteString("stack: " + buildImage)
 				if err != nil {
-					return errors.Errorf("Error reading directories: %v", err)
+					return errors.Errorf("Error trying to write: %v", err)
 				}
 
-				// loop through the template directories
-				// write the template url in the index yaml
-				// create a tar.gz for each template
-				for i := range templates {
-					Info.Log("template is: ", templates[i])
+				g.Close()
 
-					sourceDir := filepath.Join(stackPath, "templates", templates[i])
-					Info.Log("sourceDir is: ", sourceDir)
-
-					// create name for the tar files
-					versionedArchive := filepath.Join(devLocal, stackName+".v"+stackYaml.Version+".templates.")
-					Info.Log("versionedArchive is: ", versionedArchive)
-
-					versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
-					Info.Log("versionedArdhiveTar is: ", versionArchiveTar)
-
-					if runtime.GOOS == "windows" {
-						// for windows, add a leading slash and convert to unix style slashes
-						versionArchiveTar = "/" + filepath.ToSlash(versionArchiveTar)
-					}
-					versionArchiveTar = "file://" + versionArchiveTar
-
-					// create the template tar data string
-					templateTarStr := "      - id: " + templates[i] + "\n"
-					templateTarStr += "        url: " + versionArchiveTar + "\n"
-
-					// write the template url in the index yaml
-					_, err = f.WriteString(templateTarStr)
-					if err != nil {
-						return errors.Errorf("Error trying to write: %v", err)
-					}
-
-					// create a config yaml file for the tarball
-					configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
-					Info.Log("configYaml is: ", configYaml)
-
-					g, err := os.Create(configYaml)
-					if err != nil {
-						return errors.Errorf("Error trying to create file: %v", err)
-					}
-
-					_, err = g.WriteString("stack: " + buildImage)
-					if err != nil {
-						return errors.Errorf("Error trying to write: %v", err)
-					}
-
-					g.Close()
-
-					// tar the files
-					err = Targz(sourceDir, versionedArchive)
-					if err != nil {
-						return errors.Errorf("Error trying to tar: %v", err)
-					}
-
-					// remove the config yaml file
-					err = os.Remove(configYaml)
-					if err != nil {
-						return errors.Errorf("Error trying to remove file: %v", err)
-					}
+				// tar the files
+				err = Targz(sourceDir, versionedArchive)
+				if err != nil {
+					return errors.Errorf("Error trying to tar: %v", err)
 				}
 
-				t.Close()
+				// remove the config yaml file
+				err = os.Remove(configYaml)
+				if err != nil {
+					return errors.Errorf("Error trying to remove file: %v", err)
+				}
+
 			}
 
-			// run appsody repo list -o yaml
-			// parse output for dev-local
-			// if dev-local exists then...
-			//   run apposody repo remove dev-local
-			//   parse .appsody/stacks/dev.local/index-dev-local.yaml for the stack name id
-			//   if the stack name id exist then overwrite it with the current stack
-			//   else append current stack info
-			// run appsody repo add dev-local
+			t.Close()
+
+			// add the new stack struct to the existing struct
+			indexYaml.Stacks = append(indexYaml.Stacks, newStackStruct)
+
+			// write yaml data to the index yaml
+			source, err = yaml.Marshal(&indexYaml)
+			if err != nil {
+				return errors.Errorf("Error trying to marshall: %v", err)
+			}
+
+			err = ioutil.WriteFile(indexFileLocal, source, 0644)
+			if err != nil {
+				return errors.Errorf("Error trying to read: %v", err)
+			}
 
 			// create an appsody repo for the stack
 			_, err = AddLocalFileRepo("dev-local", indexFileLocal)
@@ -639,41 +313,3 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	}
 	return stackPackageCmd
 }
-
-// **********************************************************************
-// check ability to read an existing index...
-// var indexYaml IndexYaml
-
-// source, err := ioutil.ReadFile(indexFileLocal)
-
-// if err != nil {
-// 	return errors.Errorf("Error trying to read: %v", err)
-// }
-
-// err = yaml.Unmarshal(source, &indexYaml)
-// if err != nil {
-// 	return errors.Errorf("Error trying to unmarshall: %v", err)
-// }
-
-// Info.Logf("IndexYaml ApiVersion: %#v", indexYaml.APIVersion)
-
-// for _, stack := range indexYaml.Stacks {
-// 	Info.Logf("IndexYaml Id: %#v", stack.ID)
-// 	Info.Logf("IndexYaml Name: %#v", stack.Name)
-// 	Info.Logf("IndexYaml Version: %#v", stack.Version)
-// 	Info.Logf("IndexYaml Description: %#v", stack.Description)
-// 	Info.Logf("IndexYaml License: %#v", stack.License)
-// 	Info.Logf("IndexYaml Language: %#v", stack.Language)
-// 	Info.Logf("IndexYaml DefaultTemplate: %#v", stack.DefaultTemplate)
-
-// 	for _, template := range stack.Templates {
-// 		Info.Logf("IndexYamlStackTemplate Id: %#v", template.ID)
-// 		Info.Logf("IndexYamlStackTemplate Url: %#v", template.URL)
-// 	}
-// 	for _, maintainer := range stack.Maintainers {
-// 		Info.Logf("IndexYamlStackMaintainer Name: %#v", maintainer.Name)
-// 		Info.Logf("IndexYamlStackMaintainer Email: %#v", maintainer.Email)
-// 		Info.Logf("IndexYamlStackMaintainer Github-id: %#v", maintainer.GithubID)
-// 	}
-// }
-// *********************************************************************************
