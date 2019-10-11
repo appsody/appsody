@@ -180,18 +180,18 @@ func Execute(version string) {
 		fmt.Println("Error getting current directory: ", err)
 		os.Exit(1)
 	}
-	if err := ExecuteE(version, dir, os.Args); err != nil {
+	if err := ExecuteE(version, dir, os.Args[1:]); err != nil {
 		os.Exit(1)
 	}
 }
 
 func ExecuteE(version string, projectDir string, args []string) error {
 	VERSION = version
-	rootCmd, err := newRootCmd(projectDir, args[1:])
+	rootCmd, err := newRootCmd(projectDir, args)
 	if err != nil {
 		Error.log(err)
 	}
-	Debug.log("Running with command line args: appsody ", strings.Join(args[1:], " "))
+	Debug.log("Running with command line args: appsody ", strings.Join(args, " "))
 	err = rootCmd.Execute()
 	if err != nil {
 		Error.log(err)
