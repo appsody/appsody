@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -304,16 +305,17 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if portsErr != nil {
 			return portsErr
 		}
-		projectName, err := getProjectName(config.RootCommandConfig)
-		if err != nil {
-			return err
-		}
+		/*
+			projectName, err := getProjectName(config.RootCommandConfig)
+			if err != nil {
+				return err
+			}*/
 
 		projectDir, err := getProjectDir(config.RootCommandConfig)
 		if err != nil {
 			return err
 		}
-		deploymentYaml, err := GenDeploymentYaml(projectName, platformDefinition, portList, projectDir, projectName, dryrun)
+		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, config.containerName, dryrun)
 		if err != nil {
 			return err
 		}
@@ -324,7 +326,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		serviceYaml, err := GenServiceYaml(projectName, portList, projectDir, dryrun)
+		serviceYaml, err := GenServiceYaml(config.containerName, portList, projectDir, dryrun)
 		if err != nil {
 			return err
 		}
@@ -333,18 +335,59 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		routeYaml, err := GenRouteYaml(projectName, projectDir, dryrun)
-		if err != nil {
-			return err
-		}
+		port := getIngressPort(config.RootCommandConfig)
+		// Generate the Ingress only if it makes sense - i.e. there's a port to expose
+		if port > 0 {
+			routeYaml, err := GenRouteYaml(config.containerName, projectDir, port, dryrun)
+			if err != nil {
+				return err
+			}
 
-		err = KubeApply(routeYaml, namespace, dryrun)
-		if err != nil {
-			return err
+			err = KubeApply(routeYaml, namespace, dryrun)
+			if err != nil {
+				return err
+			}
 		}
-	} //end of buildah path
+		Info.log("Waiting 30 seconds for the container to start")
+		time.Sleep(30 * time.Second)
+		logSuccess := false
+		deploymentName := "deployment/" + config.containerName
+		var timeout = "2m"
+		kubeArgs := []string{"logs", deploymentName, "-f", "--pod-running-timeout=" + timeout}
+		for logCount := 0; logCount < 3; logCount++ {
+
+			execCmd, kubeErr := RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
+			if config.Dryrun {
+				Info.log("Dry Run - Skipping execCmd.Wait")
+			} else {
+				if kubeErr == nil {
+					logSuccess = true
+					err = execCmd.Wait()
+
+					if err != nil {
+
+						return err
+					}
+				} else {
+					if logCount < 3 {
+						Debug.logf("kubectl error, could not obtain logs, pod may not have started.  Sleeping and retrying %b", logCount)
+
+						time.Sleep(120 * time.Second)
+
+					} else {
+						return kubeErr
+
+					}
+
+				}
+			} // end if not dryrun
+			if logSuccess {
+				break
+			}
+		} //end of for loop
+
+	} // end of buildah path
 	return nil
-
 }
 
 func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {

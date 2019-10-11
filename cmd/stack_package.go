@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -209,6 +210,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// loop through the template directories and create the id and url
 			for i := range templates {
 				Info.Log("template is: ", templates[i])
+				if strings.Contains(templates[i], ".DS_Store") {
+					Info.Log("ignoring .DS_Store")
+					continue
+				}
 
 				sourceDir := filepath.Join(stackPath, "templates", templates[i])
 				Info.Log("sourceDir is: ", sourceDir)
@@ -298,6 +303,23 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			err = ioutil.WriteFile(indexFileLocal, source, 0644)
 			if err != nil {
 				return errors.Errorf("Error trying to read: %v", err)
+			}
+
+			// list repos
+			repos, err := RunAppsodyCmdExec([]string{"repo", "list", "-o", "yaml"}, ".")
+			if err != nil {
+				return err
+			}
+
+			// if dev-local exists then remove it
+			if strings.Contains(repos, "name: dev-local") {
+				Info.Log("dev-local repo found")
+
+				_, err := RunAppsodyCmdExec([]string{"repo", "remove", "dev-local"}, ".")
+				if err != nil {
+					return err
+				}
+
 			}
 
 			// create an appsody repo for the stack
