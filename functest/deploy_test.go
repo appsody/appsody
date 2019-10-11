@@ -101,12 +101,11 @@ func TestDeploySimple(t *testing.T) {
 		}
 
 		// appsody deploy
-		runChannel := make(chan error)
-		go func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"deploy", "-t", "testdeploy/testimage", "--dryrun"}, projectDir)
-			log.Println("Running appsody deploy...")
-			runChannel <- err
-		}()
+		log.Println("Running appsody deploy...")
+		_, err = cmdtest.RunAppsodyCmdExec([]string{"deploy", "-t", "testdeploy/testimage", "--dryrun"}, projectDir)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		// cleanup tasks
 		cleanup()
