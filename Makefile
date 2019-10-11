@@ -5,7 +5,7 @@ export APPSODY_MOUNT_CONTROLLER ?= ${HOME}/.appsody/appsody-controller
 CONTROLLER_DIR := $(shell dirname $(APPSODY_MOUNT_CONTROLLER))
 export STACKSLIST ?= incubator/nodejs
 # use -count=1 to disable cache and -p=1 to stream output live
-GO_TEST_COMMAND := go test -v -count=1 -p=1 -coverprofile=cover.out -coverpkg ./cmd
+GO_TEST_COMMAND := go test -v -count=1 -p=1 -covermode=count -coverprofile=cover.out -coverpkg ./cmd
 GO_TEST_COVER_VIEWER := go tool cover -func=cover.out && go tool cover -html=cover.out
 # Set a default VERSION only if it is not already set
 VERSION ?= 0.0.0
