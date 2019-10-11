@@ -68,7 +68,14 @@ func Exists(path string) (bool, error) {
 }
 
 func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
-	// TODO cache this so the buildah / docker inspect command only runs once per cli invocation
+	if config.cachedEnvVars == nil {
+		config.cachedEnvVars = make(map[string]string)
+	}
+
+	if value, present := config.cachedEnvVars[searchEnvVar]; present {
+		Debug.logf("Environment variable found cached: %s Value: %s", searchEnvVar, value)
+		return value, nil
+	}
 
 	// Docker and Buildah produce slightly different output
 	// for `inspect` command. Array of maps vs. maps
@@ -121,22 +128,20 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	Debug.log("Number of environment variables in stack image: ", len(envVars))
 	Debug.log("All environment variables in stack image: ", envVars)
 	var varFound = false
-	var envVarValue string
 	for _, envVar := range envVars {
-		if strings.HasPrefix(envVar.(string), searchEnvVar) {
+		nameValuePair := strings.SplitN(envVar.(string), "=", 2)
+		name, value := nameValuePair[0], nameValuePair[1]
+		config.cachedEnvVars[name] = value
+		if name == searchEnvVar {
 			varFound = true
-			envVarValue = strings.SplitN(envVar.(string), "=", 2)[1]
-			break
 		}
 	}
 	if varFound {
-		Debug.logf("Environment variable found: %s Value: %s", searchEnvVar, envVarValue)
-	} else {
-		Debug.log("Could not find env var: ", searchEnvVar)
-		envVarValue = ""
+		Debug.logf("Environment variable found: %s Value: %s", searchEnvVar, config.cachedEnvVars[searchEnvVar])
+		return config.cachedEnvVars[searchEnvVar], nil
 	}
-	return envVarValue, nil
-
+	Debug.log("Could not find env var: ", searchEnvVar)
+	return "", nil
 }
 
 func getEnvVarBool(searchEnvVar string, config *RootCommandConfig) (bool, error) {

@@ -52,7 +52,11 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var stackPackageCmd = &cobra.Command{
 		Use:   "package",
 		Short: "Package a stack in the local Appsody environment",
-		Long:  `This builds a stack and creates an index and adds it to the repository`,
+		Long: `This command is a tool for stack developers to package a stack from their local Appsody development environment. Once the stack is packaged it can then be tested via Appsody commands. The package command performs the following:
+		- Creates an index file named "index-dev-local.yaml" and stores it in .appsody/stacks/dev.local
+		- Creates a tar.gz for each stack template and stores it in .appsody/stacks/dev.local
+		- Builds a Docker image named "dev.local/[stack name]:SNAPSHOT
+		- Creates an Appsody repository named "dev-local"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.Log("******************************************")
