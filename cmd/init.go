@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -578,15 +579,33 @@ func parseProjectParm(projectParm string, config *RootCommandConfig) (string, st
 }
 
 func defaultProjectName(config *RootCommandConfig) string {
-	projectName, perr := getProjectName(config)
+	projectDirPath, err := os.Getwd()
 
-	if perr != nil {
-		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			//Debug.log("Cannot retrieve the project name - continuing: ", perr)
-		} else {
-			Error.log("Error occurred retrieving project name... exiting: ", perr)
-			os.Exit(1)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	indexPathSeparator := strings.LastIndex(projectDirPath, string(os.PathSeparator))
+
+	projectName := projectDirPath[indexPathSeparator+1:]
+
+	projectName = strings.ToLower(filepath.Base(projectName))
+	match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+	if match {
+		return projectName
+	} else {
+		projectName = "appsody-" + strings.ToLower(filepath.Base(projectName)) + "-app"
+		reg, err := regexp.Compile("[^a-z0-9]+")
+		if err != nil {
+			return ""
+		}
+		projectName = reg.ReplaceAllString(projectName, "-")
+
+		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+
+		if match {
+			return projectName
 		}
 	}
-	return projectName
+	return "my-project"
 }
