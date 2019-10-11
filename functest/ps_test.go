@@ -62,7 +62,7 @@ func TestPS(t *testing.T) {
 	// It will take a while for the container to spin up, so let's use docker ps to wait for it
 	fmt.Println("calling docker ps to wait for container")
 	containerRunning := false
-	count := 100
+	count := 15 // wait 30 seconds
 	for {
 		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName})
 		if dockerErr != nil {
