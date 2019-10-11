@@ -31,14 +31,36 @@ If --name is not specified, the container name is determined from the current wo
 To see a list of all your running docker containers, run the command "docker ps". The name is in the last column.`,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			Info.log("Stopping development environment")
-			err := dockerStop(containerName, rootConfig.Dryrun)
-			if err != nil {
-				return err
+			if !rootConfig.Buildah {
+				Info.log("Stopping development environment")
+				err := dockerStop(containerName, rootConfig.Dryrun)
+				if err != nil {
+					return err
+				}
+				//dockerRemove(imageName) is not needed due to --rm flag
+				//os.Exit(1)
+			} else {
+				// this is the k8s path, runs kubectl delete for the ingress, service and deployment
+				// Note for k8s the containerName does not need -dev
+				serviceArgName := containerName + "-service"
+				ingressArgName := containerName + "-ingress"
+				deploymentArgName := containerName
+				serviceArgs := []string{"service", serviceArgName}
+				deploymentArgs := []string{"deployment", deploymentArgName}
+				ingressArgs := []string{"ingress", ingressArgName}
+				_, err := RunKubeDelete(ingressArgs, rootConfig.Dryrun)
+				if err != nil {
+					Error.logf("kubectl delete failed for ingress %s, due to %v", ingressArgName, err)
+				}
+				_, err = RunKubeDelete(serviceArgs, rootConfig.Dryrun)
+				if err != nil {
+					Error.logf("kubectl delete failed for service %s, due to %v", serviceArgName, err)
+				}
+				_, err = RunKubeDelete(deploymentArgs, rootConfig.Dryrun)
+				if err != nil {
+					Error.logf("kubectl delete failed for deployment %s, due to %v", deploymentArgName, err)
+				}
 			}
-			//dockerRemove(imageName) is not needed due to --rm flag
-			//os.Exit(1)
 			return nil
 		},
 	}
