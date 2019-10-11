@@ -48,7 +48,7 @@ func TestAPPSODY_RUNMissingInDockerfileStack(t *testing.T) {
 	}
 
 	args := []string{"stack", "lint"}
-	_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/test-stack")
+	_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testData/test-stack")
 
 	if err == nil { //Lint check should fail, if not fail the test
 		t.Fatal(err)
@@ -91,7 +91,7 @@ func TestAPPSODY_MOUNTSMissingInDockerfileStack(t *testing.T) {
 	}
 
 	args := []string{"stack", "lint"}
-	_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/test-stack")
+	_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testdata/test-stack")
 
 	if err == nil { //Lint check should fail, if not fail the test
 		t.Fatal(err)
@@ -138,7 +138,7 @@ func TestAPPSODY_WATCH_DIRPRESENTAndONCHANGEMissingInDockerfileStack(t *testing.
 			}
 
 			args := []string{"stack", "lint"}
-			_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/test-stack")
+			_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testdata/test-stack")
 
 			if err == nil { //Lint check should fail, if not fail the test
 				t.Fatal(err)
@@ -159,7 +159,7 @@ func TestAPPSODY_WATCH_DIRPRESENTAndONCHANGEMissingInDockerfileStack(t *testing.
 
 		} else {
 			args := []string{"stack", "lint"}
-			_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/test-stack")
+			_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testdata/test-stack")
 
 			if err == nil { //Lint check should fail, if not fail the test
 				t.Fatal(err)
@@ -193,7 +193,7 @@ func Test_KILLValue(t *testing.T) {
 	}
 
 	args := []string{"stack", "lint"}
-	_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testData/test-stack")
+	_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testData/test-stack")
 
 	if err == nil { //Lint check should fail, if not fail the test
 		t.Fatal(err)
@@ -238,7 +238,7 @@ func Test_APPSODY_REGEXValue(t *testing.T) {
 	}
 
 	args := []string{"stack", "lint"}
-	_, err = cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/test-stack")
+	_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testdata/test-stack")
 
 	if err == nil { //Lint check should fail, if not fail the test
 		log.Fatalln(err)
@@ -262,7 +262,7 @@ func TestLintWithValidStack(t *testing.T) {
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	args := []string{"stack", "lint"}
 
-	_, err := cmdtest.RunAppsodyCmdExec(args, testStackPath)
+	_, err := cmdtest.RunAppsodyCmd(args, testStackPath)
 
 	if err != nil { //Lint check should pass, if not fail the test
 		t.Fatal(err)
@@ -278,7 +278,7 @@ func TestLintWithMissingConfig(t *testing.T) {
 
 	os.RemoveAll(removeConf)
 
-	_, err := cmdtest.RunAppsodyCmdExec(args, testStackPath)
+	_, err := cmdtest.RunAppsodyCmd(args, testStackPath)
 
 	if err != nil { //Lint check should pass, if not fail the test
 		t.Fatal(err)
@@ -300,7 +300,7 @@ func TestLintWithMissingProject(t *testing.T) {
 		t.Fatal(osErr)
 	}
 
-	_, err := cmdtest.RunAppsodyCmdExec(args, testStackPath)
+	_, err := cmdtest.RunAppsodyCmd(args, testStackPath)
 
 	if err != nil { //Lint check should pass, if not fail the test
 		t.Fatal(err)
@@ -321,7 +321,7 @@ func TestLintWithMissingFile(t *testing.T) {
 		t.Fatal(osErr)
 	}
 
-	_, err := cmdtest.RunAppsodyCmdExec(args, testStackPath)
+	_, err := cmdtest.RunAppsodyCmd(args, testStackPath)
 
 	if err == nil { //Lint check should fail, if not fail the test
 		t.Fatal(err)

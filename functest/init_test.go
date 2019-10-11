@@ -17,7 +17,6 @@ package functest
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -30,16 +29,12 @@ import (
 // requires clean dir
 func TestInit(t *testing.T) {
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,11 +46,7 @@ func TestInit(t *testing.T) {
 func TestNoOverwrite(t *testing.T) {
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-nooverwrite-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
@@ -66,7 +57,7 @@ func TestNoOverwrite(t *testing.T) {
 	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
 
 	appjsPath := filepath.Join(projectDir, "app.js")
-	_, err = os.Create(appjsPath)
+	_, err := os.Create(appjsPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +68,7 @@ func TestNoOverwrite(t *testing.T) {
 	}
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 
 	shouldNotExist(appsodyFile, t)
 
@@ -101,11 +92,7 @@ func TestOverwrite(t *testing.T) {
 
 	var fileInfoFinal os.FileInfo
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-overwrite-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
@@ -116,7 +103,7 @@ func TestOverwrite(t *testing.T) {
 	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
 
 	appjsPath := filepath.Join(projectDir, "app.js")
-	_, err = os.Create(appjsPath)
+	_, err := os.Create(appjsPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +114,7 @@ func TestOverwrite(t *testing.T) {
 	}
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "--overwrite"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--overwrite"}, projectDir)
 
 	shouldExist(appsodyFile, t)
 
@@ -153,11 +140,7 @@ func TestOverwrite(t *testing.T) {
 func TestNoTemplate(t *testing.T) {
 	var fileInfoFinal os.FileInfo
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-notemplate-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
@@ -169,7 +152,7 @@ func TestNoTemplate(t *testing.T) {
 
 	appjsPath := filepath.Join(projectDir, "app.js")
 	// file size should be 0 bytes
-	_, err = os.Create(appjsPath)
+	_, err := os.Create(appjsPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +160,7 @@ func TestNoTemplate(t *testing.T) {
 	shouldExist(appjs, t)
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "--no-template"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--no-template"}, projectDir)
 
 	shouldExist(appsodyFile, t)
 
@@ -203,11 +186,7 @@ func TestNoTemplate(t *testing.T) {
 func TestWhiteList(t *testing.T) {
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-notemplate-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
@@ -221,7 +200,7 @@ func TestWhiteList(t *testing.T) {
 	metadata := filepath.Join(projectDir, ".metadata")
 	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
 
-	_, err = os.Create(project)
+	_, err := os.Create(project)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +222,7 @@ func TestWhiteList(t *testing.T) {
 	}
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 
 	shouldExist(appsodyFile, t)
 
@@ -284,16 +263,12 @@ func appsodyResultsCheck(projectDir string, t *testing.T) {
 
 func TestInitV2WithDefaultRepoSpecified(t *testing.T) {
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-testDefaultRepo")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "appsodyhub/nodejs"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "appsodyhub/nodejs"}, projectDir)
 	if err != nil {
 		t.Error(err)
 	}
@@ -303,16 +278,12 @@ func TestInitV2WithDefaultRepoSpecified(t *testing.T) {
 
 func TestInitV2WithNonDefaultRepoSpecified(t *testing.T) {
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-testNonDefaultRepo")
-	if err != nil {
-		t.Error(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "experimental/nodejs-functions"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "experimental/nodejs-functions"}, projectDir)
 	if err != nil {
 		t.Error(err)
 	}
@@ -321,17 +292,12 @@ func TestInitV2WithNonDefaultRepoSpecified(t *testing.T) {
 
 func TestInitV2WithBadStackSpecified(t *testing.T) {
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-testbadstack")
-	if err != nil {
-		t.Error(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
-
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	output, _ := cmdtest.RunAppsodyCmdExec([]string{"init", "badnodejs-express"}, projectDir)
+	output, _ := cmdtest.RunAppsodyCmd([]string{"init", "badnodejs-express"}, projectDir)
 	if !(strings.Contains(output, "Could not find a stack with the id")) {
 		t.Error("Should have flagged non existing stack")
 	}
@@ -340,16 +306,12 @@ func TestInitV2WithBadStackSpecified(t *testing.T) {
 
 func TestInitV2WithBadRepoSpecified(t *testing.T) {
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-testBadRepo")
-	if err != nil {
-		t.Error(err)
-	}
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
-
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	output, _ := cmdtest.RunAppsodyCmdExec([]string{"init", "badrepo/nodejs-express"}, projectDir)
+	output, _ := cmdtest.RunAppsodyCmd([]string{"init", "badrepo/nodejs-express"}, projectDir)
 
 	if !(strings.Contains(output, "is not in configured list of repositories")) {
 		fmt.Println("Bad repo not flagged")
@@ -360,16 +322,12 @@ func TestInitV2WithBadRepoSpecified(t *testing.T) {
 
 func TestInitV2WithDefaultRepoSpecifiedTemplateNonDefault(t *testing.T) {
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-testDefaultRepoTemplateNonDefault")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "appsodyhub/nodejs-express", "scaffold"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "appsodyhub/nodejs-express", "scaffold"}, projectDir)
 	if err != nil {
 		t.Error(err)
 	}
@@ -379,16 +337,12 @@ func TestInitV2WithDefaultRepoSpecifiedTemplateNonDefault(t *testing.T) {
 
 func TestInitV2WithDefaultRepoSpecifiedTemplateDefault(t *testing.T) {
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-testDefaultRepoTemplateDefault")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "appsodyhub/nodejs-express", "simple"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "appsodyhub/nodejs-express", "simple"}, projectDir)
 	if err != nil {
 		t.Error(err)
 	}
@@ -398,16 +352,12 @@ func TestInitV2WithDefaultRepoSpecifiedTemplateDefault(t *testing.T) {
 
 func TestInitV2WithNoRepoSpecifiedTemplateDefault(t *testing.T) {
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-testDefaultRepoTemplateDefault")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "simple"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "simple"}, projectDir)
 	if err != nil {
 		t.Error(err)
 	}
@@ -417,11 +367,7 @@ func TestInitV2WithNoRepoSpecifiedTemplateDefault(t *testing.T) {
 func TestNone(t *testing.T) {
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-none-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
@@ -429,7 +375,7 @@ func TestNone(t *testing.T) {
 	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "none"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "none"}, projectDir)
 
 	shouldNotExist(packagejson, t)
 	shouldNotExist(packagejsonlock, t)
@@ -439,11 +385,7 @@ func TestNone(t *testing.T) {
 func TestNoneAndNoTemplate(t *testing.T) {
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-none-and-no-template-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
@@ -451,7 +393,7 @@ func TestNoneAndNoTemplate(t *testing.T) {
 	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "none", "--no-template"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "none", "--no-template"}, projectDir)
 
 	shouldNotExist(packagejson, t)
 	shouldNotExist(packagejsonlock, t)
@@ -461,11 +403,7 @@ func TestNoneAndNoTemplate(t *testing.T) {
 func TestNoTemplateOnly(t *testing.T) {
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-no-template-only-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
@@ -473,7 +411,7 @@ func TestNoTemplateOnly(t *testing.T) {
 	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "--no-template"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--no-template"}, projectDir)
 
 	shouldNotExist(packagejson, t)
 	shouldNotExist(packagejsonlock, t)
@@ -483,16 +421,13 @@ func TestNoTemplateOnly(t *testing.T) {
 func TestNoTemplateAndSimple(t *testing.T) {
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-init-no-template-only-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
+	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	var output string
-	output, _ = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "simple", "--no-template"}, projectDir)
+	output, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "simple", "--no-template"}, projectDir)
 	if !strings.Contains(output, "with both a template and --no-template") {
 		t.Error("Correct error message not given")
 	}

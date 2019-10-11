@@ -53,25 +53,14 @@ func TestExtract(t *testing.T) {
 	// loop through the stacks
 	for i := range stackRaw {
 
-		// create a temporary dir to create the project
-		projectDir, err := ioutil.TempDir("", "appsody-extract-test-"+strings.ReplaceAll(stackRaw[i], "/", "_"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		// remove symlinks from the path
-		// on mac, TMPDIR is set to /var which is a symlink to /private/var.
-		//    Docker by default shares mounts with /private but not /var,
-		//    so resolving the symlinks ensures docker can mount the temp dir
-		projectDir, _ = filepath.EvalSymlinks(projectDir)
-
+		// create a temporary dir to create the project and run the test
+		projectDir := cmdtest.GetTempProjectDir(t)
 		defer os.RemoveAll(projectDir)
 		log.Println("Created project dir: " + projectDir)
 
 		// create a temporary dir to extract the project, sibling to projectDir
 		parentDir := filepath.Dir(projectDir)
-		if err != nil {
-			t.Fatal(err)
-		}
+
 		extractDir := parentDir + "/appsody-extract-test-extract-" + strings.ReplaceAll(stackRaw[i], "/", "_")
 
 		defer os.RemoveAll(extractDir)
@@ -79,7 +68,7 @@ func TestExtract(t *testing.T) {
 
 		// appsody init inside projectDir
 		log.Println("Now running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err := cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}

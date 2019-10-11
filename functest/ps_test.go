@@ -15,7 +15,6 @@ package functest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"strings"
 	"time"
@@ -38,15 +37,12 @@ func TestPS(t *testing.T) {
 	//
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-ps-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +51,7 @@ func TestPS(t *testing.T) {
 	runChannel := make(chan error)
 	containerName := "testPSContainer"
 	go func() {
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"run", "--name", containerName}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", containerName}, projectDir)
 		runChannel <- err
 	}()
 
@@ -99,7 +95,7 @@ func TestPS(t *testing.T) {
 
 	// defer the appsody stop to close the docker container
 	defer func() {
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", "testPSContainer"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", "testPSContainer"}, projectDir)
 		if err != nil {
 			fmt.Printf("Ignoring error running appsody stop: %s", err)
 		}

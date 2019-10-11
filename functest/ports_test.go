@@ -14,7 +14,6 @@
 package functest
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -28,20 +27,18 @@ func TestPortMap(t *testing.T) {
 
 	var runOutput string
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-ports-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
+	log.Println("Created project dir: " + projectDir)
 
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--dryrun", "--publish", "3100:3000", "--publish", "4100:4000", "--publish", "9230:9229"}, projectDir)
+	runOutput, _ = cmdtest.RunAppsodyCmd([]string{"run", "--dryrun", "--publish", "3100:3000", "--publish", "4100:4000", "--publish", "9230:9229"}, projectDir)
 	if !strings.Contains(runOutput, "docker run --rm -p 3100:3000 -p 4100:4000 -p 9230:9229") {
 
 		t.Fatal("Ports are not correctly specified as: -p 3100:3000 -p 4100:4000 -p 9230:9229")
@@ -56,19 +53,16 @@ func TestPublishAll(t *testing.T) {
 	var runOutput string
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-publish-all-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--publish-all", "--dryrun"}, projectDir)
+	runOutput, _ = cmdtest.RunAppsodyCmd([]string{"run", "--publish-all", "--dryrun"}, projectDir)
 
 	if !strings.Contains(runOutput, "docker run --rm -P") {
 		t.Fatal("publish all is not found in output as: docker run --rm -P")
@@ -82,21 +76,16 @@ func TestRunWithNetwork(t *testing.T) {
 
 	var runOutput string
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-network-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
-
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--network", "noSuchNetwork", "--publish-all", "--dryrun"}, projectDir)
+	runOutput, _ = cmdtest.RunAppsodyCmd([]string{"run", "--network", "noSuchNetwork", "--publish-all", "--dryrun"}, projectDir)
 
 	if !strings.Contains(runOutput, "--network noSuchNetwork") {
 		t.Fatal("--network is not found in output as: --network noSuchNetwork")
@@ -109,21 +98,16 @@ func TestRunWithDockerOptions(t *testing.T) {
 
 	var runOutput string
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-docker-options-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
-
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runOutput, _ = cmdtest.RunAppsodyCmdExec([]string{"run", "--docker-options \"-m 4g\"", "--publish-all", "--dryrun"}, projectDir)
+	runOutput, _ = cmdtest.RunAppsodyCmd([]string{"run", "--docker-options \"-m 4g\"", "--publish-all", "--dryrun"}, projectDir)
 
 	if !strings.Contains(runOutput, "--docker-options \"-m 4g\"") {
 		t.Fatal("docker-options flag is not found in output as:  --docker-options \"-m 4g\"")

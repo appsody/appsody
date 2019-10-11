@@ -15,7 +15,6 @@ package functest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
@@ -35,15 +34,12 @@ func TestStopWithoutName(t *testing.T) {
 	}
 	defer cleanup()
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-stop-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, err = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,14 +47,14 @@ func TestStopWithoutName(t *testing.T) {
 	// appsody run
 	runChannel := make(chan error)
 	go func() {
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"run"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"run"}, projectDir)
 		runChannel <- err
 	}()
 
 	// defer the appsody stop to close the docker container
 	defer func() {
 		fmt.Println("calling docker stop")
-		stopOutput, errStop := cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
+		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"stop"}, projectDir)
 
 		//docker stop appsody-stop-test
 		if !strings.Contains(stopOutput, "docker stop appsody-stop-test") {
@@ -120,15 +116,12 @@ func TestStopWithoutName(t *testing.T) {
 func TestStopWithName(t *testing.T) {
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-stopName-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	log.Println("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +129,7 @@ func TestStopWithName(t *testing.T) {
 	// appsody run
 	runChannel := make(chan error)
 	go func() {
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"run", "--name", "testStopContainer"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", "testStopContainer"}, projectDir)
 		runChannel <- err
 	}()
 
@@ -144,7 +137,7 @@ func TestStopWithName(t *testing.T) {
 
 	defer func() {
 		fmt.Println("about to run stop for with name")
-		stopOutput, errStop := cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", "testStopContainer"}, projectDir)
+		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"stop", "--name", "testStopContainer"}, projectDir)
 		if !strings.Contains(stopOutput, "docker stop testStopContainer") {
 			t.Fatal("docker stop command not present for container testStopContainer")
 		}

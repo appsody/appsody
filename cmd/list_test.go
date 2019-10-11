@@ -26,7 +26,7 @@ func TestList(t *testing.T) {
 	// tests that would have run before this and crashed could leave the repo
 	// in a bad state - mostly leading to: "a repo with this name already exists."
 	// so clean it up pro-actively, ignore any errors.
-	_, _ = cmdtest.RunAppsodyCmdExec([]string{"repo", "remove", "LocalTestRepo"}, ".")
+	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", "LocalTestRepo"}, ".")
 
 	// first add the test repo index
 	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
@@ -35,7 +35,7 @@ func TestList(t *testing.T) {
 	}
 	defer cleanup()
 
-	output, err := cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
+	output, err := cmdtest.RunAppsodyCmd([]string{"list"}, ".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,27 +55,27 @@ func TestListV2(t *testing.T) {
 	var err error
 	var output string
 	var cleanup func()
-	_, _ = cmdtest.RunAppsodyCmdExec([]string{"repo", "remove", "incubatortest"}, ".")
+	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", "incubatortest"}, ".")
 	_, cleanup, err = cmdtest.AddLocalFileRepo("incubatortest", "../cmd/testdata/kabanero.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cleanup()
 
-	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list", "incubatortest"}, ".")
+	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "incubatortest"}, ".")
 
 	if !(strings.Contains(output, "nodejs") && strings.Contains(output, "incubatortest")) {
 		t.Error("list command should contain id 'nodejs'")
 	}
 
 	// test the current default hub
-	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list", "appsodyhub"}, ".")
+	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "appsodyhub"}, ".")
 
 	if !strings.Contains(output, "java-microprofile") {
 		t.Error("list command should contain id 'java-microprofile'")
 	}
 
-	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list"}, ".")
+	output, _ = cmdtest.RunAppsodyCmd([]string{"list"}, ".")
 
 	// we expect 2 instances
 	if !(strings.Contains(output, "java-microprofile") && (strings.Count(output, "nodejs ") == 2)) {
@@ -83,7 +83,7 @@ func TestListV2(t *testing.T) {
 	}
 
 	// test the current default hub
-	output, _ = cmdtest.RunAppsodyCmdExec([]string{"list", "nonexisting"}, ".")
+	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "nonexisting"}, ".")
 
 	if !(strings.Contains(output, "cannot locate repository ")) {
 		t.Error("Failed to flag non-existing repo")
@@ -93,7 +93,7 @@ func TestListV2(t *testing.T) {
 
 func TestListJson(t *testing.T) {
 	args := []string{"list", "-o", "json"}
-	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
+	output, err := cmdtest.RunAppsodyCmd(args, ".")
 
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +110,7 @@ func TestListJson(t *testing.T) {
 
 func TestListYaml(t *testing.T) {
 	args := []string{"list", "-o", "yaml"}
-	output, err := cmdtest.RunAppsodyCmdExec(args, ".")
+	output, err := cmdtest.RunAppsodyCmd(args, ".")
 
 	if err != nil {
 		t.Fatal(err)
