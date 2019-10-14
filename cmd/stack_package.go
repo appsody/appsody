@@ -14,7 +14,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -66,20 +65,20 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	// stack package is a tool for local stack developers to package their stack
 	// the stack package command does the following...
-	// 1. create a local index yaml
+	// 1. create/update a local index yaml
 	// 2. create a tar for each stack template
 	// 3. build a docker image
-	// 4. create an appsody repo for the stack
+	// 4. create/update an appsody repo for the stack
 
 	var stackPackageCmd = &cobra.Command{
 		Use:   "package",
 		Short: "Package a stack in the local Appsody environment",
 		Long: `This command is a tool for stack developers to package a stack from their local Appsody development environment. Once the stack is packaged it can then be tested via Appsody commands. The package command performs the following:
-		- Creates an index file named "index-dev-local.yaml" and stores it in .appsody/stacks/dev.local
+		- Creates/updates an index file named "index-dev-local.yaml" and stores it in .appsody/stacks/dev.local
 		- Creates a tar.gz for each stack template and stores it in .appsody/stacks/dev.local
-		- Builds a Docker image named "dev.local/[stack name]:SNAPSHOT
+		- Builds a Docker image named "dev.local/[stack name]:SNAPSHOT"
 		- Creates an Appsody repository named "dev-local"
-		- Adds the "dev-local" repository to your Appsody configuration`,
+		- Adds/updates the "dev-local" repository of your Appsody configuration`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.Log("******************************************")
@@ -87,7 +86,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			Info.Log("******************************************")
 
 			stackPath := rootConfig.ProjectDir
-			Info.Log("stackPath is: ", stackPath)
+			Debug.Log("stackPath is: ", stackPath)
 
 			// check for templates dir, error out if its not there
 			check, err := Exists("templates")
@@ -100,10 +99,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			appsodyHome := getHome(rootConfig)
-			Info.Log("appsodyHome is:", appsodyHome)
+			Debug.Log("appsodyHome is:", appsodyHome)
 
 			devLocal := filepath.Join(appsodyHome, "stacks", "dev.local")
-			Info.Log("devLocal is: ", devLocal)
+			Debug.Log("devLocal is: ", devLocal)
 
 			// create the devLocal directory in appsody home
 			err = os.MkdirAll(devLocal, os.FileMode(0755))
@@ -113,10 +112,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// get the stack name from the stack path
 			stackName := filepath.Base(stackPath)
-			Info.Log("stackName is: ", stackName)
+			Debug.Log("stackName is: ", stackName)
 
 			indexFileLocal := filepath.Join(devLocal, "index-dev-local.yaml")
-			Info.Log("indexFileLocal is: ", indexFileLocal)
+			Debug.Log("indexFileLocal is: ", indexFileLocal)
 
 			// create IndexYaml struct and populate the APIVersion and Stacks header
 			var indexYaml IndexYaml
@@ -128,7 +127,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 			if check {
 				// index file exists already so see if it contains the stack data and remove it if found
-				fmt.Println("***index file exists already***")
+				Debug.Log("Index file exists already")
 
 				source, err := ioutil.ReadFile(indexFileLocal)
 				if err != nil {
@@ -144,6 +143,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				foundStack := -1
 				for i, stack := range indexYaml.Stacks {
 					if stack.ID == stackName {
+						Debug.Log("Existing stack: " + stackName + "found")
 						foundStack = i
 						break
 					}
@@ -151,22 +151,16 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 				// delete index foundStack from indexYaml.Stacks as we will append the new stack later
 				if foundStack != -1 {
-
-					//indexYaml.Stacks = append(indexYaml.Stacks[:foundStack], indexYaml.Stacks[foundStack+1]...)
-
 					indexYaml.Stacks = indexYaml.Stacks[:foundStack+copy(indexYaml.Stacks[foundStack:], indexYaml.Stacks[foundStack+1:])]
-					// indexYaml.Stacks[foundStack] = indexYaml.Stacks[len(indexYaml.Stacks)-1]
-					// //indexYaml.Stacks[len(indexYaml.Stacks)-1] = nil
-					// indexYaml.Stacks = indexYaml.Stacks[:len(indexYaml.Stacks)-1]
 				}
 			} else {
+				// create the beginning of the index yaml
 				indexYaml = IndexYaml{}
 				indexYaml.APIVersion = "v2"
 				indexYaml.Stacks = make([]IndexYamlStack, 0, 1)
 			}
 
 			// build up stack struct for the new stack
-
 			newStackStruct := IndexYamlStack{}
 
 			// get the necessary data from the current stack.yaml
@@ -182,19 +176,17 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error trying to unmarshall: %v", err)
 			}
 
+			// set the data in the new stack struct
 			newStackStruct.ID = stackName
 			newStackStruct.Name = stackYaml.Name
 			newStackStruct.Version = stackYaml.Version
 			newStackStruct.Description = stackYaml.Description
 			newStackStruct.License = stackYaml.License
 			newStackStruct.Language = stackYaml.License
-
 			newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
-
 			newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
 
 			// find and open the template path so we can loop through the templates
-
 			templatePath := filepath.Join(stackPath, "templates")
 
 			t, err := os.Open(templatePath)
@@ -209,21 +201,21 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// loop through the template directories and create the id and url
 			for i := range templates {
-				Info.Log("template is: ", templates[i])
+				Debug.Log("template is: ", templates[i])
 				if strings.Contains(templates[i], ".DS_Store") {
-					Info.Log("ignoring .DS_Store")
+					Debug.Log("Ignoring .DS_Store")
 					continue
 				}
 
 				sourceDir := filepath.Join(stackPath, "templates", templates[i])
-				Info.Log("sourceDir is: ", sourceDir)
+				Debug.Log("sourceDir is: ", sourceDir)
 
 				// create name for the tar files
 				versionedArchive := filepath.Join(devLocal, stackName+".v"+stackYaml.Version+".templates.")
-				Info.Log("versionedArchive is: ", versionedArchive)
+				Debug.Log("versionedArchive is: ", versionedArchive)
 
 				versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
-				Info.Log("versionedArdhiveTar is: ", versionArchiveTar)
+				Debug.Log("versionedArdhiveTar is: ", versionArchiveTar)
 
 				if runtime.GOOS == "windows" {
 					// for windows, add a leading slash and convert to unix style slashes
@@ -244,15 +236,16 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				buildImage := "dev.local/" + stackName + ":SNAPSHOT"
 
 				imageDir := filepath.Join(stackPath, "image")
-				Info.Log("imageDir is: ", imageDir)
+				Debug.Log("imageDir is: ", imageDir)
 
 				dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
-				Info.Log("dockerFile is: ", dockerFile)
+				Debug.Log("dockerFile is: ", dockerFile)
 
 				cmdArgs := []string{"-t", buildImage}
-
 				cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
-				Info.Log("cmdArgs is: ", cmdArgs)
+				Debug.Log("cmdArgs is: ", cmdArgs)
+
+				Info.Log("Running docker build")
 
 				err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
 				if err != nil {
@@ -261,7 +254,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 				// create a config yaml file for the tarball
 				configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
-				Info.Log("configYaml is: ", configYaml)
+				Debug.Log("configYaml is: ", configYaml)
 
 				g, err := os.Create(configYaml)
 				if err != nil {
@@ -276,6 +269,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				g.Close()
 
 				// tar the files
+				Info.Log("Creating tar for: " + templates[i])
 				err = Targz(sourceDir, versionedArchive)
 				if err != nil {
 					return errors.Errorf("Error trying to tar: %v", err)
@@ -286,7 +280,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				if err != nil {
 					return errors.Errorf("Error trying to remove file: %v", err)
 				}
-
 			}
 
 			t.Close()
@@ -300,6 +293,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error trying to marshall: %v", err)
 			}
 
+			Info.Log("Writing: " + indexFileLocal)
 			err = ioutil.WriteFile(indexFileLocal, source, 0644)
 			if err != nil {
 				return errors.Errorf("Error trying to read: %v", err)
@@ -313,24 +307,23 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// if dev-local exists then remove it
 			if strings.Contains(repos, "name: dev-local") {
-				Info.Log("dev-local repo found")
+				Info.Log("Existing dev-local repo found")
+				Info.Log("Removing dev-local repository")
 
 				_, err := RunAppsodyCmdExec([]string{"repo", "remove", "dev-local"}, ".")
 				if err != nil {
 					return err
 				}
-
 			}
 
 			// create an appsody repo for the stack
+			Info.Log("Creating dev-local repository")
 			_, err = AddLocalFileRepo("dev-local", indexFileLocal)
 			if err != nil {
-				fmt.Println("add local file repo err is: ", err)
 				return errors.Errorf("Error running appsody command: %v", err)
 			}
 
 			return nil
-
 		},
 	}
 	return stackPackageCmd
