@@ -710,7 +710,7 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 			Debug.Log("Problems with APPSODY_MOUNT_CONTROLLER: ", appsodyMountController)
 			return "", err
 		}
-		controllerSubpath = filepath.Join(".", filepath.Dir(appsodyMountControllerDir))
+		controllerSubpath = filepath.Join(".", appsodyMountControllerDir)
 		Debug.Log("APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
 	} else {
 		controllerSubpath = "./.extensions/codewind-appsody-extension/bin/"
