@@ -14,9 +14,7 @@
 package functest
 
 import (
-	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -44,7 +42,7 @@ func TestRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-	log.Println("Created project dir: " + projectDir)
+	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
@@ -63,7 +61,7 @@ func TestRun(t *testing.T) {
 	defer func() {
 		_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
 		if err != nil {
-			log.Printf("Ignoring error running appsody stop: %s", err)
+			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
 	}()
 
@@ -81,13 +79,13 @@ func TestRun(t *testing.T) {
 			healthCheckWait += healthCheckFrequency
 			resp, err := http.Get("http://localhost:3000/health")
 			if err != nil {
-				log.Printf("Health check error. Ignore and retry: %s", err)
+				t.Logf("Health check error. Ignore and retry: %s", err)
 			} else {
 				resp.Body.Close()
 				if resp.StatusCode != 200 {
-					log.Printf("Health check response code %d. Ignore and retry.", resp.StatusCode)
+					t.Logf("Health check response code %d. Ignore and retry.", resp.StatusCode)
 				} else {
-					log.Printf("Health check OK")
+					t.Logf("Health check OK")
 					// may want to check body
 					healthCheckOK = true
 				}
@@ -103,11 +101,11 @@ func TestRun(t *testing.T) {
 // Simple test for appsody run command. A future enhancement would be to verify the endpoint or console output if there is no web endpoint
 func TestRunSimple(t *testing.T) {
 
-	log.Println("stacksList is: ", stacksList)
+	t.Log("stacksList is: ", stacksList)
 
 	// if stacksList is empty there is nothing to test so return
 	if stacksList == "" {
-		log.Println("stacksList is empty, exiting test...")
+		t.Log("stacksList is empty, exiting test...")
 		return
 	}
 
@@ -120,7 +118,7 @@ func TestRunSimple(t *testing.T) {
 	// loop through the stacks
 	for i := range stackRaw {
 
-		log.Println("***Testing stack: ", stackRaw[i], "***")
+		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
 		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
@@ -135,11 +133,11 @@ func TestRunSimple(t *testing.T) {
 		}
 
 		defer os.RemoveAll(projectDir)
-		log.Println("Created project dir: " + projectDir)
+		t.Log("Created project dir: " + projectDir)
 
 		// appsody init
 		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
-		log.Println("Running appsody init...")
+		t.Log("Running appsody init...")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -153,16 +151,16 @@ func TestRunSimple(t *testing.T) {
 		}()
 
 		// It will take a while for the container to spin up, so let's use docker ps to wait for it
-		fmt.Println("calling docker ps to wait for container")
+		t.Log("calling docker ps to wait for container")
 		containerRunning := false
 		count := 100
 		for {
 			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName})
 			if dockerErr != nil {
-				log.Print("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
+				t.Log("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
 			}
 			if dockerOutput != "" {
-				fmt.Println("docker container " + containerName + " was found")
+				t.Log("docker container " + containerName + " was found")
 				containerRunning = true
 			} else {
 				time.Sleep(2 * time.Second)
@@ -180,7 +178,7 @@ func TestRunSimple(t *testing.T) {
 		// stop and clean up after the run
 		_, err = cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", containerName}, projectDir)
 		if err != nil {
-			fmt.Printf("Ignoring error running appsody stop: %s", err)
+			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
 
 		cleanup()

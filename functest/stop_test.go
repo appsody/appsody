@@ -14,9 +14,7 @@
 package functest
 
 import (
-	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -40,7 +38,7 @@ func TestStopWithoutName(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-	log.Println("Created project dir: " + projectDir)
+	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
@@ -57,7 +55,7 @@ func TestStopWithoutName(t *testing.T) {
 
 	// defer the appsody stop to close the docker container
 	defer func() {
-		fmt.Println("calling docker stop")
+		t.Log("calling docker stop")
 		stopOutput, errStop := cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
 
 		//docker stop appsody-stop-test
@@ -65,16 +63,16 @@ func TestStopWithoutName(t *testing.T) {
 			t.Fatal("docker stop command not present for appsody-stop-test...")
 		}
 		if errStop != nil {
-			log.Printf("Ignoring error running appsody stop: %s", errStop)
+			t.Logf("Ignoring error running appsody stop: %s", errStop)
 
 		}
-		fmt.Println("calling docker ps")
+		t.Log("calling docker ps")
 		pathElements := strings.Split(projectDir, "/")
 		containerName := pathElements[len(pathElements)-1]
 		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName + "-dev"})
-		fmt.Println("docker output", dockerOutput)
+		t.Log("docker output", dockerOutput)
 		if dockerErr != nil {
-			log.Print("Ignoring error running docker ps -q -f name=appsody-stop-test-dev", dockerErr)
+			t.Log("Ignoring error running docker ps -q -f name=appsody-stop-test-dev", dockerErr)
 
 		}
 		if dockerOutput != "" {
@@ -97,13 +95,13 @@ func TestStopWithoutName(t *testing.T) {
 			healthCheckWait += healthCheckFrequency
 			resp, err := http.Get("http://localhost:3000/health")
 			if err != nil {
-				log.Printf("Health check error. Ignore and retry: %s", err)
+				t.Logf("Health check error. Ignore and retry: %s", err)
 			} else {
 				resp.Body.Close()
 				if resp.StatusCode != 200 {
-					log.Printf("Health check response code %d. Ignore and retry.", resp.StatusCode)
+					t.Logf("Health check response code %d. Ignore and retry.", resp.StatusCode)
 				} else {
-					log.Printf("Health check OK")
+					t.Logf("Health check OK")
 					// may want to check body
 					healthCheckOK = true
 				}
@@ -125,7 +123,7 @@ func TestStopWithName(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-	log.Println("Created project dir: " + projectDir)
+	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
@@ -143,19 +141,19 @@ func TestStopWithName(t *testing.T) {
 	// defer the appsody stop to close the docker container
 
 	defer func() {
-		fmt.Println("about to run stop for with name")
+		t.Log("about to run stop for with name")
 		stopOutput, errStop := cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", "testStopContainer"}, projectDir)
 		if !strings.Contains(stopOutput, "docker stop testStopContainer") {
 			t.Fatal("docker stop command not present for container testStopContainer")
 		}
 		if errStop != nil {
-			log.Printf("Ignoring error running appsody stop: %s", errStop)
+			t.Logf("Ignoring error running appsody stop: %s", errStop)
 
 		}
-		fmt.Println("about to do docker ps")
+		t.Log("about to do docker ps")
 		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=testStopContainer"})
 		if dockerErr != nil {
-			log.Print("Ignoring error running docker ps -q -f name=testStopContainer", dockerErr)
+			t.Log("Ignoring error running docker ps -q -f name=testStopContainer", dockerErr)
 
 		}
 		if dockerOutput != "" {
@@ -178,13 +176,13 @@ func TestStopWithName(t *testing.T) {
 			healthCheckWait += healthCheckFrequency
 			resp, err := http.Get("http://localhost:3000/health")
 			if err != nil {
-				log.Printf("Health check error. Ignore and retry: %s", err)
+				t.Logf("Health check error. Ignore and retry: %s", err)
 			} else {
 				resp.Body.Close()
 				if resp.StatusCode != 200 {
-					log.Printf("Health check response code %d. Ignore and retry.", resp.StatusCode)
+					t.Logf("Health check response code %d. Ignore and retry.", resp.StatusCode)
 				} else {
-					log.Printf("Health check OK")
+					t.Logf("Health check OK")
 					// may want to check body
 					healthCheckOK = true
 				}

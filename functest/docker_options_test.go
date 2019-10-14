@@ -14,9 +14,7 @@
 package functest
 
 import (
-	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -35,7 +33,7 @@ func TestRunWithDockerOptionsRegex(t *testing.T) {
 
 	defer os.RemoveAll(projectDir)
 
-	log.Println("Created project dir: " + projectDir)
+	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
@@ -57,15 +55,15 @@ func TestRunWithDockerOptionsRegex(t *testing.T) {
 		"-v", "--volume"}
 
 	for _, value := range testOptions {
-		fmt.Println("Option is", value)
+		t.Log("Option is", value)
 		runOutput, err = cmdtest.RunAppsodyCmdExec([]string{"run", "--docker-options", value, "--dryrun"}, projectDir)
-		fmt.Println("err ", err)
+		t.Log("err ", err)
 		if !strings.Contains(runOutput, value+" is not allowed in --docker-options") {
 			t.Fatal("Error message not found:" + value + " is not allowed in --docker-options")
 
 		}
 		runOutput, err = cmdtest.RunAppsodyCmdExec([]string{"run", "--docker-options", value + "=", "--dryrun"}, projectDir)
-		fmt.Println("err ", err)
+		t.Log("err ", err)
 		if !strings.Contains(runOutput, value+"="+" is not allowed in --docker-options") {
 			t.Fatal("Error message not found:" + value + "=" + " is not allowed in --docker-options")
 

@@ -14,9 +14,7 @@
 package functest
 
 import (
-	"fmt"
 	"io/ioutil"
-	"log"
 	"strings"
 	"time"
 
@@ -43,7 +41,7 @@ func TestPS(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(projectDir)
-	log.Println("Created project dir: " + projectDir)
+	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
@@ -60,16 +58,16 @@ func TestPS(t *testing.T) {
 	}()
 
 	// It will take a while for the container to spin up, so let's use docker ps to wait for it
-	fmt.Println("calling docker ps to wait for container")
+	t.Log("calling docker ps to wait for container")
 	containerRunning := false
 	count := 15 // wait 30 seconds
 	for {
 		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName})
 		if dockerErr != nil {
-			log.Print("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
+			t.Log("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
 		}
 		if dockerOutput != "" {
-			fmt.Println("docker container " + containerName + " was found")
+			t.Log("docker container " + containerName + " was found")
 			containerRunning = true
 		} else {
 			time.Sleep(2 * time.Second)
@@ -85,7 +83,7 @@ func TestPS(t *testing.T) {
 	}
 
 	// now run appsody ps and see if we can spot the container
-	fmt.Println("about to run appsody ps")
+	t.Log("about to run appsody ps")
 	stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"ps"}, projectDir)
 	if !strings.Contains(stopOutput, "CONTAINER") {
 		t.Fatal("output doesn't contain header line")
@@ -94,14 +92,14 @@ func TestPS(t *testing.T) {
 		t.Fatal("output doesn't contain correct container name")
 	}
 	if errStop != nil {
-		log.Printf("Ignoring error running appsody ps: %s", errStop)
+		t.Logf("Ignoring error running appsody ps: %s", errStop)
 	}
 
 	// defer the appsody stop to close the docker container
 	defer func() {
 		_, err = cmdtest.RunAppsodyCmdExec([]string{"stop", "--name", "testPSContainer"}, projectDir)
 		if err != nil {
-			fmt.Printf("Ignoring error running appsody stop: %s", err)
+			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
 	}()
 }
