@@ -471,7 +471,7 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		labels[gitString+"remoteurl"] = gitInfo.RemoteURL
 	}
 
-	if gitInfo.ChangesMade == true {
+	if gitInfo.ChangesMade {
 		labels[gitString+"changesmade"] = "true"
 	} else {
 		labels[gitString+"changesmade"] = "false"
