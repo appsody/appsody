@@ -57,6 +57,11 @@ func TestExtract(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// remove symlinks from the path
+		// on mac, TMPDIR is set to /var which is a symlink to /private/var.
+		//    Docker by default shares mounts with /private but not /var,
+		//    so resolving the symlinks ensures docker can mount the temp dir
+		projectDir, _ = filepath.EvalSymlinks(projectDir)
 
 		defer os.RemoveAll(projectDir)
 		t.Log("Created project dir: " + projectDir)
