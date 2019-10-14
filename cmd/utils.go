@@ -681,8 +681,22 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 	}
-	//Set the workspace volume mount
+	//Set the workspace volume
+	workspaceVolumeName := "appsody-workspace"
+	workspacePvcName := os.Getenv("PVC_NAME")
+	if workspacePvcName == "" {
+		workspacePvcName = "appsody-workspace"
+	}
 
+	workspaceVolume := Volume{Name: workspaceVolumeName}
+	workspaceVolume.PersistentVolumeClaim.ClaimName = workspacePvcName
+	volumeIdx := len(yamlMap.Spec.PodTemplate.Spec.Volumes)
+	if volumeIdx < 1 {
+		yamlMap.Spec.PodTemplate.Spec.Volumes = make([]*Volume, 1)
+	}
+	yamlMap.Spec.PodTemplate.Spec.Volumes[volumeIdx] = &workspaceVolume
+
+	//Set the volume mount
 	subPath := filepath.Base(pdir)
 	workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, workspaceMount)
@@ -842,7 +856,13 @@ func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName 
 	ingress.Metadata.Name = fmt.Sprintf("%s-%s", appName, "ingress")
 
 	ingress.Spec.Rules = make([]IngressRule, 1)
-	ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
+	cheIngressHost := os.Getenv("CHE_INGRESS_HOST")
+	if cheIngressHost != "" {
+		ingress.Spec.Rules[0].Host = cheIngressHost
+	} else {
+		// We set it to a host name that's resolvable by nip.io
+		ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
+	}
 	ingress.Spec.Rules[0].HTTP.Paths = make([]IngressPath, 1)
 	ingress.Spec.Rules[0].HTTP.Paths[0].Path = "/"
 	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServiceName = fmt.Sprintf("%s-%s", appName, "service")
