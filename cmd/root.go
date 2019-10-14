@@ -51,6 +51,7 @@ type RootCommandConfig struct {
 	// package scoped, these are mostly for caching
 	setupConfigRun bool
 	imagePulled    map[string]bool
+	cachedEnvVars  map[string]string
 }
 
 // Regular expression to match ANSI terminal commands so that we can remove them from the log
