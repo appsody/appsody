@@ -210,7 +210,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		Info.log("Running appsody init...")
 		Info.logf("Downloading %s template project from %s", projectType, projectName)
-		filename := projectType + ".tar.gz"
+		filename := filepath.Join(dir, projectType+".tar.gz")
 
 		err = downloadFileToDisk(projectName, filename, config.Dryrun)
 		if err != nil {
@@ -281,8 +281,9 @@ func untar(file string, noTemplate bool, overwrite bool, dryrun bool) error {
 	if dryrun {
 		Info.log("Dry Run - Skipping untar of file:  ", file)
 	} else {
+		untarDir := filepath.Dir(file)
 		if !overwrite && !noTemplate {
-			err := preCheckTar(file)
+			err := preCheckTar(file, untarDir)
 			if err != nil {
 				return err
 			}
@@ -311,7 +312,7 @@ func untar(file string, noTemplate bool, overwrite bool, dryrun bool) error {
 				continue
 			}
 
-			filename := header.Name
+			filename := filepath.Join(untarDir, header.Name)
 			Debug.log("Untar creating ", filename)
 
 			if header.Typeflag == tar.TypeDir && !noTemplate {
@@ -393,7 +394,7 @@ func inWhiteList(filename string) bool {
 	return isWhiteListed
 }
 
-func preCheckTar(file string) error {
+func preCheckTar(file string, untarDir string) error {
 	preCheckOK := true
 	fileReader, err := os.Open(file)
 	if err != nil {
@@ -421,9 +422,9 @@ func preCheckTar(file string) error {
 		if header == nil {
 			continue
 		} else {
-
 			if inWhiteList(header.Name) {
-				fileInfo, err := os.Stat(header.Name)
+				filename := filepath.Join(untarDir, header.Name)
+				fileInfo, err := os.Stat(filename)
 				if err == nil {
 					if !fileInfo.IsDir() {
 						preCheckOK = false
