@@ -315,7 +315,11 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, config.containerName, dryrun)
+		dockerMounts, err := getVolumeArgs(config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
+		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, dockerMounts, dryrun)
 		if err != nil {
 			return err
 		}
