@@ -14,9 +14,7 @@
 package functest
 
 import (
-	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -27,11 +25,11 @@ import (
 // Simple test for appsody test command. A future enhancement would be to verify the test output
 func TestTestSimple(t *testing.T) {
 
-	log.Println("stacksList is: ", stacksList)
+	t.Log("stacksList is: ", stacksList)
 
 	// if stacksList is empty there is nothing to test so return
 	if stacksList == "" {
-		log.Println("stacksList is empty, exiting test...")
+		t.Log("stacksList is empty, exiting test...")
 		return
 	}
 
@@ -44,7 +42,7 @@ func TestTestSimple(t *testing.T) {
 	// loop through the stacks
 	for i := range stackRaw {
 
-		log.Println("***Testing stack: ", stackRaw[i], "***")
+		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
 		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
@@ -58,11 +56,11 @@ func TestTestSimple(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		log.Println("Created project dir: " + projectDir)
+		t.Log("Created project dir: " + projectDir)
 
 		// appsody init
 		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
-		log.Println("Running appsody init...")
+		t.Log("Running appsody init...")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -78,7 +76,7 @@ func TestTestSimple(t *testing.T) {
 		func() {
 			_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
 			if err != nil {
-				fmt.Printf("Ignoring error running appsody stop: %s", err)
+				t.Logf("Ignoring error running appsody stop: %s", err)
 			}
 		}()
 		cleanup()
