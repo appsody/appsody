@@ -149,6 +149,41 @@ func TestStackCreateInvalidStackCase4(t *testing.T) {
 	}
 }
 
+func TestStackCreateInvalidStackName(t *testing.T) {
+	err := os.RemoveAll("testing_stack")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args := []string{"stack", "create", "testing_stack"}
+	_, err = cmdtest.RunAppsodyCmdExec(args, ".")
+
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	exists, err := cmdtest.Exists("testing_stack")
+
+	if exists {
+		t.Fatal(err)
+	}
+}
+
+func TestStackCreateInvalidLongStackName(t *testing.T) {
+	args := []string{"stack", "create", "testing_stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stack"}
+	_, err := cmdtest.RunAppsodyCmdExec(args, ".")
+
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	exists, err := cmdtest.Exists("testing_stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stack")
+
+	if exists {
+		t.Fatal(err)
+	}
+}
+
 func TestStackAlreadyExists(t *testing.T) {
 	err := os.RemoveAll("testing-stack")
 	if err != nil {

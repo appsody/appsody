@@ -16,10 +16,10 @@ package cmd
 
 import (
 	"archive/zip"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -49,6 +49,11 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			stack := args[0]
 
+			err := validateStackName(stack)
+
+			if err != nil {
+				return err
+			}
 			exists, err := Exists(stack)
 
 			if err != nil {
@@ -103,6 +108,18 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	return stackCmd
 }
 
+func validateStackName(name string) error {
+	match, _ := regexp.MatchString("^[a-z0-9][a-z0-9-]*$", name)
+	if match {
+		if len(name) < 128 {
+			return nil
+		}
+		return errors.Errorf("Length of stack name is greater than 128 characters")
+	}
+
+	return errors.Errorf("This is not a valid stack name. Stack name can only start lowercase letter or numbers and can only have lowercase letters, numbers and dashes")
+}
+
 // Unzip will decompress a zip archive
 // within the zip file (parameter 1) to an output directory (parameter 2).
 func unzip(src string, dest string, copy string) (bool, error) {
@@ -121,7 +138,7 @@ func unzip(src string, dest string, copy string) (bool, error) {
 
 		// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
 		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return valid, fmt.Errorf("%s: illegal file path", fpath)
+			return valid, errors.Errorf("%s: illegal file path", fpath)
 		}
 
 		if runtime.GOOS == "windows" {
