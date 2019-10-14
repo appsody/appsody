@@ -597,20 +597,20 @@ func defaultProjectName(config *RootCommandConfig) string {
 		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
 		if match {
 			return projectName
-		} else {
-			projectName = "appsody-" + strings.ToLower(filepath.Base(projectName)) + "-app"
-			reg, err := regexp.Compile("[^a-z0-9]+")
-			if err != nil {
-				return ""
-			}
-			projectName = reg.ReplaceAllString(projectName, "-")
-
-			match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
-
-			if match {
-				return projectName
-			}
 		}
+		projectName = "appsody-" + strings.ToLower(filepath.Base(projectName)) + "-app"
+		reg, err := regexp.Compile("[^a-z0-9]+")
+		if err != nil {
+			return ""
+		}
+		projectName = reg.ReplaceAllString(projectName, "-")
+
+		match, _ = regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+
+		if match {
+			return projectName
+		}
+
 		return "my-project"
 	}
 	return projectName
