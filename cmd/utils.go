@@ -810,37 +810,52 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 }
 
 //GenRouteYaml returns the file name of a generated K8S Service yaml
-func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, err error) {
+func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName string, err error) {
+	type IngressPath struct {
+		Path    string `yaml:"path"`
+		Backend struct {
+			ServiceName string `yaml:"serviceName"`
+			ServicePort int    `yaml:"servicePort"`
+		} `yaml:"backend"`
+	}
+	type IngressRule struct {
+		Host string `yaml:"host"`
+		HTTP struct {
+			Paths []IngressPath `yaml:"paths"`
+		} `yaml:"http"`
+	}
 
-	type Route struct {
+	type Ingress struct {
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
 			Name string `yaml:"name"`
 		} `yaml:"metadata"`
 		Spec struct {
-			To struct {
-				Kind string `yaml:"kind"`
-				Name string `yaml:"name"`
-			} `yaml:"to"`
+			Rules []IngressRule `yaml:"rules"`
 		} `yaml:"spec"`
 	}
 
-	var route Route
-	route.APIVersion = "v1"
-	route.Kind = "Route"
-	route.Metadata.Name = fmt.Sprintf("%s-%s", appName, "route")
-	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = fmt.Sprintf("%s-%s", appName, "service")
+	var ingress Ingress
+	ingress.APIVersion = "extensions/v1beta1"
+	ingress.Kind = "Ingress"
+	ingress.Metadata.Name = fmt.Sprintf("%s-%s", appName, "ingress")
 
-	yamlStr, err := yaml.Marshal(&route)
+	ingress.Spec.Rules = make([]IngressRule, 1)
+	ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
+	ingress.Spec.Rules[0].HTTP.Paths = make([]IngressPath, 1)
+	ingress.Spec.Rules[0].HTTP.Paths[0].Path = "/"
+	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServiceName = fmt.Sprintf("%s-%s", appName, "service")
+	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServicePort = port
+
+	yamlStr, err := yaml.Marshal(&ingress)
 	if err != nil {
 		Error.log("Could not create the YAML string from Map. Exiting.")
 		return "", err
 	}
 	Debug.logf("Generated YAML: \n%s\n", yamlStr)
 	// Generate file based on supplied config, defaulting to app-deploy.yaml
-	yamlFile := filepath.Join(pdir, "app-route.yaml")
+	yamlFile := filepath.Join(pdir, "app-ingress.yaml")
 	if dryrun {
 		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
 		return yamlFile, nil
@@ -850,6 +865,50 @@ func GenRouteYaml(appName string, pdir string, dryrun bool) (fileName string, er
 		return "", fmt.Errorf("Could not create the yaml file for the route %v", err)
 	}
 	return yamlFile, nil
+}
+
+func getK8sMasterIP(dryrun bool) string {
+	cmdParms := []string{"node", "--selector", "node-role.kubernetes.io/master", "-o", "jsonpath={.items[0].status.addresses[?(.type==\"InternalIP\")].address}"}
+	ip, err := KubeGet(cmdParms, "", dryrun)
+	if err == nil {
+		return ip
+	}
+	Debug.log("Could not retrieve the master IP address - returning x.x.x.x: ", err)
+	return "x.x.x.x"
+}
+
+func getIngressPort(config *RootCommandConfig) int {
+	ports, err := getExposedPorts(config)
+
+	knownHTTPPorts := []string{"80", "8080", "8008", "3000", "9080"}
+	if err != nil {
+		Debug.Log("Error trying to obtain the exposed ports: ", err)
+		return 0
+	}
+	if len(ports) < 1 {
+		Debug.log("Container doesn't expose any port - returning 0")
+		return 0
+	}
+	iPort := 0
+	for _, port := range ports {
+		for _, knownPort := range knownHTTPPorts {
+			if port == knownPort {
+				iPort, err := strconv.Atoi(port)
+				if err == nil {
+					return iPort
+				}
+			}
+		}
+	}
+	//If we haven't returned yet, there was no match
+	//Pick the first port and return it
+	Debug.Log("No known HTTP port detected, returning the first one on the list.")
+	iPort, err = strconv.Atoi(ports[0])
+	if err == nil {
+		return iPort
+	}
+	Debug.Logf("Error converting port %s - returning 0: %v", ports[0], err)
+	return 0
 }
 
 func getKNativeTemplate() string {
