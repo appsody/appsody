@@ -589,11 +589,7 @@ func defaultProjectName(config *RootCommandConfig) string {
 			os.Exit(1)
 		}
 
-		indexPathSeparator := strings.LastIndex(projectDirPath, string(os.PathSeparator))
-
-		projectName := projectDirPath[indexPathSeparator+1:]
-
-		projectName = strings.ToLower(filepath.Base(projectName))
+		projectName = strings.ToLower(filepath.Base(projectDirPath))
 		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
 		if match {
 			return projectName
