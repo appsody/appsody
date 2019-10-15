@@ -14,9 +14,7 @@
 package functest
 
 import (
-	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -28,11 +26,11 @@ import (
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
 func TestBuildSimple(t *testing.T) {
 
-	log.Println("stacksList is: ", stacksList)
+	t.Log("stacksList is: ", stacksList)
 
 	// if stacksList is empty there is nothing to test so return
 	if stacksList == "" {
-		log.Println("stacksList is empty, exiting test...")
+		t.Log("stacksList is empty, exiting test...")
 		return
 	}
 
@@ -45,7 +43,7 @@ func TestBuildSimple(t *testing.T) {
 	// loop through the stacks
 	for i := range stackRaw {
 
-		log.Println("***Testing stack: ", stackRaw[i], "***")
+		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
 		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
@@ -60,11 +58,11 @@ func TestBuildSimple(t *testing.T) {
 		}
 
 		defer os.RemoveAll(projectDir)
-		log.Println("Created project dir: " + projectDir)
+		t.Log("Created project dir: " + projectDir)
 
 		// appsody init
 		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
-		log.Println("Running appsody init...")
+		t.Log("Running appsody init...")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -78,16 +76,16 @@ func TestBuildSimple(t *testing.T) {
 		}()
 
 		// It will take a while for the image to build, so lets use docker image ls to wait for it
-		fmt.Println("calling docker image ls to wait for the image")
+		t.Log("calling docker image ls to wait for the image")
 		imageBuilt := false
 		count := 900
 		for {
 			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"image", "ls", imageName})
 			if dockerErr != nil {
-				log.Print("Ignoring error running docker image ls "+imageName, dockerErr)
+				t.Log("Ignoring error running docker image ls "+imageName, dockerErr)
 			}
 			if strings.Contains(dockerOutput, imageName) {
-				fmt.Println("docker image " + imageName + " was found")
+				t.Log("docker image " + imageName + " was found")
 				imageBuilt = true
 			} else {
 				time.Sleep(2 * time.Second)
@@ -106,7 +104,7 @@ func TestBuildSimple(t *testing.T) {
 		func() {
 			_, err = cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName})
 			if err != nil {
-				fmt.Printf("Ignoring error running docker image rm: %s", err)
+				t.Logf("Ignoring error running docker image rm: %s", err)
 			}
 		}()
 
