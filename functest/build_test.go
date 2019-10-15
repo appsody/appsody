@@ -14,14 +14,10 @@
 package functest
 
 import (
-<<<<<<< HEAD
-||||||| merged common ancestors
-	"fmt"
-=======
 	"encoding/json"
 	"fmt"
->>>>>>> Adding Labels
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 	"testing"
@@ -108,23 +104,7 @@ func TestBuildSimple(t *testing.T) {
 		}
 
 		//delete the image
-<<<<<<< HEAD
-		func() {
-			_, err = cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName})
-			if err != nil {
-				t.Logf("Ignoring error running docker image rm: %s", err)
-			}
-		}()
-||||||| merged common ancestors
-		func() {
-			_, err = cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName})
-			if err != nil {
-				fmt.Printf("Ignoring error running docker image rm: %s", err)
-			}
-		}()
-=======
 		deleteImage(imageName)
->>>>>>> Adding Labels
 
 		// clean up
 		cleanup()

@@ -78,8 +78,9 @@ func build(config *buildCommandConfig) error {
 
 	projectName, perr := getProjectName(config.RootCommandConfig)
 	if perr != nil {
-		return errors.Errorf("%v", perr)
+		return perr
 	}
+
 	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
 	dockerfile := filepath.Join(extractDir, "Dockerfile")
 	buildImage := projectName //Lowercased
@@ -103,8 +104,10 @@ func build(config *buildCommandConfig) error {
 
 	labels, err := getLabels(config)
 	if err != nil {
-		return errors.Errorf("%v", err)
+		return err
 	}
+
+	// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
 	for _, label := range labels {
 		cmdArgs = append(cmdArgs, "--label", label)
 	}
@@ -125,7 +128,7 @@ func build(config *buildCommandConfig) error {
 func getLabels(config *buildCommandConfig) ([]string, error) {
 	var labels []string
 
-	dockerLabels, err := getDockerLabels(config.RootCommandConfig)
+	dockerLabels, err := getStackLabels(config.RootCommandConfig)
 	if err != nil {
 		return labels, err
 	}

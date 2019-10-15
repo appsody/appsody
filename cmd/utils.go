@@ -498,9 +498,9 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 	return labels, nil
 }
 
-func getDockerLabels(config *RootCommandConfig) (map[string]string, error) {
-	if config.cachedDockerLabels == nil {
-		config.cachedDockerLabels = make(map[string]string)
+func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
+	if config.cachedStackLabels == nil {
+		config.cachedStackLabels = make(map[string]string)
 		var data []map[string]interface{}
 		var buildahData map[string]interface{}
 		var containerConfig map[string]interface{}
@@ -521,22 +521,22 @@ func getDockerLabels(config *RootCommandConfig) (map[string]string, error) {
 			inspectCmd := exec.Command(cmdName, cmdArgs...)
 			inspectOut, inspectErr := inspectCmd.Output()
 			if inspectErr != nil {
-				return config.cachedDockerLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
+				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
 			}
 			err := json.Unmarshal([]byte(inspectOut), &buildahData)
 			if err != nil {
-				return config.cachedDockerLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 			}
 			containerConfig = buildahData["config"].(map[string]interface{})
 			Debug.Log("Config inspected by buildah: ", config)
 		} else {
 			inspectOut, inspectErr := RunDockerInspect(imageName)
 			if inspectErr != nil {
-				return config.cachedDockerLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
+				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
 			}
 			err := json.Unmarshal([]byte(inspectOut), &data)
 			if err != nil {
-				return config.cachedDockerLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 			}
 			containerConfig = data[0]["Config"].(map[string]interface{})
 		}
@@ -545,11 +545,11 @@ func getDockerLabels(config *RootCommandConfig) (map[string]string, error) {
 			labelsMap := containerConfig["Labels"].(map[string]interface{})
 
 			for key, value := range labelsMap {
-				config.cachedDockerLabels[key] = value.(string)
+				config.cachedStackLabels[key] = value.(string)
 			}
 		}
 	}
-	return config.cachedDockerLabels, nil
+	return config.cachedStackLabels, nil
 }
 
 func getExposedPorts(config *RootCommandConfig) ([]string, error) {
