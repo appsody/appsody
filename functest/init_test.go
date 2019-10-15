@@ -16,7 +16,7 @@ package functest
 
 import (
 	"errors"
-	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"

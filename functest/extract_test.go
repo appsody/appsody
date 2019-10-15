@@ -67,7 +67,7 @@ func TestExtract(t *testing.T) {
 
 		// appsody init inside projectDir
 		t.Log("Now running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err := cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}

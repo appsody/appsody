@@ -14,7 +14,6 @@
 package functest
 
 import (
-	"io/ioutil"
 	"strings"
 	"time"
 
