@@ -353,7 +353,6 @@ func commonCmd(config *devCommonConfig, mode string) error {
 				return err
 			}
 		}
-		Info.log("Waiting 30 seconds for the container to start")
 
 		deploymentName := "deployment/" + config.containerName
 		var timeout = "2m"
@@ -369,13 +368,13 @@ func commonCmd(config *devCommonConfig, mode string) error {
 				Info.Log("Getting the logs ...")
 				execCmd, kubeErr = RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
 				if kubeErr != nil {
-					Info.Log("kubectl log error: ", kubeErr.Error())
+					Debug.Log("kubectl log error: ", kubeErr.Error())
 					time.Sleep(5 * time.Second)
 
 				} else {
 					waitErr = execCmd.Wait()
 					if waitErr != nil {
-						Info.Log("kubectl log wait error: ", waitErr.Error())
+						DebugLog("kubectl log wait error: ", waitErr.Error())
 						time.Sleep(5 * time.Second)
 
 					}
@@ -383,14 +382,6 @@ func commonCmd(config *devCommonConfig, mode string) error {
 				if waitErr == nil && kubeErr == nil {
 					break
 
-					/*
-						if waitErr != nil || kubeErr != nil {
-						if (waitError !=nil && strings.Contains(waitErr.Error(), "xyz")) || (kubeErr !=nil && strings.Contains(kubeErr.Error(), "xyz")) {
-
-						} else {
-							//return tbdErr
-
-						}*/
 				} // errors are nil
 
 			} // end if not dryrun
