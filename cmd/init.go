@@ -590,25 +590,13 @@ func defaultProjectName(config *RootCommandConfig) string {
 			os.Exit(1)
 		}
 
-		projectName = strings.ToLower(filepath.Base(projectDirPath))
-		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
-		if match {
-			return projectName
-		}
-		projectName = "appsody-" + strings.ToLower(filepath.Base(projectName)) + "-app"
-		reg, err := regexp.Compile("[^a-z0-9]+")
+		projectName, err := setProjectNameBasedonDirectoryName(projectDirPath)
 		if err != nil {
-			return ""
-		}
-		projectName = reg.ReplaceAllString(projectName, "-")
-
-		match, _ = regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
-
-		if match {
-			return projectName
+			Error.log(err)
+			os.Exit(1)
 		}
 
-		return "my-project"
+		return projectName
 	}
 	return projectName
 }
