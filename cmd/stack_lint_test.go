@@ -15,8 +15,8 @@
 package cmd_test
 
 import (
+	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,7 +29,7 @@ func TestAPPSODY_RUNMissingInDockerfileStack(t *testing.T) {
 	restoreLine := ""
 	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 
 	lines := strings.Split(string(file), "\n")
@@ -44,7 +44,7 @@ func TestAPPSODY_RUNMissingInDockerfileStack(t *testing.T) {
 	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
 
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 
 	args := []string{"stack", "lint"}
@@ -64,7 +64,7 @@ func TestAPPSODY_RUNMissingInDockerfileStack(t *testing.T) {
 	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
 
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 }
 
@@ -72,7 +72,7 @@ func TestAPPSODY_MOUNTSMissingInDockerfileStack(t *testing.T) {
 	restoreLine := ""
 	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 
 	lines := strings.Split(string(file), "\n")
@@ -87,7 +87,7 @@ func TestAPPSODY_MOUNTSMissingInDockerfileStack(t *testing.T) {
 	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
 
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 
 	args := []string{"stack", "lint"}
@@ -107,7 +107,7 @@ func TestAPPSODY_MOUNTSMissingInDockerfileStack(t *testing.T) {
 	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
 
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 }
 
@@ -116,7 +116,7 @@ func TestAPPSODY_WATCH_DIRPRESENTAndONCHANGEMissingInDockerfileStack(t *testing.
 	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
 
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 
 	lines := strings.Split(string(file), "\n")
@@ -134,7 +134,7 @@ func TestAPPSODY_WATCH_DIRPRESENTAndONCHANGEMissingInDockerfileStack(t *testing.
 			err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
 
 			if err != nil {
-				log.Fatalln(err)
+				t.Fatal(err)
 			}
 
 			args := []string{"stack", "lint"}
@@ -173,7 +173,7 @@ func Test_KILLValue(t *testing.T) {
 	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
 
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 
 	lines := strings.Split(string(file), "\n")
@@ -218,7 +218,7 @@ func Test_APPSODY_REGEXValue(t *testing.T) {
 	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
 
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 
 	lines := strings.Split(string(file), "\n")
@@ -241,7 +241,7 @@ func Test_APPSODY_REGEXValue(t *testing.T) {
 	_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testdata/test-stack")
 
 	if err == nil { //Lint check should fail, if not fail the test
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 
 	for i, line := range lines {
@@ -337,12 +337,12 @@ func RestoreSampleStack(fixStack []string) {
 		if missingContent == filepath.Join(testStackPath, "image/config") || missingContent == filepath.Join(testStackPath, "image/project") {
 			osErr := os.Mkdir(missingContent, os.ModePerm)
 			if osErr != nil {
-				log.Println(osErr)
+				fmt.Println(osErr)
 			}
 		} else {
 			_, osErr := os.Create(missingContent)
 			if osErr != nil {
-				log.Println(osErr)
+				fmt.Println(osErr)
 			}
 		}
 	}

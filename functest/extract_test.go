@@ -15,7 +15,6 @@ package functest
 
 import (
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -36,11 +35,11 @@ import (
 
 func TestExtract(t *testing.T) {
 
-	log.Println("stacksList is: ", stacksList)
+	t.Log("stacksList is: ", stacksList)
 
 	// if stacksList is empty there is nothing to test so return
 	if stacksList == "" {
-		log.Println("stacksList is empty, exiting test...")
+		t.Log("stacksList is empty, exiting test...")
 		return
 	}
 
@@ -56,7 +55,7 @@ func TestExtract(t *testing.T) {
 		// create a temporary dir to create the project and run the test
 		projectDir := cmdtest.GetTempProjectDir(t)
 		defer os.RemoveAll(projectDir)
-		log.Println("Created project dir: " + projectDir)
+		t.Log("Created project dir: " + projectDir)
 
 		// create a temporary dir to extract the project, sibling to projectDir
 		parentDir := filepath.Dir(projectDir)
@@ -64,17 +63,17 @@ func TestExtract(t *testing.T) {
 		extractDir := parentDir + "/appsody-extract-test-extract-" + strings.ReplaceAll(stackRaw[i], "/", "_")
 
 		defer os.RemoveAll(extractDir)
-		log.Println("Created extraction dir: " + extractDir)
+		t.Log("Created extraction dir: " + extractDir)
 
 		// appsody init inside projectDir
-		log.Println("Now running appsody init...")
-		_, err := cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		t.Log("Now running appsody init...")
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// appsody extract: running in projectDir, extracting into extractDir
-		log.Println("Now running appsody extract...")
+		t.Log("Now running appsody extract...")
 		_, err = cmdtest.RunAppsodyCmd([]string{"extract", "--target-dir", extractDir, "-v"}, projectDir)
 		if err != nil {
 			t.Fatal(err)
@@ -114,19 +113,19 @@ func TestExtract(t *testing.T) {
 			t.Fatal("Error changing directory: ", err)
 		}
 
-		log.Println("Stack mounts:", mounts)
+		t.Log("Stack mounts:", mounts)
 		if pDir == "" {
 			pDir = "/project"
 		}
-		log.Println("Stack's project dir:", pDir)
+		t.Log("Stack's project dir:", pDir)
 
 		mountlist := strings.Split(mounts, ";")
 		for _, mount := range mountlist {
-			log.Println("mount:", mount)
+			t.Log("mount:", mount)
 			src := strings.Split(mount, ":")[0]
 			dest := strings.Split(mount, ":")[1]
 			if !strings.HasPrefix(dest, pDir) {
-				log.Println("Skipping un-extracted content", src, "and", dest)
+				t.Log("Skipping un-extracted content", src, "and", dest)
 				continue
 			}
 			remote := strings.Replace(dest, pDir, extractDir, -1)
@@ -140,8 +139,8 @@ func TestExtract(t *testing.T) {
 			} else {
 				local = projectDir + "/" + src
 			}
-			log.Println("local: ", local)
-			log.Println("remote: ", remote)
+			t.Log("local: ", local)
+			t.Log("remote: ", remote)
 
 			fileInfoLocal, err := os.Lstat(local)
 			if err != nil {
@@ -167,7 +166,7 @@ func TestExtract(t *testing.T) {
 				if !reflect.DeepEqual(extractContent, localContent) {
 					t.Fatal("Extraction failure, ", local, " is not extracted into ", remote)
 				} else {
-					log.Println("Folder contents match.")
+					t.Log("Folder contents match.")
 				}
 			} else {
 				fileInfoRemote, err := os.Lstat(remote)
@@ -179,7 +178,7 @@ func TestExtract(t *testing.T) {
 				if lSize != dSize {
 					t.Fatal("Extraction failure, ", local, " is not extracted into ", remote, " properly: source file size: ", lSize, " destination file size: ", dSize)
 				} else {
-					log.Println("File sizes match.")
+					t.Log("File sizes match.")
 				}
 
 			}

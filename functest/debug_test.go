@@ -14,8 +14,6 @@
 package functest
 
 import (
-	"fmt"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -27,11 +25,11 @@ import (
 // Simple test for appsody debug command. A future enhancement would be to verify the debug output
 func TestDebugSimple(t *testing.T) {
 
-	log.Println("stacksList is: ", stacksList)
+	t.Log("stacksList is: ", stacksList)
 
 	// if stacksList is empty there is nothing to test so return
 	if stacksList == "" {
-		log.Println("stacksList is empty, exiting test...")
+		t.Log("stacksList is empty, exiting test...")
 		return
 	}
 
@@ -44,7 +42,7 @@ func TestDebugSimple(t *testing.T) {
 	// loop through the stacks
 	for i := range stackRaw {
 
-		log.Println("***Testing stack: ", stackRaw[i], "***")
+		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
 		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
@@ -55,11 +53,11 @@ func TestDebugSimple(t *testing.T) {
 		// create a temporary dir to create the project and run the test
 		projectDir := cmdtest.GetTempProjectDir(t)
 		defer os.RemoveAll(projectDir)
-		log.Println("Created project dir: " + projectDir)
+		t.Log("Created project dir: " + projectDir)
 
 		// appsody init
+		t.Log("Running appsody init...")
 		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
-		log.Println("Running appsody init...")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -72,16 +70,16 @@ func TestDebugSimple(t *testing.T) {
 			runChannel <- err
 		}()
 		// It will take a while for the container to spin up, so let's use docker ps to wait for it
-		fmt.Println("calling docker ps to wait for container")
+		t.Log("calling docker ps to wait for container")
 		containerRunning := false
 		count := 100
 		for {
 			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName})
 			if dockerErr != nil {
-				log.Print("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
+				t.Log("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
 			}
 			if dockerOutput != "" {
-				fmt.Println("docker container " + containerName + " was found")
+				t.Log("docker container " + containerName + " was found")
 				containerRunning = true
 			} else {
 				time.Sleep(2 * time.Second)
@@ -99,7 +97,7 @@ func TestDebugSimple(t *testing.T) {
 		// stop and cleanup
 		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", containerName}, projectDir)
 		if err != nil {
-			fmt.Printf("Ignoring error running appsody stop: %s", err)
+			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
 
 		cleanup()

@@ -55,6 +55,7 @@ func TestListV2(t *testing.T) {
 	var err error
 	var output string
 	var cleanup func()
+	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", "LocalTestRepo"}, ".")
 	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", "incubatortest"}, ".")
 	_, cleanup, err = cmdtest.AddLocalFileRepo("incubatortest", "../cmd/testdata/kabanero.yaml")
 	if err != nil {

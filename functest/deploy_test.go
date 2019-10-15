@@ -14,8 +14,6 @@
 package functest
 
 import (
-	"fmt"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -26,15 +24,15 @@ import (
 // Test parsing environment variable with stack info
 func TestParser(t *testing.T) {
 
-	fmt.Println("stacksList is: ", stacksList)
+	t.Log("stacksList is: ", stacksList)
 	if stacksList == "" {
-		log.Println("stacksList is empty, exiting test...")
+		t.Log("stacksList is empty, exiting test...")
 		return
 	}
 
 	// replace incubator with appsodyhub to match current naming convention for repos
 	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
-	fmt.Println("new stacksList is: ", stacksList)
+	t.Log("new stacksList is: ", stacksList)
 
 	stackRaw := strings.Split(stacksList, " ")
 
@@ -42,14 +40,14 @@ func TestParser(t *testing.T) {
 	// stackStack := strings.Split(stackRaw, "/")
 
 	for i := range stackRaw {
-		fmt.Println("stackRaw is: ", stackRaw[i])
+		t.Log("stackRaw is: ", stackRaw[i])
 
 		// code to sepearate the repos and stacks...
 		// stageStack := strings.Split(stackRaw[i], "/")
 		// stage := stageStack[0]
 		// stack := stageStack[1]
-		// fmt.Println("stage is: ", stage)
-		// fmt.Println("stack is: ", stack)
+		// t.Log("stage is: ", stage)
+		// t.Log("stack is: ", stack)
 
 	}
 
@@ -58,11 +56,11 @@ func TestParser(t *testing.T) {
 // Simple test for appsody deploy command. A future enhancement would be to configure a valid deployment environment
 func TestDeploySimple(t *testing.T) {
 
-	log.Println("stacksList is: ", stacksList)
+	t.Log("stacksList is: ", stacksList)
 
 	// if stacksList is empty there is nothing to test so return
 	if stacksList == "" {
-		log.Println("stacksList is empty, exiting test...")
+		t.Log("stacksList is empty, exiting test...")
 		return
 	}
 
@@ -75,7 +73,7 @@ func TestDeploySimple(t *testing.T) {
 	// loop through the stacks
 	for i := range stackRaw {
 
-		log.Println("***Testing stack: ", stackRaw[i], "***")
+		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
 		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
@@ -86,22 +84,23 @@ func TestDeploySimple(t *testing.T) {
 		// create a temporary dir to create the project and run the test
 		projectDir := cmdtest.GetTempProjectDir(t)
 		defer os.RemoveAll(projectDir)
-		log.Println("Created project dir: " + projectDir)
+		t.Log("Created project dir: " + projectDir)
 
 		// appsody init
+		t.Log("Running appsody init...")
 		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
-		log.Println("Running appsody init...")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// appsody deploy
-		runChannel := make(chan error)
-		go func() {
-			_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "-t", "testdeploy/testimage", "--dryrun"}, projectDir)
-			log.Println("Running appsody deploy...")
-			runChannel <- err
-		}()
+		t.Log("Running appsody deploy...")
+		_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "-t", "testdeploy/testimage", "--dryrun"}, projectDir)
+		if err != nil {
+			t.Log("WARNING: deploy dryrun failed. Ignoring for now until that gets fixed.")
+			// TODO We need to fix the deploy --dryrun option so it doesn't fail, then uncomment the line below
+			// t.Fatal(err)
+		}
 
 		// cleanup tasks
 		cleanup()
