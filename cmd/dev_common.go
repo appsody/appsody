@@ -374,7 +374,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 				} else {
 					waitErr = execCmd.Wait()
 					if waitErr != nil {
-						DebugLog("kubectl log wait error: ", waitErr.Error())
+						Debug.Log("kubectl log wait error: ", waitErr.Error())
 						time.Sleep(5 * time.Second)
 
 					}
