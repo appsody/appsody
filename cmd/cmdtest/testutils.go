@@ -18,17 +18,21 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/appsody/appsody/cmd"
 	"gopkg.in/yaml.v2"
 )
+
+var realStdout = os.Stdout
+var realStderr = os.Stderr
 
 // Repository struct represents an appsody repository
 type Repository struct {
@@ -105,62 +109,51 @@ func RunAppsodyCmdExec(args []string, workingDir string) (string, error) {
 // args will be passed to the appsody command
 // workingDir will be the directory the command runs in
 func RunAppsodyCmd(args []string, workingDir string) (string, error) {
-	// save off the original args and stdout/stderr streams
-	osArgs := os.Args
-	osStdout := os.Stdout
-	osStderr := os.Stderr
-	osDir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		// replace the original args and stdout/stderr streams when
-		// RunAppsodyCmd returns
-		os.Args = osArgs
-		os.Stdout = osStdout
-		os.Stderr = osStderr
-		err := os.Chdir(osDir)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
 
-	// set the working directory
-	if err := os.Chdir(workingDir); err != nil {
-		return "", err
-	}
-
-	// need to add "appsody" as the first arg and set os.Args
-	os.Args = make([]string, len(args)+1)
-	os.Args[0] = "appsody"
-	copy(os.Args[1:], args)
+	args = append(args, "-v")
 
 	// setup pipes to capture stdout and stderr of the command
 	stdoutReader, stdoutWriter, _ := os.Pipe()
 	os.Stdout = stdoutWriter
 	stderrReader, stderrWriter, _ := os.Pipe()
 	os.Stderr = stderrWriter
-	go func() {
-		// run appsody cli in a goroutine so we don't
-		// get infinite blocking pipes
-		cmd.Execute(cmd.VERSION)
-		defer func() {
-			stdoutWriter.Close()
-			stderrWriter.Close()
-		}()
-	}()
-	// convert pipes to strings, this blocks until the writers are closed
-	stdoutResult, stdoutErr := ioutil.ReadAll(stdoutReader)
-	stderrResult, stderrErr := ioutil.ReadAll(stderrReader)
-	output := string(stdoutResult) + "\n" + string(stderrResult)
+	var outBuf bytes.Buffer
+	// setup writers to both os out and the buffer
+	stdoutMultiWriter := io.MultiWriter(realStdout, &outBuf)
+	stderrMultiWriter := io.MultiWriter(realStderr, &outBuf)
 
-	if stdoutErr != nil {
-		err = stdoutErr
-	} else if stderrErr != nil {
-		err = stderrErr
+	// in the background, copy the output to the multiwriters
+	var wg sync.WaitGroup
+	wg.Add(2)
+	var ioCopyErr error
+	go func() {
+		_, ioCopyErr = io.Copy(stdoutMultiWriter, stdoutReader)
+		wg.Done()
+	}()
+	go func() {
+		_, ioCopyErr = io.Copy(stderrMultiWriter, stderrReader)
+		wg.Done()
+	}()
+
+	err := cmd.ExecuteE("vlatest", workingDir, args)
+	// set back the os output right away so output gets displayed
+	os.Stdout = realStdout
+	os.Stderr = realStderr
+
+	// close the writers first
+	stdoutWriter.Close()
+	stderrWriter.Close()
+	// now wait for the io.Copy threads to finish
+	wg.Wait()
+	// finally close the readers
+	stdoutReader.Close()
+	stderrReader.Close()
+
+	if ioCopyErr != nil {
+		return outBuf.String(), fmt.Errorf("Problem copying command output to the writers: %v", ioCopyErr)
 	}
 
-	return output, err
+	return outBuf.String(), err
 }
 
 // ParseRepoList takes in the string from 'appsody repo list' command
