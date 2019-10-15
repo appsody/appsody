@@ -42,8 +42,15 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	var stackValidateCmd = &cobra.Command{
 		Use:   "validate",
-		Short: "Run validation tests of a stack in the local Appsody environment",
-		Long:  `This runs a set of validation tests for a stack.`,
+		Short: "Run validation tests against a stack in the local Appsody environment",
+		Long: `This command is a tool for stack developers to validate a stack from their local Appsody development environment. It performs the following against the stack:
+		- Runs the stack lint test. This can be turned off with the --no-lint flag
+		- Runs the stack package command. This can be turned off with the --no-package flag
+		- Runs the appsody init command
+		- Runs the appsody run command
+		- Runs the appsody test command
+		- Runs the appsody build command
+		- Provides a Passed/Failed status and summary of the above operations`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			// vars to store test results
@@ -272,7 +279,7 @@ func TestTest(projectDir string) error {
 	Info.Log("******************************************")
 	Info.Log("Running appsody test")
 	Info.Log("******************************************")
-	_, err := RunAppsodyCmdExec([]string{"test"}, projectDir)
+	_, err := RunAppsodyCmdExec([]string{"test", "--no-watcher"}, projectDir)
 	return err
 }
 
