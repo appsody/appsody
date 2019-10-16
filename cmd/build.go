@@ -144,7 +144,6 @@ func getLabels(config *buildCommandConfig) ([]string, error) {
 	}
 
 	for key, value := range stackLabels {
-		delete(configLabels, key)
 
 		key = strings.Replace(key, "org.opencontainers.image", "dev.appsody.stack", -1)
 
@@ -152,6 +151,9 @@ func getLabels(config *buildCommandConfig) ([]string, error) {
 		if key == "appsody.stack" {
 			key = "dev.appsody.stack.id"
 		}
+
+		delete(configLabels, key)
+
 		labelString := fmt.Sprintf("%s=%s", key, value)
 		labels = append(labels, labelString)
 	}
