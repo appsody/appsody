@@ -43,7 +43,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
-				return errors.New("Required parameter missing. You must specify a stack name.")
+				return errors.New("Required parameter missing. You must specify a stack name")
 			}
 
 			stack := args[0]
@@ -60,7 +60,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			if exists {
-				return errors.New("A stack named" + stack + "already exists in your directory. Specify a unique stack name.")
+				return errors.New("A stack named" + stack + "already exists in your directory. Specify a unique stack name")
 			}
 
 			err = downloadFileToDisk("https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
