@@ -285,7 +285,7 @@ func validateKubernetesResourceName(name string) (bool, error) {
 		return false, errors.Errorf("Name cannot be longer than 128 characters")
 	}
 
-	return match, errors.Errorf("Invalid name. The name must start with a lowercase letter or number and can contain only lowercase letters, numbers, or dashes.")
+	return match, errors.Errorf("Invalid name. The name must start with a lowercase letter and can contain only lowercase letters, numbers, or dashes, and should not end with a dash.")
 
 }
 
