@@ -19,7 +19,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
@@ -44,14 +43,14 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
-				return errors.New("Stack create command should have a stack name. Run `appsody stack create <name>` to create one")
+				return errors.New("Required parameter missing. You must specify a stack name.")
 			}
 
 			stack := args[0]
 
-			err := validateStackName(stack)
+			match, err := validateKubernetesResourceName(stack)
 
-			if err != nil {
+			if !match {
 				return err
 			}
 			exists, err := Exists(stack)
@@ -61,7 +60,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			if exists {
-				return errors.New("This stack named " + stack + " already exists")
+				return errors.New("A stack named" + stack + "already exists in your directory. Specify a unique stack name.")
 			}
 
 			err = downloadFileToDisk("https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
@@ -80,7 +79,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			if !valid {
-				return errors.Errorf("This is not a valid stack. Please specify any existing stack as <repo>/<stack>")
+				return errors.Errorf("Invalid stack name:" + stack + ". Stack name must be in the format <repo>/<stack>")
 			}
 
 			//deleting the stacks repo zip
@@ -106,18 +105,6 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	}
 	stackCmd.PersistentFlags().StringVar(&config.copy, "copy", "samples/sample-stack", "Copy existing stack")
 	return stackCmd
-}
-
-func validateStackName(name string) error {
-	match, _ := regexp.MatchString("^[a-z0-9][a-z0-9-]*$", name)
-	if match {
-		if len(name) < 128 {
-			return nil
-		}
-		return errors.Errorf("Length of stack name is greater than 128 characters")
-	}
-
-	return errors.Errorf("This is not a valid stack name. Stack name can only start lowercase letter or numbers and can only have lowercase letters, numbers and dashes")
 }
 
 // Unzip will decompress a zip archive

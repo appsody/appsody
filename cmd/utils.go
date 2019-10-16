@@ -307,6 +307,23 @@ func getOperatorHome(config *RootCommandConfig) string {
 	return operatorHome
 }
 
+func validateKubernetesResourceName(name string) (bool, error) {
+	match, err := regexp.MatchString("^[a-z][a-z0-9-]*[a-z0-9]$", name)
+
+	if err != nil {
+		return false, err
+	}
+
+	if match {
+		if len(name) < 128 {
+			return match, nil
+		}
+		return false, errors.Errorf("Name cannot be longer than 128 characters")
+	}
+
+	return match, errors.Errorf("Invalid name. The name must start with a lowercase letter or number and can contain only lowercase letters, numbers, or dashes.")
+}
+
 func getProjectName(config *RootCommandConfig) (string, error) {
 	projectDir, err := getProjectDir(config)
 	if err != nil {
