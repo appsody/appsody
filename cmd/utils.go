@@ -296,8 +296,8 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 		err := v.ReadInConfig()
 		if err != nil {
 			return projectConfig, errors.Errorf("Error reading project config %v", err)
-
 		}
+
 		err = v.Unmarshal(&projectConfig)
 		if err != nil {
 			return projectConfig, errors.Errorf("Error reading project config %v", err)
@@ -310,7 +310,6 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 		if imageRepo != "index.docker.io" {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
-		Debug.log("Pulling stack image as: ", projectConfig.Stack)
 
 		config.ProjectConfig = &projectConfig
 	}
@@ -467,9 +466,9 @@ func getConfigLabels(config *RootCommandConfig) (map[string]string, error) {
 
 	var maintainersString string
 	for index, maintainer := range projectConfig.Maintainers {
-		maintainersString += maintainer.Name + ", " + maintainer.Email + ", " + maintainer.GithubID
+		maintainersString += maintainer.Name + " (" + maintainer.Email + ")"
 		if index < len(projectConfig.Maintainers)-1 {
-			maintainersString += "-"
+			maintainersString += ","
 		}
 	}
 
@@ -522,7 +521,7 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 	if commitInfo.SHA != "" {
 		labels[revisionKey] = commitInfo.SHA
 		if gitInfo.ChangesMade {
-			labels[revisionKey] += "-changesMade:true"
+			labels[revisionKey] += "-modified"
 		}
 	}
 
@@ -576,12 +575,6 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 			labelsMap := containerConfig["Labels"].(map[string]interface{})
 
 			for key, value := range labelsMap {
-				key = strings.Replace(key, "org.opencontainers.image", "dev.appsody.stack", -1)
-
-				// This is temporarily until we update the labels in stack dockerfile
-				if key == "appsody.stack" {
-					key = "dev.appsody.stack.id"
-				}
 				config.cachedStackLabels[key] = value.(string)
 			}
 		}

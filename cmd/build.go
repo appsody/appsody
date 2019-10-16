@@ -128,7 +128,7 @@ func build(config *buildCommandConfig) error {
 func getLabels(config *buildCommandConfig) ([]string, error) {
 	var labels []string
 
-	dockerLabels, err := getStackLabels(config.RootCommandConfig)
+	stackLabels, err := getStackLabels(config.RootCommandConfig)
 	if err != nil {
 		return labels, err
 	}
@@ -143,8 +143,15 @@ func getLabels(config *buildCommandConfig) ([]string, error) {
 		Warning.log(err)
 	}
 
-	for key, value := range dockerLabels {
+	for key, value := range stackLabels {
 		delete(configLabels, key)
+
+		key = strings.Replace(key, "org.opencontainers.image", "dev.appsody.stack", -1)
+
+		// This is temporarily until we update the labels in stack dockerfile
+		if key == "appsody.stack" {
+			key = "dev.appsody.stack.id"
+		}
 		labelString := fmt.Sprintf("%s=%s", key, value)
 		labels = append(labels, labelString)
 	}
