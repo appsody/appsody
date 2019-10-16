@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -111,6 +112,23 @@ func TestBuildSimple(t *testing.T) {
 	}
 }
 
+var ociPrefixKey = "org.opencontainers.image."
+var openContainerLabels = []string{
+	"created",
+	"authors",
+	"version",
+	"licenses",
+	"title",
+	"description",
+}
+
+var appsodyPrefixKey = "dev.appsody.stack."
+var appsodyStackLabels = []string{
+	"id",
+	"version",
+	"configured",
+}
+
 func TestBuildLabels(t *testing.T) {
 	// first add the test repo index
 	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
@@ -130,6 +148,13 @@ func TestBuildLabels(t *testing.T) {
 	// appsody init
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
 	log.Println("Running appsody init...")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	copyCmd := exec.Command("cp", "../cmd/testdata/.appsody-config.yaml", projectDir)
+	err = copyCmd.Run()
+	log.Println("Copying .appsody-config.yaml to project dir...")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,16 +207,20 @@ func TestBuildLabels(t *testing.T) {
 	config := inspect[0]["Config"].(map[string]interface{})
 	labelsMap := config["Labels"].(map[string]interface{})
 
-	if labelsMap["appsody.stack"] == nil {
-		t.Error("Could not find stack label in Docker image!")
+	for _, label := range appsodyStackLabels {
+		if labelsMap[appsodyPrefixKey+label] == nil {
+			t.Errorf("Could not find %s%s label in Docker image!", appsodyPrefixKey, label)
+		}
 	}
 
-	if labelsMap["appsody.requested-stack"] == nil {
+	if labelsMap["dev.appsody.application"] == nil {
 		t.Error("Could not find requested stack label in Docker image!")
 	}
 
-	if labelsMap["org.opencontainers.image.created"] == nil || labelsMap["org.opencontainers.image.version"] == nil || labelsMap["org.opencontainers.image.revision"] == nil {
-		t.Error("Could not find opencontainers image labels in Docker image!")
+	for _, label := range openContainerLabels {
+		if labelsMap[ociPrefixKey+label] == nil {
+			t.Errorf("Could not find %s%s label in Docker image!", ociPrefixKey, label)
+		}
 	}
 
 	//delete the image

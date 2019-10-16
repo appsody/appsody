@@ -41,7 +41,13 @@ import (
 )
 
 type ProjectConfig struct {
-	Stack string
+	Stack           string
+	ProjectName     string `mapstructure:"project-name"`
+	ApplicationName string `mapstructure:"application-name"`
+	Version         string
+	Description     string
+	License         string
+	Maintainers     []Maintainer
 }
 
 type NotAnAppsodyProject string
@@ -53,6 +59,10 @@ const ConfigFile = ".appsody-config.yaml"
 const LatestVersionURL = "https://github.com/appsody/appsody/releases/latest"
 
 const workDirNotSet = ""
+
+const ociKeyPrefix = "org.opencontainers.image."
+
+const appsodyKeyPrefix = "dev.appsody.stack."
 
 // Checks whether an inode (it does not bother
 // about file or folder) exists or not.
@@ -272,6 +282,7 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 
 func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 	if config.ProjectConfig == nil {
+		var projectConfig ProjectConfig
 		dir, perr := getProjectDir(config)
 		if perr != nil {
 			var tempProjectConfig ProjectConfig
@@ -284,19 +295,24 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 		Debug.log("Project config file set to: ", appsodyConfig)
 		err := v.ReadInConfig()
 		if err != nil {
-			var tempProjectConfig ProjectConfig
-			return tempProjectConfig, errors.Errorf("Error reading project config %v", err)
+			return projectConfig, errors.Errorf("Error reading project config %v", err)
 
 		}
-		stack := v.GetString("stack")
-		Debug.log("Project stack from config file: ", stack)
+		err = v.Unmarshal(&projectConfig)
+		if err != nil {
+			return projectConfig, errors.Errorf("Error reading project config %v", err)
+
+		}
+
+		Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
 		Debug.log("Image repository set to: ", imageRepo)
 		if imageRepo != "index.docker.io" {
-			stack = imageRepo + "/" + stack
+			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
-		Debug.log("Pulling stack image as: ", stack)
-		config.ProjectConfig = &ProjectConfig{stack}
+		Debug.log("Pulling stack image as: ", projectConfig.Stack)
+
+		config.ProjectConfig = &projectConfig
 	}
 	return *config.ProjectConfig, nil
 }
@@ -445,7 +461,44 @@ func getConfigLabels(config *RootCommandConfig) (map[string]string, error) {
 		return labels, projectConfigErr
 	}
 
-	labels["appsody.requested-stack"] = projectConfig.Stack
+	t := time.Now()
+
+	labels[ociKeyPrefix+"created"] = t.Format(time.RFC3339)
+
+	var maintainersString string
+	for index, maintainer := range projectConfig.Maintainers {
+		maintainersString += maintainer.Name + ", " + maintainer.Email + ", " + maintainer.GithubID
+		if index < len(projectConfig.Maintainers)-1 {
+			maintainersString += "-"
+		}
+	}
+
+	if maintainersString != "" {
+		labels[ociKeyPrefix+"authors"] = maintainersString
+	}
+
+	if projectConfig.Version != "" {
+		labels[ociKeyPrefix+"version"] = projectConfig.Version
+	}
+
+	if projectConfig.License != "" {
+		labels[ociKeyPrefix+"licenses"] = projectConfig.License
+	}
+
+	if projectConfig.ProjectName != "" {
+		labels[ociKeyPrefix+"title"] = projectConfig.ProjectName
+	}
+	if projectConfig.Description != "" {
+		labels[ociKeyPrefix+"description"] = projectConfig.Description
+	}
+
+	if projectConfig.Stack != "" {
+		labels[appsodyKeyPrefix+"configured"] = projectConfig.Stack
+	}
+
+	if projectConfig.ApplicationName != "" {
+		labels["dev.appsody.application"] = projectConfig.ApplicationName
+	}
 
 	return labels, nil
 }
@@ -458,41 +511,19 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 
 	var labels = make(map[string]string)
 
-	gitString := "git."
-	if gitInfo.Branch != "" {
-		labels[gitString+"branch"] = gitInfo.Branch
-	}
-
-	if gitInfo.Upstream != "" {
-		labels[gitString+"upstream"] = gitInfo.Upstream
-	}
-
 	if gitInfo.RemoteURL != "" {
-		labels[gitString+"remoteurl"] = gitInfo.RemoteURL
-	}
-
-	if gitInfo.ChangesMade {
-		labels[gitString+"changesmade"] = "true"
-	} else {
-		labels[gitString+"changesmade"] = "false"
+		labels[ociKeyPrefix+"url"] = gitInfo.RemoteURL
+		labels[ociKeyPrefix+"documentation"] = gitInfo.RemoteURL
+		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "tree/" + gitInfo.Branch
 	}
 
 	var commitInfo = gitInfo.Commit
-	commitString := "git.commit."
-	if commitInfo.Author != "" {
-		labels[commitString+"author"] = commitInfo.Author
-	}
-
+	revisionKey := appsodyKeyPrefix + "revision"
 	if commitInfo.SHA != "" {
-		labels[commitString+"sha"] = commitInfo.SHA
-	}
-
-	if commitInfo.Date != "" {
-		labels[commitString+"date"] = commitInfo.Date
-	}
-
-	if commitInfo.URL != "" {
-		labels[commitString+"url"] = commitInfo.URL
+		labels[revisionKey] = commitInfo.SHA
+		if gitInfo.ChangesMade {
+			labels[revisionKey] += "-changesMade:true"
+		}
 	}
 
 	return labels, nil
@@ -545,6 +576,12 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 			labelsMap := containerConfig["Labels"].(map[string]interface{})
 
 			for key, value := range labelsMap {
+				key = strings.Replace(key, "org.opencontainers.image", "dev.appsody.stack", -1)
+
+				// This is temporarily until we update the labels in stack dockerfile
+				if key == "appsody.stack" {
+					key = "dev.appsody.stack.id"
+				}
 				config.cachedStackLabels[key] = value.(string)
 			}
 		}
