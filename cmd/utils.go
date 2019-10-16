@@ -606,8 +606,12 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, projectLabel string, dryrun bool) (fileName string, err error) {
-	// KNative serving YAML representation in a struct
+func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, dryrun bool) (fileName string, err error) {
+
+	// Codewind workspace root dir constant
+	codeWindWorkspace := "/codewind-workspace"
+
+	// Deployment YAML structs
 	type Port struct {
 		Name          string `yaml:"name,omitempty"`
 		ContainerPort int    `yaml:"containerPort"`
@@ -698,16 +702,75 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 	}
-	//Set the workspace volume mount
-
-	subPath := filepath.Base(pdir)
-	workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
-	yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, workspaceMount)
-	//Set the deployment selector and pod label
-
-	if err != nil {
-		return "", err
+	//Set the workspace volume PVC
+	workspaceVolumeName := "appsody-workspace"
+	workspacePvcName := os.Getenv("PVC_NAME")
+	if workspacePvcName == "" {
+		workspacePvcName = "appsody-workspace"
 	}
+
+	workspaceVolume := Volume{Name: workspaceVolumeName}
+	workspaceVolume.PersistentVolumeClaim.ClaimName = workspacePvcName
+	volumeIdx := len(yamlMap.Spec.PodTemplate.Spec.Volumes)
+	if volumeIdx < 1 {
+		yamlMap.Spec.PodTemplate.Spec.Volumes = make([]*Volume, 1)
+	}
+	yamlMap.Spec.PodTemplate.Spec.Volumes[volumeIdx] = &workspaceVolume
+
+	//Set the volume mounts
+	//Start with the Controller
+	appsodyMountController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
+	var controllerSubpath string
+	if appsodyMountController != "" {
+		appsodyMountControllerDir, err := filepath.Rel(codeWindWorkspace, filepath.Dir(appsodyMountController))
+		if err != nil {
+			Debug.Log("Problems with APPSODY_MOUNT_CONTROLLER: ", appsodyMountController)
+			return "", err
+		}
+		controllerSubpath = filepath.Join(".", appsodyMountControllerDir)
+		Debug.Log("APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
+	} else {
+		controllerSubpath = "./.extensions/codewind-appsody-extension/bin/"
+		Debug.Log("No APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
+
+	}
+	controllerVolumeMount := VolumeMount{"appsody-workspace", "/.appsody", controllerSubpath}
+	volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
+	volMountIdx := len(*volumeMounts)
+	if volMountIdx == 0 {
+		*volumeMounts = make([]VolumeMount, 1)
+		(*volumeMounts)[0] = controllerVolumeMount
+	} else {
+		*volumeMounts = append(*volumeMounts, controllerVolumeMount)
+	}
+
+	//Now the code mounts
+	//We need to iterate through the docker mounts
+
+	for _, appsodyMount := range dockerMounts {
+		if appsodyMount == "-v" {
+			continue
+		}
+		appsodyMountComponents := strings.Split(appsodyMount, ":")
+		targetMount := appsodyMountComponents[1]
+		sourceMount, err := filepath.Rel(codeWindWorkspace, appsodyMountComponents[0])
+		if err != nil {
+			Debug.Log("Problem with the appsody mount: ", appsodyMountComponents[0])
+			return "", err
+		}
+
+		sourceSubpath := filepath.Join(".", sourceMount)
+		newVolumeMount := VolumeMount{"appsody-workspace", targetMount, sourceSubpath}
+		Debug.Log("Appending volume mount: ", newVolumeMount)
+		*volumeMounts = append(*volumeMounts, newVolumeMount)
+	}
+
+	//subPath := filepath.Base(pdir)
+	//workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
+	//yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, workspaceMount)
+
+	//Set the deployment selector and pod label
+	projectLabel := appName
 	yamlMap.Spec.Selector.MatchLabels["app"] = projectLabel
 	yamlMap.Spec.PodTemplate.Metadata.Labels["app"] = projectLabel
 
@@ -752,19 +815,6 @@ spec:
         image: APPSODY_STACK
         imagePullPolicy: Always
         command: ["/.appsody/appsody-controller"]
-        env:
-          - name: HOME
-            value: /.appsody
-        volumeMounts:
-          - name: appsody-controller
-            mountPath: /.appsody
-      volumes:
-        - name: appsody-controller
-          persistentVolumeClaim: 
-            claimName: appsody-controller
-        - name: appsody-workspace
-          persistentVolumeClaim: 
-            claimName: appsody-workspace
 `
 	return yamltempl
 }
@@ -859,7 +909,13 @@ func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName 
 	ingress.Metadata.Name = fmt.Sprintf("%s-%s", appName, "ingress")
 
 	ingress.Spec.Rules = make([]IngressRule, 1)
-	ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
+	cheIngressHost := os.Getenv("CHE_INGRESS_HOST")
+	if cheIngressHost != "" {
+		ingress.Spec.Rules[0].Host = cheIngressHost
+	} else {
+		// We set it to a host name that's resolvable by nip.io
+		ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
+	}
 	ingress.Spec.Rules[0].HTTP.Paths = make([]IngressPath, 1)
 	ingress.Spec.Rules[0].HTTP.Paths[0].Path = "/"
 	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServiceName = fmt.Sprintf("%s-%s", appName, "service")
