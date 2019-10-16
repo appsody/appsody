@@ -592,7 +592,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
-	codeWindWorkspace := "/codewind-workspace"
+	codeWindWorkspace := "/"
 
 	// Deployment YAML structs
 	type Port struct {
