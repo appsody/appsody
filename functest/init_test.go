@@ -494,3 +494,47 @@ func TestNoTemplateAndSimple(t *testing.T) {
 		t.Error("Correct error message not given")
 	}
 }
+
+func TestGitRepositoryCreate(t *testing.T) {
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-init-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.RemoveAll(projectDir)
+	log.Println("Created project dir: " + projectDir)
+
+	gitRepo := "https://github.com/test/project"
+	// appsody init nodejs-express
+	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express", "--git-repository", gitRepo}, projectDir)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check if a git repo was initialised
+	hiddenGitDirectory := filepath.Join(projectDir, ".git")
+	shouldExist(hiddenGitDirectory, t)
+
+	// check if the remote has been set
+	output, err := cmdtest.RunGitCmdExec([]string{"remote", "-v"}, projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(output, "https://github.com/test/project") {
+		t.Error("A remote for wasn't created for " + gitRepo)
+	}
+
+	// Check if git add worked.
+	output, err = cmdtest.RunGitCmdExec([]string{"status"}, projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO: This is currently a very `loose` check. We must make it more robust.
+	if !strings.Contains(output, "new file") {
+		t.Error("Generated files were not added to the git repository")
+	}
+}
