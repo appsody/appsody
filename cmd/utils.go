@@ -468,7 +468,7 @@ func getConfigLabels(config *RootCommandConfig) (map[string]string, error) {
 	for index, maintainer := range projectConfig.Maintainers {
 		maintainersString += maintainer.Name + " (" + maintainer.Email + ")"
 		if index < len(projectConfig.Maintainers)-1 {
-			maintainersString += ","
+			maintainersString += ", "
 		}
 	}
 
