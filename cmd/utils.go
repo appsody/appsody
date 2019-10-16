@@ -271,6 +271,24 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	return config.ProjectDir, nil
 }
 
+func validateKubernetesResourceName(name string) (bool, error) {
+	match, err := regexp.MatchString("^[a-z][a-z0-9-]*[a-z0-9]$", name)
+
+	if err != nil {
+		return false, err
+	}
+
+	if match {
+		if len(name) < 128 {
+			return match, nil
+		}
+		return false, errors.Errorf("Name cannot be longer than 128 characters")
+	}
+
+	return match, errors.Errorf("Invalid name. The name must start with a lowercase letter or number and can contain only lowercase letters, numbers, or dashes.")
+
+}
+
 func setProjectName(projectDir string, projectName string) error {
 	appsodyConfig := filepath.Join(projectDir, ConfigFile)
 	v := viper.New()
@@ -282,14 +300,14 @@ func setProjectName(projectDir string, projectName string) error {
 	}
 
 	if projectName != "" && projectName != "my-project" {
-		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+		match, err := validateKubernetesResourceName(projectName)
 
 		if !match {
-			return errors.Errorf("This is not a valid project name")
+			return err
 		}
 
 		v.Set("project-name", projectName)
-		err := v.WriteConfig()
+		err = v.WriteConfig()
 		if err != nil {
 			return err
 		}
@@ -314,7 +332,8 @@ func setProjectName(projectDir string, projectName string) error {
 
 func setProjectNameBasedonDirectoryName(projectDir string) (string, error) {
 	projectName := strings.ToLower(filepath.Base(projectDir))
-	match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+	match, _ := validateKubernetesResourceName(projectName)
+
 	if !match {
 		projectName = "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-app"
 		reg, err := regexp.Compile("[^a-z0-9]+")
@@ -323,10 +342,10 @@ func setProjectNameBasedonDirectoryName(projectDir string) (string, error) {
 		}
 		projectName = reg.ReplaceAllString(projectName, "-")
 
-		match, _ := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+		match, err := validateKubernetesResourceName(projectName)
 
 		if !match {
-			return projectName, errors.Errorf("This is not a valid project name")
+			return projectName, err
 		}
 	}
 
@@ -339,10 +358,10 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 		return "my-project", err
 	}
 	if config.projectName != "" && config.projectName != "my-project" {
-		match, err := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", config.projectName)
+		match, err := validateKubernetesResourceName(config.projectName)
 
 		if !match {
-			return "", errors.Errorf("This is not a valid project name, maybe you have accidentally changed the project name")
+			return "", err
 		}
 		return config.projectName, err
 	}
@@ -358,10 +377,10 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 	projectName := v.GetString("project-name")
 
 	if projectName != "" && projectName != "my-project" {
-		match, err := regexp.MatchString("[a-z]([-a-z0-9]*[a-z0-9])?", projectName)
+		match, err := validateKubernetesResourceName(projectName)
 
 		if !match {
-			return "", errors.Errorf("This is not a valid project name, maybe you have accidentally changed the project name")
+			return "", err
 		}
 		config.projectName = projectName
 		return projectName, err
