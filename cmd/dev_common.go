@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"os/user"
 	"path/filepath"
@@ -315,7 +316,11 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, config.containerName, dryrun)
+		dockerMounts, err := getVolumeArgs(config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
+		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, dockerMounts, dryrun)
 		if err != nil {
 			return err
 		}
@@ -348,42 +353,39 @@ func commonCmd(config *devCommonConfig, mode string) error {
 				return err
 			}
 		}
-		Info.log("Waiting 30 seconds for the container to start")
-		time.Sleep(30 * time.Second)
-		logSuccess := false
+
 		deploymentName := "deployment/" + config.containerName
 		var timeout = "2m"
 		kubeArgs := []string{"logs", deploymentName, "-f", "--pod-running-timeout=" + timeout}
-		for logCount := 0; logCount < 3; logCount++ {
 
-			execCmd, kubeErr := RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
+		for {
+			var waitErr, kubeErr error
+			var execCmd *exec.Cmd
 			if config.Dryrun {
-				Info.log("Dry Run - Skipping execCmd.Wait")
-			} else {
-				if kubeErr == nil {
-					logSuccess = true
-					err = execCmd.Wait()
-
-					if err != nil {
-
-						return err
-					}
-				} else {
-					if logCount < 3 {
-						Debug.logf("kubectl error, could not obtain logs, pod may not have started.  Sleeping and retrying %b", logCount)
-
-						time.Sleep(120 * time.Second)
-
-					} else {
-						return kubeErr
-
-					}
-
-				}
-			} // end if not dryrun
-			if logSuccess {
+				Info.log("Dry Run - Skipping kubectl logs")
 				break
-			}
+			} else {
+				Info.Log("Getting the logs ...")
+				execCmd, kubeErr = RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
+				if kubeErr != nil {
+					Debug.Log("kubectl log error: ", kubeErr.Error())
+					time.Sleep(5 * time.Second)
+
+				} else {
+					waitErr = execCmd.Wait()
+					if waitErr != nil {
+						Debug.Log("kubectl log wait error: ", waitErr.Error())
+						time.Sleep(5 * time.Second)
+
+					}
+				}
+				if waitErr == nil && kubeErr == nil {
+					break
+
+				} // errors are nil
+
+			} // end if not dryrun
+
 		} //end of for loop
 
 	} // end of buildah path
