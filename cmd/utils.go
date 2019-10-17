@@ -35,8 +35,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	"github.com/spf13/viper"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -280,6 +280,139 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	return config.ProjectDir, nil
 }
 
+func validateKubernetesResourceName(name string) (bool, error) {
+	match, err := regexp.MatchString("^[a-z][a-z0-9-]*[a-z0-9]$", name)
+
+	if err != nil {
+		return false, err
+	}
+
+	if match {
+		if len(name) < 128 {
+			return match, nil
+		}
+		return false, errors.Errorf("Name cannot be longer than 128 characters")
+	}
+
+	return match, errors.Errorf("Invalid name. The name must start with a lowercase letter and can contain only lowercase letters, numbers, or dashes, and should not end with a dash.")
+
+}
+
+func setProjectName(projectDir string, projectName string) error {
+	appsodyConfig := filepath.Join(projectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+
+	if err != nil {
+		return err
+	}
+
+	if projectName != "" && projectName != "my-project" {
+		match, err := validateKubernetesResourceName(projectName)
+
+		if !match {
+			return err
+		}
+
+		v.Set("project-name", projectName)
+		err = v.WriteConfig()
+		if err != nil {
+			return err
+		}
+
+		Info.log("Your Appsody project name is ", projectName)
+	} else {
+		projectName, err = setProjectNameBasedonDirectoryName(projectDir)
+		if err != nil {
+			return err
+		}
+
+		v.Set("project-name", projectName)
+		err = v.WriteConfig()
+
+		if err != nil {
+			return err
+		}
+		Info.log("Your Appsody project name is ", projectName)
+	}
+	return nil
+}
+
+func setProjectNameBasedonDirectoryName(projectDir string) (string, error) {
+	projectName := strings.ToLower(filepath.Base(projectDir))
+	match, _ := validateKubernetesResourceName(projectName)
+
+	if !match {
+		projectName = "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-app"
+		reg, err := regexp.Compile("[^a-z0-9]+")
+		if err != nil {
+			return "", err
+		}
+		projectName = reg.ReplaceAllString(projectName, "-")
+
+		match, err := validateKubernetesResourceName(projectName)
+
+		if !match {
+			return projectName, err
+		}
+	}
+
+	return projectName, nil
+}
+
+func getProjectName(config *RootCommandConfig) (string, error) {
+	dir, err := getProjectDir(config)
+	if err != nil {
+		return "my-project", err
+	}
+	if config.projectName != "" && config.projectName != "my-project" {
+		match, err := validateKubernetesResourceName(config.projectName)
+
+		if !match {
+			return "", err
+		}
+		return config.projectName, err
+	}
+	appsodyConfig := filepath.Join(dir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err = v.ReadInConfig()
+
+	if err != nil {
+		return "my-project", err
+	}
+
+	projectName := v.GetString("project-name")
+
+	if projectName != "" && projectName != "my-project" {
+		match, err := validateKubernetesResourceName(projectName)
+
+		if !match {
+			return "", err
+		}
+		config.projectName = projectName
+		return projectName, err
+	}
+
+	projectName, err = setProjectNameBasedonDirectoryName(dir)
+	if err != nil {
+		return "", err
+	}
+
+	v.Set("project-name", projectName)
+	err = v.WriteConfig()
+
+	if err != nil {
+		return "", err
+	}
+	Info.log("Your Appsody project name is ", projectName)
+
+	config.projectName = projectName
+	return projectName, nil
+
+}
+
 func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 	if config.ProjectConfig == nil {
 		var projectConfig ProjectConfig
@@ -290,10 +423,13 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 
 		}
 		appsodyConfig := filepath.Join(dir, ConfigFile)
+
 		v := viper.New()
 		v.SetConfigFile(appsodyConfig)
 		Debug.log("Project config file set to: ", appsodyConfig)
+
 		err := v.ReadInConfig()
+
 		if err != nil {
 			return projectConfig, errors.Errorf("Error reading project config %v", err)
 		}
@@ -304,12 +440,17 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 
 		}
 
+		projectName := v.GetString("project-name")
+		stack := v.GetString("stack")
+
 		Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
 		Debug.log("Image repository set to: ", imageRepo)
 		if imageRepo != "index.docker.io" {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
+		projectConfig.Stack = stack
+		projectConfig.ProjectName = projectName
 
 		config.ProjectConfig = &projectConfig
 	}
@@ -320,16 +461,6 @@ func getOperatorHome(config *RootCommandConfig) string {
 	operatorHome := config.CliConfig.GetString("operator")
 	Debug.log("Operator home set to: ", operatorHome)
 	return operatorHome
-}
-
-func getProjectName(config *RootCommandConfig) (string, error) {
-	projectDir, err := getProjectDir(config)
-	if err != nil {
-		return "my-project", err
-	}
-	projectName := strings.ToLower(filepath.Base(projectDir))
-	projectName = strings.ReplaceAll(projectName, "_", "-")
-	return projectName, nil
 }
 
 func execAndWait(command string, args []string, logger appsodylogger, dryrun bool) error {
