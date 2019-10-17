@@ -130,7 +130,7 @@ func extract(config *extractCommandConfig) error {
 		}
 	}
 
-	stackImage := projectConfig.Platform
+	stackImage := projectConfig.Stack
 
 	pullErr := pullImage(stackImage, config.RootCommandConfig)
 	if pullErr != nil {

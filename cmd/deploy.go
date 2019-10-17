@@ -351,7 +351,7 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 	if err != nil {
 		Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
-	stackImage := projectConfig.Platform
+	stackImage := projectConfig.Stack
 	Debug.log("Stack image: ", stackImage)
 	Debug.log("Config directory: ", containerConfigDir)
 

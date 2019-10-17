@@ -38,7 +38,7 @@ type StackYaml struct {
 type Maintainer struct {
 	Name     string `yaml:"name"`
 	Email    string `yaml:"email"`
-	GithubID string `yaml:"github-id"`
+	GithubID string `yaml:"github-id" mapstructure:"github-id"`
 }
 
 type IndexYaml struct {

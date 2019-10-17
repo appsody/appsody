@@ -37,7 +37,7 @@ import (
 
 type Stack struct {
 	repoName    string
-	ID          string     `yaml:"id,omitempty" json:"id,omniempty"`
+	ID          string     `yaml:"id,omitempty" json:"id,omitempty"`
 	Version     string     `yaml:"version" json:"version"`
 	Description string     `yaml:"description" json:"description"`
 	Templates   []Template `yaml:"templates,omitempty" json:"templates,omitempty"`
@@ -81,13 +81,13 @@ type RepositoryFile struct {
 type RepositoryEntry struct {
 	Name      string `yaml:"name" json:"name"`
 	URL       string `yaml:"url" json:"url"`
-	IsDefault bool   `yaml:"default,omitempty" json:"default,omnitempty"`
+	IsDefault bool   `yaml:"default,omitempty" json:"default,omitempty"`
 }
 
 type Template struct {
 	ID        string `yaml:"id" json:"id"`
 	URL       string `yaml:"url" json:"url"`
-	IsDefault bool   `yaml:"default,omitempty" json:"default,omnitempty"`
+	IsDefault bool   `yaml:"default,omitempty" json:"default,omitempty"`
 }
 
 func findTemplateURL(projectVersion ProjectVersion, templateName string) string {
