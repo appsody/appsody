@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -26,6 +27,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"testing"
 
 	"github.com/appsody/appsody/cmd"
 	"gopkg.in/yaml.v2"
@@ -262,13 +264,13 @@ func AddLocalFileRepo(repoName string, repoFilePath string) (string, func(), err
 	}
 	repoURL = "file://" + absPath
 	// add a new repo
-	_, err = RunAppsodyCmdExec([]string{"repo", "add", repoName, repoURL}, ".")
+	_, err = RunAppsodyCmd([]string{"repo", "add", repoName, repoURL}, ".")
 	if err != nil {
 		return "", nil, err
 	}
 	// cleanup whe finished
 	cleanupFunc := func() {
-		_, err = RunAppsodyCmdExec([]string{"repo", "remove", repoName}, ".")
+		_, err = RunAppsodyCmd([]string{"repo", "remove", repoName}, ".")
 		if err != nil {
 			log.Fatalf("Error cleaning up with repo remove: %s", err)
 		}
@@ -333,4 +335,20 @@ func Exists(path string) (bool, error) {
 		return false, nil
 	}
 	return true, err
+}
+func GetTempProjectDir(t *testing.T) string {
+	// create a temporary dir to create the project and run the test
+	projectDir, err := ioutil.TempDir("", "appsody-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// remove symlinks from the path
+	// on mac, TMPDIR is set to /var which is a symlink to /private/var.
+	//    Docker by default shares mounts with /private but not /var,
+	//    so resolving the symlinks ensures docker can mount the temp dir
+	projectDir, err = filepath.EvalSymlinks(projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return projectDir
 }

@@ -17,7 +17,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -56,17 +55,13 @@ func TestBuildSimple(t *testing.T) {
 		}
 
 		// create a temporary dir to create the project and run the test
-		projectDir, err := ioutil.TempDir("", "appsody-build-simple-test")
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		projectDir := cmdtest.GetTempProjectDir(t)
 		defer os.RemoveAll(projectDir)
 		t.Log("Created project dir: " + projectDir)
 
 		// appsody init
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
 		t.Log("Running appsody init...")
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -75,7 +70,7 @@ func TestBuildSimple(t *testing.T) {
 		runChannel := make(chan error)
 		imageName := "testbuildimage"
 		go func() {
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"build", "--tag", imageName}, projectDir)
+			_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName}, projectDir)
 			runChannel <- err
 		}()
 
@@ -143,18 +138,18 @@ func TestBuildLabels(t *testing.T) {
 	}
 
 	defer os.RemoveAll(projectDir)
-	log.Println("Created project dir: " + projectDir)
+	t.Log("Created project dir: " + projectDir)
 
 	// appsody init
 	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
-	log.Println("Running appsody init...")
+	t.Log("Running appsody init...")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	copyCmd := exec.Command("cp", "../cmd/testdata/.appsody-config.yaml", projectDir)
 	err = copyCmd.Run()
-	log.Println("Copying .appsody-config.yaml to project dir...")
+	t.Log("Copying .appsody-config.yaml to project dir...")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,16 +163,16 @@ func TestBuildLabels(t *testing.T) {
 	}()
 
 	// It will take a while for the image to build, so lets use docker image ls to wait for it
-	fmt.Println("calling docker image ls to wait for the image")
+	t.Log("calling docker image ls to wait for the image")
 	imageBuilt := false
 	count := 900
 	for {
 		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"image", "ls", imageName})
 		if dockerErr != nil {
-			log.Print("Ignoring error running docker image ls "+imageName, dockerErr)
+			t.Log("Ignoring error running docker image ls "+imageName, dockerErr)
 		}
 		if strings.Contains(dockerOutput, imageName) {
-			fmt.Println("docker image " + imageName + " was found")
+			t.Log("docker image " + imageName + " was found")
 			imageBuilt = true
 		} else {
 			time.Sleep(2 * time.Second)
