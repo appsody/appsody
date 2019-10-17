@@ -870,7 +870,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -988,9 +988,10 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	volumeIdx := len(yamlMap.Spec.PodTemplate.Spec.Volumes)
 	if volumeIdx < 1 {
 		yamlMap.Spec.PodTemplate.Spec.Volumes = make([]*Volume, 1)
+		yamlMap.Spec.PodTemplate.Spec.Volumes[0] = &workspaceVolume
+	} else {
+		yamlMap.Spec.PodTemplate.Spec.Volumes = append(yamlMap.Spec.PodTemplate.Spec.Volumes, &workspaceVolume)
 	}
-	yamlMap.Spec.PodTemplate.Spec.Volumes[volumeIdx] = &workspaceVolume
-
 	//Set the volume mounts
 	//Start with the Controller
 	appsodyMountController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
@@ -1037,6 +1038,13 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		newVolumeMount := VolumeMount{"appsody-workspace", targetMount, sourceSubpath}
 		Debug.Log("Appending volume mount: ", newVolumeMount)
 		*volumeMounts = append(*volumeMounts, newVolumeMount)
+	}
+	// Dependencies mount
+
+	if depsMount != "" {
+		// Now the volume mount
+		depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
+		*volumeMounts = append(*volumeMounts, depVolumeMount)
 	}
 
 	//subPath := filepath.Base(pdir)
@@ -1089,6 +1097,9 @@ spec:
         image: APPSODY_STACK
         imagePullPolicy: Always
         command: ["/.appsody/appsody-controller"]
+      volumes:
+      - name: dependencies
+        emptyDir: {}
 `
 	return yamltempl
 }
