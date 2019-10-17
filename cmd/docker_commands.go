@@ -36,8 +36,12 @@ func RunDockerCommandAndWait(args []string, logger appsodylogger, verbose bool, 
 }
 
 func RunDockerInspect(imageName string) (string, error) {
-	var cmdArgs = []string{"image", "inspect", imageName}
-	return RunDockerCmdExec(cmdArgs)
+	cmdName := "docker"
+	cmdArgs := []string{"image", "inspect", imageName}
+	Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
+	inspectCmd := exec.Command(cmdName, cmdArgs...)
+	output, err := inspectCmd.Output()
+	return string(output), err
 }
 
 func RunKubeCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
