@@ -26,7 +26,7 @@ install-controller: &install-controller
 test-template: &test-template
   stage: test
   <<: *install-controller
-  script: make test
+  script: make cover
 
 jobs:
   include:
