@@ -15,7 +15,6 @@ package functest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -54,16 +53,14 @@ func TestTestSimple(t *testing.T) {
 		}
 
 		// create a temporary dir to create the project and run the test
-		projectDir, err := ioutil.TempDir("", "appsody-test-simple-test")
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		projectDir := cmdtest.GetTempProjectDir(t)
+		defer os.RemoveAll(projectDir)
 		t.Log("Created project dir: " + projectDir)
 
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -72,7 +69,7 @@ func TestTestSimple(t *testing.T) {
 		runChannel := make(chan error)
 		go func() {
 			log.Println("Running appsody test...")
-			_, err = cmdtest.RunAppsodyCmdExec([]string{"test"}, projectDir)
+			_, err = cmdtest.RunAppsodyCmd([]string{"test"}, projectDir)
 			runChannel <- err
 		}()
 
@@ -93,7 +90,7 @@ func TestTestSimple(t *testing.T) {
 				fmt.Printf("appsody test kept running for %d seconds with no error so consider this passed\n", waitForError)
 				stillWaiting = false
 				// stop the container if it is still up
-				_, err = cmdtest.RunAppsodyCmdExec([]string{"stop"}, projectDir)
+				_, err = cmdtest.RunAppsodyCmd([]string{"stop"}, projectDir)
 				if err != nil {
 					t.Logf("Ignoring error running appsody stop: %s", err)
 				}
