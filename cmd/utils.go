@@ -280,15 +280,15 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	return config.ProjectDir, nil
 }
 
-// isValidContainerName tests the given string against Appsody name rules.
+// IsValidProjectName tests the given string against Appsody name rules.
 // This common set of name rules for Appsody must comply to Kubernetes
 // resource and Docker container name rules. The current rules are:
 // 1. Must start with a lowercase letter
-// 2. May only contain lowercase letters, digits, and dashes
+// 2. Must contain only lowercase letters, digits, and dashes
 // 3. Must end with a letter or digit
 // 4. Must be less than 128 characters
-func isValidContainerName(name string) (bool, error) {
-	match, err := regexp.MatchString("^[a-z][a-z0-9-]*[a-z0-9]$", name)
+func IsValidProjectName(name string) (bool, error) {
+	match, err := regexp.MatchString("^[a-z]([a-z0-9-]*[a-z0-9])?$", name)
 
 	if err != nil {
 		return false, err
@@ -298,10 +298,10 @@ func isValidContainerName(name string) (bool, error) {
 		if len(name) < 128 {
 			return match, nil
 		}
-		return false, errors.Errorf("Name cannot be longer than 128 characters")
+		return false, errors.Errorf("Invalid project-name \"%s\". The name cannot be longer than 128 characters", name)
 	}
 
-	return match, errors.Errorf("Invalid name. The name must start with a lowercase letter and can contain only lowercase letters, numbers, or dashes, and should not end with a dash.")
+	return match, errors.Errorf("Invalid project-name \"%s\". The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash.", name)
 
 }
 
@@ -316,7 +316,7 @@ func setProjectName(projectDir string, projectName string) error {
 	}
 
 	if projectName != "" && projectName != "my-project" {
-		match, err := isValidContainerName(projectName)
+		match, err := IsValidProjectName(projectName)
 
 		if !match {
 			return err
@@ -330,7 +330,7 @@ func setProjectName(projectDir string, projectName string) error {
 
 		Info.log("Your Appsody project name is ", projectName)
 	} else {
-		projectName, err = convertToValidContainerName(projectDir)
+		projectName, err = ConvertToValidProjectName(projectDir)
 		if err != nil {
 			return err
 		}
@@ -346,22 +346,33 @@ func setProjectName(projectDir string, projectName string) error {
 	return nil
 }
 
-// convertToValidContainerName takes an existing string or directory path
+// ConvertToValidProjectName takes an existing string or directory path
 // and returns a name that conforms to isValidContainerName rules
-func convertToValidContainerName(projectDir string) (string, error) {
+func ConvertToValidProjectName(projectDir string) (string, error) {
 	projectName := strings.ToLower(filepath.Base(projectDir))
-	match, _ := isValidContainerName(projectName)
+	match, _ := IsValidProjectName(projectName)
 
 	if !match {
-		projectName = "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-app"
+		projectName = strings.ToLower(filepath.Base(projectDir))
+		if len(projectName) >= 128 {
+			projectName = projectName[0:127]
+		}
+
+		if projectName[0] < 'a' || projectName[0] > 'z' {
+			projectName = "appsody-" + projectName
+		}
+
 		reg, err := regexp.Compile("[^a-z0-9]+")
 		if err != nil {
 			return "", err
 		}
 		projectName = reg.ReplaceAllString(projectName, "-")
 
-		match, err := isValidContainerName(projectName)
+		if projectName[len(projectName)-1] == '-' {
+			projectName = projectName + "app"
+		}
 
+		match, err := IsValidProjectName(projectName)
 		if !match {
 			return projectName, err
 		}
@@ -376,7 +387,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 		return "my-project", err
 	}
 	if config.projectName != "" && config.projectName != "my-project" {
-		match, err := isValidContainerName(config.projectName)
+		match, err := IsValidProjectName(config.projectName)
 
 		if !match {
 			return "", err
@@ -395,7 +406,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 	projectName := v.GetString("project-name")
 
 	if projectName != "" && projectName != "my-project" {
-		match, err := isValidContainerName(projectName)
+		match, err := IsValidProjectName(projectName)
 
 		if !match {
 			return "", err
@@ -404,7 +415,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 		return projectName, err
 	}
 
-	projectName, err = convertToValidContainerName(dir)
+	projectName, err = ConvertToValidProjectName(dir)
 	if err != nil {
 		return "", err
 	}
