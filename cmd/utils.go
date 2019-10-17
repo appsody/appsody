@@ -271,16 +271,23 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	projectDir, err := Exists(appsodyConfig)
 	if err != nil {
 		Error.log(err)
-		return "", err
+		return config.ProjectDir, err
 	}
 	if !projectDir {
 		var e NotAnAppsodyProject = "The current directory is not a valid appsody project. Run `appsody init <stack>` to create one. Run `appsody list` to see the available stacks."
-		return "", &e
+		return config.ProjectDir, &e
 	}
 	return config.ProjectDir, nil
 }
 
-func validateKubernetesResourceName(name string) (bool, error) {
+// isValidContainerName tests the given string against Appsody name rules.
+// This common set of name rules for Appsody must comply to Kubernetes
+// resource and Docker container name rules. The current rules are:
+// 1. Must start with a lowercase letter
+// 2. May only contain lowercase letters, digits, and dashes
+// 3. Must end with a letter or digit
+// 4. Must be less than 128 characters
+func isValidContainerName(name string) (bool, error) {
 	match, err := regexp.MatchString("^[a-z][a-z0-9-]*[a-z0-9]$", name)
 
 	if err != nil {
@@ -309,7 +316,7 @@ func setProjectName(projectDir string, projectName string) error {
 	}
 
 	if projectName != "" && projectName != "my-project" {
-		match, err := validateKubernetesResourceName(projectName)
+		match, err := isValidContainerName(projectName)
 
 		if !match {
 			return err
@@ -323,7 +330,7 @@ func setProjectName(projectDir string, projectName string) error {
 
 		Info.log("Your Appsody project name is ", projectName)
 	} else {
-		projectName, err = setProjectNameBasedonDirectoryName(projectDir)
+		projectName, err = convertToValidContainerName(projectDir)
 		if err != nil {
 			return err
 		}
@@ -339,9 +346,11 @@ func setProjectName(projectDir string, projectName string) error {
 	return nil
 }
 
-func setProjectNameBasedonDirectoryName(projectDir string) (string, error) {
+// convertToValidContainerName takes an existing string or directory path
+// and returns a name that conforms to isValidContainerName rules
+func convertToValidContainerName(projectDir string) (string, error) {
 	projectName := strings.ToLower(filepath.Base(projectDir))
-	match, _ := validateKubernetesResourceName(projectName)
+	match, _ := isValidContainerName(projectName)
 
 	if !match {
 		projectName = "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-app"
@@ -351,7 +360,7 @@ func setProjectNameBasedonDirectoryName(projectDir string) (string, error) {
 		}
 		projectName = reg.ReplaceAllString(projectName, "-")
 
-		match, err := validateKubernetesResourceName(projectName)
+		match, err := isValidContainerName(projectName)
 
 		if !match {
 			return projectName, err
@@ -367,7 +376,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 		return "my-project", err
 	}
 	if config.projectName != "" && config.projectName != "my-project" {
-		match, err := validateKubernetesResourceName(config.projectName)
+		match, err := isValidContainerName(config.projectName)
 
 		if !match {
 			return "", err
@@ -386,7 +395,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 	projectName := v.GetString("project-name")
 
 	if projectName != "" && projectName != "my-project" {
-		match, err := validateKubernetesResourceName(projectName)
+		match, err := isValidContainerName(projectName)
 
 		if !match {
 			return "", err
@@ -395,7 +404,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 		return projectName, err
 	}
 
-	projectName, err = setProjectNameBasedonDirectoryName(dir)
+	projectName, err = convertToValidContainerName(dir)
 	if err != nil {
 		return "", err
 	}

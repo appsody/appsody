@@ -36,13 +36,6 @@ func TestStopWithoutName(t *testing.T) {
 	defer os.RemoveAll(projectDir)
 	t.Log("Created project dir: " + projectDir)
 
-	// temp code until we remove os.Getwd from project name
-	oldWd, _ := os.Getwd()
-	_ = os.Chdir(projectDir)
-	defer func() {
-		_ = os.Chdir(oldWd)
-	}()
-
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
