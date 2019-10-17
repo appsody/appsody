@@ -60,7 +60,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			if exists {
-				return errors.New("A stack named" + stack + "already exists in your directory. Specify a unique stack name")
+				return errors.New("A stack named " + stack + " already exists in your directory. Specify a unique stack name")
 			}
 
 			err = downloadFileToDisk("https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
@@ -79,7 +79,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			if !valid {
-				return errors.Errorf("Invalid stack name:" + stack + ". Stack name must be in the format <repo>/<stack>")
+				return errors.Errorf("Invalid stack name: " + config.copy + ". Stack name must be in the format <repo>/<stack>")
 			}
 
 			//deleting the stacks repo zip
@@ -129,15 +129,13 @@ func unzip(src string, dest string, copy string) (bool, error) {
 		}
 
 		if runtime.GOOS == "windows" {
-			fileName := strings.Replace(f.Name, "/stacks-master", "", -1)
-			if !strings.HasPrefix(fileName, "stacks-master/"+copy+"/") {
+			if !strings.HasPrefix(f.Name, "stacks-master/"+copy+"/") {
 				continue
 			} else {
 				valid = true
 			}
 		} else {
-			fileName := strings.Replace(f.Name, string(os.PathSeparator)+"stacks-master", "", -1)
-			if !strings.HasPrefix(fileName, filepath.Join("stacks-master", string(os.PathSeparator), copy)+string(os.PathSeparator)) {
+			if !strings.HasPrefix(f.Name, filepath.Join("stacks-master", string(os.PathSeparator), copy)+string(os.PathSeparator)) {
 				continue
 			} else {
 				valid = true
