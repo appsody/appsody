@@ -1,0 +1,10 @@
+stack: appsody/nodejs-express:0.2
+project-name: payment-bff
+application-name: mobile-card
+version: 0.2.7
+description: Payment service
+license: Apache-2.0
+maintainers:
+  - name: Neeraj Laad
+    email: neeraj.laad@gmail.com
+    github-id: neeraj-laad
