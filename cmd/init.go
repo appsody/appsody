@@ -259,7 +259,7 @@ func install(config *initCommandConfig) error {
 	if configErr != nil {
 		return configErr
 	}
-	platformDefinition := projectConfig.Platform
+	platformDefinition := projectConfig.Stack
 
 	Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
@@ -477,7 +477,7 @@ func extractAndInitialize(config *initCommandConfig) error {
 	if configErr != nil {
 		return configErr
 	}
-	stackImage := projectConfig.Platform
+	stackImage := projectConfig.Stack
 	containerProjectDir, containerProjectDirErr := getExtractDir(config.RootCommandConfig)
 	if containerProjectDirErr != nil {
 		return containerProjectDirErr

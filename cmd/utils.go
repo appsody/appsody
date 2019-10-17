@@ -41,7 +41,13 @@ import (
 )
 
 type ProjectConfig struct {
-	Platform string
+	Stack           string
+	ProjectName     string `mapstructure:"project-name"`
+	ApplicationName string `mapstructure:"application-name"`
+	Version         string
+	Description     string
+	License         string
+	Maintainers     []Maintainer
 }
 
 type NotAnAppsodyProject string
@@ -53,6 +59,10 @@ const ConfigFile = ".appsody-config.yaml"
 const LatestVersionURL = "https://github.com/appsody/appsody/releases/latest"
 
 const workDirNotSet = ""
+
+const ociKeyPrefix = "org.opencontainers.image."
+
+const appsodyKeyPrefix = "dev.appsody.stack."
 
 // Checks whether an inode (it does not bother
 // about file or folder) exists or not.
@@ -85,7 +95,7 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	if projectConfigErr != nil {
 		return "", projectConfigErr
 	}
-	imageName := projectConfig.Platform
+	imageName := projectConfig.Stack
 	pullErrs := pullImage(imageName, config)
 	if pullErrs != nil {
 		return "", pullErrs
@@ -272,6 +282,7 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 
 func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 	if config.ProjectConfig == nil {
+		var projectConfig ProjectConfig
 		dir, perr := getProjectDir(config)
 		if perr != nil {
 			var tempProjectConfig ProjectConfig
@@ -284,19 +295,23 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 		Debug.log("Project config file set to: ", appsodyConfig)
 		err := v.ReadInConfig()
 		if err != nil {
-			var tempProjectConfig ProjectConfig
-			return tempProjectConfig, errors.Errorf("Error reading project config %v", err)
+			return projectConfig, errors.Errorf("Error reading project config %v", err)
+		}
+
+		err = v.Unmarshal(&projectConfig)
+		if err != nil {
+			return projectConfig, errors.Errorf("Error reading project config %v", err)
 
 		}
-		stack := v.GetString("stack")
-		Debug.log("Project stack from config file: ", stack)
+
+		Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
 		Debug.log("Image repository set to: ", imageRepo)
 		if imageRepo != "index.docker.io" {
-			stack = imageRepo + "/" + stack
+			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
-		Debug.log("Pulling stack image as: ", stack)
-		config.ProjectConfig = &ProjectConfig{stack}
+
+		config.ProjectConfig = &projectConfig
 	}
 	return *config.ProjectConfig, nil
 }
@@ -437,50 +452,176 @@ func UserHomeDir() string {
 	return homeDir
 }
 
+func getConfigLabels(config *RootCommandConfig) (map[string]string, error) {
+	var labels = make(map[string]string)
+
+	projectConfig, projectConfigErr := getProjectConfig(config)
+	if projectConfigErr != nil {
+		return labels, projectConfigErr
+	}
+
+	t := time.Now()
+
+	labels[ociKeyPrefix+"created"] = t.Format(time.RFC3339)
+
+	var maintainersString string
+	for index, maintainer := range projectConfig.Maintainers {
+		maintainersString += maintainer.Name + " (" + maintainer.Email + ")"
+		if index < len(projectConfig.Maintainers)-1 {
+			maintainersString += ", "
+		}
+	}
+
+	if maintainersString != "" {
+		labels[ociKeyPrefix+"authors"] = maintainersString
+	}
+
+	if projectConfig.Version != "" {
+		labels[ociKeyPrefix+"version"] = projectConfig.Version
+	}
+
+	if projectConfig.License != "" {
+		labels[ociKeyPrefix+"licenses"] = projectConfig.License
+	}
+
+	if projectConfig.ProjectName != "" {
+		labels[ociKeyPrefix+"title"] = projectConfig.ProjectName
+	}
+	if projectConfig.Description != "" {
+		labels[ociKeyPrefix+"description"] = projectConfig.Description
+	}
+
+	if projectConfig.Stack != "" {
+		labels[appsodyKeyPrefix+"configured"] = projectConfig.Stack
+	}
+
+	if projectConfig.ApplicationName != "" {
+		labels["dev.appsody.application"] = projectConfig.ApplicationName
+	}
+
+	return labels, nil
+}
+
+func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
+	gitInfo, err := GetGitInfo(config.Dryrun)
+	if err != nil {
+		return nil, err
+	}
+
+	var labels = make(map[string]string)
+
+	if gitInfo.RemoteURL != "" {
+		labels[ociKeyPrefix+"url"] = gitInfo.RemoteURL
+		labels[ociKeyPrefix+"documentation"] = gitInfo.RemoteURL
+		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "tree/" + gitInfo.Branch
+	}
+
+	var commitInfo = gitInfo.Commit
+	revisionKey := appsodyKeyPrefix + "revision"
+	if commitInfo.SHA != "" {
+		labels[revisionKey] = commitInfo.SHA
+		if gitInfo.ChangesMade {
+			labels[revisionKey] += "-modified"
+		}
+	}
+
+	return labels, nil
+}
+
+func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
+	if config.cachedStackLabels == nil {
+		config.cachedStackLabels = make(map[string]string)
+		var data []map[string]interface{}
+		var buildahData map[string]interface{}
+		var containerConfig map[string]interface{}
+		projectConfig, projectConfigErr := getProjectConfig(config)
+		if projectConfigErr != nil {
+			return nil, projectConfigErr
+		}
+		imageName := projectConfig.Stack
+		pullErrs := pullImage(imageName, config)
+		if pullErrs != nil {
+			return nil, pullErrs
+		}
+
+		if config.Buildah {
+			cmdName := "buildah"
+			cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
+			Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
+			inspectCmd := exec.Command(cmdName, cmdArgs...)
+			inspectOut, inspectErr := inspectCmd.Output()
+			if inspectErr != nil {
+				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
+			}
+			err := json.Unmarshal([]byte(inspectOut), &buildahData)
+			if err != nil {
+				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+			}
+			containerConfig = buildahData["config"].(map[string]interface{})
+			Debug.Log("Config inspected by buildah: ", config)
+		} else {
+			inspectOut, inspectErr := RunDockerInspect(imageName)
+			if inspectErr != nil {
+				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
+			}
+			err := json.Unmarshal([]byte(inspectOut), &data)
+			if err != nil {
+				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
+			}
+			containerConfig = data[0]["Config"].(map[string]interface{})
+		}
+
+		if containerConfig["Labels"] != nil {
+			labelsMap := containerConfig["Labels"].(map[string]interface{})
+
+			for key, value := range labelsMap {
+				config.cachedStackLabels[key] = value.(string)
+			}
+		}
+	}
+	return config.cachedStackLabels, nil
+}
+
 func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	// TODO cache this so the docker inspect command only runs once per cli invocation
 	var data []map[string]interface{}
 	var buildahData map[string]interface{}
 	var portValues []string
+	var containerConfig map[string]interface{}
 	projectConfig, projectConfigErr := getProjectConfig(config)
 	if projectConfigErr != nil {
 		return nil, projectConfigErr
 	}
-	imageName := projectConfig.Platform
+	imageName := projectConfig.Stack
 	pullErrs := pullImage(imageName, config)
 	if pullErrs != nil {
 		return nil, pullErrs
 	}
 
-	cmdName := "docker"
-	cmdArgs := []string{"image", "inspect", imageName}
 	if config.Buildah {
-		cmdName = "buildah"
-		cmdArgs = []string{"inspect", "--format", "{{.Config}}", imageName}
-	}
-	Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
-	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := inspectCmd.Output()
-	if inspectErr != nil {
-		return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
-	}
-	if config.Buildah {
+		cmdName := "buildah"
+		cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
+		Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
+		inspectCmd := exec.Command(cmdName, cmdArgs...)
+		inspectOut, inspectErr := inspectCmd.Output()
+		if inspectErr != nil {
+			return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
+		}
 		err := json.Unmarshal([]byte(inspectOut), &buildahData)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
+		containerConfig = buildahData["config"].(map[string]interface{})
+		Debug.Log("Config inspected by buildah: ", config)
 	} else {
+		inspectOut, inspectErr := RunDockerInspect(imageName)
+		if inspectErr != nil {
+			return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
+		}
 		err := json.Unmarshal([]byte(inspectOut), &data)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
-	}
-	var containerConfig map[string]interface{}
-
-	if config.Buildah {
-		containerConfig = buildahData["config"].(map[string]interface{})
-		Debug.Log("Config inspected by buildah: ", config)
-	} else {
 		containerConfig = data[0]["Config"].(map[string]interface{})
 	}
 
@@ -592,7 +733,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
-	codeWindWorkspace := "/codewind-workspace"
+	codeWindWorkspace := "/"
 
 	// Deployment YAML structs
 	type Port struct {
@@ -693,6 +834,8 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 	}
+	//Set the Pod release label to the container name
+	yamlMap.Spec.PodTemplate.Metadata.Labels["release"] = appName
 	//Set the workspace volume PVC
 	workspaceVolumeName := "appsody-workspace"
 	workspacePvcName := os.Getenv("PVC_NAME")
@@ -821,7 +964,8 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
-			Name string `yaml:"name"`
+			Name   string            `yaml:"name"`
+			Labels map[string]string `yaml:"labels"`
 		} `yaml:"metadata"`
 		Spec struct {
 			Selector    map[string]string `yaml:"selector"`
@@ -834,6 +978,11 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 	service.APIVersion = "v1"
 	service.Kind = "Service"
 	service.Metadata.Name = fmt.Sprintf("%s-%s", appName, "service")
+
+	//Set the release label to the container name
+	service.Metadata.Labels = make(map[string]string, 1)
+	service.Metadata.Labels["release"] = appName
+
 	service.Spec.Selector = make(map[string]string, 1)
 	service.Spec.Selector["app"] = appName
 	service.Spec.ServiceType = "NodePort"
@@ -900,13 +1049,16 @@ func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName 
 	ingress.Metadata.Name = fmt.Sprintf("%s-%s", appName, "ingress")
 
 	ingress.Spec.Rules = make([]IngressRule, 1)
-	cheIngressHost := os.Getenv("CHE_INGRESS_HOST")
-	if cheIngressHost != "" {
-		ingress.Spec.Rules[0].Host = cheIngressHost
+	//cheIngressHost := os.Getenv("CHE_INGRESS_HOST")
+	//Ignore the CW variable for now
+	ingressHost := ""
+	if ingressHost != "" {
+		ingress.Spec.Rules[0].Host = ingressHost
 	} else {
 		// We set it to a host name that's resolvable by nip.io
 		ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
 	}
+	ingress.Spec.Rules[0].Host = ingressHost
 	ingress.Spec.Rules[0].HTTP.Paths = make([]IngressPath, 1)
 	ingress.Spec.Rules[0].HTTP.Paths[0].Path = "/"
 	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServiceName = fmt.Sprintf("%s-%s", appName, "service")

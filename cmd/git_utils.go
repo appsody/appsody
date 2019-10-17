@@ -166,7 +166,6 @@ func RunGitConfigLocalRemoteOriginURL(upstream string, dryrun bool) (string, err
 func RunGitGetLastCommit(URL string, dryrun bool) (CommitInfo, error) {
 	//git log -n 1 --pretty=format:"{"author":"%cn","sha":"%h","date":"%cd”}”
 	kargs := []string{"log", "-n", "1", "--pretty=format:'{\"author\":\"%cn\",\"sha\":\"%H\",\"date\":\"%cd\"}'"}
-	kargs = append(kargs)
 	var commitInfo CommitInfo
 	commitStringInfo, gitErr := RunGit(kargs, dryrun)
 	if gitErr != nil {
@@ -186,7 +185,6 @@ func RunGitGetLastCommit(URL string, dryrun bool) (CommitInfo, error) {
 //RunGitVersion
 func RunGitVersion(dryrun bool) (string, error) {
 	kargs := []string{"version"}
-	kargs = append(kargs)
 	versionInfo, gitErr := RunGit(kargs, dryrun)
 	if gitErr != nil {
 		return "", gitErr
