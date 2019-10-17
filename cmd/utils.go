@@ -900,13 +900,16 @@ func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName 
 	ingress.Metadata.Name = fmt.Sprintf("%s-%s", appName, "ingress")
 
 	ingress.Spec.Rules = make([]IngressRule, 1)
-	cheIngressHost := os.Getenv("CHE_INGRESS_HOST")
-	if cheIngressHost != "" {
-		ingress.Spec.Rules[0].Host = cheIngressHost
+	//cheIngressHost := os.Getenv("CHE_INGRESS_HOST")
+	//Ignore the CW variable for now
+	ingressHost := ""
+	if ingressHost != "" {
+		ingress.Spec.Rules[0].Host = ingressHost
 	} else {
 		// We set it to a host name that's resolvable by nip.io
 		ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
 	}
+	ingress.Spec.Rules[0].Host = ingressHost
 	ingress.Spec.Rules[0].HTTP.Paths = make([]IngressPath, 1)
 	ingress.Spec.Rules[0].HTTP.Paths[0].Path = "/"
 	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServiceName = fmt.Sprintf("%s-%s", appName, "service")
