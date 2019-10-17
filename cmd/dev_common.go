@@ -320,7 +320,11 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, dockerMounts, dryrun)
+		depsMount, err := GetEnvVar("APPSODY_DEPS", config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
+		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, dockerMounts, depsMount, dryrun)
 		if err != nil {
 			return err
 		}
