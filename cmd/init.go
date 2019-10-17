@@ -579,24 +579,20 @@ func parseProjectParm(projectParm string, config *RootCommandConfig) (string, st
 }
 
 func defaultProjectName(config *RootCommandConfig) string {
-	projectName, _ := getProjectName(config)
-
-	if projectName == "" || projectName == "my-project" {
-
-		projectDirPath, err := os.Getwd()
-
-		if err != nil {
-			Error.log(err)
+	projectDirPath, perr := getProjectDir(config)
+	if perr != nil {
+		if _, ok := perr.(*NotAnAppsodyProject); ok {
+			//Debug.log("Cannot retrieve the project dir - continuing: ", perr)
+		} else {
+			Error.logf("Error occurred retrieving project dir... exiting: %s", perr)
 			os.Exit(1)
 		}
+	}
 
-		projectName, err := setProjectNameBasedonDirectoryName(projectDirPath)
-		if err != nil {
-			Error.log(err)
-			os.Exit(1)
-		}
-
-		return projectName
+	projectName, err := convertToValidContainerName(projectDirPath)
+	if err != nil {
+		Error.log(err)
+		os.Exit(1)
 	}
 	return projectName
 }
