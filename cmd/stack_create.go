@@ -57,7 +57,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			stack := args[0]
 
-			match, err := validateKubernetesResourceName(stack)
+			match, err := isValidContainerName(stack)
 
 			if !match {
 				return err

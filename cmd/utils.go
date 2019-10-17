@@ -35,8 +35,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	"github.com/spf13/viper"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -271,58 +271,23 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	projectDir, err := Exists(appsodyConfig)
 	if err != nil {
 		Error.log(err)
-		return "", err
+		return config.ProjectDir, err
 	}
 	if !projectDir {
 		var e NotAnAppsodyProject = "The current directory is not a valid appsody project. Run `appsody init <stack>` to create one. Run `appsody list` to see the available stacks."
-		return "", &e
+		return config.ProjectDir, &e
 	}
 	return config.ProjectDir, nil
 }
 
-func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
-	if config.ProjectConfig == nil {
-		var projectConfig ProjectConfig
-		dir, perr := getProjectDir(config)
-		if perr != nil {
-			var tempProjectConfig ProjectConfig
-			return tempProjectConfig, errors.Errorf("The current directory is not a valid appsody project. Run appsody init <stack> to create one: %v", perr)
-
-		}
-		appsodyConfig := filepath.Join(dir, ConfigFile)
-		v := viper.New()
-		v.SetConfigFile(appsodyConfig)
-		Debug.log("Project config file set to: ", appsodyConfig)
-		err := v.ReadInConfig()
-		if err != nil {
-			return projectConfig, errors.Errorf("Error reading project config %v", err)
-		}
-
-		err = v.Unmarshal(&projectConfig)
-		if err != nil {
-			return projectConfig, errors.Errorf("Error reading project config %v", err)
-
-		}
-
-		Debug.log("Project stack from config file: ", projectConfig.Stack)
-		imageRepo := config.CliConfig.GetString("images")
-		Debug.log("Image repository set to: ", imageRepo)
-		if imageRepo != "index.docker.io" {
-			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
-		}
-
-		config.ProjectConfig = &projectConfig
-	}
-	return *config.ProjectConfig, nil
-}
-
-func getOperatorHome(config *RootCommandConfig) string {
-	operatorHome := config.CliConfig.GetString("operator")
-	Debug.log("Operator home set to: ", operatorHome)
-	return operatorHome
-}
-
-func validateKubernetesResourceName(name string) (bool, error) {
+// isValidContainerName tests the given string against Appsody name rules.
+// This common set of name rules for Appsody must comply to Kubernetes
+// resource and Docker container name rules. The current rules are:
+// 1. Must start with a lowercase letter
+// 2. May only contain lowercase letters, digits, and dashes
+// 3. Must end with a letter or digit
+// 4. Must be less than 128 characters
+func isValidContainerName(name string) (bool, error) {
 	match, err := regexp.MatchString("^[a-z][a-z0-9-]*[a-z0-9]$", name)
 
 	if err != nil {
@@ -337,16 +302,174 @@ func validateKubernetesResourceName(name string) (bool, error) {
 	}
 
 	return match, errors.Errorf("Invalid name. The name must start with a lowercase letter and can contain only lowercase letters, numbers, or dashes, and should not end with a dash.")
+
+}
+
+func setProjectName(projectDir string, projectName string) error {
+	appsodyConfig := filepath.Join(projectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+
+	if err != nil {
+		return err
+	}
+
+	if projectName != "" && projectName != "my-project" {
+		match, err := isValidContainerName(projectName)
+
+		if !match {
+			return err
+		}
+
+		v.Set("project-name", projectName)
+		err = v.WriteConfig()
+		if err != nil {
+			return err
+		}
+
+		Info.log("Your Appsody project name is ", projectName)
+	} else {
+		projectName, err = convertToValidContainerName(projectDir)
+		if err != nil {
+			return err
+		}
+
+		v.Set("project-name", projectName)
+		err = v.WriteConfig()
+
+		if err != nil {
+			return err
+		}
+		Info.log("Your Appsody project name is ", projectName)
+	}
+	return nil
+}
+
+// convertToValidContainerName takes an existing string or directory path
+// and returns a name that conforms to isValidContainerName rules
+func convertToValidContainerName(projectDir string) (string, error) {
+	projectName := strings.ToLower(filepath.Base(projectDir))
+	match, _ := isValidContainerName(projectName)
+
+	if !match {
+		projectName = "appsody-" + strings.ToLower(filepath.Base(projectDir)) + "-app"
+		reg, err := regexp.Compile("[^a-z0-9]+")
+		if err != nil {
+			return "", err
+		}
+		projectName = reg.ReplaceAllString(projectName, "-")
+
+		match, err := isValidContainerName(projectName)
+
+		if !match {
+			return projectName, err
+		}
+	}
+
+	return projectName, nil
 }
 
 func getProjectName(config *RootCommandConfig) (string, error) {
-	projectDir, err := getProjectDir(config)
+	dir, err := getProjectDir(config)
 	if err != nil {
 		return "my-project", err
 	}
-	projectName := strings.ToLower(filepath.Base(projectDir))
-	projectName = strings.ReplaceAll(projectName, "_", "-")
+	if config.projectName != "" && config.projectName != "my-project" {
+		match, err := isValidContainerName(config.projectName)
+
+		if !match {
+			return "", err
+		}
+		return config.projectName, err
+	}
+	appsodyConfig := filepath.Join(dir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err = v.ReadInConfig()
+
+	if err != nil {
+		return "my-project", err
+	}
+
+	projectName := v.GetString("project-name")
+
+	if projectName != "" && projectName != "my-project" {
+		match, err := isValidContainerName(projectName)
+
+		if !match {
+			return "", err
+		}
+		config.projectName = projectName
+		return projectName, err
+	}
+
+	projectName, err = convertToValidContainerName(dir)
+	if err != nil {
+		return "", err
+	}
+
+	v.Set("project-name", projectName)
+	err = v.WriteConfig()
+
+	if err != nil {
+		return "", err
+	}
+	Info.log("Your Appsody project name is ", projectName)
+
+	config.projectName = projectName
 	return projectName, nil
+
+}
+
+func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
+	if config.ProjectConfig == nil {
+		var projectConfig ProjectConfig
+		dir, perr := getProjectDir(config)
+		if perr != nil {
+			var tempProjectConfig ProjectConfig
+			return tempProjectConfig, errors.Errorf("The current directory is not a valid appsody project. Run appsody init <stack> to create one: %v", perr)
+
+		}
+		appsodyConfig := filepath.Join(dir, ConfigFile)
+
+		v := viper.New()
+		v.SetConfigFile(appsodyConfig)
+		Debug.log("Project config file set to: ", appsodyConfig)
+
+		err := v.ReadInConfig()
+
+		if err != nil {
+			return projectConfig, errors.Errorf("Error reading project config %v", err)
+		}
+
+		err = v.Unmarshal(&projectConfig)
+		if err != nil {
+			return projectConfig, errors.Errorf("Error reading project config %v", err)
+
+		}
+
+		projectName := v.GetString("project-name")
+		stack := v.GetString("stack")
+
+		Debug.log("Project stack from config file: ", projectConfig.Stack)
+		imageRepo := config.CliConfig.GetString("images")
+		Debug.log("Image repository set to: ", imageRepo)
+		if imageRepo != "index.docker.io" {
+			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
+		}
+		projectConfig.Stack = stack
+		projectConfig.ProjectName = projectName
+
+		config.ProjectConfig = &projectConfig
+	}
+	return *config.ProjectConfig, nil
+}
+
+func getOperatorHome(config *RootCommandConfig) string {
+	operatorHome := config.CliConfig.GetString("operator")
+	Debug.log("Operator home set to: ", operatorHome)
+	return operatorHome
 }
 
 func execAndWait(command string, args []string, logger appsodylogger, dryrun bool) error {
@@ -750,7 +873,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
-	codeWindWorkspace := "/codewind-workspace"
+	codeWindWorkspace := "/"
 
 	// Deployment YAML structs
 	type Port struct {
@@ -851,6 +974,8 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 	}
+	//Set the Pod release label to the container name
+	yamlMap.Spec.PodTemplate.Metadata.Labels["release"] = appName
 	//Set the workspace volume PVC
 	workspaceVolumeName := "appsody-workspace"
 	workspacePvcName := os.Getenv("PVC_NAME")
@@ -979,7 +1104,8 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
-			Name string `yaml:"name"`
+			Name   string            `yaml:"name"`
+			Labels map[string]string `yaml:"labels"`
 		} `yaml:"metadata"`
 		Spec struct {
 			Selector    map[string]string `yaml:"selector"`
@@ -992,6 +1118,11 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 	service.APIVersion = "v1"
 	service.Kind = "Service"
 	service.Metadata.Name = fmt.Sprintf("%s-%s", appName, "service")
+
+	//Set the release label to the container name
+	service.Metadata.Labels = make(map[string]string, 1)
+	service.Metadata.Labels["release"] = appName
+
 	service.Spec.Selector = make(map[string]string, 1)
 	service.Spec.Selector["app"] = appName
 	service.Spec.ServiceType = "NodePort"
@@ -1058,13 +1189,16 @@ func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName 
 	ingress.Metadata.Name = fmt.Sprintf("%s-%s", appName, "ingress")
 
 	ingress.Spec.Rules = make([]IngressRule, 1)
-	cheIngressHost := os.Getenv("CHE_INGRESS_HOST")
-	if cheIngressHost != "" {
-		ingress.Spec.Rules[0].Host = cheIngressHost
+	//cheIngressHost := os.Getenv("CHE_INGRESS_HOST")
+	//Ignore the CW variable for now
+	ingressHost := ""
+	if ingressHost != "" {
+		ingress.Spec.Rules[0].Host = ingressHost
 	} else {
 		// We set it to a host name that's resolvable by nip.io
 		ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
 	}
+	ingress.Spec.Rules[0].Host = ingressHost
 	ingress.Spec.Rules[0].HTTP.Paths = make([]IngressPath, 1)
 	ingress.Spec.Rules[0].HTTP.Paths[0].Path = "/"
 	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServiceName = fmt.Sprintf("%s-%s", appName, "service")
