@@ -693,6 +693,8 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 	}
+	//Set the Pod release label to the container name
+	yamlMap.Spec.PodTemplate.Metadata.Labels["release"] = appName
 	//Set the workspace volume PVC
 	workspaceVolumeName := "appsody-workspace"
 	workspacePvcName := os.Getenv("PVC_NAME")
@@ -821,7 +823,8 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
-			Name string `yaml:"name"`
+			Name   string            `yaml:"name"`
+			Labels map[string]string `yaml:"labels"`
 		} `yaml:"metadata"`
 		Spec struct {
 			Selector    map[string]string `yaml:"selector"`
@@ -834,6 +837,11 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 	service.APIVersion = "v1"
 	service.Kind = "Service"
 	service.Metadata.Name = fmt.Sprintf("%s-%s", appName, "service")
+
+	//Set the release label to the container name
+	service.Metadata.Labels = make(map[string]string, 1)
+	service.Metadata.Labels["release"] = appName
+
 	service.Spec.Selector = make(map[string]string, 1)
 	service.Spec.Selector["app"] = appName
 	service.Spec.ServiceType = "NodePort"
