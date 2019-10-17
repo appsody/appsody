@@ -17,6 +17,7 @@ package cmd_test
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
@@ -112,4 +113,87 @@ spec:
             imagePullPolicy: Always
 `
 	return yamltempl
+}
+
+var validProjectNameTests = []string{
+	"my-project",
+	"my---project",
+	"my-project1",
+	"my-project123",
+	"my-pr0ject",
+	"myproject",
+	"m",
+	"m1",
+	"appsody-project",
+	// 127 chars is valid
+	"a234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567",
+}
+
+func TestValidProjectNames(t *testing.T) {
+
+	for _, test := range validProjectNameTests {
+		t.Run(fmt.Sprintf("Test Valid Project Name \"%s\"", test), func(t *testing.T) {
+			isValid, err := cmd.IsValidProjectName(test)
+			if err != nil {
+				t.Error(err)
+			}
+			if !isValid {
+				t.Error("Not a valid project name: ", test)
+			}
+			converted, err := cmd.ConvertToValidProjectName(test)
+			if err != nil {
+				t.Error(err)
+			}
+			if test != converted {
+				t.Error("Valid project name not the same on conversion: ", test)
+			}
+		})
+	}
+}
+
+var invalidProjectNameTests = []struct {
+	input     string
+	converted string
+}{
+	{"my-project-", "my-project-app"},
+	{"-my-project", "appsody-my-project"},
+	{"My-project", "my-project"},
+	{"my-Project", "my-project"},
+	{"1my-project", "appsody-1my-project"},
+	{"my-project----", "my-project-app"},
+	{"my-proj%ect", "my-proj-ect"},
+	{"my-proj#$&%ect", "my-proj-ect"},
+	{"M", "m"},
+	{"-", "appsody-app"},
+	{".", "appsody-app"},
+	{"path/to/pr0ject", "pr0ject"},
+	{"/path/to/pr0ject", "pr0ject"},
+	{"path/to/1my-project", "appsody-1my-project"},
+	// 128 chars is invalid
+	{"a2345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678",
+		"a234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567"},
+}
+
+func TestInvalidProjectNames(t *testing.T) {
+
+	for _, test := range invalidProjectNameTests {
+		t.Run(fmt.Sprintf("Test Invalid Project Name \"%s\"", test.input), func(t *testing.T) {
+			isValid, err := cmd.IsValidProjectName(test.input)
+			if err == nil {
+				t.Error("Expected an error from IsValidProjectName but did not return one.")
+			} else if !strings.Contains(err.Error(), "Invalid project-name") {
+				t.Error("Expected the error to contain \"Invalid project-name\"", err)
+			}
+			if isValid {
+				t.Error("Valid project name when expected to be invalid: ", test)
+			}
+			converted, err := cmd.ConvertToValidProjectName(test.input)
+			if err != nil {
+				t.Error(err)
+			}
+			if test.converted != converted {
+				t.Errorf("Invalid project name \"%s\" converted to \"%s\" but expected \"%s\"", test.input, converted, test.converted)
+			}
+		})
+	}
 }
