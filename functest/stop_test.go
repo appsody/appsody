@@ -36,6 +36,9 @@ func TestStopWithoutName(t *testing.T) {
 	defer os.RemoveAll(projectDir)
 	t.Log("Created project dir: " + projectDir)
 
+	// temp code until we remove os.Getwd from project name
+	_ = os.Chdir(projectDir)
+
 	// appsody init nodejs-express
 	_, err = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
 	if err != nil {
