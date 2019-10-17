@@ -683,6 +683,14 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	}
 	//Set the name
 	yamlMap.Metadata.Name = appName
+	//Set the service account if provided by an env var
+	serviceAccount := os.Getenv("SERVICE_ACCOUNT_NAME")
+	if serviceAccount != "" {
+		Debug.Log("Detected service account name env var: ", serviceAccount)
+		yamlMap.Spec.PodTemplate.Spec.ServiceAccountName = serviceAccount
+	} else {
+		Debug.log("No service account name env var, leaving the appsody-sa default")
+	}
 	//Set the image
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].Name = appName
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].Image = imageName
