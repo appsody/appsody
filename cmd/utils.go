@@ -35,8 +35,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	"github.com/spf13/viper"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -271,13 +271,166 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	projectDir, err := Exists(appsodyConfig)
 	if err != nil {
 		Error.log(err)
-		return "", err
+		return config.ProjectDir, err
 	}
 	if !projectDir {
 		var e NotAnAppsodyProject = "The current directory is not a valid appsody project. Run `appsody init <stack>` to create one. Run `appsody list` to see the available stacks."
-		return "", &e
+		return config.ProjectDir, &e
 	}
 	return config.ProjectDir, nil
+}
+
+// IsValidProjectName tests the given string against Appsody name rules.
+// This common set of name rules for Appsody must comply to Kubernetes
+// resource and Docker container name rules. The current rules are:
+// 1. Must start with a lowercase letter
+// 2. Must contain only lowercase letters, digits, and dashes
+// 3. Must end with a letter or digit
+// 4. Must be less than 128 characters
+func IsValidProjectName(name string) (bool, error) {
+	match, err := regexp.MatchString("^[a-z]([a-z0-9-]*[a-z0-9])?$", name)
+
+	if err != nil {
+		return false, err
+	}
+
+	if match {
+		if len(name) < 128 {
+			return match, nil
+		}
+		return false, errors.Errorf("Invalid project-name \"%s\". The name cannot be longer than 128 characters", name)
+	}
+
+	return match, errors.Errorf("Invalid project-name \"%s\". The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash.", name)
+
+}
+
+func setProjectName(projectDir string, projectName string) error {
+	appsodyConfig := filepath.Join(projectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+
+	if err != nil {
+		return err
+	}
+
+	if projectName != "" && projectName != "my-project" {
+		match, err := IsValidProjectName(projectName)
+
+		if !match {
+			return err
+		}
+
+		v.Set("project-name", projectName)
+		err = v.WriteConfig()
+		if err != nil {
+			return err
+		}
+
+		Info.log("Your Appsody project name is ", projectName)
+	} else {
+		projectName, err = ConvertToValidProjectName(projectDir)
+		if err != nil {
+			return err
+		}
+
+		v.Set("project-name", projectName)
+		err = v.WriteConfig()
+
+		if err != nil {
+			return err
+		}
+		Info.log("Your Appsody project name is ", projectName)
+	}
+	return nil
+}
+
+// ConvertToValidProjectName takes an existing string or directory path
+// and returns a name that conforms to isValidContainerName rules
+func ConvertToValidProjectName(projectDir string) (string, error) {
+	projectName := strings.ToLower(filepath.Base(projectDir))
+	match, _ := IsValidProjectName(projectName)
+
+	if !match {
+		projectName = strings.ToLower(filepath.Base(projectDir))
+		if len(projectName) >= 128 {
+			projectName = projectName[0:127]
+		}
+
+		if projectName[0] < 'a' || projectName[0] > 'z' {
+			projectName = "appsody-" + projectName
+		}
+
+		reg, err := regexp.Compile("[^a-z0-9]+")
+		if err != nil {
+			return "", err
+		}
+		projectName = reg.ReplaceAllString(projectName, "-")
+
+		if projectName[len(projectName)-1] == '-' {
+			projectName = projectName + "app"
+		}
+
+		match, err := IsValidProjectName(projectName)
+		if !match {
+			return projectName, err
+		}
+	}
+
+	return projectName, nil
+}
+
+func getProjectName(config *RootCommandConfig) (string, error) {
+	dir, err := getProjectDir(config)
+	if err != nil {
+		return "my-project", err
+	}
+	if config.projectName != "" && config.projectName != "my-project" {
+		match, err := IsValidProjectName(config.projectName)
+
+		if !match {
+			return "", err
+		}
+		return config.projectName, err
+	}
+	appsodyConfig := filepath.Join(dir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err = v.ReadInConfig()
+
+	if err != nil {
+		return "my-project", err
+	}
+
+	projectName := v.GetString("project-name")
+
+	if projectName != "" && projectName != "my-project" {
+		match, err := IsValidProjectName(projectName)
+
+		if !match {
+			return "", err
+		}
+		config.projectName = projectName
+		return projectName, err
+	}
+
+	projectName, err = ConvertToValidProjectName(dir)
+	if err != nil {
+		return "", err
+	}
+
+	v.Set("project-name", projectName)
+	err = v.WriteConfig()
+
+	if err != nil {
+		return "", err
+	}
+	Info.log("Your Appsody project name is ", projectName)
+
+	config.projectName = projectName
+	return projectName, nil
+
 }
 
 func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
@@ -290,10 +443,13 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 
 		}
 		appsodyConfig := filepath.Join(dir, ConfigFile)
+
 		v := viper.New()
 		v.SetConfigFile(appsodyConfig)
 		Debug.log("Project config file set to: ", appsodyConfig)
+
 		err := v.ReadInConfig()
+
 		if err != nil {
 			return projectConfig, errors.Errorf("Error reading project config %v", err)
 		}
@@ -304,12 +460,17 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 
 		}
 
+		projectName := v.GetString("project-name")
+		stack := v.GetString("stack")
+
 		Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
 		Debug.log("Image repository set to: ", imageRepo)
 		if imageRepo != "index.docker.io" {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
+		projectConfig.Stack = stack
+		projectConfig.ProjectName = projectName
 
 		config.ProjectConfig = &projectConfig
 	}
@@ -320,16 +481,6 @@ func getOperatorHome(config *RootCommandConfig) string {
 	operatorHome := config.CliConfig.GetString("operator")
 	Debug.log("Operator home set to: ", operatorHome)
 	return operatorHome
-}
-
-func getProjectName(config *RootCommandConfig) (string, error) {
-	projectDir, err := getProjectDir(config)
-	if err != nil {
-		return "my-project", err
-	}
-	projectName := strings.ToLower(filepath.Base(projectDir))
-	projectName = strings.ReplaceAll(projectName, "_", "-")
-	return projectName, nil
 }
 
 func execAndWait(command string, args []string, logger appsodylogger, dryrun bool) error {
@@ -730,7 +881,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -848,9 +999,10 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	volumeIdx := len(yamlMap.Spec.PodTemplate.Spec.Volumes)
 	if volumeIdx < 1 {
 		yamlMap.Spec.PodTemplate.Spec.Volumes = make([]*Volume, 1)
+		yamlMap.Spec.PodTemplate.Spec.Volumes[0] = &workspaceVolume
+	} else {
+		yamlMap.Spec.PodTemplate.Spec.Volumes = append(yamlMap.Spec.PodTemplate.Spec.Volumes, &workspaceVolume)
 	}
-	yamlMap.Spec.PodTemplate.Spec.Volumes[volumeIdx] = &workspaceVolume
-
 	//Set the volume mounts
 	//Start with the Controller
 	appsodyMountController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
@@ -897,6 +1049,13 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		newVolumeMount := VolumeMount{"appsody-workspace", targetMount, sourceSubpath}
 		Debug.Log("Appending volume mount: ", newVolumeMount)
 		*volumeMounts = append(*volumeMounts, newVolumeMount)
+	}
+	// Dependencies mount
+
+	if depsMount != "" {
+		// Now the volume mount
+		depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
+		*volumeMounts = append(*volumeMounts, depVolumeMount)
 	}
 
 	//subPath := filepath.Base(pdir)
@@ -949,6 +1108,9 @@ spec:
         image: APPSODY_STACK
         imagePullPolicy: Always
         command: ["/.appsody/appsody-controller"]
+      volumes:
+      - name: dependencies
+        emptyDir: {}
 `
 	return yamltempl
 }
@@ -1623,6 +1785,69 @@ func IsEmptyDir(name string) bool {
 	_, err = f.Readdirnames(1)
 
 	return err == io.EOF
+}
+
+func downloadFile(href string, writer io.Writer) error {
+
+	// allow file:// scheme
+	t := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+	}
+	Debug.log("Proxy function for HTTP transport set to: ", &t.Proxy)
+	if runtime.GOOS == "windows" {
+		// For Windows, remove the root url. It seems to work fine with an empty string.
+		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("")))
+	} else {
+		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
+	}
+
+	httpClient := &http.Client{Transport: t}
+
+	req, err := http.NewRequest("GET", href, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		buf, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			Debug.log("Could not read contents of response body: ", err)
+		} else {
+			Debug.logf("Contents http response:\n%s", buf)
+		}
+		return fmt.Errorf("Could not download %s: %s", href, resp.Status)
+	}
+
+	_, err = io.Copy(writer, resp.Body)
+	if err != nil {
+		return fmt.Errorf("Could not copy http response body to writer: %s", err)
+	}
+	return nil
+}
+
+func downloadFileToDisk(url string, destFile string, dryrun bool) error {
+	if dryrun {
+		Info.logf("Dry Run -Skipping download of url: %s to destination %s", url, destFile)
+
+	} else {
+		outFile, err := os.Create(destFile)
+		if err != nil {
+			return err
+		}
+		defer outFile.Close()
+
+		err = downloadFile(url, outFile)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // tar and zip a directory into .tar.gz
