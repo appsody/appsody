@@ -298,7 +298,7 @@ func IsValidProjectName(name string) (bool, error) {
 		if len(name) < 128 {
 			return match, nil
 		}
-		return false, errors.Errorf("Invalid project-name \"%s\". The name cannot be longer than 128 characters", name)
+		return false, errors.Errorf("Invalid project-name \"%s\". The name cannot be longer than 127 characters", name)
 	}
 
 	return match, errors.Errorf("Invalid project-name \"%s\". The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash.", name)
