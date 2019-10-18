@@ -570,7 +570,7 @@ func defaultProjectName(config *RootCommandConfig) string {
 		}
 	}
 
-	projectName, err := convertToValidContainerName(projectDirPath)
+	projectName, err := ConvertToValidProjectName(projectDirPath)
 	if err != nil {
 		Error.log(err)
 		os.Exit(1)
