@@ -305,54 +305,13 @@ func IsValidProjectName(name string) (bool, error) {
 
 }
 
-func setProjectName(projectDir string, projectName string) error {
-	appsodyConfig := filepath.Join(projectDir, ConfigFile)
-	v := viper.New()
-	v.SetConfigFile(appsodyConfig)
-	err := v.ReadInConfig()
-
-	if err != nil {
-		return err
-	}
-
-	if projectName != "" && projectName != "my-project" {
-		match, err := IsValidProjectName(projectName)
-
-		if !match {
-			return err
-		}
-
-		v.Set("project-name", projectName)
-		err = v.WriteConfig()
-		if err != nil {
-			return err
-		}
-
-		Info.log("Your Appsody project name is ", projectName)
-	} else {
-		projectName, err = ConvertToValidProjectName(projectDir)
-		if err != nil {
-			return err
-		}
-
-		v.Set("project-name", projectName)
-		err = v.WriteConfig()
-
-		if err != nil {
-			return err
-		}
-		Info.log("Your Appsody project name is ", projectName)
-	}
-	return nil
-}
-
 // ConvertToValidProjectName takes an existing string or directory path
 // and returns a name that conforms to isValidContainerName rules
 func ConvertToValidProjectName(projectDir string) (string, error) {
 	projectName := strings.ToLower(filepath.Base(projectDir))
-	match, _ := IsValidProjectName(projectName)
+	valid, _ := IsValidProjectName(projectName)
 
-	if !match {
+	if !valid {
 		projectName = strings.ToLower(filepath.Base(projectDir))
 		if len(projectName) >= 128 {
 			projectName = projectName[0:127]
@@ -372,8 +331,8 @@ func ConvertToValidProjectName(projectDir string) (string, error) {
 			projectName = projectName + "app"
 		}
 
-		match, err := IsValidProjectName(projectName)
-		if !match {
+		valid, err := IsValidProjectName(projectName)
+		if !valid {
 			return projectName, err
 		}
 	}
@@ -382,55 +341,66 @@ func ConvertToValidProjectName(projectDir string) (string, error) {
 }
 
 func getProjectName(config *RootCommandConfig) (string, error) {
+	defaultProjectName := "my-project"
 	dir, err := getProjectDir(config)
 	if err != nil {
-		return "my-project", err
+		return defaultProjectName, err
 	}
-	if config.projectName != "" && config.projectName != "my-project" {
-		match, err := IsValidProjectName(config.projectName)
-
-		if !match {
-			return "", err
+	// check to see if project-name is set in .appsody-config.yaml
+	projectConfig, err := getProjectConfig(config)
+	if err != nil {
+		return defaultProjectName, err
+	}
+	if projectConfig.ProjectName != "" {
+		// project-name is in .appsody-config.yaml
+		valid, err := IsValidProjectName(projectConfig.ProjectName)
+		if !valid {
+			return defaultProjectName, err
 		}
-		return config.projectName, err
+		return projectConfig.ProjectName, nil
 	}
-	appsodyConfig := filepath.Join(dir, ConfigFile)
+	// project-name is not in .appsody-config.yaml so use the directory name and save
+	projectName, err := ConvertToValidProjectName(dir)
+	if err != nil {
+		return defaultProjectName, err
+	}
+
+	err = saveProjectNameToConfig(projectName, config)
+	if err != nil {
+		Warning.Log("Unable to save project name to ", ConfigFile)
+	}
+
+	return projectName, nil
+}
+
+func saveProjectNameToConfig(projectName string, config *RootCommandConfig) error {
+	valid, err := IsValidProjectName(projectName)
+	if !valid {
+		return err
+	}
+
+	// update the in-memory project name
+	projectConfig, err := getProjectConfig(config)
+	if err != nil {
+		return err
+	}
+	projectConfig.ProjectName = projectName
+
+	// save the project name to the .appsody-config.yaml
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
 	err = v.ReadInConfig()
-
 	if err != nil {
-		return "my-project", err
+		return err
 	}
-
-	projectName := v.GetString("project-name")
-
-	if projectName != "" && projectName != "my-project" {
-		match, err := IsValidProjectName(projectName)
-
-		if !match {
-			return "", err
-		}
-		config.projectName = projectName
-		return projectName, err
-	}
-
-	projectName, err = ConvertToValidProjectName(dir)
-	if err != nil {
-		return "", err
-	}
-
 	v.Set("project-name", projectName)
 	err = v.WriteConfig()
-
 	if err != nil {
-		return "", err
+		return err
 	}
-	Info.log("Your Appsody project name is ", projectName)
-
-	config.projectName = projectName
-	return projectName, nil
-
+	Info.log("Your Appsody project name has been set to ", projectName)
+	return nil
 }
 
 func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {

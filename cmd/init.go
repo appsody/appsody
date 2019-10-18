@@ -258,7 +258,7 @@ func install(config *initCommandConfig) error {
 
 	}
 
-	err := setProjectName(projectDir, config.projectName)
+	err := saveProjectNameToConfig(config.projectName, config.RootCommandConfig)
 	if err != nil {
 		return errors.Errorf("%v", err)
 	}
