@@ -265,7 +265,10 @@ func install(config *initCommandConfig) error {
 	if configErr != nil {
 		return configErr
 	}
-	if projectConfig.ProjectName == "" {
+
+	// save the project name to .appsody-config.yaml only if it doesn't already exist there
+	// or if the user specified --project-name on the command line
+	if projectConfig.ProjectName == "" || config.projectName != defaultProjectName(config.RootCommandConfig) {
 		err := saveProjectNameToConfig(config.projectName, config.RootCommandConfig)
 		if err != nil {
 			return err
