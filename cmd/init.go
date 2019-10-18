@@ -85,6 +85,10 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if noTemplate {
 		Warning.log("The --no-template flag has been deprecated.  Please specify a template value of \"none\" instead.")
 	}
+	valid, err := IsValidProjectName(config.projectName)
+	if !valid {
+		return err
+	}
 	//var index RepoIndex
 	var repos RepositoryFile
 	if _, err := repos.getRepos(config.RootCommandConfig); err != nil {
@@ -92,7 +96,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	}
 	var proceedWithTemplate bool
 
-	err := CheckPrereqs()
+	err = CheckPrereqs()
 	if err != nil {
 		Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
