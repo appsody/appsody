@@ -403,14 +403,11 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 	return nil
 }
 
-func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
+func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 	if config.ProjectConfig == nil {
-		var projectConfig ProjectConfig
 		dir, perr := getProjectDir(config)
 		if perr != nil {
-			var tempProjectConfig ProjectConfig
-			return tempProjectConfig, errors.Errorf("The current directory is not a valid appsody project. Run appsody init <stack> to create one: %v", perr)
-
+			return nil, perr
 		}
 		appsodyConfig := filepath.Join(dir, ConfigFile)
 
@@ -421,18 +418,17 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 		err := v.ReadInConfig()
 
 		if err != nil {
-			return projectConfig, errors.Errorf("Error reading project config %v", err)
+			return nil, errors.Errorf("Error reading project config %v", err)
 		}
 
+		var projectConfig ProjectConfig
 		err = v.Unmarshal(&projectConfig)
 		if err != nil {
-			return projectConfig, errors.Errorf("Error reading project config %v", err)
+			return &projectConfig, errors.Errorf("Error reading project config %v", err)
 
 		}
 
-		projectName := v.GetString("project-name")
 		stack := v.GetString("stack")
-
 		Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
 		Debug.log("Image repository set to: ", imageRepo)
@@ -440,11 +436,10 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
 		projectConfig.Stack = stack
-		projectConfig.ProjectName = projectName
 
 		config.ProjectConfig = &projectConfig
 	}
-	return *config.ProjectConfig, nil
+	return config.ProjectConfig, nil
 }
 
 func getOperatorHome(config *RootCommandConfig) string {

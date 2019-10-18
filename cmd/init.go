@@ -258,23 +258,24 @@ func install(config *initCommandConfig) error {
 	Info.log("Setting up the development environment")
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
-		return errors.Errorf("%v", perr)
-
+		return perr
 	}
 
-	err := saveProjectNameToConfig(config.projectName, config.RootCommandConfig)
-	if err != nil {
-		return errors.Errorf("%v", err)
-	}
 	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
 	if configErr != nil {
 		return configErr
+	}
+	if projectConfig.ProjectName == "" {
+		err := saveProjectNameToConfig(config.projectName, config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
 	}
 	platformDefinition := projectConfig.Stack
 
 	Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
-	err = extractAndInitialize(config)
+	err := extractAndInitialize(config)
 	if err != nil {
 		// For some reason without this sleep, the [InitScript] output log would get cut off and
 		// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
