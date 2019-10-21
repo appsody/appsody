@@ -77,8 +77,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		- Creates/updates an index file named "index-dev-local.yaml" and stores it in .appsody/stacks/dev.local
 		- Creates a tar.gz for each stack template and stores it in .appsody/stacks/dev.local
 		- Builds a Docker image named "dev.local/[stack name]:SNAPSHOT"
-		- Creates an Appsody repository named "dev-local"
-		- Adds/updates the "dev-local" repository of your Appsody configuration`,
+		- Creates an Appsody repository named "dev.local"
+		- Adds/updates the "dev.local" repository of your Appsody configuration`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.Log("******************************************")
@@ -305,20 +305,20 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return err
 			}
 
-			// if dev-local exists then remove it
-			if strings.Contains(repos, "name: dev-local") {
-				Info.Log("Existing dev-local repo found")
-				Info.Log("Removing dev-local repository")
+			// if dev.local exists then remove it
+			if strings.Contains(repos, "name: dev.local") {
+				Info.Log("Existing dev.local repo found")
+				Info.Log("Removing dev.local repository")
 
-				_, err := RunAppsodyCmdExec([]string{"repo", "remove", "dev-local"}, ".")
+				_, err := RunAppsodyCmdExec([]string{"repo", "remove", "dev.local"}, ".")
 				if err != nil {
 					return err
 				}
 			}
 
 			// create an appsody repo for the stack
-			Info.Log("Creating dev-local repository")
-			_, err = AddLocalFileRepo("dev-local", indexFileLocal)
+			Info.Log("Creating dev.local repository")
+			_, err = AddLocalFileRepo("dev.local", indexFileLocal)
 			if err != nil {
 				return errors.Errorf("Error running appsody command: %v", err)
 			}
