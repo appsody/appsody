@@ -72,6 +72,20 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return errors.New("A stack named " + stack + " already exists in your directory. Specify a unique stack name")
 			}
 
+			extractFolderExists, err := Exists(filepath.Join(getHome(rootConfig), "extract"))
+
+			if err != nil {
+				return err
+			}
+
+			if !extractFolderExists {
+				err = os.MkdirAll(filepath.Join(getHome(rootConfig), "extract"), os.ModePerm)
+
+				if err != nil {
+					return err
+				}
+			}
+
 			err = downloadFileToDisk("https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
 			if err != nil {
 				return err
