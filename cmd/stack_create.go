@@ -79,7 +79,11 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			if !extractFolderExists {
-				os.MkdirAll(filepath.Join(getHome(rootConfig), "extract"), os.ModePerm)
+				err = os.MkdirAll(filepath.Join(getHome(rootConfig), "extract"), os.ModePerm)
+
+				if err != nil {
+					return err
+				}
 			}
 
 			err = downloadFileToDisk("https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
