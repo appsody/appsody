@@ -81,7 +81,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return err
 			}
 
-			valid, unzipErr := unzip(filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy)
+			valid, unzipErr := unzip(filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy, config.Dryrun)
 
 			if unzipErr != nil {
 				return unzipErr
@@ -95,18 +95,34 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			os.Remove(filepath.Join(getHome(rootConfig), "extract", "repo.zip"))
 
 			//moving out the stack which we need
-			err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType)
-			if err != nil {
-				return err
+			if config.Dryrun {
+				Info.logf("Dry Run -Skipping moving out of stack: %s from %s", projectType, filepath.Join(stack, "stacks-master", config.copy))
+
+			} else {
+				err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType)
+				if err != nil {
+					return err
+				}
 			}
 
 			//deleting the folder from which stack is extracted
 			os.RemoveAll(stack)
 
 			//rename the stack to the name which user want
-			err = os.Rename(projectType, stack)
-			if err != nil {
-				return err
+			if config.Dryrun {
+				Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", projectType, stack)
+
+			} else {
+				err = os.Rename(projectType, stack)
+				if err != nil {
+					return err
+				}
+			}
+
+			if !config.Dryrun {
+				Info.log("Stack created: ", stack)
+			} else {
+				Info.log("Dry run complete")
 			}
 
 			return nil
@@ -118,72 +134,78 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 // Unzip will decompress a zip archive
 // within the zip file (parameter 1) to an output directory (parameter 2).
-func unzip(src string, dest string, copy string) (bool, error) {
-	valid := false
+func unzip(src string, dest string, copy string, dryrun bool) (bool, error) {
+	if dryrun {
+		Info.logf("Dry Run -Skipping unzip of file: %s from %s", copy, src)
 
-	r, err := zip.OpenReader(src)
-	if err != nil {
-		return valid, err
-	}
-	defer r.Close()
+	} else {
+		valid := false
 
-	for _, f := range r.File {
-
-		// Store filename/path for returning and using later on
-		fpath := filepath.Join(dest, f.Name)
-
-		// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
-		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return valid, errors.Errorf("%s: illegal file path", fpath)
+		r, err := zip.OpenReader(src)
+		if err != nil {
+			return valid, err
 		}
+		defer r.Close()
 
-		if runtime.GOOS == "windows" {
-			if !strings.HasPrefix(f.Name, "stacks-master/"+copy+"/") {
-				continue
-			} else {
-				valid = true
-			}
-		} else {
-			if !strings.HasPrefix(f.Name, filepath.Join("stacks-master", string(os.PathSeparator), copy)+string(os.PathSeparator)) {
-				continue
-			} else {
-				valid = true
-			}
-		}
+		for _, f := range r.File {
 
-		if f.FileInfo().IsDir() {
-			// Make Folder
-			err := os.MkdirAll(fpath, os.ModePerm)
+			// Store filename/path for returning and using later on
+			fpath := filepath.Join(dest, f.Name)
+
+			// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
+			if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+				return valid, errors.Errorf("%s: illegal file path", fpath)
+			}
+
+			if runtime.GOOS == "windows" {
+				if !strings.HasPrefix(f.Name, "stacks-master/"+copy+"/") {
+					continue
+				} else {
+					valid = true
+				}
+			} else {
+				if !strings.HasPrefix(f.Name, filepath.Join("stacks-master", string(os.PathSeparator), copy)+string(os.PathSeparator)) {
+					continue
+				} else {
+					valid = true
+				}
+			}
+
+			if f.FileInfo().IsDir() {
+				// Make Folder
+				err := os.MkdirAll(fpath, os.ModePerm)
+				if err != nil {
+					return valid, err
+				}
+				continue
+			}
+
+			// Make File
+			if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+				return valid, err
+			}
+
+			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 			if err != nil {
 				return valid, err
 			}
-			continue
+
+			rc, err := f.Open()
+			if err != nil {
+				return valid, err
+			}
+
+			_, err = io.Copy(outFile, rc)
+
+			// Close the file without defer to close before next iteration of loop
+			outFile.Close()
+			rc.Close()
+
+			if err != nil {
+				return valid, err
+			}
 		}
-
-		// Make File
-		if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
-			return valid, err
-		}
-
-		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-		if err != nil {
-			return valid, err
-		}
-
-		rc, err := f.Open()
-		if err != nil {
-			return valid, err
-		}
-
-		_, err = io.Copy(outFile, rc)
-
-		// Close the file without defer to close before next iteration of loop
-		outFile.Close()
-		rc.Close()
-
-		if err != nil {
-			return valid, err
-		}
+		return valid, nil
 	}
-	return valid, nil
+	return true, nil
 }
