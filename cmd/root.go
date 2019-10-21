@@ -91,6 +91,10 @@ Complete documentation is available at https://appsody.dev`,
 	rootCmd.SetArgs(args)
 	_ = rootCmd.ParseFlags(args) // ignore flag errors here because we haven't added all the commands
 	initLogging(rootConfig)
+	setupErr := setupConfig(args, rootConfig)
+	if setupErr != nil {
+		return rootCmd, setupErr
+	}
 
 	rootCmd.AddCommand(
 		newInitCmd(rootConfig),
@@ -111,10 +115,6 @@ Complete documentation is available at https://appsody.dev`,
 		newVersionCmd(rootCmd),
 	)
 
-	setupErr := setupConfig(args, rootConfig)
-	if setupErr != nil {
-		return rootCmd, setupErr
-	}
 	appsodyOnK8S := os.Getenv("APPSODY_K8S_EXPERIMENTAL")
 	if appsodyOnK8S == "TRUE" {
 		rootConfig.Buildah = true

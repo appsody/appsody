@@ -33,8 +33,9 @@ import (
 
 type initCommandConfig struct {
 	*RootCommandConfig
-	overwrite  bool
-	noTemplate bool
+	overwrite   bool
+	noTemplate  bool
+	projectName string
 }
 
 // these are global constants
@@ -74,14 +75,19 @@ setup the local dev environment.`,
 
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
+	defaultName := defaultProjectName(rootConfig)
+	initCmd.PersistentFlags().StringVar(&config.projectName, "project-name", defaultName, "Project Name for Kubernetes Service")
 	return initCmd
 }
 
 func initAppsody(stack string, template string, config *initCommandConfig) error {
-
 	noTemplate := config.noTemplate
 	if noTemplate {
 		Warning.log("The --no-template flag has been deprecated.  Please specify a template value of \"none\" instead.")
+	}
+	valid, err := IsValidProjectName(config.projectName)
+	if !valid {
+		return err
 	}
 	//var index RepoIndex
 	var repos RepositoryFile
@@ -90,7 +96,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	}
 	var proceedWithTemplate bool
 
-	err := CheckPrereqs()
+	err = CheckPrereqs()
 	if err != nil {
 		Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
@@ -252,12 +258,21 @@ func install(config *initCommandConfig) error {
 	Info.log("Setting up the development environment")
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
-		return errors.Errorf("%v", perr)
-
+		return perr
 	}
+
 	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
 	if configErr != nil {
 		return configErr
+	}
+
+	// save the project name to .appsody-config.yaml only if it doesn't already exist there
+	// or if the user specified --project-name on the command line
+	if projectConfig.ProjectName == "" || config.projectName != defaultProjectName(config.RootCommandConfig) {
+		err := saveProjectNameToConfig(config.projectName, config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
 	}
 	platformDefinition := projectConfig.Stack
 
@@ -272,25 +287,6 @@ func install(config *initCommandConfig) error {
 		Warning.log("Your local IDE may not build properly, but the Appsody container should still work.")
 		Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
 		os.Exit(0)
-	}
-	return nil
-}
-
-func downloadFileToDisk(url string, destFile string, dryrun bool) error {
-	if dryrun {
-		Info.logf("Dry Run -Skipping download of url: %s to destination %s", url, destFile)
-
-	} else {
-		outFile, err := os.Create(destFile)
-		if err != nil {
-			return err
-		}
-		defer outFile.Close()
-
-		err = downloadFile(url, outFile)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -569,4 +565,23 @@ func parseProjectParm(projectParm string, config *RootCommandConfig) (string, st
 	}
 
 	return "", "", errors.New("malformed project parameter - something unusual happened")
+}
+
+func defaultProjectName(config *RootCommandConfig) string {
+	projectDirPath, perr := getProjectDir(config)
+	if perr != nil {
+		if _, ok := perr.(*NotAnAppsodyProject); ok {
+			//Debug.log("Cannot retrieve the project dir - continuing: ", perr)
+		} else {
+			Error.logf("Error occurred retrieving project dir... exiting: %s", perr)
+			os.Exit(1)
+		}
+	}
+
+	projectName, err := ConvertToValidProjectName(projectDirPath)
+	if err != nil {
+		Error.log(err)
+		os.Exit(1)
+	}
+	return projectName
 }
