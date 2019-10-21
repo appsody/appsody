@@ -432,10 +432,10 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
 		Debug.log("Image repository set to: ", imageRepo)
+		projectConfig.Stack = stack
 		if imageRepo != "index.docker.io" {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
-		projectConfig.Stack = stack
 
 		config.ProjectConfig = &projectConfig
 	}
