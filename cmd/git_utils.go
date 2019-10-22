@@ -166,8 +166,8 @@ func RunGitConfigLocalRemoteOriginURL(upstream string, dryrun bool) (string, err
 
 	// Convert ssh remote to https
 	if strings.Contains(remote, "git@") {
-		strings.Replace(remote, ":", "/", -1)
-		strings.Replace(remote, "git@", "https://", -1)
+		remote = strings.Replace(remote, ":", "/", -1)
+		remote = strings.Replace(remote, "git@", "https://", -1)
 	}
 
 	return remote, err
@@ -219,6 +219,6 @@ func RunGit(kargs []string, dryrun bool) (string, error) {
 	}
 	Debug.log("Command successful...")
 	result := string(kout[:])
-	strings.TrimRight(result, "\n")
+	result = strings.TrimRight(result, "\n")
 	return result, nil
 }
