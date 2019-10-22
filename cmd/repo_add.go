@@ -44,7 +44,7 @@ func newRepoAddCmd(config *RootCommandConfig) *cobra.Command {
 			}
 			match, _ := regexp.MatchString("^[a-zA-Z0-9\\-_\\.]{1,50}$", repoName)
 			if !match {
-				return errors.Errorf("Invalid repository name. The <name> may only contain digits, numbers, dashes '-', underscores '_' and dots '.'.")
+				return errors.Errorf("The name can contain only letters (lowercase or uppercase), numbers, dashes '-', underscores '_', and periods '.'")
 
 			}
 
