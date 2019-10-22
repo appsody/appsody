@@ -633,7 +633,7 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 	}
 
 	var commitInfo = gitInfo.Commit
-	revisionKey := appsodyKeyPrefix + "revision"
+	revisionKey := ociKeyPrefix + "revision"
 	if commitInfo.SHA != "" {
 		labels[revisionKey] = commitInfo.SHA
 		if gitInfo.ChangesMade {

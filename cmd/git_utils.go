@@ -159,7 +159,18 @@ func RunGitConfigLocalRemoteOriginURL(upstream string, dryrun bool) (string, err
 
 	upstreamStart := strings.Split(upstream, "/")[0]
 	kargs := []string{"config", "--local", "remote." + upstreamStart + ".url"}
-	return RunGit(kargs, dryrun)
+	remote, err := RunGit(kargs, dryrun)
+	if err != nil {
+		return remote, err
+	}
+
+	// Convert ssh remote to https
+	if strings.Contains(remote, "git@") {
+		strings.Replace(remote, ":", "/", -1)
+		strings.Replace(remote, "git@", "https://", -1)
+	}
+
+	return remote, err
 }
 
 //RunGitLog issues git log
@@ -207,5 +218,7 @@ func RunGit(kargs []string, dryrun bool) (string, error) {
 		return "", errors.Errorf("git command failed: %s", string(kout[:]))
 	}
 	Debug.log("Command successful...")
-	return string(kout[:]), nil
+	result := string(kout[:])
+	strings.TrimRight(result, "\n")
+	return result, nil
 }
