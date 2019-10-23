@@ -298,61 +298,20 @@ func IsValidProjectName(name string) (bool, error) {
 		if len(name) < 128 {
 			return match, nil
 		}
-		return false, errors.Errorf("Invalid project-name \"%s\". The name cannot be longer than 128 characters", name)
+		return false, errors.Errorf("Invalid project-name \"%s\". The name must be less than 128 characters", name)
 	}
 
 	return match, errors.Errorf("Invalid project-name \"%s\". The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash.", name)
 
 }
 
-func setProjectName(projectDir string, projectName string) error {
-	appsodyConfig := filepath.Join(projectDir, ConfigFile)
-	v := viper.New()
-	v.SetConfigFile(appsodyConfig)
-	err := v.ReadInConfig()
-
-	if err != nil {
-		return err
-	}
-
-	if projectName != "" && projectName != "my-project" {
-		match, err := IsValidProjectName(projectName)
-
-		if !match {
-			return err
-		}
-
-		v.Set("project-name", projectName)
-		err = v.WriteConfig()
-		if err != nil {
-			return err
-		}
-
-		Info.log("Your Appsody project name is ", projectName)
-	} else {
-		projectName, err = ConvertToValidProjectName(projectDir)
-		if err != nil {
-			return err
-		}
-
-		v.Set("project-name", projectName)
-		err = v.WriteConfig()
-
-		if err != nil {
-			return err
-		}
-		Info.log("Your Appsody project name is ", projectName)
-	}
-	return nil
-}
-
 // ConvertToValidProjectName takes an existing string or directory path
 // and returns a name that conforms to isValidContainerName rules
 func ConvertToValidProjectName(projectDir string) (string, error) {
 	projectName := strings.ToLower(filepath.Base(projectDir))
-	match, _ := IsValidProjectName(projectName)
+	valid, _ := IsValidProjectName(projectName)
 
-	if !match {
+	if !valid {
 		projectName = strings.ToLower(filepath.Base(projectDir))
 		if len(projectName) >= 128 {
 			projectName = projectName[0:127]
@@ -372,8 +331,8 @@ func ConvertToValidProjectName(projectDir string) (string, error) {
 			projectName = projectName + "app"
 		}
 
-		match, err := IsValidProjectName(projectName)
-		if !match {
+		valid, err := IsValidProjectName(projectName)
+		if !valid {
 			return projectName, err
 		}
 	}
@@ -382,65 +341,73 @@ func ConvertToValidProjectName(projectDir string) (string, error) {
 }
 
 func getProjectName(config *RootCommandConfig) (string, error) {
+	defaultProjectName := "my-project"
 	dir, err := getProjectDir(config)
 	if err != nil {
-		return "my-project", err
+		return defaultProjectName, err
 	}
-	if config.projectName != "" && config.projectName != "my-project" {
-		match, err := IsValidProjectName(config.projectName)
-
-		if !match {
-			return "", err
+	// check to see if project-name is set in .appsody-config.yaml
+	projectConfig, err := getProjectConfig(config)
+	if err != nil {
+		return defaultProjectName, err
+	}
+	if projectConfig.ProjectName != "" {
+		// project-name is in .appsody-config.yaml
+		valid, err := IsValidProjectName(projectConfig.ProjectName)
+		if !valid {
+			return defaultProjectName, err
 		}
-		return config.projectName, err
+		return projectConfig.ProjectName, nil
 	}
-	appsodyConfig := filepath.Join(dir, ConfigFile)
+	// project-name is not in .appsody-config.yaml so use the directory name and save
+	projectName, err := ConvertToValidProjectName(dir)
+	if err != nil {
+		return defaultProjectName, err
+	}
+
+	err = saveProjectNameToConfig(projectName, config)
+	if err != nil {
+		Warning.Log("Unable to save project name to ", ConfigFile)
+	}
+
+	return projectName, nil
+}
+
+func saveProjectNameToConfig(projectName string, config *RootCommandConfig) error {
+	valid, err := IsValidProjectName(projectName)
+	if !valid {
+		return err
+	}
+
+	// update the in-memory project name
+	projectConfig, err := getProjectConfig(config)
+	if err != nil {
+		return err
+	}
+	projectConfig.ProjectName = projectName
+
+	// save the project name to the .appsody-config.yaml
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
 	err = v.ReadInConfig()
-
 	if err != nil {
-		return "my-project", err
+		return err
 	}
-
-	projectName := v.GetString("project-name")
-
-	if projectName != "" && projectName != "my-project" {
-		match, err := IsValidProjectName(projectName)
-
-		if !match {
-			return "", err
-		}
-		config.projectName = projectName
-		return projectName, err
-	}
-
-	projectName, err = ConvertToValidProjectName(dir)
-	if err != nil {
-		return "", err
-	}
-
 	v.Set("project-name", projectName)
 	err = v.WriteConfig()
-
 	if err != nil {
-		return "", err
+		return err
 	}
-	Info.log("Your Appsody project name is ", projectName)
-
-	config.projectName = projectName
-	return projectName, nil
-
+	Info.log("Your Appsody project name has been set to ", projectName)
+	return nil
 }
 
-func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
+func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 	if config.ProjectConfig == nil {
-		var projectConfig ProjectConfig
 		dir, perr := getProjectDir(config)
 		if perr != nil {
-			var tempProjectConfig ProjectConfig
-			return tempProjectConfig, errors.Errorf("The current directory is not a valid appsody project. Run appsody init <stack> to create one: %v", perr)
-
+			return nil, perr
 		}
 		appsodyConfig := filepath.Join(dir, ConfigFile)
 
@@ -451,30 +418,28 @@ func getProjectConfig(config *RootCommandConfig) (ProjectConfig, error) {
 		err := v.ReadInConfig()
 
 		if err != nil {
-			return projectConfig, errors.Errorf("Error reading project config %v", err)
+			return nil, errors.Errorf("Error reading project config %v", err)
 		}
 
+		var projectConfig ProjectConfig
 		err = v.Unmarshal(&projectConfig)
 		if err != nil {
-			return projectConfig, errors.Errorf("Error reading project config %v", err)
+			return &projectConfig, errors.Errorf("Error reading project config %v", err)
 
 		}
 
-		projectName := v.GetString("project-name")
 		stack := v.GetString("stack")
-
 		Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
 		Debug.log("Image repository set to: ", imageRepo)
+		projectConfig.Stack = stack
 		if imageRepo != "index.docker.io" {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
-		projectConfig.Stack = stack
-		projectConfig.ProjectName = projectName
 
 		config.ProjectConfig = &projectConfig
 	}
-	return *config.ProjectConfig, nil
+	return config.ProjectConfig, nil
 }
 
 func getOperatorHome(config *RootCommandConfig) string {
@@ -664,11 +629,11 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 	if gitInfo.RemoteURL != "" {
 		labels[ociKeyPrefix+"url"] = gitInfo.RemoteURL
 		labels[ociKeyPrefix+"documentation"] = gitInfo.RemoteURL
-		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "tree/" + gitInfo.Branch
+		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + gitInfo.Branch
 	}
 
 	var commitInfo = gitInfo.Commit
-	revisionKey := appsodyKeyPrefix + "revision"
+	revisionKey := ociKeyPrefix + "revision"
 	if commitInfo.SHA != "" {
 		labels[revisionKey] = commitInfo.SHA
 		if gitInfo.ChangesMade {
