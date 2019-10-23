@@ -170,7 +170,7 @@ func RunGitConfigLocalRemoteOriginURL(upstream string, dryrun bool) (string, err
 		remote = strings.Replace(remote, "git@", "https://", -1)
 	}
 
-	remote = strings.Replace(remote, ".git", "/", -1)
+	remote = strings.Replace(remote, ".git", "", -1)
 
 	return remote, err
 }

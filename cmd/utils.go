@@ -629,7 +629,7 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 	if gitInfo.RemoteURL != "" {
 		labels[ociKeyPrefix+"url"] = gitInfo.RemoteURL
 		labels[ociKeyPrefix+"documentation"] = gitInfo.RemoteURL
-		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "tree/" + gitInfo.Branch
+		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + gitInfo.Branch
 	}
 
 	var commitInfo = gitInfo.Commit
