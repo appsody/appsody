@@ -108,10 +108,9 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := inspectCmd.CombinedOutput()
+	inspectOut, inspectErr := seperateOutput(inspectCmd)
 	if inspectErr != nil {
-		return "", errors.Errorf("Could not inspect the image: %s %s", inspectErr, strings.TrimSpace(string(inspectOut[:])))
-
+		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
 	}
 
 	var err error
@@ -1284,12 +1283,12 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 		return nil
 	}
 	tagCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := tagCmd.CombinedOutput()
+	kout, kerr := seperateOutput(tagCmd)
 	if kerr != nil {
-		return errors.Errorf("docker image tag failed: %s %s", kerr, strings.TrimSpace(string(kout[:])))
+		return errors.Errorf("docker image tag failed: %s", kout)
 	}
-	Debug.log("Docker tag command output: ", strings.TrimSpace(string(kout[:])))
-	return nil
+	Debug.log("Docker tag command output: ", kout)
+	return kerr
 }
 
 //DockerPush pushes a docker image to a docker registry (assumes that the user has done docker login)
@@ -1302,11 +1301,11 @@ func DockerPush(imageToPush string, dryrun bool) error {
 		return nil
 	}
 	pushCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := pushCmd.CombinedOutput()
+	kout, kerr := seperateOutput(pushCmd)
 	if kerr != nil {
-		return errors.Errorf("docker push failed: %s %s", kerr, strings.TrimSpace(string(kout[:])))
+		return errors.Errorf("docker push failed: %s", kout)
 	}
-	return nil
+	return kerr
 }
 
 // DockerRunBashCmd issues a shell command in a docker image, overriding its entrypoint
@@ -1325,9 +1324,10 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/bash", image, "-c", bashCmd)
 	Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := dockerCmd.CombinedOutput()
+
+	kout, kerr := seperateOutput(dockerCmd)
 	if kerr != nil {
-		return "", errors.Errorf("docker run bash failed: %s %s", kerr, string(kout[:]))
+		return kout, kerr
 	}
 	return strings.TrimSpace(string(kout[:])), nil
 }
@@ -1348,11 +1348,11 @@ func KubeGet(args []string, namespace string, dryrun bool) (string, error) {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := execCmd.CombinedOutput()
+	kout, kerr := seperateOutput(execCmd)
 	if kerr != nil {
-		return "", errors.Errorf("kubectl get failed: %s %s", kerr, strings.TrimSpace(string(kout[:])))
+		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
-	return string(kout[:]), nil
+	return kout, kerr
 }
 
 //KubeApply issues kubectl apply -f <filename>
@@ -1370,12 +1370,12 @@ func KubeApply(fileToApply string, namespace string, dryrun bool) error {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := execCmd.CombinedOutput()
+	kout, kerr := seperateOutput(execCmd)
 	if kerr != nil {
-		return errors.Errorf("kubectl apply failed: %s %s", kerr, strings.TrimSpace(string(kout[:])))
+		return errors.Errorf("kubectl apply failed: %s", kout)
 	}
 	Debug.log("kubectl apply success: ", string(kout[:]))
-	return nil
+	return kerr
 }
 
 //KubeDelete issues kubectl delete -f <filename>
@@ -1394,12 +1394,12 @@ func KubeDelete(fileToApply string, namespace string, dryrun bool) error {
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 
-	kout, kerr := execCmd.CombinedOutput()
+	kout, kerr := seperateOutput(execCmd)
 	if kerr != nil {
-		return errors.Errorf("kubectl delete failed: %s %s", kerr, strings.TrimSpace(string(kout[:])))
+		return errors.Errorf("kubectl delete failed: %s", kout)
 	}
-	Debug.log("kubectl delete success: ", string(kout[:]))
-	return nil
+	Debug.log("kubectl delete success: ", kout)
+	return kerr
 }
 
 //KubeGetNodePortURL kubectl get svc <service> -o jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort} and prints the return URL
@@ -1441,11 +1441,11 @@ func KubeGetKnativeURL(service string, namespace string, dryrun bool) (url strin
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := execCmd.CombinedOutput()
+	kout, kerr := seperateOutput(execCmd)
 	if kerr != nil {
-		return "", errors.Errorf("kubectl get failed: %s %s", kerr, strings.TrimSpace(string(kout[:])))
+		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
-	return string(kout[:]), nil
+	return kout, kerr
 }
 
 //KubeGetDeploymentURL searches for an exposed hostname and port for the deployed service
@@ -1492,15 +1492,14 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 	cmdName := "docker"
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
-	imagelsOut, imagelsErr := imagelsCmd.CombinedOutput()
-	imagelsOutStr := strings.TrimSpace(string(imagelsOut))
-	Debug.log("Docker image ls command output: ", imagelsOutStr)
+	imagelsOut, imagelsErr := seperateOutput(imagelsCmd)
+	Debug.log("Docker image ls command output: ", imagelsOut)
 
 	if imagelsErr != nil {
 		Warning.log("Could not run docker image ls -q for the image: ", imageToPull, " error: ", imagelsErr, " Check to make sure docker is available.")
 		return false
 	}
-	if imagelsOutStr != "" {
+	if imagelsOut != "" {
 		return true
 	}
 	return false
@@ -1867,4 +1866,19 @@ func Targz(source, target string) error {
 			_, err = io.Copy(tarball, file)
 			return err
 		})
+}
+
+func seperateOutput(cmd *exec.Cmd) (string, error) {
+	var stdErr, stdOut bytes.Buffer
+	cmd.Stderr = &stdErr
+	cmd.Stdout = &stdOut
+	err := cmd.Run()
+
+	// If there was an error, return the stdErr & err
+	if err != nil {
+		return err.Error() + ": " + strings.TrimSpace(stdErr.String()), err
+	}
+
+	// If there wasn't an error return the stdOut & (lack of) err
+	return strings.TrimSpace(stdOut.String()), err
 }
