@@ -629,11 +629,11 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 	if gitInfo.RemoteURL != "" {
 		labels[ociKeyPrefix+"url"] = gitInfo.RemoteURL
 		labels[ociKeyPrefix+"documentation"] = gitInfo.RemoteURL
-		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "tree/" + gitInfo.Branch
+		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + gitInfo.Branch
 	}
 
 	var commitInfo = gitInfo.Commit
-	revisionKey := appsodyKeyPrefix + "revision"
+	revisionKey := ociKeyPrefix + "revision"
 	if commitInfo.SHA != "" {
 		labels[revisionKey] = commitInfo.SHA
 		if gitInfo.ChangesMade {
@@ -1302,6 +1302,7 @@ func DockerPush(imageToPush string, dryrun bool) error {
 		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
 		return nil
 	}
+
 	pushCmd := exec.Command(cmdName, cmdArgs...)
 	pushOut, pushErr := pushCmd.Output()
 	if pushErr != nil {
@@ -1533,6 +1534,12 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	localImageFound := false
 	pullPolicyAlways := true
 	pullPolicy := os.Getenv("APPSODY_PULL_POLICY") // Always or IfNotPresent
+
+	// for local stack development path such as stack validate, stack create, ...
+	if strings.Contains(imageToPull, "dev.local/") {
+		pullPolicy = "IFNOTPRESENT"
+	}
+
 	if pullPolicy == "" || strings.ToUpper(pullPolicy) == "ALWAYS" {
 		Debug.log("Pull policy Always")
 	} else if strings.ToUpper(pullPolicy) == "IFNOTPRESENT" {
