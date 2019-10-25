@@ -108,7 +108,7 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := seperateOutput(inspectCmd)
+	inspectOut, inspectErr := SeperateOutput(inspectCmd)
 	if inspectErr != nil {
 		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
 	}
@@ -1283,7 +1283,7 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 		return nil
 	}
 	tagCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := seperateOutput(tagCmd)
+	kout, kerr := SeperateOutput(tagCmd)
 	if kerr != nil {
 		return errors.Errorf("docker image tag failed: %s", kout)
 	}
@@ -1302,7 +1302,7 @@ func DockerPush(imageToPush string, dryrun bool) error {
 	}
 
 	pushCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := seperateOutput(pushCmd)
+	kout, kerr := SeperateOutput(pushCmd)
 	if kerr != nil {
 		return errors.Errorf("docker push failed: %s", kout)
 	}
@@ -1326,7 +1326,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 	Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
 
-	kout, kerr := seperateOutput(dockerCmd)
+	kout, kerr := SeperateOutput(dockerCmd)
 	if kerr != nil {
 		return kout, kerr
 	}
@@ -1349,7 +1349,7 @@ func KubeGet(args []string, namespace string, dryrun bool) (string, error) {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := seperateOutput(execCmd)
+	kout, kerr := SeperateOutput(execCmd)
 	if kerr != nil {
 		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
@@ -1371,7 +1371,7 @@ func KubeApply(fileToApply string, namespace string, dryrun bool) error {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := seperateOutput(execCmd)
+	kout, kerr := SeperateOutput(execCmd)
 	if kerr != nil {
 		return errors.Errorf("kubectl apply failed: %s", kout)
 	}
@@ -1395,7 +1395,7 @@ func KubeDelete(fileToApply string, namespace string, dryrun bool) error {
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 
-	kout, kerr := seperateOutput(execCmd)
+	kout, kerr := SeperateOutput(execCmd)
 	if kerr != nil {
 		return errors.Errorf("kubectl delete failed: %s", kout)
 	}
@@ -1442,7 +1442,7 @@ func KubeGetKnativeURL(service string, namespace string, dryrun bool) (url strin
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := seperateOutput(execCmd)
+	kout, kerr := SeperateOutput(execCmd)
 	if kerr != nil {
 		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
@@ -1493,7 +1493,7 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 	cmdName := "docker"
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
-	imagelsOut, imagelsErr := seperateOutput(imagelsCmd)
+	imagelsOut, imagelsErr := SeperateOutput(imagelsCmd)
 	Debug.log("Docker image ls command output: ", imagelsOut)
 
 	if imagelsErr != nil {
@@ -1875,7 +1875,7 @@ func Targz(source, target string) error {
 		})
 }
 
-func seperateOutput(cmd *exec.Cmd) (string, error) {
+func SeperateOutput(cmd *exec.Cmd) (string, error) {
 	var stdErr, stdOut bytes.Buffer
 	cmd.Stderr = &stdErr
 	cmd.Stdout = &stdOut
