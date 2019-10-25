@@ -223,7 +223,12 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			return errors.Errorf("Error downloading tar %v", err)
 
 		}
-		Info.log("Download complete. Extracting files from ", filename)
+		if inputTemplateName != "none" {
+			Info.log("Download complete. Extracting files from ", filename)
+		} else {
+			Info.logf("Download complete. Do not unzip the template project.\nOnly extracting the .appsody-config.yaml file from %s", filename)
+		}
+		
 		//if noTemplate
 		errUntar := untar(filename, noTemplate, config.overwrite, config.Dryrun)
 
