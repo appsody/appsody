@@ -114,6 +114,27 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			stackName := filepath.Base(stackPath)
 			Debug.Log("stackName is: ", stackName)
 
+			// docker build
+			// create the image name to be used for the docker image
+			buildImage := "dev.local/" + stackName + ":SNAPSHOT"
+
+			imageDir := filepath.Join(stackPath, "image")
+			Debug.Log("imageDir is: ", imageDir)
+
+			dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
+			Debug.Log("dockerFile is: ", dockerFile)
+
+			cmdArgs := []string{"-t", buildImage}
+			cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
+			Debug.Log("cmdArgs is: ", cmdArgs)
+
+			Info.Log("Running docker build")
+
+			err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
+			if err != nil {
+				return errors.Errorf("Error during docker build: %v", err)
+			}
+
 			indexFileLocal := filepath.Join(devLocal, "index-dev-local.yaml")
 			Debug.Log("indexFileLocal is: ", indexFileLocal)
 
@@ -229,28 +250,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				newTemplateStruct.URL = versionArchiveTar
 
 				newStackStruct.Templates = append(newStackStruct.Templates, newTemplateStruct)
-
-				// docker build
-
-				// create the image name to be used for the docker image
-				buildImage := "dev.local/" + stackName + ":SNAPSHOT"
-
-				imageDir := filepath.Join(stackPath, "image")
-				Debug.Log("imageDir is: ", imageDir)
-
-				dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
-				Debug.Log("dockerFile is: ", dockerFile)
-
-				cmdArgs := []string{"-t", buildImage}
-				cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
-				Debug.Log("cmdArgs is: ", cmdArgs)
-
-				Info.Log("Running docker build")
-
-				err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
-				if err != nil {
-					return errors.Errorf("Error during docker build: %v", err)
-				}
 
 				// create a config yaml file for the tarball
 				configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
