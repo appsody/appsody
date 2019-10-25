@@ -305,20 +305,20 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return err
 			}
 
-			// if dev-local exists then remove it
-			if strings.Contains(repos, "name: dev-local") {
-				Info.Log("Existing dev-local repo found")
-				Info.Log("Removing dev-local repository")
+			// if dev.local exists then remove it
+			if strings.Contains(repos, "name: dev.local") {
+				Info.Log("Existing dev.local repo found")
+				Info.Log("Removing dev.local repository")
 
-				_, err := RunAppsodyCmdExec([]string{"repo", "remove", "dev-local"}, ".")
+				_, err := RunAppsodyCmdExec([]string{"repo", "remove", "dev.local"}, ".")
 				if err != nil {
 					return err
 				}
 			}
 
 			// create an appsody repo for the stack
-			Info.Log("Creating dev-local repository")
-			_, err = AddLocalFileRepo("dev-local", indexFileLocal)
+			Info.Log("Creating dev.local repository")
+			_, err = AddLocalFileRepo("dev.local", indexFileLocal)
 			if err != nil {
 				return errors.Errorf("Error running appsody command: %v", err)
 			}
