@@ -226,7 +226,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		if inputTemplateName != "none" {
 			Info.log("Download complete. Extracting files from ", filename)
 		} else {
-			Info.logf("Download complete. Do not unzip the template project.\nOnly extracting the .appsody-config.yaml file from %s", filename)
+			Info.log("Download complete. Do not unzip the template project. Only extracting .appsody-config.yaml file from ", filename)
 		}
 
 		//if noTemplate
