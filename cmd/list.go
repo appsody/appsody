@@ -50,14 +50,18 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					Warning.log("The following repositories .yaml have an  APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
 				}
 
+				if listConfig.output == "" {
+					Info.log("\n", projects)
+					return nil
+				}
+
 				list, err := repos.getRepositories()
 				if err != nil {
 					return err
 				}
 
-				if listConfig.output == "" {
-					Info.log("\n", projects)
-				} else if listConfig.output == "yaml" {
+				Info.log("-----:", listConfig.output)
+				if listConfig.output == "yaml" {
 					bytes, err := yaml.Marshal(&list)
 					if err != nil {
 						return err
@@ -87,7 +91,27 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					Warning.log("The following repositories are of APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
 				}
 
-				Info.log("\n", repoProjects)
+				if listConfig.output == "" {
+					Info.log("\n", repoProjects)
+					return nil
+				}
+
+				repoList, err := repos.getRepository(repoName)
+				if listConfig.output == "yaml" {
+					bytes, err := yaml.Marshal(&repoList)
+					if err != nil {
+						return err
+					}
+					result := string(bytes)
+					Info.log("\n", result)
+				} else if listConfig.output == "json" {
+					bytes, err := json.Marshal(&repoList)
+					if err != nil {
+						return err
+					}
+					result := string(bytes)
+					Info.log("\n", result)
+				}
 			}
 
 			return nil

@@ -586,3 +586,21 @@ func (r *RepositoryFile) getRepositories() (IndexOutputFormat, error) {
 	}
 	return indexOutput, nil
 }
+
+func (r *RepositoryFile) getRepository(repoName string) (IndexOutputFormat, error) {
+	var indexOutput IndexOutputFormat
+	indexOutput.APIVersion = r.APIVersion
+	indexOutput.Generated = r.Generated
+	indices, err := r.GetIndices()
+	if err != nil {
+		return indexOutput, errors.Errorf("Could not read indices: %v", err)
+	}
+
+	if indices[repoName] != nil {
+		var Stacks []Stack
+		Stacks = indices[repoName].buildStacksFromIndex(repoName, Stacks)
+
+		indexOutput.Repositories = append(indexOutput.Repositories, RepositoryOutputFormat{Name: repoName, Stacks: Stacks})
+	}
+	return indexOutput, nil
+}
