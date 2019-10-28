@@ -21,7 +21,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/hectane/go-acl"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -165,16 +164,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					permission := fileStat.Mode()
 
 					// sets file to writable
-					if runtime.GOOS == "windows" {
-						err := acl.Chmod(path, 0777)
-						if err != nil {
-							panic(err)
-						}
-					} else {
-						err := os.Chmod(path, 0777)
-						if err != nil {
-							panic(err)
-						}
+					err = os.Chmod(path, 0700)
+					if err != nil {
+						panic(err)
 					}
 
 					// create new template from parsing file
@@ -200,16 +192,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 					// reset file permission
 					if !writable {
-						if runtime.GOOS == "windows" {
-							err := acl.Chmod(path, permission)
-							if err != nil {
-								panic(err)
-							}
-						} else {
-							err := os.Chmod(path, permission)
-							if err != nil {
-								panic(err)
-							}
+						err := os.Chmod(path, permission)
+						if err != nil {
+							panic(err)
 						}
 					}
 				}
