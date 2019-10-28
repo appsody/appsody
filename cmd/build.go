@@ -28,7 +28,7 @@ type buildCommandConfig struct {
 	*RootCommandConfig
 	tag                string
 	dockerBuildOptions string
-	pushURL 		   string
+	pushURL            string
 	push               bool
 }
 
@@ -138,7 +138,7 @@ func build(config *buildCommandConfig) error {
 		err := DockerPush(pushImage, config.Dryrun)
 		if err != nil {
 			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
-		} 
+		}
 		Info.log("Pushed docker image ", pushImage)
 	}
 
