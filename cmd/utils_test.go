@@ -204,8 +204,8 @@ var invalidCmdsTest = []struct {
 	args     []string
 	expected string
 }{
-	{"docker", []string{"inspect", "invalidname"}, "Error: No such object: invalidname"},
-	{"kubectl", []string{"apply", "-f", "invalidname"}, "error: the path \"invalidname\" does not exist"},
+	{"ls", []string{"invalidname"}, "ls: invalidname: No such file or directory"},
+	{"cp", []string{"invalidname", "alsoinavalidname"}, "cp: invalidname: No such file or directory"},
 }
 
 func TestInvalidCmdOutput(t *testing.T) {
@@ -217,9 +217,9 @@ func TestInvalidCmdOutput(t *testing.T) {
 		t.Run(fmt.Sprintf("Test Invalid "+test.cmd+" Command"), func(t *testing.T) {
 			out, err := cmd.SeperateOutput(invalidCmd)
 			if err == nil {
-				t.Error("Expected an error from ' ", test.cmd, strings.Join(test.args, " "), "' but did not return one.")
+				t.Error("Expected an error from '", test.cmd, strings.Join(test.args, " "), "' but it did not return one.")
 			} else if !strings.Contains(out, test.expected) {
-				t.Error("Expected the stdout to contain "+test.expected, out)
+				t.Error("Expected the stdout to contain '" + test.expected + "'. It actually contains: " + out)
 			}
 		})
 

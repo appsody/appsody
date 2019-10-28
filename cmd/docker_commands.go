@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 func DockerRunAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
@@ -40,8 +42,8 @@ func RunDockerInspect(imageName string) (string, error) {
 	cmdArgs := []string{"image", "inspect", imageName}
 	Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	output, err := inspectCmd.Output()
-	return string(output), err
+	output, err := SeperateOutput(inspectCmd)
+	return output, err
 }
 
 func RunKubeCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
@@ -98,10 +100,10 @@ func RunCommandAndListen(commandValue string, args []string, logger appsodylogge
 			}
 		}()
 
-		err = execCmd.Start()
+		out, err := SeperateOutput(execCmd)
 		if err != nil {
-			Debug.log("Error running ", command, " command: ", logScanner.Text(), err)
-			return nil, err
+			Debug.log("Error running ", command, " command: ", logScanner.Text(), out)
+			return nil, errors.Errorf(out)
 		}
 
 	}

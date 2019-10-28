@@ -677,7 +677,7 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 		} else {
 			inspectOut, inspectErr := RunDockerInspect(imageName)
 			if inspectErr != nil {
-				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
+				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %s", inspectOut)
 			}
 			err := json.Unmarshal([]byte(inspectOut), &data)
 			if err != nil {
@@ -731,7 +731,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	} else {
 		inspectOut, inspectErr := RunDockerInspect(imageName)
 		if inspectErr != nil {
-			return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
+			return portValues, errors.Errorf("Could not inspect the image: %s", inspectOut)
 		}
 		err := json.Unmarshal([]byte(inspectOut), &data)
 		if err != nil {
@@ -1883,6 +1883,7 @@ func SeperateOutput(cmd *exec.Cmd) (string, error) {
 
 	// If there was an error, return the stdErr & err
 	if err != nil {
+		Info.log("@@@@@@@@@@@", stdErr.String())
 		return err.Error() + ": " + strings.TrimSpace(stdErr.String()), err
 	}
 
