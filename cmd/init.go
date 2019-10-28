@@ -85,6 +85,10 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if noTemplate {
 		Warning.log("The --no-template flag has been deprecated.  Please specify a template value of \"none\" instead.")
 	}
+	valid, err := IsValidProjectName(config.projectName)
+	if !valid {
+		return err
+	}
 	//var index RepoIndex
 	var repos RepositoryFile
 	if _, err := repos.getRepos(config.RootCommandConfig); err != nil {
@@ -92,7 +96,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	}
 	var proceedWithTemplate bool
 
-	err := CheckPrereqs()
+	err = CheckPrereqs()
 	if err != nil {
 		Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
@@ -254,23 +258,27 @@ func install(config *initCommandConfig) error {
 	Info.log("Setting up the development environment")
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
-		return errors.Errorf("%v", perr)
-
+		return perr
 	}
 
-	err := setProjectName(projectDir, config.projectName)
-	if err != nil {
-		return errors.Errorf("%v", err)
-	}
 	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
 	if configErr != nil {
 		return configErr
+	}
+
+	// save the project name to .appsody-config.yaml only if it doesn't already exist there
+	// or if the user specified --project-name on the command line
+	if projectConfig.ProjectName == "" || config.projectName != defaultProjectName(config.RootCommandConfig) {
+		err := saveProjectNameToConfig(config.projectName, config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
 	}
 	platformDefinition := projectConfig.Stack
 
 	Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
-	err = extractAndInitialize(config)
+	err := extractAndInitialize(config)
 	if err != nil {
 		// For some reason without this sleep, the [InitScript] output log would get cut off and
 		// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.

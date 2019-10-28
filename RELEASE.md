@@ -12,6 +12,10 @@ When the Appsody CLI is released, the build process also updates the Appsody web
 # Appsody CLI Release Process
 Follow this process to create a new release of the Appsody CLI.
 
+## Verify generated documentation
+1. Run `make build-docs` which will generate `build/cli-commands.md`
+1. Preview the `build/cli-commands.md` file to ensure it reads well and the formatting looks correct. To preview in VS Code: open the file and do `shift-command-v`
+
 ## Create a GitHub release
 The Appsody CLI is made available by creating a tagged GitHub release
 1. If there is a new dependent controller, a Pull Request with the `CONTROLLER_VERSION` changes to the `Makefile` needs to be created and merged before continuing
