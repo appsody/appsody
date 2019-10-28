@@ -50,6 +50,19 @@ type Spec struct {
 	ApplicationImage string `yaml:"applicationImage"`
 }
 
+func firstAfter(value string, a string) string {
+	pos := strings.Index(value, a)
+	if pos == -1 {
+		return ""
+	}
+	adjustedPos := pos + len(a)
+	if adjustedPos >= len(value) {
+		return ""
+	}
+	length := len(value)
+	return value[adjustedPos:length]
+
+}
 func getAppsodyApplication(configFile string) (AppsodyApplication, error) {
 	var appsodyApplication AppsodyApplication
 	yamlFileBytes, err := ioutil.ReadFile(configFile)
@@ -64,18 +77,6 @@ func getAppsodyApplication(configFile string) (AppsodyApplication, error) {
 		return appsodyApplication, errors.Errorf("app-deploy.yaml formatting error: %s", err)
 	}
 	return appsodyApplication, err
-}
-func firstAfter(value string, a string) string {
-	// Get substring after a string.
-	pos := strings.Index(value, a)
-	if pos == -1 {
-		return ""
-	}
-	adjustedPos := pos + len(a)
-	if adjustedPos >= len(value) {
-		return ""
-	}
-	return value[adjustedPos:len(value)]
 }
 
 func newDeployCmd(rootConfig *RootCommandConfig) *cobra.Command {
