@@ -567,13 +567,8 @@ func UserHomeDir() string {
 	return homeDir
 }
 
-func getConfigLabels(config *RootCommandConfig) (map[string]string, error) {
+func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	var labels = make(map[string]string)
-
-	projectConfig, projectConfigErr := getProjectConfig(config)
-	if projectConfigErr != nil {
-		return labels, projectConfigErr
-	}
 
 	t := time.Now()
 
@@ -617,8 +612,8 @@ func getConfigLabels(config *RootCommandConfig) (map[string]string, error) {
 	return labels, nil
 }
 
-func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
-	gitInfo, err := GetGitInfo(config.Dryrun)
+func getGitLabels(dryrun bool) (map[string]string, error) {
+	gitInfo, err := GetGitInfo(dryrun)
 	if err != nil {
 		return nil, err
 	}
