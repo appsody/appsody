@@ -204,8 +204,8 @@ var invalidCmdsTest = []struct {
 	args     []string
 	expected string
 }{
-	{"ls", []string{"invalidname"}, "ls: invalidname: No such file or directory"},
-	{"cp", []string{"invalidname", "alsoinavalidname"}, "cp: invalidname: No such file or directory"},
+	{"ls", []string{"invalidname"}, "No such file or directory"},
+	{"cp", []string{"invalidname", "alsoinavalidname"}, "No such file or directory"},
 }
 
 func TestInvalidCmdOutput(t *testing.T) {

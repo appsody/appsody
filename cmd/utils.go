@@ -1883,7 +1883,6 @@ func SeperateOutput(cmd *exec.Cmd) (string, error) {
 
 	// If there was an error, return the stdErr & err
 	if err != nil {
-		Info.log("@@@@@@@@@@@", stdErr.String())
 		return err.Error() + ": " + strings.TrimSpace(stdErr.String()), err
 	}
 
