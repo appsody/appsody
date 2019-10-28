@@ -54,7 +54,6 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Locally build a docker image of your appsody project",
 		Long:  `This allows you to build a local Docker image from your Appsody project. Extract is run before the docker build.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			return build(config)
 		},
 	}
