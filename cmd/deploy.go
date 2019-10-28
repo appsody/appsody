@@ -33,8 +33,8 @@ import (
 
 type deployCommandConfig struct {
 	*RootCommandConfig
-	appDeployFile, namespace, tag  string
-	knative, generate, force, push bool
+	appDeployFile, namespace, tag, pushURL, pullURL string
+	knative, generate, force, push                  bool
 }
 
 type AppsodyApplication struct {
@@ -64,6 +64,18 @@ func getAppsodyApplication(configFile string) (AppsodyApplication, error) {
 		return appsodyApplication, errors.Errorf("app-deploy.yaml formatting error: %s", err)
 	}
 	return appsodyApplication, err
+}
+func firstAfter(value string, a string) string {
+	// Get substring after a string.
+	pos := strings.Index(value, a)
+	if pos == -1 {
+		return ""
+	}
+	adjustedPos := pos + len(a)
+	if adjustedPos >= len(value) {
+		return ""
+	}
+	return value[adjustedPos:len(value)]
 }
 
 func newDeployCmd(rootConfig *RootCommandConfig) *cobra.Command {
@@ -122,23 +134,59 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 			Info.log("Found existing deployment manifest ", configFile)
 			//Retrieve the project name and lowercase it
+			var deployImage string
+			var appsodyApplication AppsodyApplication
+			var appErr error
+			var suffixImage string
+			if !dryrun {
 
-			appsodyApplication, err := getAppsodyApplication(configFile)
-			if err != nil {
-				return err
+				appsodyApplication, appErr = getAppsodyApplication(configFile)
+				if appErr != nil {
+					return appErr
+				}
+				var applicationImage = appsodyApplication.Spec.ApplicationImage
+				Debug.log("Application Image:  ", applicationImage)
+
+				deployImage = config.tag
+				if deployImage == "" {
+					deployImage = applicationImage
+					// deployImage = "dev.local/" + projectName
+				}
+
+				if strings.Count(deployImage, "/") > 1 {
+					suffixImage = firstAfter(deployImage, "/")
+				} else {
+					suffixImage = deployImage
+				}
+
+				if config.pullURL != "" {
+					deployImage = config.pullURL + "/" + suffixImage
+				}
 			}
-			var applicationImage = appsodyApplication.Spec.ApplicationImage
-			Debug.log("Application Image:  ", applicationImage)
-
-			deployImage := config.tag
-			if deployImage == "" {
-				deployImage = applicationImage
-				// deployImage = "dev.local/" + projectName
-			}
-
-			// Extract code and build the image - and tags it if -t is specified
 			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
-			buildConfig.tag = deployImage
+			pushPath := deployImage
+			if config.pushURL != "" {
+
+				// Extract code and build the image - and tags it if -t is specified
+
+				if config.pushURL != "" {
+					pushPath = config.pushURL + "/" + suffixImage
+
+				}
+
+			}
+
+			if strings.HasPrefix(pushPath, "dev.local") {
+				Warning.log("The push URL begins with dev.local.  Your push operation may fail if you are targeting a remote repository.  Make sure the --tag (-t) option is specified.  ", pushPath)
+			}
+			if config.push {
+
+				buildConfig.pushURL = config.pushURL
+
+				buildConfig.push = true
+			}
+
+			buildConfig.tag = suffixImage
 			buildErr := build(buildConfig)
 			if buildErr != nil {
 				return buildErr
@@ -164,8 +212,9 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				if strings.Contains(line, "applicationImage:") {
 					index := strings.Index(line, ": ")
 					start := line[0:(index + 2)]
+					imagePath := deployImage
 					line = start + deployImage
-					Info.log("Using applicationImage of: ", deployImage)
+					Info.log("Using applicationImage of: ", imagePath)
 				}
 				if strings.Contains(line, "createKnativeService") {
 					foundCreateKnativeTag = true
@@ -190,33 +239,28 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			}
 
 			//yamlFile.Close() // need to think about defer
-
-			targetConfigFile := configFile
-			file, err := os.Create(targetConfigFile)
-			if err != nil {
-				return err
-			}
-
-			defer file.Close()
-			w := bufio.NewWriter(file)
-			for _, line := range txtlines {
-				fmt.Fprintln(w, line)
-			}
-			w.Flush()
-
-			if config.push {
-				err = DockerPush(deployImage, dryrun)
+			if !dryrun {
+				targetConfigFile := configFile
+				file, err := os.Create(targetConfigFile)
 				if err != nil {
-					return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
+					return err
 				}
+
+				defer file.Close()
+				w := bufio.NewWriter(file)
+				for _, line := range txtlines {
+					fmt.Fprintln(w, line)
+				}
+				w.Flush()
 			}
 			err = KubeApply(configFile, namespace, dryrun)
 			// Performing the kubectl apply
 			if err != nil {
 				return errors.Errorf("Failed to deploy to your Kubernetes cluster: %v", err)
 			}
-			Info.log("Deployment succeeded.")
-
+			if !dryrun {
+				Info.log("Deployment succeeded.")
+			}
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
 			Info.log("Appsody Deployment name is: ", appsodyApplication.Metadata.Name)
@@ -242,14 +286,44 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 	deployCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push this image to an external Docker registry. Assumes that you have previously successfully done docker login")
 	deployCmd.PersistentFlags().BoolVar(&config.knative, "knative", false, "Deploy as a Knative Service")
-
+	deployCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "Remote repository to push image to.")
+	deployCmd.PersistentFlags().StringVar(&config.pullURL, "pull-url", "", "Remote repository to pull image from.")
 	deployCmd.AddCommand(newDeleteDeploymentCmd(config))
 	return deployCmd
 }
 
 func deployWithKnative(config *deployCommandConfig) error {
+	var err error
+	//Retrieve the project name and lowercase it
+	projectName, perr := getProjectName(config.RootCommandConfig)
+	if perr != nil {
+		return errors.Errorf("%v", perr)
+	}
+	//Get the project name and make it the KNative service name
+	serviceName := projectName
+	deployImage := projectName // if not tagged, this is the deploy image name
+	if config.tag != "" {
+		deployImage = config.tag //Otherwise, it's the tag
+	}
+	// We're not pushing to a repository, so we need to use dev.local for Knative to be able to find it
+	if !config.push {
+		localtag := "dev.local/" + projectName
+		// Tagging the image using the tag as the deployImage for KNative
+		/*	err = DockerTag(deployImage, localtag, config.Dryrun)
+			if err != nil {
+				return errors.Errorf("Tagging the image failed - exiting. Error: %v", err)
+			}*/
+		deployImage = localtag // And forcing deployimage to be localtag
+	}
 	buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
-	buildConfig.tag = config.tag
+
+	if config.push {
+
+		buildConfig.pushURL = config.pushURL
+		buildConfig.push = true
+	}
+
+	buildConfig.tag = deployImage
 	buildErr := build(buildConfig)
 	if buildErr != nil {
 		return buildErr
@@ -280,27 +354,10 @@ func deployWithKnative(config *deployCommandConfig) error {
 	}
 	//Get the KNative template file
 	knativeTempl := getKNativeTemplate()
-
-	//Retrieve the project name and lowercase it
-	projectName, perr := getProjectName(config.RootCommandConfig)
-	if perr != nil {
-		return errors.Errorf("%v", perr)
-	}
-	//Get the project name and make it the KNative service name
-	serviceName := projectName
-	deployImage := projectName // if not tagged, this is the deploy image name
-	if config.tag != "" {
-		deployImage = config.tag //Otherwise, it's the tag
-	}
-	// We're not pushing to a repository, so we need to use dev.local for Knative to be able to find it
-	if !config.push {
-		localtag := "dev.local/" + projectName
-		// Tagging the image using the tag as the deployImage for KNative
-		err = DockerTag(deployImage, localtag, config.Dryrun)
-		if err != nil {
-			return errors.Errorf("Tagging the image failed - exiting. Error: %v", err)
+	if config.pullURL != "" {
+		if !strings.HasPrefix(deployImage, config.pullURL) {
+			deployImage = config.pullURL + "/" + deployImage
 		}
-		deployImage = localtag // And forcing deployimage to be localtag
 	}
 	//Generating the KNative yaml file
 	Debug.logf("Calling GenKnativeYaml with parms: %s %d %s %s \n", knativeTempl, port, serviceName, deployImage)
@@ -309,13 +366,6 @@ func deployWithKnative(config *deployCommandConfig) error {
 		return errors.Errorf("Could not generate the KNative YAML file: %v", err)
 	}
 	Info.log("Generated KNative serving deploy file: ", yamlFileName)
-	// Pushing the docker image if necessary
-	if config.push {
-		err = DockerPush(deployImage, config.Dryrun)
-		if err != nil {
-			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
-		}
-	}
 	err = KubeApply(yamlFileName, config.namespace, config.Dryrun)
 	// Performing the kubectl apply
 	if err != nil {

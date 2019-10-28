@@ -28,6 +28,8 @@ type buildCommandConfig struct {
 	*RootCommandConfig
 	tag                string
 	dockerBuildOptions string
+	pushURL            string
+	push               bool
 }
 
 func checkDockerBuildOptions(options []string) error {
@@ -59,7 +61,8 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
-
+	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the Docker image to the image repository.")
+	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The registry URL for the image repository.")
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
 	buildCmd.AddCommand(newSetupCmd(config))
 	return buildCmd
@@ -118,6 +121,16 @@ func build(config *buildCommandConfig) error {
 
 	if execError != nil {
 		return execError
+	}
+	if config.push {
+		pushImage := buildImage
+		if config.pushURL != "" {
+			pushImage = config.pushURL + "/" + buildImage
+		}
+		err := DockerPush(pushImage, config.Dryrun)
+		if err != nil {
+			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
+		}
 	}
 	if !config.Dryrun {
 		Info.log("Built docker image ", buildImage)
