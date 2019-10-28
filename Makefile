@@ -122,12 +122,17 @@ build: build-linux build-darwin build-windows ## Build binaries for all operatin
 
 .PHONY: build-linux
 build-linux: ## Build the linux binary
-.PHONY: build-darwin
-build-darwin: ## Build the OSX binary
+
 .PHONY: build-windows
 build-windows: ## Build the windows binary
-build-linux build-darwin build-windows: ## Build the binary of the respective operating system
-	GOOS=$(os) GOARCH=amd64 go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION)"
+
+build-linux build-windows: ## Build the binary of the respective operating system
+	GOOS=$(os) GCO_ENABLED=0 GOARCH=amd64 go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION)"
+
+.PHONY: build-darwin
+
+build-darwin: ## Build the OSX binary
+	GOOS=$(os) GCO_ENABLED=1 GOARCH=amd64 go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION)"
 
 .PHONY: package
 package: build-docs tar-linux deb-linux rpm-linux tar-darwin brew-darwin tar-windows ## Creates packages for all operating systems and store them in package/ dir
