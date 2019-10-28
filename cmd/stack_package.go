@@ -150,9 +150,13 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 					// checks if file is writable
 					writable, err := CanWrite(path)
+
+					// get permission of file
+					fileStat, err := os.Stat(path)
 					if err != nil {
 						panic(err)
 					}
+					permission := fileStat.Mode()
 
 					// sets file to writable
 					if runtime.GOOS == "windows" {
@@ -191,12 +195,12 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					// reset file permission
 					if writable == false {
 						if runtime.GOOS == "windows" {
-							err := acl.Chmod(path, 0400)
+							err := acl.Chmod(path, permission)
 							if err != nil {
 								panic(err)
 							}
 						} else {
-							err = os.Chmod(path, 0400)
+							err := os.Chmod(path, permission)
 							if err != nil {
 								panic(err)
 							}
