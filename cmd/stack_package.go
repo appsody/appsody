@@ -110,7 +110,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			projectPath := rootConfig.ProjectDir
 
 			// make a copy of the folder to apply template to
-			copyDir(projectPath, projectPath+"copy")
+			err := copyDir(projectPath, projectPath+"copy")
+			if err != nil {
+				panic(err)
+			}
 
 			// remove copied folder locally, no matter the output
 			defer os.RemoveAll(projectPath + "copy")
@@ -150,6 +153,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 					// checks if file is writable
 					writable, err := CanWrite(path)
+					if !os.IsPermission(err) && err != nil {
+						panic(err)
+					}
 
 					// get permission of file
 					fileStat, err := os.Stat(path)
@@ -193,7 +199,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					f.Close()
 
 					// reset file permission
-					if writable == false {
+					if !writable {
 						if runtime.GOOS == "windows" {
 							err := acl.Chmod(path, permission)
 							if err != nil {
