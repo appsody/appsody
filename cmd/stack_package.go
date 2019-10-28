@@ -112,18 +112,19 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// make a copy of the folder to apply template to
 			copyDir(projectPath, projectPath+"copy")
 
+			// remove copied folder locally, no matter the output
+			defer os.RemoveAll(projectPath + "copy")
+
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
 
 			source, err := ioutil.ReadFile(filepath.Join(projectPath+"copy", "stack.yaml"))
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return errors.Errorf("Error trying to read: %v", err)
 			}
 
 			err = yaml.Unmarshal(source, &stackYaml)
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return errors.Errorf("Error trying to unmarshall: %v", err)
 			}
 
@@ -133,6 +134,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			templateMetadata.Name = stackYaml.Name
 			templateMetadata.Version = stackYaml.Version
 
+			// walk through copied directory and apply templating to all files in directory
 			err = filepath.Walk(projectPath+"copy", func(path string, info os.FileInfo, err error) error {
 
 				// ignore .git folder
@@ -143,14 +145,12 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					//get file name
 					file := filepath.Base(path)
 					if err != nil {
-						os.RemoveAll(projectPath + "copy")
 						panic(err)
 					}
 
 					// checks if file is writable
 					writable, err := CanWrite(path)
 					if err != nil {
-						os.RemoveAll(projectPath + "copy")
 						panic(err)
 					}
 
@@ -158,13 +158,11 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					if runtime.GOOS == "windows" {
 						err := acl.Chmod(path, 0777)
 						if err != nil {
-							os.RemoveAll(projectPath + "copy")
 							panic(err)
 						}
 					} else {
 						err := os.Chmod(path, 0777)
 						if err != nil {
-							os.RemoveAll(projectPath + "copy")
 							panic(err)
 						}
 					}
@@ -172,21 +170,19 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					// create new template from parsing file
 					tmpl, err := template.New(file).ParseFiles(path)
 					if err != nil {
-						os.RemoveAll(projectPath + "copy")
+
 						panic(err)
 					}
 
 					// open file at path
 					f, err := os.Create(path)
 					if err != nil {
-						os.RemoveAll(projectPath + "copy")
 						panic(err)
 					}
 
 					// apply template to file
 					err = tmpl.ExecuteTemplate(f, file, templateMetadata)
 					if err != nil {
-						os.RemoveAll(projectPath + "copy")
 						panic(err)
 					}
 
@@ -194,10 +190,16 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 					// reset file permission
 					if writable == false {
-						err = os.Chmod(path, 0400)
-						if err != nil {
-							os.RemoveAll(projectPath + "copy")
-							panic(err)
+						if runtime.GOOS == "windows" {
+							err := acl.Chmod(path, 0400)
+							if err != nil {
+								panic(err)
+							}
+						} else {
+							err = os.Chmod(path, 0400)
+							if err != nil {
+								panic(err)
+							}
 						}
 					}
 				}
@@ -205,7 +207,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			})
 
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				panic(err)
 			}
 
@@ -216,7 +217,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// check for templates dir, error out if its not there
 			check, err := Exists("templates")
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return errors.New("Error checking stack root directory: " + err.Error())
 			}
 			if !check {
@@ -233,7 +233,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// create the devLocal directory in appsody home
 			err = os.MkdirAll(devLocal, os.FileMode(0755))
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return errors.Errorf("Error creating directory: %v", err)
 			}
 
@@ -250,7 +249,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// check for existing index yaml file
 			check, err = Exists(indexFileLocal)
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return errors.New("Error checking index file: " + err.Error())
 			}
 			if check {
@@ -259,13 +257,11 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 				source, err := ioutil.ReadFile(indexFileLocal)
 				if err != nil {
-					os.RemoveAll(projectPath + "copy")
 					return errors.Errorf("Error trying to read: %v", err)
 				}
 
 				err = yaml.Unmarshal(source, &indexYaml)
 				if err != nil {
-					os.RemoveAll(projectPath + "copy")
 					return errors.Errorf("Error trying to unmarshall: %v", err)
 				}
 
@@ -308,13 +304,11 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			t, err := os.Open(templatePath)
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return errors.Errorf("Error opening directory: %v", err)
 			}
 
 			templates, err := t.Readdirnames(0)
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return errors.Errorf("Error reading directories: %v", err)
 			}
 
@@ -368,7 +362,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 				err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
 				if err != nil {
-					os.RemoveAll(projectPath + "copy")
 					return errors.Errorf("Error during docker build: %v", err)
 				}
 
@@ -378,13 +371,11 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 				g, err := os.Create(configYaml)
 				if err != nil {
-					os.RemoveAll(projectPath + "copy")
 					return errors.Errorf("Error trying to create file: %v", err)
 				}
 
 				_, err = g.WriteString("stack: " + buildImage)
 				if err != nil {
-					os.RemoveAll(projectPath + "copy")
 					return errors.Errorf("Error trying to write: %v", err)
 				}
 
@@ -394,14 +385,12 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				Info.Log("Creating tar for: " + templates[i])
 				err = Targz(sourceDir, versionedArchive)
 				if err != nil {
-					os.RemoveAll(projectPath + "copy")
 					return errors.Errorf("Error trying to tar: %v", err)
 				}
 
 				// remove the config yaml file
 				err = os.Remove(configYaml)
 				if err != nil {
-					os.RemoveAll(projectPath + "copy")
 					return errors.Errorf("Error trying to remove file: %v", err)
 				}
 			}
@@ -414,21 +403,18 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// write yaml data to the index yaml
 			source, err = yaml.Marshal(&indexYaml)
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return errors.Errorf("Error trying to marshall: %v", err)
 			}
 
 			Info.Log("Writing: " + indexFileLocal)
 			err = ioutil.WriteFile(indexFileLocal, source, 0644)
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return errors.Errorf("Error trying to read: %v", err)
 			}
 
 			// list repos
 			repos, err := RunAppsodyCmdExec([]string{"repo", "list", "-o", "yaml"}, ".")
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return err
 			}
 
@@ -439,7 +425,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 				_, err := RunAppsodyCmdExec([]string{"repo", "remove", "dev.local"}, ".")
 				if err != nil {
-					os.RemoveAll(projectPath + "copy")
 					return err
 				}
 			}
@@ -448,11 +433,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			Info.Log("Creating dev.local repository")
 			_, err = AddLocalFileRepo("dev.local", indexFileLocal)
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
 				return errors.Errorf("Error running appsody command: %v", err)
 			}
-			// remove copied folder locally
-			os.RemoveAll(projectPath + "copy")
 
 			return nil
 		},
