@@ -244,7 +244,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 				cmdArgs := []string{"-t", buildImage}
 
-				labels, err := getLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig.Dryrun)
+				labels, err := getLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
 				if err != nil {
 					return err
 				}
@@ -340,10 +340,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	return stackPackageCmd
 }
 
-func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYaml, dryrun bool) ([]string, error) {
+func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYaml, config *RootCommandConfig) ([]string, error) {
 	var labels []string
 
-	gitLabels, err := getGitLabels(dryrun)
+	gitLabels, err := getGitLabels(config)
 	if err != nil {
 		Warning.log(err)
 	}
@@ -365,8 +365,8 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	if err != nil {
 		return labels, err
 	}
-	configLabels[appsodyKeyPrefix+"id"] = stackID
-	configLabels[appsodyKeyPrefix+"tag"] = buildImage
+	configLabels[appsodyStackKeyPrefix+"id"] = stackID
+	configLabels[appsodyStackKeyPrefix+"tag"] = buildImage
 
 	for key, value := range configLabels {
 		labelString := fmt.Sprintf("%s=%s", key, value)

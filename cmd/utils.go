@@ -62,7 +62,9 @@ const workDirNotSet = ""
 
 const ociKeyPrefix = "org.opencontainers.image."
 
-const appsodyKeyPrefix = "dev.appsody.stack."
+const appsodyStackKeyPrefix = "dev.appsody.stack."
+
+const appsodyImageSourceKeyPrefix = "dev.appsody.image.source."
 
 // Checks whether an inode (it does not bother
 // about file or folder) exists or not.
@@ -577,7 +579,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 
 	var maintainersString string
 	for index, maintainer := range projectConfig.Maintainers {
-		maintainersString += maintainer.Name + " (" + maintainer.Email + ")"
+		maintainersString += maintainer.Name + " <" + maintainer.Email + ">"
 		if index < len(projectConfig.Maintainers)-1 {
 			maintainersString += ", "
 		}
@@ -603,7 +605,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	}
 
 	if projectConfig.Stack != "" {
-		labels[appsodyKeyPrefix+"configured"] = projectConfig.Stack
+		labels[appsodyStackKeyPrefix+"configured"] = projectConfig.Stack
 	}
 
 	if projectConfig.ApplicationName != "" {
@@ -613,8 +615,8 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	return labels, nil
 }
 
-func getGitLabels(dryrun bool) (map[string]string, error) {
-	gitInfo, err := GetGitInfo(dryrun)
+func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
+	gitInfo, err := GetGitInfo(config)
 	if err != nil {
 		return nil, err
 	}
@@ -634,6 +636,26 @@ func getGitLabels(dryrun bool) (map[string]string, error) {
 		if gitInfo.ChangesMade {
 			labels[revisionKey] += "-modified"
 		}
+	}
+
+	if commitInfo.Author != "" && commitInfo.AuthorEmail != "" {
+		labels[appsodyImageSourceKeyPrefix+"author"] = commitInfo.Author + " <" + commitInfo.AuthorEmail + ">"
+	}
+
+	if commitInfo.Committer != "" && commitInfo.CommitterEmail != "" {
+		labels[appsodyImageSourceKeyPrefix+"committer"] = commitInfo.Committer + " <" + commitInfo.CommitterEmail + ">"
+	}
+
+	if commitInfo.Date != "" {
+		labels[appsodyImageSourceKeyPrefix+"date"] = commitInfo.Date
+	}
+
+	if commitInfo.Message != "" {
+		labels[appsodyImageSourceKeyPrefix+"message"] = commitInfo.Message
+	}
+
+	if commitInfo.ContextDir != "" {
+		labels[appsodyImageSourceKeyPrefix+"contextDir"] = commitInfo.ContextDir
 	}
 
 	return labels, nil
