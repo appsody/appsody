@@ -127,16 +127,15 @@ func build(config *buildCommandConfig) error {
 	}
 
 	pushImage := config.tag
-
 	if pushImage == "" {
 		return errors.Errorf("No tag name was specified, unable to push the docker image.")
-	} else {
-		dryrun := config.Dryrun
-		if config.push {
-			err := DockerPush(pushImage, dryrun)
-			if err != nil {
-				return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
-			}
+	}
+
+	dryrun := config.Dryrun
+	if config.push {
+		err := DockerPush(pushImage, dryrun)
+		if err != nil {
+			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
 		}
 	}
 
