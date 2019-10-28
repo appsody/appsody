@@ -28,6 +28,7 @@ type buildCommandConfig struct {
 	*RootCommandConfig
 	tag                string
 	dockerBuildOptions string
+	push               bool
 }
 
 func checkDockerBuildOptions(options []string) error {
@@ -53,12 +54,14 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Locally build a docker image of your appsody project",
 		Long:  `This allows you to build a local Docker image from your Appsody project. Extract is run before the docker build.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
 			return build(config)
 		},
 	}
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
+	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push this image to an external Docker registry. Assumes that you have previously successfully done docker login")
 
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
 	buildCmd.AddCommand(newSetupCmd(config))
@@ -122,6 +125,21 @@ func build(config *buildCommandConfig) error {
 	if !config.Dryrun {
 		Info.log("Built docker image ", buildImage)
 	}
+
+	pushImage := config.tag
+
+	if pushImage == "" {
+		return errors.Errorf("No tag name was specified, unable to push the docker image.")
+	} else {
+		dryrun := config.Dryrun
+		if config.push {
+			err := DockerPush(pushImage, dryrun)
+			if err != nil {
+				return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
+			}
+		}
+	}
+
 	return nil
 }
 
