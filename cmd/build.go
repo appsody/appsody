@@ -28,6 +28,7 @@ type buildCommandConfig struct {
 	*RootCommandConfig
 	tag                string
 	dockerBuildOptions string
+	pushURL 		   string
 	push               bool
 }
 
@@ -60,6 +61,7 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
+	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "Specify the registry URL to push the image to")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push this image to an external Docker registry. Assumes that you have previously successfully done docker login")
 
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
@@ -125,17 +127,19 @@ func build(config *buildCommandConfig) error {
 		Info.log("Built docker image ", buildImage)
 	}
 
-	pushImage := config.tag
-	if pushImage == "" {
-		return errors.Errorf("No tag name was specified, unable to push the docker image.")
-	}
-
-	dryrun := config.Dryrun
 	if config.push {
-		err := DockerPush(pushImage, dryrun)
+		if config.tag == "" {
+			return errors.Errorf("No tag name was specified, unable to push the docker image.")
+		}
+		pushImage := config.tag
+		if config.pushURL != "" {
+			pushImage = config.pushURL + "/" + config.tag
+		}
+		err := DockerPush(pushImage, config.Dryrun)
 		if err != nil {
 			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
-		}
+		} 
+		Info.log("Pushed docker image ", pushImage)
 	}
 
 	return nil
