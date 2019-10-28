@@ -1,0 +1,3 @@
+[submodule "vendor/github.com/hectane/go-acl"]
+	path = vendor/github.com/hectane/go-acl
+	url = https://github.com/hectane/go-acl.git
