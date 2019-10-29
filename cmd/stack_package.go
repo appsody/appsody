@@ -111,7 +111,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// make a copy of the folder to apply template to
 			err := copyDir(projectPath, projectPath+"copy")
 			if err != nil {
-				panic(err)
+				os.RemoveAll(projectPath + "copy")
+				return errors.Errorf("Error trying to copy directory: %v", err)
 			}
 
 			// remove copied folder locally, no matter the output
@@ -146,46 +147,42 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 					//get file name
 					file := filepath.Base(path)
-					if err != nil {
-						panic(err)
-					}
 
 					// checks if file is writable
 					writable, err := CanWrite(path)
 					if !os.IsPermission(err) && err != nil {
-						panic(err)
+						return errors.Errorf("Error checking if file is read-only: %v", err)
 					}
 
 					// get permission of file
 					fileStat, err := os.Stat(path)
 					if err != nil {
-						panic(err)
+						return errors.Errorf("Error checking permission of file: %v", err)
 					}
 					permission := fileStat.Mode()
 
 					// sets file to writable
 					err = os.Chmod(path, 0700)
 					if err != nil {
-						panic(err)
+						return errors.Errorf("Error setting file permission to writable: %v", err)
 					}
 
 					// create new template from parsing file
 					tmpl, err := template.New(file).ParseFiles(path)
 					if err != nil {
-
-						panic(err)
+						return errors.Errorf("Error creating new template from file: %v", err)
 					}
 
 					// open file at path
 					f, err := os.Create(path)
 					if err != nil {
-						panic(err)
+						return errors.Errorf("Error opening file: %v", err)
 					}
 
 					// apply template to file
 					err = tmpl.ExecuteTemplate(f, file, templateMetadata)
 					if err != nil {
-						panic(err)
+						return errors.Errorf("Error executing template: %v", err)
 					}
 
 					f.Close()
@@ -194,7 +191,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					if !writable {
 						err := os.Chmod(path, permission)
 						if err != nil {
-							panic(err)
+							return errors.Errorf("Error reverting file permision: %v", err)
 						}
 					}
 				}
@@ -202,7 +199,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			})
 
 			if err != nil {
-				panic(err)
+				return errors.Errorf("Error walking through directory: %v", err)
 			}
 
 			// sets stack path to be the copied folder
