@@ -165,23 +165,22 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				}
 			}
 			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
-			pushPath := deployImage
-			if config.pushURL != "" {
 
-				// Extract code and build the image - and tags it if -t is specified
-
+			if config.push {
+				pushPath := deployImage
 				if config.pushURL != "" {
-					pushPath = config.pushURL + "/" + suffixImage
+
+					// Extract code and build the image - and tags it if -t is specified
+
+					if config.pushURL != "" {
+						pushPath = config.pushURL + "/" + suffixImage
+
+					}
 
 				}
-
-			}
-
-			if strings.HasPrefix(pushPath, "dev.local") {
-				Warning.log("The push URL begins with dev.local.  Your push operation may fail if you are targeting a remote repository.  Make sure the --tag (-t) option is specified.  ", pushPath)
-			}
-			if config.push {
-
+				if strings.HasPrefix(deployImage, "dev.local") {
+					Warning.log("The push URL begins with dev.local.  Your push operation may fail if you are targeting a remote repository.  Make sure the --tag (-t) option is specified.  ", pushPath)
+				}
 				buildConfig.pushURL = config.pushURL
 
 				buildConfig.push = true
@@ -503,6 +502,11 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 	if config.tag != "" {
 		imageName = config.tag
 	}
+
+	if config.pullURL != "" {
+		imageName = config.pullURL + "/" + imageName
+	}
+
 	if !config.Dryrun {
 		output := bytes.Replace(yamlReader, []byte("APPSODY_PROJECT_NAME"), []byte(projectName), -1)
 		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(imageName), -1)
