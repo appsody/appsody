@@ -229,10 +229,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error creating directory: %v", err)
 			}
 
-
 			// get the stack name from the stack path (removes copy suffix)
-			stackName := filepath.Base(strings.Replace(stackPath, "copy", "", 1))
-			Debug.Log("stackName is: ", stackName)
+			stackID := filepath.Base(strings.Replace(stackPath, "copy", "", 1))
+			Debug.Log("stackID is: ", stackID)
 
 			indexFileLocal := filepath.Join(devLocal, "index-dev-local.yaml")
 			Debug.Log("indexFileLocal is: ", indexFileLocal)
