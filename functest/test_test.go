@@ -73,7 +73,7 @@ func TestTestSimple(t *testing.T) {
 			runChannel <- err
 		}()
 
-		waitForError := 60 // in seconds
+		waitForError := 20 // in seconds
 		stillWaiting := true
 		log.Println("Waiting to see if test will fail...")
 		for stillWaiting {

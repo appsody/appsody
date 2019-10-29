@@ -6,8 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 func DockerRunAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
@@ -100,10 +98,10 @@ func RunCommandAndListen(commandValue string, args []string, logger appsodylogge
 			}
 		}()
 
-		out, err := SeperateOutput(execCmd)
+		err = execCmd.Start()
 		if err != nil {
-			Debug.log("Error running ", command, " command: ", logScanner.Text(), out)
-			return nil, errors.Errorf(out)
+			Debug.log("Error running ", command, " command: ", logScanner.Text(), err)
+			return nil, err
 		}
 
 	}

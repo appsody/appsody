@@ -44,29 +44,3 @@ func TestDockerInspect(t *testing.T) {
 		})
 	}
 }
-
-var invalidCmdsTest = []struct {
-	args     []string
-	expected string
-}{
-	{[]string{"-f", "Dockerfile", "."}, "no such file or directory"},
-	{[]string{"-P", "Dockerfile", "."}, "unknown shorthand"},
-}
-
-func TestDockerBuild(t *testing.T) {
-
-	for _, test := range invalidCmdsTest {
-
-		err := cmd.DockerBuild(test.args, cmd.DockerLog, false, false)
-
-		t.Run(fmt.Sprintf("Test Invalid DockerBuild"), func(t *testing.T) {
-
-			if err == nil {
-				t.Error("Expected an error from 'docker ", strings.Join(test.args, " "), "' but it did not return one.")
-			} else if !strings.Contains(err.Error(), test.expected) {
-				t.Error("Expected the stdout to contain '", test.expected, "'. It actually contains: ", err.Error())
-			}
-		})
-	}
-
-}
