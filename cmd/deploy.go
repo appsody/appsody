@@ -138,7 +138,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			var deployImage string
 			var appsodyApplication AppsodyApplication
 			var appErr error
-			var suffixImage string
+			var nameSpaceRepositoryAndTag string
 			if !dryrun {
 
 				appsodyApplication, appErr = getAppsodyApplication(configFile)
@@ -155,13 +155,13 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				}
 
 				if strings.Count(deployImage, "/") > 1 {
-					suffixImage = firstAfter(deployImage, "/")
+					nameSpaceRepositoryAndTag = firstAfter(deployImage, "/")
 				} else {
-					suffixImage = deployImage
+					nameSpaceRepositoryAndTag = deployImage
 				}
 
 				if config.pullURL != "" {
-					deployImage = config.pullURL + "/" + suffixImage
+					deployImage = config.pullURL + "/" + nameSpaceRepositoryAndTag
 				}
 			}
 			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
@@ -173,7 +173,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 					// Extract code and build the image - and tags it if -t is specified
 
 					if config.pushURL != "" {
-						pushPath = config.pushURL + "/" + suffixImage
+						pushPath = config.pushURL + "/" + nameSpaceRepositoryAndTag
 
 					}
 
@@ -186,7 +186,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				buildConfig.push = true
 			}
 
-			buildConfig.tag = suffixImage
+			buildConfig.tag = nameSpaceRepositoryAndTag
 			buildErr := build(buildConfig)
 			if buildErr != nil {
 				return buildErr
