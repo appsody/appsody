@@ -1301,8 +1301,11 @@ func DockerPush(imageToPush string, dryrun bool) error {
 	pushCmd := exec.Command(cmdName, cmdArgs...)
 	pushOut, pushErr := pushCmd.Output()
 	if pushErr != nil {
-		Error.log("Could not push the image: ", pushErr, " ", string(pushOut[:]))
-		return pushErr
+		if !(strings.Contains(pushErr.Error(), "[DEPRECATION NOTICE] registry v2") || strings.Contains(string(pushOut[:]), "[DEPRECATION NOTICE] registry v2")) {
+			Error.log("Could not push the image: ", pushErr, " ", string(pushOut[:]))
+
+			return pushErr
+		}
 	}
 	Debug.log("Docker push command output: ", string(pushOut[:]))
 	return nil

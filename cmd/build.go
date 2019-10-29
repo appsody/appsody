@@ -92,6 +92,9 @@ func build(config *buildCommandConfig) error {
 	if config.tag != "" {
 		buildImage = config.tag
 	}
+	if config.pushURL != "" {
+		buildImage = config.pushURL + "/" + buildImage
+	}
 	cmdArgs := []string{"-t", buildImage}
 
 	if config.dockerBuildOptions != "" {
@@ -123,11 +126,8 @@ func build(config *buildCommandConfig) error {
 		return execError
 	}
 	if config.push {
-		pushImage := buildImage
-		if config.pushURL != "" {
-			pushImage = config.pushURL + "/" + buildImage
-		}
-		err := DockerPush(pushImage, config.Dryrun)
+
+		err := DockerPush(buildImage, config.Dryrun)
 		if err != nil {
 			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
 		}
