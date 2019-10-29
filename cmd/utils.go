@@ -639,11 +639,19 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 	}
 
 	if commitInfo.Author != "" && commitInfo.AuthorEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author + " <" + commitInfo.AuthorEmail + ">"
+		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author
 	}
 
-	if commitInfo.Committer != "" && commitInfo.CommitterEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] = commitInfo.Committer + " <" + commitInfo.CommitterEmail + ">"
+	if commitInfo.AuthorEmail != "" {
+		labels[appsodyImageCommitKeyPrefix+"author"] += " <" + commitInfo.AuthorEmail + ">"
+	}
+
+	if commitInfo.Committer != "" {
+		labels[appsodyImageCommitKeyPrefix+"committer"] = commitInfo.Committer
+	}
+
+	if commitInfo.CommitterEmail != "" {
+		labels[appsodyImageCommitKeyPrefix+"committer"] += " <" + commitInfo.CommitterEmail + ">"
 	}
 
 	if commitInfo.Date != "" {

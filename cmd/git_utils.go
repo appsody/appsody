@@ -207,7 +207,7 @@ func RunGitGetLastCommit(URL string, config *RootCommandConfig) (CommitInfo, err
 	if err != nil {
 		return commitInfo, err
 	}
-	commitInfo.contextDir = strings.Replace(projectDir, gitLocationString, "", 1)
+	commitInfo.contextDir = strings.Trim(projectDir, gitLocationString)
 
 	return commitInfo, nil
 }
