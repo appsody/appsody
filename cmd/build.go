@@ -133,12 +133,17 @@ func getLabels(config *buildCommandConfig) ([]string, error) {
 		return labels, err
 	}
 
-	configLabels, err := getConfigLabels(config.RootCommandConfig)
+	projectConfig, projectConfigErr := getProjectConfig(config.RootCommandConfig)
+	if projectConfigErr != nil {
+		return labels, projectConfigErr
+	}
+
+	configLabels, err := getConfigLabels(*projectConfig)
 	if err != nil {
 		return labels, err
 	}
 
-	gitLabels, err := getGitLabels(config.RootCommandConfig)
+	gitLabels, err := getGitLabels(config.Dryrun)
 	if err != nil {
 		Warning.log(err)
 	}
