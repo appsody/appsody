@@ -345,7 +345,7 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
-		Warning.log(err)
+		Info.log(err)
 	}
 
 	for key, value := range gitLabels {

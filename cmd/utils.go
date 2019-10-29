@@ -64,7 +64,7 @@ const ociKeyPrefix = "org.opencontainers.image."
 
 const appsodyStackKeyPrefix = "dev.appsody.stack."
 
-const appsodyImageSourceKeyPrefix = "dev.appsody.image.source."
+const appsodyImageCommitKeyPrefix = "dev.appsody.image.commit."
 
 // Checks whether an inode (it does not bother
 // about file or folder) exists or not.
@@ -639,23 +639,23 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 	}
 
 	if commitInfo.Author != "" && commitInfo.AuthorEmail != "" {
-		labels[appsodyImageSourceKeyPrefix+"author"] = commitInfo.Author + " <" + commitInfo.AuthorEmail + ">"
+		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author + " <" + commitInfo.AuthorEmail + ">"
 	}
 
 	if commitInfo.Committer != "" && commitInfo.CommitterEmail != "" {
-		labels[appsodyImageSourceKeyPrefix+"committer"] = commitInfo.Committer + " <" + commitInfo.CommitterEmail + ">"
+		labels[appsodyImageCommitKeyPrefix+"committer"] = commitInfo.Committer + " <" + commitInfo.CommitterEmail + ">"
 	}
 
 	if commitInfo.Date != "" {
-		labels[appsodyImageSourceKeyPrefix+"date"] = commitInfo.Date
+		labels[appsodyImageCommitKeyPrefix+"date"] = commitInfo.Date
 	}
 
 	if commitInfo.Message != "" {
-		labels[appsodyImageSourceKeyPrefix+"message"] = commitInfo.Message
+		labels[appsodyImageCommitKeyPrefix+"message"] = commitInfo.Message
 	}
 
-	if commitInfo.ContextDir != "" {
-		labels[appsodyImageSourceKeyPrefix+"contextDir"] = commitInfo.ContextDir
+	if commitInfo.contextDir != "" {
+		labels[appsodyImageCommitKeyPrefix+"contextDir"] = commitInfo.contextDir
 	}
 
 	return labels, nil

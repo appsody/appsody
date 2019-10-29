@@ -31,7 +31,7 @@ type CommitInfo struct {
 	Date           string
 	URL            string
 	Message        string
-	ContextDir     string "json:,omitempty"
+	contextDir     string
 }
 
 type GitInfo struct {
@@ -207,7 +207,7 @@ func RunGitGetLastCommit(URL string, config *RootCommandConfig) (CommitInfo, err
 	if err != nil {
 		return commitInfo, err
 	}
-	commitInfo.ContextDir = strings.Replace(projectDir, gitLocationString, "", 1)
+	commitInfo.contextDir = strings.Replace(projectDir, gitLocationString, "", 1)
 
 	return commitInfo, nil
 }
