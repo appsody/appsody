@@ -19,6 +19,10 @@
   version = "2.2.2"
 
 [[constraint]]
+  name = "github.com/Masterminds/semver"
+  version = "3.0.0"
+
+[[constraint]]
   name = "k8s.io/klog"
   version = "0.3.0"
 

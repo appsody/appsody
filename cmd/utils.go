@@ -34,6 +34,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
@@ -1877,4 +1878,33 @@ func Targz(source, target string) error {
 			_, err = io.Copy(tarball, file)
 			return err
 		})
+}
+
+//Compares the minimum requirements of a stack against the user to determine whether they can use the stack or not.
+func CheckStackRequirements(minimumVersion, technology string) (bool, error) {
+	Info.log("Checking stack requirements for " + technology)
+	reg := regexp.MustCompile("[0-9][0-9.]*[0-9]")
+
+	versionConstraint, err := semver.NewConstraint(minimumVersion)
+	if err != nil {
+		Error.log(err)
+	}
+
+	getVersion, appErr := exec.Command(strings.ToLower(technology), "version").Output()
+	if appErr != nil {
+		return false, appErr
+	}
+	res := reg.FindString(string(getVersion))
+
+	parseUserVersion, err := semver.NewVersion(res)
+	if err != nil {
+		Error.log(err)
+	}
+
+	compareVersion := versionConstraint.Check(parseUserVersion)
+	if compareVersion {
+		Info.log(technology + " requirements met")
+		return true, nil
+	}
+	return false, errors.Errorf("The minimum required version of " + technology + " to use this stack is " + minimumVersion + " - Please upgrade.")
 }
