@@ -35,9 +35,6 @@ func TestTestSimple(t *testing.T) {
 		return
 	}
 
-	// replace incubator with appsodyhub to match current naming convention for repos
-	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
-
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
 
