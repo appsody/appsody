@@ -246,7 +246,8 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			Info.log("If you wish to proceed and overwrite files in the current directory, try again with the --overwrite option.")
 			// this leave the tar file in the dir
 			return errors.Errorf("Error extracting project template: %v", errUntar)
-
+		} else if inputTemplateName != "none" {
+			Info.log("Successfully extracted and applied project template")
 		}
 
 	}
