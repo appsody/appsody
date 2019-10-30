@@ -466,9 +466,6 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 	}
 
 	yamlReader, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return err
-	}
 
 	if !config.Dryrun && err != nil {
 		if os.IsNotExist(err) {
@@ -555,7 +552,7 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 
 		output, err = yaml.Marshal(appsodyApplication)
 		if err != nil {
-			return errors.Errorf("Could not Marshal deploy YAML: %s", err)
+			return errors.Errorf("Could not marshall AppsodyApplication to YAML when generating the app-deploy.yaml: %s", err)
 		}
 
 		err = ioutil.WriteFile(configFile, output, 0666)

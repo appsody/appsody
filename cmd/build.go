@@ -160,7 +160,7 @@ func getLabels(config *RootCommandConfig) (map[string]string, error) {
 		return labels, err
 	}
 
-	gitLabels, err := getGitLabels(config.RootCommandConfig)
+	gitLabels, err := getGitLabels(config)
 	if err != nil {
 		Info.log(err)
 	}
