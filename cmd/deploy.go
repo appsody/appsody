@@ -160,12 +160,12 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				if applicationImage == "" {
 					return deployWithKnative(config)
 				}
-				deployImage = config.tag
-				finalDeployImage = deployImage
-				if deployImage == "" {
-					deployImage = applicationImage
-					// deployImage = "dev.local/" + projectName
+				deployImage = applicationImage
+				if config.tag != "" {
+					deployImage = config.tag
 				}
+
+				finalDeployImage = deployImage
 				nameSpaceRepositoryAndTag = findNamespaceRepositoryAndTag(deployImage)
 
 				if config.pullURL != "" {
