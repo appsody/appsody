@@ -327,7 +327,7 @@ func deployWithKnative(config *deployCommandConfig) error {
 	buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
 
 	if config.push {
-
+		buildConfig.tag = findNamespaceRepositoryAndTag(deployImage)
 		buildConfig.pushURL = config.pushURL
 		buildConfig.push = true
 	}
