@@ -325,6 +325,7 @@ func deployWithKnative(config *deployCommandConfig) error {
 		deployImage = localtag // And forcing deployimage to be localtag
 	}
 	buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
+	buildConfig.Verbose = config.Verbose
 	buildConfig.tag = deployImage
 	if config.push {
 		buildConfig.tag = findNamespaceRepositoryAndTag(deployImage)
