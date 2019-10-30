@@ -198,8 +198,9 @@ func TestInvalidProjectNames(t *testing.T) {
 	}
 }
 
+//Passes in impossibly high minimum versions of Docker and Appsody
 func TestInvalidVersionAgainstStack(t *testing.T) {
-	reqArray := []cmd.StackRequirement{{Docker: "102.0.5", Appsody: "21.4.0"}}
+	reqArray := []cmd.StackRequirement{{Docker: "102.0.5", Appsody: "102.0.5"}}
 	err := cmd.CheckStackRequirements(reqArray)
 
 	if err == nil {

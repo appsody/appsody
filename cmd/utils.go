@@ -1898,31 +1898,35 @@ func CheckStackRequirements(requirementArray []StackRequirement) error {
 		values[i] = v.Field(i).Interface()
 		technology := v.Type().Field(i).Name
 
-		Info.log("Checking stack requirements for " + technology)
+		if values[i].(string) == "" {
+			Info.log("Skipping ", technology, " - No requirements set.")
+		} else {
+			Info.log("Checking stack requirements for ", technology)
 
-		if versionConstraint, ok := values[i].(string); ok {
-			setConstraint, err := semver.NewConstraint(versionConstraint)
-			if err != nil {
-				Error.log(err)
-			}
-
-			runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
-			if appErr != nil {
-				Error.log(appErr, " - Are you sure ", technology, " is installed?")
-				upgradesRequired++
-			} else {
-				parseUserVersion, parseErr := semver.NewVersion(versionRegex.FindString(string(runVersionCmd)))
-				compareVersion := setConstraint.Check(parseUserVersion)
-
-				if parseErr != nil {
-					Error.log(parseErr)
+			if versionConstraint, ok := values[i].(string); ok {
+				setConstraint, err := semver.NewConstraint(versionConstraint)
+				if err != nil {
+					Error.log(err)
 				}
 
-				if compareVersion {
-					Info.log(technology + " requirements met")
-				} else {
-					Error.log("The minimum required version of " + technology + " to use this stack is " + versionConstraint + " - Please upgrade.")
+				runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
+				if appErr != nil {
+					Error.log(appErr, " - Are you sure ", technology, " is installed?")
 					upgradesRequired++
+				} else {
+					parseUserVersion, parseErr := semver.NewVersion(versionRegex.FindString(string(runVersionCmd)))
+					compareVersion := setConstraint.Check(parseUserVersion)
+
+					if parseErr != nil {
+						Error.log(parseErr)
+					}
+
+					if compareVersion {
+						Info.log(technology + " requirements met")
+					} else {
+						Error.log("The minimum required version of " + technology + " to use this stack is " + versionConstraint + " - Please upgrade.")
+						upgradesRequired++
+					}
 				}
 			}
 		}
