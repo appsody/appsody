@@ -20,7 +20,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"os/user"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -146,69 +145,22 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if destController != "" {
 		Debug.log("Overriding appsody-controller mount with APPSODY_MOUNT_CONTROLLER env variable: ", destController)
 	} else {
-		// Copy the controller from the installation directory to the home (.appsody)
-		destController = filepath.Join(getHome(config.RootCommandConfig), "appsody-controller")
-		// Debug.log("Attempting to load the controller from ", destController)
-		//if _, err := os.Stat(destController); os.IsNotExist(err) {
-		// Always copy it from the executable dir
-		//Retrieving the path of the binaries appsody and appsody-controller
-		//Debug.log("Didn't find the controller in .appsody - copying from the binary directory...")
-		executable, _ := os.Executable()
-		binaryLocation, err := filepath.Abs(filepath.Dir(executable))
-		Debug.log("Binary location ", binaryLocation)
+		destController = "appsody-controller"
+		downloaderArgs := []string{"--rm", "-v", "appsody-controller:/.appsody", "chilantim/controller-downloader", "./getController.sh", "qlatest"}
+		controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
+		if config.Dryrun {
+			Info.log("Dry Run - Skipping execCmd.Wait")
+		} else {
+			if err == nil {
+				err = controllerDownloader.Wait()
+			}
+		}
 		if err != nil {
-			return errors.New("fatal error - can't retrieve the binary path... exiting")
+			Debug.Log("Error downloading or checking the version of the controller: ", err)
+			return err
 		}
-		controllerExists, existsErr := Exists(destController)
-		if existsErr != nil {
-			return existsErr
-		}
-		Debug.log("appsody-controller exists: ", controllerExists)
-		checksumMatch := false
-		if controllerExists {
-			var checksumMatchErr error
-			binaryControllerPath := filepath.Join(binaryLocation, "appsody-controller")
-			binaryControllerExists, existsErr := Exists(binaryControllerPath)
-			if existsErr != nil {
-				return existsErr
-			}
-			if binaryControllerExists {
-				checksumMatch, checksumMatchErr = checksum256TestFile(binaryControllerPath, destController)
-				Debug.log("checksum returned: ", checksumMatch)
-				if checksumMatchErr != nil {
-					return checksumMatchErr
-				}
-			} else {
-				//the binary controller did not exist so skip copying it
-				Warning.log("The binary controller could not be found.")
-				checksumMatch = true
-			}
-		}
-		// if the controller doesn't exist
-		if !controllerExists || (controllerExists && !checksumMatch) {
-			Debug.log("Replacing Controller")
-
-			//Construct the appsody-controller mount
-			sourceController := filepath.Join(binaryLocation, "appsody-controller")
-			if config.Dryrun {
-				Info.logf("Dry Run - Skipping copy of controller binary from %s to %s", sourceController, destController)
-			} else {
-				Debug.log("Attempting to copy the source controller from: ", sourceController)
-				//Copy the controller from the binary location to $HOME/.appsody
-				copyError := CopyFile(sourceController, destController)
-				if copyError != nil {
-					return errors.Errorf("Cannot retrieve controller - exiting: %v", copyError)
-				}
-				// Making the controller executable in case CopyFile loses permissions
-				chmodErr := os.Chmod(destController, 0755)
-				if chmodErr != nil {
-					return errors.Errorf("Cannot make the controller  executable - exiting: %v", chmodErr)
-				}
-			}
-		}
-		//} Used to close the "if controller does not exist"
 	}
-	controllerMount := destController + ":/appsody/appsody-controller"
+	controllerMount := destController + ":/appsody"
 	Debug.log("Adding controller to volume mounts: ", controllerMount)
 	volumeMaps = append(volumeMaps, "-v", controllerMount)
 	if !config.Buildah {
