@@ -638,7 +638,7 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		}
 	}
 
-	if commitInfo.Author != "" && commitInfo.AuthorEmail != "" {
+	if commitInfo.Author != "" {
 		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author
 	}
 
