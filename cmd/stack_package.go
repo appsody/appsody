@@ -351,6 +351,7 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {
 		stackUrl := gitLabels[ociKeyPrefix+"source"] + contextDir
 		gitLabels[ociKeyPrefix+"url"] = stackUrl
+		// These are enforced by the stack lint so they should exist
 		gitLabels[ociKeyPrefix+"documentation"] = stackUrl + "/README.md"
 		gitLabels[ociKeyPrefix+"source"] = stackUrl + "/image"
 	}
