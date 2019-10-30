@@ -568,13 +568,8 @@ func UserHomeDir() string {
 	return homeDir
 }
 
-func getConfigLabels(config *RootCommandConfig) (map[string]string, error) {
+func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	var labels = make(map[string]string)
-
-	projectConfig, projectConfigErr := getProjectConfig(config)
-	if projectConfigErr != nil {
-		return labels, projectConfigErr
-	}
 
 	t := time.Now()
 
@@ -618,8 +613,8 @@ func getConfigLabels(config *RootCommandConfig) (map[string]string, error) {
 	return labels, nil
 }
 
-func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
-	gitInfo, err := GetGitInfo(config.Dryrun)
+func getGitLabels(dryrun bool) (map[string]string, error) {
+	gitInfo, err := GetGitInfo(dryrun)
 	if err != nil {
 		return nil, err
 	}
@@ -1743,6 +1738,25 @@ func setNewIndexURL(config *RootCommandConfig) {
 
 	if err = ioutil.WriteFile(repoFile, replaceURL, 0644); err != nil {
 		Warning.log(err)
+	}
+}
+
+// TEMPORARY CODE: sets the old repo name "appsodyhub" to the new name "incubator"
+// this code should be removed when we think everyone is using the new name.
+func setNewRepoName(config *RootCommandConfig) {
+	var repoFile RepositoryFile
+	_, repoErr := repoFile.getRepos(config)
+	if repoErr != nil {
+		Warning.log("Unable to read repository file")
+	}
+	appsodyhubRepo := repoFile.GetRepo("appsodyhub")
+	if appsodyhubRepo != nil && appsodyhubRepo.URL == incubatorRepositoryURL {
+		Info.log("Migrating your repo name from 'appsodyhub' to 'incubator'")
+		appsodyhubRepo.Name = "incubator"
+		err := repoFile.WriteFile(getRepoFileLocation(config))
+		if err != nil {
+			Warning.logf("Failed to write file to repository location: %v", err)
+		}
 	}
 }
 

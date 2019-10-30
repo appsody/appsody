@@ -123,7 +123,7 @@ func (e indexErrors) Error() string {
 
 const (
 	supportedIndexAPIVersion  = "v2"
-	appsodyHubURL             = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
+	incubatorRepositoryURL    = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
 	experimentalRepositoryURL = "https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml"
 )
 
@@ -186,13 +186,13 @@ func ensureConfig(rootConfig *RootCommandConfig) error {
 	if file, err := os.Stat(repoFileLocation); err != nil {
 
 		if rootConfig.Dryrun {
-			Info.log("Dry Run - Skipping creation of appsodyhub repo: ", appsodyHubURL)
+			Info.log("Dry Run - Skipping creation of incubator repo: ", incubatorRepositoryURL)
 		} else {
 
 			repo := NewRepoFile()
 			repo.Add(&RepositoryEntry{
-				Name:      "appsodyhub",
-				URL:       appsodyHubURL,
+				Name:      "incubator",
+				URL:       incubatorRepositoryURL,
 				IsDefault: true,
 			})
 			repo.Add(&RepositoryEntry{
@@ -384,14 +384,14 @@ func (r *RepositoryFile) GetDefaultRepoName(rootConfig *RootCommandConfig) (stri
 	// If we got this far, no default repo was found - this is likely to be a 0.2.8 or prior
 	// We'll set the default repo
 	// If there's only one repo - set it as default
-	// And if appsodyhub isn't there set the first one as default
+	// And if incubator isn't there set the first one as default
 	var repoName string
-	if len(r.Repositories) == 1 || !r.Has("appsodyhub") {
+	if len(r.Repositories) == 1 || !r.Has("incubator") {
 		r.Repositories[0].IsDefault = true
 		repoName = r.Repositories[0].Name
 	} else {
-		// If there's more than one, let's search for appsodyhub first
-		repo := r.GetRepo("appsodyhub")
+		// If there's more than one, let's search for incubator first
+		repo := r.GetRepo("incubator")
 		repo.IsDefault = true
 		repoName = repo.Name
 	}

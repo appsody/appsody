@@ -69,8 +69,8 @@ func TestListV2(t *testing.T) {
 		t.Error("list command should contain id 'nodejs'")
 	}
 
-	// test the current default hub
-	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "appsodyhub"}, ".")
+	// test the current default repo
+	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "incubator"}, ".")
 
 	if !strings.Contains(output, "java-microprofile") {
 		t.Error("list command should contain id 'java-microprofile'")
@@ -83,7 +83,7 @@ func TestListV2(t *testing.T) {
 		t.Error("list command should contain id 'java-microprofile and 2 nodejs '")
 	}
 
-	// test the current default hub
+	// test the current default repo
 	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "nonexisting"}, ".")
 
 	if !(strings.Contains(output, "cannot locate repository ")) {
