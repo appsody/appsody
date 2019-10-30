@@ -205,8 +205,13 @@ func RunGitGetLastCommit(URL string, config *RootCommandConfig) (CommitInfo, err
 
 	projectDir, err := getProjectDir(config)
 	if err != nil {
-		return commitInfo, err
+		if _, ok := err.(*NotAnAppsodyProject); ok {
+			// ignore this, we don't care it it is not an appsody project here
+		} else {
+			return commitInfo, err
+		}
 	}
+
 	commitInfo.contextDir = strings.Trim(projectDir, gitLocationString)
 
 	return commitInfo, nil
