@@ -26,7 +26,7 @@ import (
 func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var lintCmd = &cobra.Command{
 		Use:   "lint",
-		Short: "Lint your stack to verify that it conforms to the standard of an Appsody stack",
+		Short: "Lint your stack to verify that it conforms to the structure of an Appsody stack",
 		Long: `This command will validate that your stack has the structure of an Appsody stack. It will inform you of files/directories
 missing and warn you if your stack could be enhanced.
 

@@ -156,9 +156,9 @@ func getLabels(config *buildCommandConfig) ([]string, error) {
 		return labels, err
 	}
 
-	gitLabels, err := getGitLabels(config.Dryrun)
+	gitLabels, err := getGitLabels(config.RootCommandConfig)
 	if err != nil {
-		Warning.log(err)
+		Info.log(err)
 	}
 
 	for key, value := range stackLabels {
