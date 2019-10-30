@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -217,30 +216,10 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		}
 
-		if len(stackReqs) == 0 {
-			Info.log("No restrictions on stack found. Continuing...")
-		} else {
-			v := reflect.ValueOf(stackReqs[0])
-			values := make([]interface{}, v.NumField())
-
-			upgradesRequired := 0
-
-			for i := 0; i < v.NumField(); i++ {
-				values[i] = v.Field(i).Interface()
-
-				if versionConstraint, ok := values[i].(string); ok {
-					_, err := CheckStackRequirements(versionConstraint, v.Type().Field(i).Name)
-					if err != nil {
-						Error.log(err, " - Are you sure ", v.Type().Field(i).Name, " is installed?")
-						upgradesRequired++
-					}
-				}
-			}
-
-			if upgradesRequired > 0 {
-				Error.log("One or more technologies need upgrading to use this stack. Upgrades required: ", upgradesRequired)
-				os.Exit(1)
-			}
+		checkErr := CheckStackRequirements(stackReqs)
+		if checkErr != nil {
+			Error.log(checkErr)
+			os.Exit(1)
 		}
 
 		Info.log("Running appsody init...")
