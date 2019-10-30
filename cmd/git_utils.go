@@ -23,10 +23,15 @@ import (
 )
 
 type CommitInfo struct {
-	Author string
-	SHA    string
-	Date   string
-	URL    string
+	Author         string
+	AuthorEmail    string
+	Committer      string
+	CommitterEmail string
+	SHA            string
+	Date           string
+	URL            string
+	Message        string
+	contextDir     string
 }
 
 type GitInfo struct {
@@ -81,7 +86,7 @@ func stringBetween(value string, pre string, post string) string {
 }
 
 //RunGitFindBranc issues git status
-func GetGitInfo(dryrun bool) (GitInfo, error) {
+func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	var gitInfo GitInfo
 	version, vErr := RunGitVersion(false)
 	if vErr != nil {
@@ -95,7 +100,7 @@ func GetGitInfo(dryrun bool) (GitInfo, error) {
 
 	kargs := []string{"status", "-sb"}
 
-	output, gitErr := RunGit(kargs, dryrun)
+	output, gitErr := RunGit(kargs, config.Dryrun)
 	if gitErr != nil {
 		return gitInfo, gitErr
 	}
@@ -135,7 +140,7 @@ func GetGitInfo(dryrun bool) (GitInfo, error) {
 	gitInfo.ChangesMade = changesMade
 
 	if gitInfo.Upstream != "" {
-		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(gitInfo.Upstream, dryrun)
+		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(gitInfo.Upstream, config.Dryrun)
 		if gitErr != nil {
 			Info.Logf("Could not construct repository URL %v", gitErr)
 		}
@@ -144,7 +149,7 @@ func GetGitInfo(dryrun bool) (GitInfo, error) {
 		Info.log("Unable to determine origin to compute repository URL")
 	}
 
-	gitInfo.Commit, gitErr = RunGitGetLastCommit(gitInfo.RemoteURL, dryrun)
+	gitInfo.Commit, gitErr = RunGitGetLastCommit(gitInfo.RemoteURL, config)
 	if gitErr != nil {
 		Info.log("Received error getting current commit: ", gitErr)
 
@@ -176,11 +181,11 @@ func RunGitConfigLocalRemoteOriginURL(upstream string, dryrun bool) (string, err
 }
 
 //RunGitLog issues git log
-func RunGitGetLastCommit(URL string, dryrun bool) (CommitInfo, error) {
-	//git log -n 1 --pretty=format:"{"author":"%cn","sha":"%h","date":"%cd”}”
-	kargs := []string{"log", "-n", "1", "--pretty=format:'{\"author\":\"%cn\",\"sha\":\"%H\",\"date\":\"%cd\"}'"}
+func RunGitGetLastCommit(URL string, config *RootCommandConfig) (CommitInfo, error) {
+	//git log -n 1 --pretty=format:"{"author":"%cn","sha":"%h","date":"%cd”,}”
+	kargs := []string{"log", "-n", "1", "--pretty=format:'{\"author\":\"%an\", \"authoremail\":\"%ae\", \"sha\":\"%H\", \"date\":\"%cd\", \"committer\":\"%cn\", \"committeremail\":\"%ce\", \"message\":\"%s\"}'"}
 	var commitInfo CommitInfo
-	commitStringInfo, gitErr := RunGit(kargs, dryrun)
+	commitStringInfo, gitErr := RunGit(kargs, config.Dryrun)
 	if gitErr != nil {
 		return commitInfo, gitErr
 	}
@@ -191,8 +196,20 @@ func RunGitGetLastCommit(URL string, dryrun bool) (CommitInfo, error) {
 	if URL != "" {
 		commitInfo.URL = stringBefore(URL, ".git") + "/commit/" + commitInfo.SHA
 	}
-	return commitInfo, nil
 
+	gitLocation, gitErr := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if gitErr != nil {
+		return commitInfo, gitErr
+	}
+	gitLocationString := strings.Replace(string(gitLocation), "\n", "", 1)
+
+	projectDir, err := getProjectDir(config)
+	if err != nil {
+		return commitInfo, err
+	}
+	commitInfo.contextDir = strings.Trim(projectDir, gitLocationString)
+
+	return commitInfo, nil
 }
 
 //RunGitVersion
