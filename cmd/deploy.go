@@ -61,9 +61,9 @@ func findNamespaceRepositoryAndTag(image string) string {
 }
 func firstAfter(value string, a string) string {
 
-	values := strings.Split(value, "/")
+	values := strings.Split(value, a)
 	if len(values) == 3 {
-		return values[1] + "/" + values[2]
+		return values[1] + a + values[2]
 	}
 	return value
 
