@@ -51,8 +51,7 @@ type Spec struct {
 }
 
 func findNamespaceRepositoryAndTag(image string) string {
-	var nameSpaceRepositoryAndTag string
-	nameSpaceRepositoryAndTag = firstAfter(image, "/")
+	nameSpaceRepositoryAndTag := firstAfter(image, "/")
 	return nameSpaceRepositoryAndTag
 }
 func firstAfter(value string, a string) string {
