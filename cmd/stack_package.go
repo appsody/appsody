@@ -348,13 +348,14 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 		Info.log(err)
 	}
 
+	branchURL := gitLabels[ociKeyPrefix+"source"]
 	if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {
-		stackURL := gitLabels[ociKeyPrefix+"source"] + contextDir
-		gitLabels[ociKeyPrefix+"url"] = stackURL
-		// These are enforced by the stack lint so they should exist
-		gitLabels[ociKeyPrefix+"documentation"] = stackURL + "/README.md"
-		gitLabels[ociKeyPrefix+"source"] = stackURL + "/image"
+		branchURL += contextDir
+		gitLabels[ociKeyPrefix+"url"] = branchURL
 	}
+	// These are enforced by the stack lint so they should exist
+	gitLabels[ociKeyPrefix+"documentation"] = branchURL + "/README.md"
+	gitLabels[ociKeyPrefix+"source"] = branchURL + "/image"
 
 	for key, value := range gitLabels {
 		labelString := fmt.Sprintf("%s=%s", key, value)
