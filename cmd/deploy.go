@@ -50,6 +50,15 @@ type Spec struct {
 	ApplicationImage string `yaml:"applicationImage"`
 }
 
+func findNamespaceRepositoryAndTag(image string) string {
+	var nameSpaceRepositoryAndTag string
+	if strings.Count(image, "/") > 1 {
+		nameSpaceRepositoryAndTag = firstAfter(image, "/")
+	} else {
+		nameSpaceRepositoryAndTag = image
+	}
+	return nameSpaceRepositoryAndTag
+}
 func firstAfter(value string, a string) string {
 	pos := strings.Index(value, a)
 	if pos == -1 {
@@ -139,6 +148,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			var appsodyApplication AppsodyApplication
 			var appErr error
 			var nameSpaceRepositoryAndTag string
+			var finalDeployImage string
 			if !dryrun {
 
 				appsodyApplication, appErr = getAppsodyApplication(configFile)
@@ -149,19 +159,15 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				Debug.log("Application Image:  ", applicationImage)
 
 				deployImage = config.tag
+				finalDeployImage = deployImage
 				if deployImage == "" {
 					deployImage = applicationImage
 					// deployImage = "dev.local/" + projectName
 				}
-
-				if strings.Count(deployImage, "/") > 1 {
-					nameSpaceRepositoryAndTag = firstAfter(deployImage, "/")
-				} else {
-					nameSpaceRepositoryAndTag = deployImage
-				}
+				nameSpaceRepositoryAndTag = findNamespaceRepositoryAndTag(deployImage)
 
 				if config.pullURL != "" {
-					deployImage = config.pullURL + "/" + nameSpaceRepositoryAndTag
+					finalDeployImage = config.pullURL + "/" + nameSpaceRepositoryAndTag
 				}
 			}
 			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
@@ -185,8 +191,11 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 				buildConfig.push = true
 			}
-
-			buildConfig.tag = nameSpaceRepositoryAndTag
+			buildConfig.tag = deployImage
+			if config.pushURL != "" {
+				buildConfig.tag = nameSpaceRepositoryAndTag
+			}
+			fmt.Println("buildConfig.tag: ", buildConfig.tag)
 			buildErr := build(buildConfig)
 			if buildErr != nil {
 				return buildErr
@@ -212,8 +221,8 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				if strings.Contains(line, "applicationImage:") {
 					index := strings.Index(line, ": ")
 					start := line[0:(index + 2)]
-					imagePath := deployImage
-					line = start + deployImage
+					imagePath := finalDeployImage
+					line = start + finalDeployImage
 					Info.log("Using applicationImage of: ", imagePath)
 				}
 				if strings.Contains(line, "createKnativeService") {
@@ -504,7 +513,7 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 	}
 
 	if config.pullURL != "" {
-		imageName = config.pullURL + "/" + imageName
+		imageName = config.pullURL + "/" + findNamespaceRepositoryAndTag(imageName)
 	}
 
 	if !config.Dryrun {
