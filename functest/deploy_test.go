@@ -30,10 +30,6 @@ func TestParser(t *testing.T) {
 		return
 	}
 
-	// replace incubator with appsodyhub to match current naming convention for repos
-	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
-	t.Log("new stacksList is: ", stacksList)
-
 	stackRaw := strings.Split(stacksList, " ")
 
 	// we don't need to split the repo and stack anymore...
@@ -63,9 +59,6 @@ func TestDeploySimple(t *testing.T) {
 		t.Log("stacksList is empty, exiting test...")
 		return
 	}
-
-	// replace incubator with appsodyhub to match current naming convention for repos
-	stacksList = strings.Replace(stacksList, "incubator", "appsodyhub", -1)
 
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
