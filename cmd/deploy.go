@@ -52,11 +52,7 @@ type Spec struct {
 
 func findNamespaceRepositoryAndTag(image string) string {
 	var nameSpaceRepositoryAndTag string
-	if strings.Count(image, "/") > 1 {
-		nameSpaceRepositoryAndTag = firstAfter(image, "/")
-	} else {
-		nameSpaceRepositoryAndTag = image
-	}
+	nameSpaceRepositoryAndTag = firstAfter(image, "/")
 	return nameSpaceRepositoryAndTag
 }
 func firstAfter(value string, a string) string {
