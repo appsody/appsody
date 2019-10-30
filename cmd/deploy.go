@@ -26,9 +26,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+
+	//"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 type deployCommandConfig struct {
@@ -38,16 +41,24 @@ type deployCommandConfig struct {
 }
 
 type AppsodyApplication struct {
-	APIVersion string   `yaml:"apiVersion"`
-	Kind       string   `yaml:"kind"`
-	Metadata   Metadata `yaml:"metadata"`
-	Spec       Spec     `yaml:"spec"`
+	APIVersion string                         `yaml:"apiVersion" json:"apiVersion"`
+	Kind       string                         `yaml:"kind" json:"kind"`
+	Metadata   Metadata                       `yaml:"metadata" json:"metadata"`
+	Spec       v1beta1.AppsodyApplicationSpec `yaml:"spec" json:"spec"`
 }
 type Metadata struct {
-	Name string `yaml:"name"`
+	Name        string            `yaml:"name" json:"name"`
+	Labels      map[string]string `yaml:"labels" json:"labels"`
+	Annotations map[string]string `yaml:"annotations" json:"annotations"`
 }
-type Spec struct {
-	ApplicationImage string `yaml:"applicationImage"`
+
+var supportedLabels = []string{
+	"image.opencontainers.org/title",
+	"image.opencontainers.org/version",
+	"image.opencontainers.org/licenses",
+	"stack.appsody.dev/id",
+	"stack.appsody.dev/version",
+	"app.appsody.dev/name",
 }
 
 func findNamespaceRepositoryAndTag(image string) string {
@@ -453,7 +464,12 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 	if removeErr != nil {
 		Error.log("containerRemove error ", removeErr)
 	}
+
 	yamlReader, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		return err
+	}
+
 	if !config.Dryrun && err != nil {
 		if os.IsNotExist(err) {
 			return errors.Errorf("Config file does not exist %s. ", configFile)
@@ -511,13 +527,35 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(imageName), -1)
 		output = bytes.Replace(output, []byte("APPSODY_STACK"), []byte(stack), -1)
 		output = bytes.Replace(output, []byte("APPSODY_PORT"), []byte(portStr), -1)
-		knativeString := "  createKnativeService: " + strconv.FormatBool(config.knative)
-		lastChar := output[len(output)-1:]
 
-		if bytes.Equal([]byte("\n"), lastChar) {
-			output = append(output, []byte(knativeString)...)
-		} else {
-			output = append(output, []byte("\n"+knativeString)...)
+		var appsodyApplication AppsodyApplication
+		err = yaml.Unmarshal(output, &appsodyApplication)
+		if err != nil {
+			return err
+		}
+
+		labels, err := getLabels(config.RootCommandConfig)
+		if err != nil {
+			return errors.Errorf("Could not get labels: %s", err)
+		}
+
+		labels = convertLabelsToKubeFormat(labels)
+
+		var selectedLabels = make(map[string]string)
+		for _, label := range supportedLabels {
+			if labels[label] != "" {
+				selectedLabels[label] = labels[label]
+				delete(labels, label)
+			}
+		}
+
+		appsodyApplication.Metadata.Labels = selectedLabels
+		appsodyApplication.Metadata.Annotations = labels
+		appsodyApplication.Spec.CreateKnativeService = &config.knative
+
+		output, err = yaml.Marshal(appsodyApplication)
+		if err != nil {
+			return errors.Errorf("Could not Marshal deploy YAML: %s", err)
 		}
 
 		err = ioutil.WriteFile(configFile, output, 0666)
