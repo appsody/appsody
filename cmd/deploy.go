@@ -195,7 +195,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			if config.pushURL != "" {
 				buildConfig.tag = nameSpaceRepositoryAndTag
 			}
-			fmt.Println("buildConfig.tag: ", buildConfig.tag)
+
 			buildErr := build(buildConfig)
 			if buildErr != nil {
 				return buildErr
