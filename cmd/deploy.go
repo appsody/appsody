@@ -60,16 +60,12 @@ func findNamespaceRepositoryAndTag(image string) string {
 	return nameSpaceRepositoryAndTag
 }
 func firstAfter(value string, a string) string {
-	pos := strings.Index(value, a)
-	if pos == -1 {
-		return ""
+
+	values := strings.Split(value, "/")
+	if len(values) == 3 {
+		return values[1] + "/" + values[2]
 	}
-	adjustedPos := pos + len(a)
-	if adjustedPos >= len(value) {
-		return ""
-	}
-	length := len(value)
-	return value[adjustedPos:length]
+	return value
 
 }
 func getAppsodyApplication(configFile string) (AppsodyApplication, error) {
