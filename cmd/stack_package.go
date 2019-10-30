@@ -348,6 +348,13 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 		Info.log(err)
 	}
 
+	if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {
+		stackUrl := gitLabels[ociKeyPrefix+"source"] + contextDir
+		gitLabels[ociKeyPrefix+"url"] = stackUrl
+		gitLabels[ociKeyPrefix+"documentation"] = stackUrl + "/README.md"
+		gitLabels[ociKeyPrefix+"source"] = stackUrl + "/image"
+	}
+
 	for key, value := range gitLabels {
 		labelString := fmt.Sprintf("%s=%s", key, value)
 		labels = append(labels, labelString)
