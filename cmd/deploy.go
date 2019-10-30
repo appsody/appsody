@@ -325,14 +325,12 @@ func deployWithKnative(config *deployCommandConfig) error {
 		deployImage = localtag // And forcing deployimage to be localtag
 	}
 	buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
-
+	buildConfig.tag = deployImage
 	if config.push {
 		buildConfig.tag = findNamespaceRepositoryAndTag(deployImage)
 		buildConfig.pushURL = config.pushURL
 		buildConfig.push = true
 	}
-
-	buildConfig.tag = deployImage
 	buildErr := build(buildConfig)
 	if buildErr != nil {
 		return buildErr
@@ -364,9 +362,7 @@ func deployWithKnative(config *deployCommandConfig) error {
 	//Get the KNative template file
 	knativeTempl := getKNativeTemplate()
 	if config.pullURL != "" {
-		if !strings.HasPrefix(deployImage, config.pullURL) {
-			deployImage = config.pullURL + "/" + deployImage
-		}
+		deployImage = config.pullURL + "/" + findNamespaceRepositoryAndTag(deployImage)
 	}
 	//Generating the KNative yaml file
 	Debug.logf("Calling GenKnativeYaml with parms: %s %d %s %s \n", knativeTempl, port, serviceName, deployImage)
