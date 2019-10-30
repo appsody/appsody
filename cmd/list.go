@@ -60,7 +60,6 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					return err
 				}
 
-				Info.log("-----:", listConfig.output)
 				if listConfig.output == "yaml" {
 					bytes, err := yaml.Marshal(&list)
 					if err != nil {
