@@ -157,7 +157,9 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				}
 				var applicationImage = appsodyApplication.Spec.ApplicationImage
 				Debug.log("Application Image:  ", applicationImage)
-
+				if applicationImage == "" {
+					return deployWithKnative(config)
+				}
 				deployImage = config.tag
 				finalDeployImage = deployImage
 				if deployImage == "" {
