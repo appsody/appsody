@@ -1741,6 +1741,25 @@ func setNewIndexURL(config *RootCommandConfig) {
 	}
 }
 
+// TEMPORARY CODE: sets the old repo name "appsodyhub" to the new name "incubator"
+// this code should be removed when we think everyone is using the new name.
+func setNewRepoName(config *RootCommandConfig) {
+	var repoFile RepositoryFile
+	_, repoErr := repoFile.getRepos(config)
+	if repoErr != nil {
+		Warning.log("Unable to read repository file")
+	}
+	appsodyhubRepo := repoFile.GetRepo("appsodyhub")
+	if appsodyhubRepo != nil && appsodyhubRepo.URL == incubatorRepositoryURL {
+		Info.log("Migrating your repo name from 'appsodyhub' to 'incubator'")
+		appsodyhubRepo.Name = "incubator"
+		err := repoFile.WriteFile(getRepoFileLocation(config))
+		if err != nil {
+			Warning.logf("Failed to write file to repository location: %v", err)
+		}
+	}
+}
+
 func IsEmptyDir(name string) bool {
 	f, err := os.Open(name)
 

@@ -137,6 +137,7 @@ func setupConfig(args []string, config *RootCommandConfig) error {
 
 	checkTime(config)
 	setNewIndexURL(config)
+	setNewRepoName(config)
 	config.setupConfigRun = true
 	return nil
 }
