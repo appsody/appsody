@@ -171,7 +171,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 				}
 			}
 			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
-
+			buildConfig.Verbose = config.Verbose
 			if config.push {
 				pushPath := deployImage
 				if config.pushURL != "" {
