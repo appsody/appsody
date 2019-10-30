@@ -89,6 +89,9 @@ Complete documentation is available at https://appsody.dev`,
 
 	// parse the root flags and init logging before adding all the other commands in case those log messages
 	rootCmd.SetArgs(args)
+	// ignore errors on unknown flags at this point and continue parsing the root flags
+	// later the Execute func will parse the flags again
+	rootCmd.FParseErrWhitelist = cobra.FParseErrWhitelist{UnknownFlags: true}
 	_ = rootCmd.ParseFlags(args) // ignore flag errors here because we haven't added all the commands
 	initLogging(rootConfig)
 	setupErr := setupConfig(args, rootConfig)
