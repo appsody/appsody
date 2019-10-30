@@ -1336,7 +1336,7 @@ func DockerPush(imageToPush string, dryrun bool) error {
 			return pushErr
 		}
 	}
-	return kerr
+	return pushErr
 }
 
 // DockerRunBashCmd issues a shell command in a docker image, overriding its entrypoint
