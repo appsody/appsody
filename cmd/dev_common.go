@@ -400,12 +400,16 @@ func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {
 
 	var exposedPortsMapping []string
 
+	if len(config.ports) > 0 {
+		Info.log("Publishing the container's ports to the host, run `appsody ps` to see port mappings.")
+	}
+
 	dockerExposedPorts, portsErr := getExposedPorts(config.RootCommandConfig)
 	if portsErr != nil {
 		return cmdArgs, portsErr
 	}
 	Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
-	// if the container port is not in the lised of exposed ports add it to the list
+	// if the container port is not in the list of exposed ports add it to the list
 
 	containerPort, envErr := GetEnvVar("PORT", config.RootCommandConfig)
 	if envErr != nil {
@@ -427,6 +431,7 @@ func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {
 	}
 
 	if config.publishAllPorts {
+		Info.log("Publishing all exposed ports to random ports, run `appsody ps` to see port mappings.")
 		cmdArgs = append(cmdArgs, "-P")
 		// user specified to publish all EXPOSE ports to random ports with -P, so clear this list so we don't add them with -p
 		dockerExposedPorts = []string{}
