@@ -311,28 +311,31 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			// list repos
-			repos, err := RunAppsodyCmdExec([]string{"repo", "list", "-o", "yaml"}, ".")
-			if err != nil {
-				return err
+			var repoFile RepositoryFile
+			repos, repoErr := repoFile.getRepos(rootConfig)
+			if repoErr != nil {
+				return repoErr
 			}
-
-			// if dev.local exists then remove it
-			if strings.Contains(repos, "name: dev.local") {
-				Info.Log("Existing dev.local repo found")
-				Info.Log("Removing dev.local repository")
-
-				_, err := RunAppsodyCmdExec([]string{"repo", "remove", "dev.local"}, ".")
+			// See if a configured repo already points to the local index file
+			repoName := ""
+			for _, repo := range repos.Repositories {
+				if strings.Contains(repo.URL, indexFileLocal) {
+					repoName = repo.Name
+					break
+				}
+			}
+			if repoName == "" {
+				repoName = "dev.local"
+				// could not find existing repo, so create it
+				// create an appsody repo for the stack
+				Info.Logf("Creating %s repository", repoName)
+				_, err = AddLocalFileRepo(repoName, indexFileLocal)
 				if err != nil {
-					return err
+					return errors.Errorf("Error adding local repository. Your stack may not be available to appsody commands. %v", err)
 				}
 			}
 
-			// create an appsody repo for the stack
-			Info.Log("Creating dev.local repository")
-			_, err = AddLocalFileRepo("dev.local", indexFileLocal)
-			if err != nil {
-				return errors.Errorf("Error running appsody command: %v", err)
-			}
+			Info.log("Your local stack is available as part of repo ", repoName)
 
 			return nil
 		},
