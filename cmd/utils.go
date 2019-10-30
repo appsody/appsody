@@ -62,7 +62,9 @@ const workDirNotSet = ""
 
 const ociKeyPrefix = "org.opencontainers.image."
 
-const appsodyKeyPrefix = "dev.appsody.stack."
+const appsodyStackKeyPrefix = "dev.appsody.stack."
+
+const appsodyImageCommitKeyPrefix = "dev.appsody.image.commit."
 
 // Checks whether an inode (it does not bother
 // about file or folder) exists or not.
@@ -108,10 +110,9 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := inspectCmd.Output()
+	inspectOut, inspectErr := SeperateOutput(inspectCmd)
 	if inspectErr != nil {
-		return "", errors.Errorf("Could not inspect the image: %v", inspectErr)
-
+		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
 	}
 
 	var err error
@@ -577,7 +578,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 
 	var maintainersString string
 	for index, maintainer := range projectConfig.Maintainers {
-		maintainersString += maintainer.Name + " (" + maintainer.Email + ")"
+		maintainersString += maintainer.Name + " <" + maintainer.Email + ">"
 		if index < len(projectConfig.Maintainers)-1 {
 			maintainersString += ", "
 		}
@@ -603,7 +604,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	}
 
 	if projectConfig.Stack != "" {
-		labels[appsodyKeyPrefix+"configured"] = projectConfig.Stack
+		labels[appsodyStackKeyPrefix+"configured"] = projectConfig.Stack
 	}
 
 	if projectConfig.ApplicationName != "" {
@@ -613,8 +614,8 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	return labels, nil
 }
 
-func getGitLabels(dryrun bool) (map[string]string, error) {
-	gitInfo, err := GetGitInfo(dryrun)
+func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
+	gitInfo, err := GetGitInfo(config)
 	if err != nil {
 		return nil, err
 	}
@@ -634,6 +635,34 @@ func getGitLabels(dryrun bool) (map[string]string, error) {
 		if gitInfo.ChangesMade {
 			labels[revisionKey] += "-modified"
 		}
+	}
+
+	if commitInfo.Author != "" {
+		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author
+	}
+
+	if commitInfo.AuthorEmail != "" {
+		labels[appsodyImageCommitKeyPrefix+"author"] += " <" + commitInfo.AuthorEmail + ">"
+	}
+
+	if commitInfo.Committer != "" {
+		labels[appsodyImageCommitKeyPrefix+"committer"] = commitInfo.Committer
+	}
+
+	if commitInfo.CommitterEmail != "" {
+		labels[appsodyImageCommitKeyPrefix+"committer"] += " <" + commitInfo.CommitterEmail + ">"
+	}
+
+	if commitInfo.Date != "" {
+		labels[appsodyImageCommitKeyPrefix+"date"] = commitInfo.Date
+	}
+
+	if commitInfo.Message != "" {
+		labels[appsodyImageCommitKeyPrefix+"message"] = commitInfo.Message
+	}
+
+	if commitInfo.contextDir != "" {
+		labels[appsodyImageCommitKeyPrefix+"contextDir"] = commitInfo.contextDir
 	}
 
 	return labels, nil
@@ -673,7 +702,7 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 		} else {
 			inspectOut, inspectErr := RunDockerInspect(imageName)
 			if inspectErr != nil {
-				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
+				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %s", inspectOut)
 			}
 			err := json.Unmarshal([]byte(inspectOut), &data)
 			if err != nil {
@@ -727,7 +756,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	} else {
 		inspectOut, inspectErr := RunDockerInspect(imageName)
 		if inspectErr != nil {
-			return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
+			return portValues, errors.Errorf("Could not inspect the image: %s", inspectOut)
 		}
 		err := json.Unmarshal([]byte(inspectOut), &data)
 		if err != nil {
@@ -1180,7 +1209,7 @@ func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName 
 		// We set it to a host name that's resolvable by nip.io
 		ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
 	}
-	ingress.Spec.Rules[0].Host = ingressHost
+
 	ingress.Spec.Rules[0].HTTP.Paths = make([]IngressPath, 1)
 	ingress.Spec.Rules[0].HTTP.Paths[0].Path = "/"
 	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServiceName = fmt.Sprintf("%s-%s", appName, "service")
@@ -1279,13 +1308,12 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 		return nil
 	}
 	tagCmd := exec.Command(cmdName, cmdArgs...)
-	tagOut, tagErr := tagCmd.Output()
-	if tagErr != nil {
-		Error.log("Could not inspect the image: ", tagErr, " ", string(tagOut[:]))
-		return tagErr
+	kout, kerr := SeperateOutput(tagCmd)
+	if kerr != nil {
+		return errors.Errorf("docker image tag failed: %s", kout)
 	}
-	Debug.log("Docker tag command output: ", string(tagOut[:]))
-	return nil
+	Debug.log("Docker tag command output: ", kout)
+	return kerr
 }
 
 //DockerPush pushes a docker image to a docker registry (assumes that the user has done docker login)
@@ -1299,17 +1327,15 @@ func DockerPush(imageToPush string, dryrun bool) error {
 	}
 
 	pushCmd := exec.Command(cmdName, cmdArgs...)
-	pushOut, pushErr := pushCmd.Output()
-	if pushErr != nil {
-		Error.log("Could not push the image: ", pushErr, " ", string(pushOut[:]))
-		return pushErr
+	kout, kerr := SeperateOutput(pushCmd)
+	if kerr != nil {
+		return errors.Errorf("docker push failed: %s", kout)
 	}
-	Debug.log("Docker push command output: ", string(pushOut[:]))
-	return nil
+	return kerr
 }
 
 // DockerRunBashCmd issues a shell command in a docker image, overriding its entrypoint
-func DockerRunBashCmd(options []string, image string, bashCmd string, config *RootCommandConfig) (cmdOutput string, err error) {
+func DockerRunBashCmd(options []string, image string, bashCmd string, config *RootCommandConfig) (string, error) {
 	cmdName := "docker"
 	var cmdArgs []string
 	pullErrs := pullImage(image, config)
@@ -1324,13 +1350,12 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/bash", image, "-c", bashCmd)
 	Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
-	dockerOutBytes, err := dockerCmd.Output()
-	if err != nil {
-		Error.log("Could not run the docker image: ", err)
-		return "", err
+
+	kout, kerr := SeperateOutput(dockerCmd)
+	if kerr != nil {
+		return kout, kerr
 	}
-	dockerOut := strings.TrimSpace(string(dockerOutBytes))
-	return dockerOut, nil
+	return strings.TrimSpace(string(kout[:])), nil
 }
 
 //KubeGet issues kubectl get <arg>
@@ -1349,11 +1374,11 @@ func KubeGet(args []string, namespace string, dryrun bool) (string, error) {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := execCmd.Output()
+	kout, kerr := SeperateOutput(execCmd)
 	if kerr != nil {
-		return "", errors.Errorf("kubectl get failed: %s", string(kout[:]))
+		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
-	return string(kout[:]), nil
+	return kout, kerr
 }
 
 //KubeApply issues kubectl apply -f <filename>
@@ -1371,13 +1396,12 @@ func KubeApply(fileToApply string, namespace string, dryrun bool) error {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := execCmd.Output()
+	kout, kerr := SeperateOutput(execCmd)
 	if kerr != nil {
-		Error.log("kubectl apply failed: ", kerr, " ", string(kout[:]))
-		return kerr
+		return errors.Errorf("kubectl apply failed: %s", kout)
 	}
 	Debug.log("kubectl apply success: ", string(kout[:]))
-	return nil
+	return kerr
 }
 
 //KubeDelete issues kubectl delete -f <filename>
@@ -1395,17 +1419,13 @@ func KubeDelete(fileToApply string, namespace string, dryrun bool) error {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	var stderr bytes.Buffer
-	execCmd.Stderr = &stderr
-	kout, kerr := execCmd.Output()
+
+	kout, kerr := SeperateOutput(execCmd)
 	if kerr != nil {
-		errorText := strings.Trim(stderr.String(), "\n")
-		Error.log(errorText)
-		Error.log("kubectl delete failed: ", kerr)
-		return errors.Errorf("kubectl delete failed: %v %s", kerr, errorText)
+		return errors.Errorf("kubectl delete failed: %s", kout)
 	}
-	Debug.log("kubectl delete success: ", string(kout[:]))
-	return nil
+	Debug.log("kubectl delete success: ", kout)
+	return kerr
 }
 
 //KubeGetNodePortURL kubectl get svc <service> -o jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort} and prints the return URL
@@ -1447,11 +1467,11 @@ func KubeGetKnativeURL(service string, namespace string, dryrun bool) (url strin
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := execCmd.Output()
+	kout, kerr := SeperateOutput(execCmd)
 	if kerr != nil {
-		return "", errors.Errorf("kubectl get failed: %s", string(kout[:]))
+		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
-	return string(kout[:]), nil
+	return kout, kerr
 }
 
 //KubeGetDeploymentURL searches for an exposed hostname and port for the deployed service
@@ -1498,15 +1518,14 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 	cmdName := "docker"
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
-	imagelsOut, imagelsErr := imagelsCmd.Output()
-	imagelsOutStr := strings.TrimSpace(string(imagelsOut))
-	Debug.log("Docker image ls command output: ", imagelsOutStr)
+	imagelsOut, imagelsErr := SeperateOutput(imagelsCmd)
+	Debug.log("Docker image ls command output: ", imagelsOut)
 
 	if imagelsErr != nil {
 		Warning.log("Could not run docker image ls -q for the image: ", imageToPull, " error: ", imagelsErr, " Check to make sure docker is available.")
 		return false
 	}
-	if imagelsOutStr != "" {
+	if imagelsOut != "" {
 		return true
 	}
 	return false
@@ -1741,6 +1760,25 @@ func setNewIndexURL(config *RootCommandConfig) {
 	}
 }
 
+// TEMPORARY CODE: sets the old repo name "appsodyhub" to the new name "incubator"
+// this code should be removed when we think everyone is using the new name.
+func setNewRepoName(config *RootCommandConfig) {
+	var repoFile RepositoryFile
+	_, repoErr := repoFile.getRepos(config)
+	if repoErr != nil {
+		Warning.log("Unable to read repository file")
+	}
+	appsodyhubRepo := repoFile.GetRepo("appsodyhub")
+	if appsodyhubRepo != nil && appsodyhubRepo.URL == incubatorRepositoryURL {
+		Info.log("Migrating your repo name from 'appsodyhub' to 'incubator'")
+		appsodyhubRepo.Name = "incubator"
+		err := repoFile.WriteFile(getRepoFileLocation(config))
+		if err != nil {
+			Warning.logf("Failed to write file to repository location: %v", err)
+		}
+	}
+}
+
 func IsEmptyDir(name string) bool {
 	f, err := os.Open(name)
 
@@ -1879,4 +1917,19 @@ func Targz(source, target string) error {
 			_, err = io.Copy(tarball, file)
 			return err
 		})
+}
+
+func SeperateOutput(cmd *exec.Cmd) (string, error) {
+	var stdErr, stdOut bytes.Buffer
+	cmd.Stderr = &stdErr
+	cmd.Stdout = &stdOut
+	err := cmd.Run()
+
+	// If there was an error, return the stdErr & err
+	if err != nil {
+		return err.Error() + ": " + strings.TrimSpace(stdErr.String()), err
+	}
+
+	// If there wasn't an error return the stdOut & (lack of) err
+	return strings.TrimSpace(stdOut.String()), err
 }

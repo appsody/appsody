@@ -267,7 +267,7 @@ func TestInitV2WithDefaultRepoSpecified(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "appsodyhub/nodejs"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "incubator/nodejs"}, projectDir)
 	if err != nil {
 		t.Error(err)
 	}
@@ -328,7 +328,7 @@ func TestInitV2WithDefaultRepoSpecifiedTemplateNonDefault(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "appsodyhub/nodejs-express", "scaffold"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "incubator/nodejs-express", "scaffold"}, projectDir)
 	if err != nil {
 		t.Error(err)
 	}
@@ -343,7 +343,7 @@ func TestInitV2WithDefaultRepoSpecifiedTemplateDefault(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "appsodyhub/nodejs-express", "simple"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "incubator/nodejs-express", "simple"}, projectDir)
 	if err != nil {
 		t.Error(err)
 	}
