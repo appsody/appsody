@@ -186,7 +186,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			cmdArgs := []string{"-t", buildImage}
 
-			labels, err := getLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig.Dryrun)
+			labels, err := getLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
 			if err != nil {
 				return err
 			}
