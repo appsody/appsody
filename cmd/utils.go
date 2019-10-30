@@ -1180,7 +1180,7 @@ func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName 
 		// We set it to a host name that's resolvable by nip.io
 		ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
 	}
-	ingress.Spec.Rules[0].Host = ingressHost
+
 	ingress.Spec.Rules[0].HTTP.Paths = make([]IngressPath, 1)
 	ingress.Spec.Rules[0].HTTP.Paths[0].Path = "/"
 	ingress.Spec.Rules[0].HTTP.Paths[0].Backend.ServiceName = fmt.Sprintf("%s-%s", appName, "service")
