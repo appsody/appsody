@@ -608,7 +608,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	}
 
 	if projectConfig.ApplicationName != "" {
-		labels["dev.appsody.application"] = projectConfig.ApplicationName
+		labels["dev.appsody.app"] = projectConfig.ApplicationName
 	}
 
 	return labels, nil
@@ -626,6 +626,11 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		labels[ociKeyPrefix+"url"] = gitInfo.RemoteURL
 		labels[ociKeyPrefix+"documentation"] = gitInfo.RemoteURL
 		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + gitInfo.Branch
+		upstreamSplit := strings.Split(strings.Split(gitInfo.Upstream, " ")[0], "/")
+		if len(upstreamSplit) > 1 {
+			labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + upstreamSplit[1]
+		}
+
 	}
 
 	var commitInfo = gitInfo.Commit
