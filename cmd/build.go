@@ -163,7 +163,8 @@ func getLabels(config *buildCommandConfig) ([]string, error) {
 
 	for key, value := range stackLabels {
 
-		key = strings.Replace(key, "org.opencontainers.image", "dev.appsody.stack", -1)
+		key = strings.Replace(key, ociKeyPrefix, appsodyStackKeyPrefix, 1)
+		key = strings.Replace(key, appsodyImageCommitKeyPrefix, appsodyStackKeyPrefix+"commit.", 1)
 
 		// This is temporarily until we update the labels in stack dockerfile
 		if key == "appsody.stack" {
