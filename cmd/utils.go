@@ -608,7 +608,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	}
 
 	if projectConfig.ApplicationName != "" {
-		labels["dev.appsody.application"] = projectConfig.ApplicationName
+		labels["dev.appsody.app"] = projectConfig.ApplicationName
 	}
 
 	return labels, nil
