@@ -335,8 +335,8 @@ func ConvertToValidProjectName(projectDir string) (string, error) {
 
 	if !valid {
 		projectName = strings.ToLower(filepath.Base(projectDir))
-		if len(projectName) >= 128 {
-			projectName = projectName[0:127]
+		if len(projectName) > 68 {
+			projectName = projectName[0:68]
 		}
 
 		if projectName[0] < 'a' || projectName[0] > 'z' {
