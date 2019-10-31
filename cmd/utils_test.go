@@ -17,6 +17,7 @@ package cmd_test
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -201,9 +202,37 @@ func TestInvalidProjectNames(t *testing.T) {
 //Passes in impossibly high minimum versions of Docker and Appsody
 func TestInvalidVersionAgainstStack(t *testing.T) {
 	reqArray := []cmd.StackRequirement{{Docker: "102.0.5", Appsody: "102.0.5"}}
-	err := cmd.CheckStackRequirements(reqArray)
+	err := cmd.CheckStackRequirements(reqArray, false)
 
 	if err == nil {
 		t.Fatal(err)
 	}
+}
+
+var invalidCmdsTest = []struct {
+	cmd      string
+	args     []string
+	expected string
+}{
+	{"ls", []string{"invalidname"}, "No such file or directory"},
+	{"cp", []string{"invalidname", "alsoinavalidname"}, "No such file or directory"},
+}
+
+func TestInvalidCmdOutput(t *testing.T) {
+
+	for _, test := range invalidCmdsTest {
+
+		invalidCmd := exec.Command(test.cmd, test.args...)
+
+		t.Run(fmt.Sprintf("Test Invalid "+test.cmd+" Command"), func(t *testing.T) {
+			out, err := cmd.SeperateOutput(invalidCmd)
+			if err == nil {
+				t.Error("Expected an error from '", test.cmd, strings.Join(test.args, " "), "' but it did not return one.")
+			} else if !strings.Contains(out, test.expected) {
+				t.Error("Expected the stdout to contain '" + test.expected + "'. It actually contains: " + out)
+			}
+		})
+
+	}
+
 }
