@@ -492,7 +492,7 @@ func extractAndInitialize(config *initCommandConfig) error {
 		scriptFindOut, err := DockerRunBashCmd(cmdOptions, stackImage, bashCmd, config.RootCommandConfig)
 		if err != nil {
 			Debug.log("Failed to run the find command for the ", scriptFileName, " on the stack image: ", stackImage)
-			return fmt.Errorf("Failed to run the docker find command: %s", err)
+			return fmt.Errorf("Failed to run the docker find command: %s", scriptFindOut)
 		}
 
 		if scriptFindOut == "" {

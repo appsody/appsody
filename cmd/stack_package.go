@@ -161,9 +161,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				indexYaml.Stacks = make([]IndexYamlStack, 0, 1)
 			}
 
-			// build up stack struct for the new stack
-			newStackStruct := IndexYamlStack{}
-
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
 
@@ -177,6 +174,39 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error trying to unmarshall: %v", err)
 			}
 
+			// docker build
+			// create the image name to be used for the docker image
+			buildImage := "dev.local/" + stackID + ":SNAPSHOT"
+
+			imageDir := filepath.Join(stackPath, "image")
+			Debug.Log("imageDir is: ", imageDir)
+
+			dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
+			Debug.Log("dockerFile is: ", dockerFile)
+
+			cmdArgs := []string{"-t", buildImage}
+
+			labels, err := getLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
+			if err != nil {
+				return err
+			}
+			// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
+			for _, label := range labels {
+				cmdArgs = append(cmdArgs, "--label", label)
+			}
+
+			cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
+			Debug.Log("cmdArgs is: ", cmdArgs)
+
+			Info.Log("Running docker build")
+
+			err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
+			if err != nil {
+				return errors.Errorf("Error during docker build: %v", err)
+			}
+
+			// build up stack struct for the new stack
+			newStackStruct := IndexYamlStack{}
 			// set the data in the new stack struct
 			newStackStruct.ID = stackID
 			newStackStruct.Name = stackYaml.Name
@@ -231,38 +261,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 				newStackStruct.Templates = append(newStackStruct.Templates, newTemplateStruct)
 
-				// docker build
-
-				// create the image name to be used for the docker image
-				buildImage := "dev.local/" + stackID + ":SNAPSHOT"
-
-				imageDir := filepath.Join(stackPath, "image")
-				Debug.Log("imageDir is: ", imageDir)
-
-				dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
-				Debug.Log("dockerFile is: ", dockerFile)
-
-				cmdArgs := []string{"-t", buildImage}
-
-				labels, err := getLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
-				if err != nil {
-					return err
-				}
-				// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
-				for _, label := range labels {
-					cmdArgs = append(cmdArgs, "--label", label)
-				}
-
-				cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
-				Debug.Log("cmdArgs is: ", cmdArgs)
-
-				Info.Log("Running docker build")
-
-				err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
-				if err != nil {
-					return errors.Errorf("Error during docker build: %v", err)
-				}
-
 				// create a config yaml file for the tarball
 				configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
 				Debug.Log("configYaml is: ", configYaml)
@@ -311,28 +309,31 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			// list repos
-			repos, err := RunAppsodyCmdExec([]string{"repo", "list", "-o", "yaml"}, ".")
-			if err != nil {
-				return err
+			var repoFile RepositoryFile
+			repos, repoErr := repoFile.getRepos(rootConfig)
+			if repoErr != nil {
+				return repoErr
 			}
-
-			// if dev.local exists then remove it
-			if strings.Contains(repos, "name: dev.local") {
-				Info.Log("Existing dev.local repo found")
-				Info.Log("Removing dev.local repository")
-
-				_, err := RunAppsodyCmdExec([]string{"repo", "remove", "dev.local"}, ".")
+			// See if a configured repo already points to the local index file
+			repoName := ""
+			for _, repo := range repos.Repositories {
+				if strings.Contains(repo.URL, indexFileLocal) {
+					repoName = repo.Name
+					break
+				}
+			}
+			if repoName == "" {
+				repoName = "dev.local"
+				// could not find existing repo, so create it
+				// create an appsody repo for the stack
+				Info.Logf("Creating %s repository", repoName)
+				_, err = AddLocalFileRepo(repoName, indexFileLocal)
 				if err != nil {
-					return err
+					return errors.Errorf("Error adding local repository. Your stack may not be available to appsody commands. %v", err)
 				}
 			}
 
-			// create an appsody repo for the stack
-			Info.Log("Creating dev.local repository")
-			_, err = AddLocalFileRepo("dev.local", indexFileLocal)
-			if err != nil {
-				return errors.Errorf("Error running appsody command: %v", err)
-			}
+			Info.log("Your local stack is available as part of repo ", repoName)
 
 			return nil
 		},
