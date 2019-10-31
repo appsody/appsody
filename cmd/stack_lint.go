@@ -47,7 +47,14 @@ This command can be run from the base directory of your stack or you can supply 
 			configPath := filepath.Join(imagePath, "/config")
 			projectPath := filepath.Join(imagePath, "/project")
 
-			Info.log("LINTING ", path.Base(stackPath))
+			stackID := path.Base(stackPath)
+			Info.log("LINTING ", stackID)
+
+			validStackID, err := IsValidProjectName(stackID)
+			if !validStackID {
+				Error.log("Stack directory name is invalid. ", err)
+				stackLintErrorCount++
+			}
 
 			fileCheck, err := Exists(filepath.Join(stackPath, "/README.md"))
 			if err != nil {
