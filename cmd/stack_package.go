@@ -75,11 +75,11 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Use:   "package",
 		Short: "Package a stack in the local Appsody environment",
 		Long: `This command is a tool for stack developers to package a stack from their local Appsody development environment. Once the stack is packaged it can then be tested via Appsody commands. The package command performs the following:
-- Creates/updates an index file named "index-dev-local.yaml" and stores it in .appsody/stacks/dev.local
+- Creates/updates an index file named "dev.local-index.yaml" and stores it in .appsody/stacks/dev.local
 - Creates a tar.gz for each stack template and stores it in .appsody/stacks/dev.local
 - Builds a Docker image named "dev.local/[stack name]:SNAPSHOT"
-- Creates an Appsody repository named "dev-local"
-- Adds/updates the "dev-local" repository of your Appsody configuration`,
+- Creates an Appsody repository named "dev.local"
+- Adds/updates the "dev.local" repository of your Appsody configuration`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.Log("******************************************")
@@ -115,7 +115,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			stackID := filepath.Base(stackPath)
 			Debug.Log("stackName is: ", stackID)
 
-			indexFileLocal := filepath.Join(devLocal, "index-dev-local.yaml")
+			indexFileLocal := filepath.Join(devLocal, "dev.local-index.yaml")
 			Debug.Log("indexFileLocal is: ", indexFileLocal)
 
 			// create IndexYaml struct and populate the APIVersion and Stacks header
