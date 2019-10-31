@@ -336,7 +336,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					Info.logf("Appsody repo %s is configured with %s's URL. Deleting it to setup %s.", repoNameToDelete, repoName, repoName)
 					repos.Remove(repoNameToDelete)
 				}
-				repos.WriteFile(getRepoFileLocation(rootConfig))
+				err = repos.WriteFile(getRepoFileLocation(rootConfig))
+				if err != nil {
+					return errors.Errorf("Error writing to repo file %s. %v", getRepoFileLocation(rootConfig), err)
+				}
 				Info.Logf("Creating %s repository", repoName)
 				_, err = AddLocalFileRepo(repoName, indexFileLocal)
 				if err != nil {
