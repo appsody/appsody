@@ -313,10 +313,10 @@ func IsValidKubernetesLabelValue(value string) (bool, error) {
 		return true, nil
 	}
 	if len(value) > 68 {
-		return false, errors.New("The label must be less than 128 characters")
+		return false, errors.New("The label must be 68 characters or less")
 	}
 
-	match, err := regexp.MatchString("^[a-z0-9A-Z]([a-z0-9A-Z-_\\.]*[a-z0-9A-Z])?$", value)
+	match, err := regexp.MatchString("^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z])?$", value)
 	if err != nil {
 		return false, err
 	}
