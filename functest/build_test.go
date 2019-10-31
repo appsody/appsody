@@ -207,7 +207,7 @@ func TestBuildLabels(t *testing.T) {
 		}
 	}
 
-	if labelsMap["dev.appsody.app"] == nil {
+	if labelsMap["dev.appsody.app.name"] == nil {
 		t.Error("Could not find requested stack label in Docker image!")
 	}
 
