@@ -1882,7 +1882,7 @@ func Targz(source, target string) error {
 }
 
 //Compares the minimum requirements of a stack against the user to determine whether they can use the stack or not.
-func CheckStackRequirements(requirementArray []StackRequirement) error {
+func CheckStackRequirements(requirementArray []StackRequirement, buildah bool) error {
 	if len(requirementArray) == 0 {
 		Info.log("No restrictions on stack found. Continuing...")
 		return nil
@@ -1900,6 +1900,8 @@ func CheckStackRequirements(requirementArray []StackRequirement) error {
 
 		if values[i].(string) == "" {
 			Info.log("Skipping ", technology, " - No requirements set.")
+		} else if technology == "Docker" && buildah == true {
+			Info.log("Skipping Docker requirement - Buildah is being used.")
 		} else {
 			Info.log("Checking stack requirements for ", technology)
 
