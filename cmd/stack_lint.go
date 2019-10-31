@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"io/ioutil"
-	"path"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -47,7 +46,7 @@ This command can be run from the base directory of your stack or you can supply 
 			configPath := filepath.Join(imagePath, "/config")
 			projectPath := filepath.Join(imagePath, "/project")
 
-			stackID := path.Base(stackPath)
+			stackID := filepath.Base(stackPath)
 			Info.log("LINTING ", stackID)
 
 			validStackID, err := IsValidProjectName(stackID)
