@@ -161,9 +161,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				indexYaml.Stacks = make([]IndexYamlStack, 0, 1)
 			}
 
-			// build up stack struct for the new stack
-			newStackStruct := IndexYamlStack{}
-
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
 
@@ -177,6 +174,39 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error trying to unmarshall: %v", err)
 			}
 
+			// docker build
+			// create the image name to be used for the docker image
+			buildImage := "dev.local/" + stackID + ":SNAPSHOT"
+
+			imageDir := filepath.Join(stackPath, "image")
+			Debug.Log("imageDir is: ", imageDir)
+
+			dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
+			Debug.Log("dockerFile is: ", dockerFile)
+
+			cmdArgs := []string{"-t", buildImage}
+
+			labels, err := getLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
+			if err != nil {
+				return err
+			}
+			// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
+			for _, label := range labels {
+				cmdArgs = append(cmdArgs, "--label", label)
+			}
+
+			cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
+			Debug.Log("cmdArgs is: ", cmdArgs)
+
+			Info.Log("Running docker build")
+
+			err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
+			if err != nil {
+				return errors.Errorf("Error during docker build: %v", err)
+			}
+
+			// build up stack struct for the new stack
+			newStackStruct := IndexYamlStack{}
 			// set the data in the new stack struct
 			newStackStruct.ID = stackID
 			newStackStruct.Name = stackYaml.Name
@@ -230,38 +260,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				newTemplateStruct.URL = versionArchiveTar
 
 				newStackStruct.Templates = append(newStackStruct.Templates, newTemplateStruct)
-
-				// docker build
-
-				// create the image name to be used for the docker image
-				buildImage := "dev.local/" + stackID + ":SNAPSHOT"
-
-				imageDir := filepath.Join(stackPath, "image")
-				Debug.Log("imageDir is: ", imageDir)
-
-				dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
-				Debug.Log("dockerFile is: ", dockerFile)
-
-				cmdArgs := []string{"-t", buildImage}
-
-				labels, err := getLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
-				if err != nil {
-					return err
-				}
-				// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
-				for _, label := range labels {
-					cmdArgs = append(cmdArgs, "--label", label)
-				}
-
-				cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
-				Debug.Log("cmdArgs is: ", cmdArgs)
-
-				Info.Log("Running docker build")
-
-				err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
-				if err != nil {
-					return errors.Errorf("Error during docker build: %v", err)
-				}
 
 				// create a config yaml file for the tarball
 				configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
