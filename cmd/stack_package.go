@@ -71,6 +71,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// 3. build a docker image
 	// 4. create/update an appsody repo for the stack
 
+	var imageNamespace string
+
 	var stackPackageCmd = &cobra.Command{
 		Use:   "package",
 		Short: "Package a stack in the local Appsody environment",
@@ -102,7 +104,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			appsodyHome := getHome(rootConfig)
 			Debug.Log("appsodyHome is:", appsodyHome)
 
-			devLocal := filepath.Join(appsodyHome, "stacks", "dev.local")
+			devLocal := filepath.Join(appsodyHome, "stacks", imageNamespace)
 			Debug.Log("devLocal is: ", devLocal)
 
 			// create the devLocal directory in appsody home
@@ -176,7 +178,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// docker build
 			// create the image name to be used for the docker image
-			buildImage := "dev.local/" + stackID + ":SNAPSHOT"
+			buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
 
 			imageDir := filepath.Join(stackPath, "image")
 			Debug.Log("imageDir is: ", imageDir)
@@ -230,6 +232,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error reading directories: %v", err)
 			}
 
+			repoDirName := filepath.Base(filepath.Dir(stackPath))
+			Debug.Log("repoDirName is: ", repoDirName)
+
 			// loop through the template directories and create the id and url
 			for i := range templates {
 				Debug.Log("template is: ", templates[i])
@@ -242,7 +247,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				Debug.Log("sourceDir is: ", sourceDir)
 
 				// create name for the tar files
-				versionedArchive := filepath.Join(devLocal, stackID+".v"+stackYaml.Version+".templates.")
+				versionedArchive := filepath.Join(devLocal, repoDirName+"."+stackID+".v"+stackYaml.Version+".templates.")
 				Debug.Log("versionedArchive is: ", versionedArchive)
 
 				versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
@@ -352,6 +357,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			return nil
 		},
 	}
+
+	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
+
 	return stackPackageCmd
 }
 
