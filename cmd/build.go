@@ -108,13 +108,15 @@ func build(config *buildCommandConfig) error {
 		cmdArgs = append(cmdArgs, options...)
 	}
 
-	labels, err := getLabels(config)
+	labels, err := getLabels(config.RootCommandConfig)
 	if err != nil {
 		return err
 	}
 
+	labelPairs := createLabelPairs(labels)
+
 	// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
-	for _, label := range labels {
+	for _, label := range labelPairs {
 		cmdArgs = append(cmdArgs, "--label", label)
 	}
 
@@ -135,18 +137,19 @@ func build(config *buildCommandConfig) error {
 	if !config.Dryrun {
 		Info.log("Built docker image ", buildImage)
 	}
+
 	return nil
 }
 
-func getLabels(config *buildCommandConfig) ([]string, error) {
-	var labels []string
+func getLabels(config *RootCommandConfig) (map[string]string, error) {
+	var labels = make(map[string]string)
 
-	stackLabels, err := getStackLabels(config.RootCommandConfig)
+	stackLabels, err := getStackLabels(config)
 	if err != nil {
 		return labels, err
 	}
 
-	projectConfig, projectConfigErr := getProjectConfig(config.RootCommandConfig)
+	projectConfig, projectConfigErr := getProjectConfig(config)
 	if projectConfigErr != nil {
 		return labels, projectConfigErr
 	}
@@ -156,35 +159,64 @@ func getLabels(config *buildCommandConfig) ([]string, error) {
 		return labels, err
 	}
 
-	gitLabels, err := getGitLabels(config.RootCommandConfig)
+	gitLabels, err := getGitLabels(config)
 	if err != nil {
 		Info.log(err)
 	}
 
 	for key, value := range stackLabels {
-
-		key = strings.Replace(key, "org.opencontainers.image", "dev.appsody.stack", -1)
+		key = strings.Replace(key, ociKeyPrefix, appsodyStackKeyPrefix, 1)
+		key = strings.Replace(key, appsodyImageCommitKeyPrefix, appsodyStackKeyPrefix+"commit.", 1)
 
 		// This is temporarily until we update the labels in stack dockerfile
 		if key == "appsody.stack" {
-			key = "dev.appsody.stack.id"
+			key = "dev.appsody.stack.tag"
 		}
 
 		delete(configLabels, key)
 
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		labels[key] = value
 	}
 
 	for key, value := range configLabels {
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		labels[key] = value
 	}
 
 	for key, value := range gitLabels {
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		labels[key] = value
 	}
 
 	return labels, nil
+}
+
+func convertLabelsToKubeFormat(labels map[string]string) map[string]string {
+	var kubeLabels = make(map[string]string)
+
+	for key, value := range labels {
+		prefixes := strings.Split(key, ".")
+		nPrefixes := len(prefixes)
+		newKey := ""
+		for i := nPrefixes - 2; i >= 0; i-- {
+			newKey += prefixes[i]
+			if i > 0 {
+				newKey += "."
+			}
+		}
+
+		newKey += "/" + prefixes[nPrefixes-1]
+		kubeLabels[newKey] = value
+	}
+
+	return kubeLabels
+}
+
+func createLabelPairs(labels map[string]string) []string {
+	var labelsArr []string
+
+	for key, value := range labels {
+		labelString := fmt.Sprintf("%s=%s", key, value)
+		labelsArr = append(labelsArr, labelString)
+	}
+
+	return labelsArr
 }
