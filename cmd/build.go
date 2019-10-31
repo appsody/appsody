@@ -138,7 +138,6 @@ func build(config *buildCommandConfig) error {
 		Info.log("Built docker image ", buildImage)
 	}
 
-	Info.log(convertLabelsToKubeFormat(labels))
 	return nil
 }
 

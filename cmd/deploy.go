@@ -52,7 +52,9 @@ type Metadata struct {
 	Annotations map[string]string `yaml:"annotations" json:"annotations"`
 }
 
-var supportedLabels = []string{
+//These are the current supported labels for Kubernetes,
+//the rest of the labels provided will be annotations.
+var supportedKubeLabels = []string{
 	"image.opencontainers.org/title",
 	"image.opencontainers.org/version",
 	"image.opencontainers.org/licenses",
@@ -539,7 +541,7 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 		labels = convertLabelsToKubeFormat(labels)
 
 		var selectedLabels = make(map[string]string)
-		for _, label := range supportedLabels {
+		for _, label := range supportedKubeLabels {
 			if labels[label] != "" {
 				selectedLabels[label] = labels[label]
 				delete(labels, label)
