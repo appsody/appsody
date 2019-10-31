@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -72,6 +73,13 @@ func build(config *buildCommandConfig) error {
 	// This needs to do:
 	// 1. appsody Extract
 	// 2. docker build -t <project name> -f Dockerfile ./extracted
+
+	// Regardless of pass or fail, remove the local extracted folder
+	defer func() {
+		projectName, _ := getProjectName(config.RootCommandConfig)
+		extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
+		os.RemoveAll(extractDir)
+	}()
 
 	extractConfig := &extractCommandConfig{RootCommandConfig: config.RootCommandConfig}
 	extractErr := extract(extractConfig)
