@@ -119,7 +119,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			// init
-			err = TestInit("dev-local/"+stackName, projectDir)
+			err = TestInit("dev.local/"+stackName, projectDir)
 			if err != nil {
 				Error.Log(err)
 				testResults = append(testResults, ("FAILED: Init for stack: " + stackName))
