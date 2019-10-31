@@ -1327,11 +1327,16 @@ func DockerPush(imageToPush string, dryrun bool) error {
 	}
 
 	pushCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := SeperateOutput(pushCmd)
-	if kerr != nil {
-		return errors.Errorf("docker push failed: %s", kout)
+
+	pushOut, pushErr := pushCmd.Output()
+	if pushErr != nil {
+		if !(strings.Contains(pushErr.Error(), "[DEPRECATION NOTICE] registry v2") || strings.Contains(string(pushOut[:]), "[DEPRECATION NOTICE] registry v2")) {
+			Error.log("Could not push the image: ", pushErr, " ", string(pushOut[:]))
+
+			return pushErr
+		}
 	}
-	return kerr
+	return pushErr
 }
 
 // DockerRunBashCmd issues a shell command in a docker image, overriding its entrypoint

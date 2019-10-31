@@ -28,6 +28,8 @@ type buildCommandConfig struct {
 	*RootCommandConfig
 	tag                string
 	dockerBuildOptions string
+	pushURL            string
+	push               bool
 }
 
 func checkDockerBuildOptions(options []string) error {
@@ -59,7 +61,8 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
-
+	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the Docker image to the image repository.")
+	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to.")
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
 	buildCmd.AddCommand(newSetupCmd(config))
 	return buildCmd
@@ -88,6 +91,9 @@ func build(config *buildCommandConfig) error {
 	// If a tag is specified, change the buildImage
 	if config.tag != "" {
 		buildImage = config.tag
+	}
+	if config.pushURL != "" {
+		buildImage = config.pushURL + "/" + buildImage
 	}
 	cmdArgs := []string{"-t", buildImage}
 
@@ -118,6 +124,13 @@ func build(config *buildCommandConfig) error {
 
 	if execError != nil {
 		return execError
+	}
+	if config.push {
+
+		err := DockerPush(buildImage, config.Dryrun)
+		if err != nil {
+			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
+		}
 	}
 	if !config.Dryrun {
 		Info.log("Built docker image ", buildImage)
@@ -150,7 +163,8 @@ func getLabels(config *buildCommandConfig) ([]string, error) {
 
 	for key, value := range stackLabels {
 
-		key = strings.Replace(key, "org.opencontainers.image", "dev.appsody.stack", -1)
+		key = strings.Replace(key, ociKeyPrefix, appsodyStackKeyPrefix, 1)
+		key = strings.Replace(key, appsodyImageCommitKeyPrefix, appsodyStackKeyPrefix+"commit.", 1)
 
 		// This is temporarily until we update the labels in stack dockerfile
 		if key == "appsody.stack" {
