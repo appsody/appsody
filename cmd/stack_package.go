@@ -314,18 +314,32 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			if repoErr != nil {
 				return repoErr
 			}
-			// See if a configured repo already points to the local index file
-			repoName := ""
-			for _, repo := range repos.Repositories {
-				if strings.Contains(repo.URL, indexFileLocal) {
-					repoName = repo.Name
-					break
+			// See if a configured repo already points to dev.local, if so remove it
+			repoName := "dev.local"
+
+			repo := repos.GetRepo(repoName)
+			if repo == nil || !strings.Contains(repo.URL, indexFileLocal) {
+				// the repo is setup wrong, delete and recreate it
+				if repo != nil {
+					Info.logf("Appsody repo %s is configured with the wrong URL. Deleting and recreating it.", repoName)
+					repos.Remove(repoName)
 				}
-			}
-			if repoName == "" {
-				repoName = "dev.local"
-				// could not find existing repo, so create it
-				// create an appsody repo for the stack
+				// check for a different repo with the same file url
+				var repoNameToDelete string
+				for _, repo := range repos.Repositories {
+					if strings.Contains(repo.URL, indexFileLocal) {
+						repoNameToDelete = repo.Name
+						break
+					}
+				}
+				if repoNameToDelete != "" {
+					Info.logf("Appsody repo %s is configured with %s's URL. Deleting it to setup %s.", repoNameToDelete, repoName, repoName)
+					repos.Remove(repoNameToDelete)
+				}
+				err = repos.WriteFile(getRepoFileLocation(rootConfig))
+				if err != nil {
+					return errors.Errorf("Error writing to repo file %s. %v", getRepoFileLocation(rootConfig), err)
+				}
 				Info.Logf("Creating %s repository", repoName)
 				_, err = AddLocalFileRepo(repoName, indexFileLocal)
 				if err != nil {
