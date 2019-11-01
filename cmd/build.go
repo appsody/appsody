@@ -216,7 +216,7 @@ func ConvertLabelToKubeFormat(key string) (string, error) {
 	var prefix string
 	var name string
 	if loc == nil {
-		// did not start with domain a domain so there will be no prefix
+		// did not start with a domain so there will be no prefix
 		prefix = ""
 		name = key
 	} else {
