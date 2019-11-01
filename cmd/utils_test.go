@@ -262,6 +262,7 @@ func TestConvertLabelToKubeFormat(t *testing.T) {
 var invalidConvertLabelTests = []string{
 	"inva$lid",
 	".name",
+	"dev.appsody.",
 	"dev.appsody.app.a234567890123456789012345678901234567890123456789012345678901234", // one over lenth limit
 }
 

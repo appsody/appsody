@@ -235,6 +235,9 @@ func ConvertLabelToKubeFormat(key string) (string, error) {
 		}
 		prefix = newPrefix + "/"
 	}
+	if name == "" {
+		return "", errors.New("Invalid kubernetes metadata name. Must not be empty.")
+	}
 	if len(prefix) > 253 {
 		return "", errors.New("Invalid kubernetes metadata prefix. Must be less than 253 characters")
 	}
