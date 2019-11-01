@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mitchellh/go-spdx"
 	"gopkg.in/yaml.v2"
 )
 
@@ -61,6 +62,7 @@ func (s *StackDetails) validateYaml(stackPath string) int {
 	stackLintErrorCount += s.validateFields()
 	stackLintErrorCount += s.checkVersion()
 	stackLintErrorCount += s.checkDescLength()
+	stackLintErrorCount += s.checkLicense()
 	return stackLintErrorCount
 }
 
@@ -159,4 +161,25 @@ func (s *StackDetails) checkDescLength() int {
 	}
 
 	return stackLintErrorCount
+}
+
+func (s *StackDetails) checkLicense() int {
+	stackLintErrorCount := 0
+
+	if !checkValidLicense(s.License) {
+		stackLintErrorCount++
+		Error.log("Stack must have a valid SPDX license ID")
+	}
+	return stackLintErrorCount
+}
+
+func checkValidLicense(license string) bool {
+	// Get the list of all known licenses
+	list, _ := spdx.List()
+	for _, spdx := range list.Licenses {
+		if spdx.ID == license {
+			return true
+		}
+	}
+	return false
 }
