@@ -617,7 +617,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	}
 
 	if projectConfig.License != "" {
-		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
+		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid || !checkValidLicense(projectConfig.License) {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License

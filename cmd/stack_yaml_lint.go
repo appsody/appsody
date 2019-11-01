@@ -170,6 +170,9 @@ func (s *StackDetails) checkLicense() int {
 		stackLintErrorCount++
 		Error.log("Stack must have a valid SPDX license ID")
 	}
+	if valid, err := IsValidKubernetesLabelValue(s.License); !valid {
+		Error.logf("The stack.yaml license value is invalid. %v", err)
+	}
 	return stackLintErrorCount
 }
 
