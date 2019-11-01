@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"io/ioutil"
-	"path"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -26,7 +25,7 @@ import (
 func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var lintCmd = &cobra.Command{
 		Use:   "lint",
-		Short: "Lint your stack to verify that it conforms to the standard of an Appsody stack",
+		Short: "Lint your stack to verify that it conforms to the structure of an Appsody stack",
 		Long: `This command will validate that your stack has the structure of an Appsody stack. It will inform you of files/directories
 missing and warn you if your stack could be enhanced.
 
@@ -47,7 +46,14 @@ This command can be run from the base directory of your stack or you can supply 
 			configPath := filepath.Join(imagePath, "/config")
 			projectPath := filepath.Join(imagePath, "/project")
 
-			Info.log("LINTING ", path.Base(stackPath))
+			stackID := filepath.Base(stackPath)
+			Info.log("LINTING ", stackID)
+
+			validStackID, err := IsValidProjectName(stackID)
+			if !validStackID {
+				Error.log("Stack directory name is invalid. ", err)
+				stackLintErrorCount++
+			}
 
 			fileCheck, err := Exists(filepath.Join(stackPath, "/README.md"))
 			if err != nil {

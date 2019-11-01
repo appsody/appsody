@@ -28,6 +28,8 @@ type buildCommandConfig struct {
 	*RootCommandConfig
 	tag                string
 	dockerBuildOptions string
+	pushURL            string
+	push               bool
 }
 
 func checkDockerBuildOptions(options []string) error {
@@ -59,7 +61,8 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
-
+	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the Docker image to the image repository.")
+	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to.")
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
 	buildCmd.AddCommand(newSetupCmd(config))
 	return buildCmd
@@ -89,6 +92,9 @@ func build(config *buildCommandConfig) error {
 	if config.tag != "" {
 		buildImage = config.tag
 	}
+	if config.pushURL != "" {
+		buildImage = config.pushURL + "/" + buildImage
+	}
 	cmdArgs := []string{"-t", buildImage}
 
 	if config.dockerBuildOptions != "" {
@@ -102,13 +108,15 @@ func build(config *buildCommandConfig) error {
 		cmdArgs = append(cmdArgs, options...)
 	}
 
-	labels, err := getLabels(config)
+	labels, err := getLabels(config.RootCommandConfig)
 	if err != nil {
 		return err
 	}
 
+	labelPairs := createLabelPairs(labels)
+
 	// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
-	for _, label := range labels {
+	for _, label := range labelPairs {
 		cmdArgs = append(cmdArgs, "--label", label)
 	}
 
@@ -119,21 +127,29 @@ func build(config *buildCommandConfig) error {
 	if execError != nil {
 		return execError
 	}
+	if config.push {
+
+		err := DockerPush(buildImage, config.Dryrun)
+		if err != nil {
+			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
+		}
+	}
 	if !config.Dryrun {
 		Info.log("Built docker image ", buildImage)
 	}
+
 	return nil
 }
 
-func getLabels(config *buildCommandConfig) ([]string, error) {
-	var labels []string
+func getLabels(config *RootCommandConfig) (map[string]string, error) {
+	var labels = make(map[string]string)
 
-	stackLabels, err := getStackLabels(config.RootCommandConfig)
+	stackLabels, err := getStackLabels(config)
 	if err != nil {
 		return labels, err
 	}
 
-	projectConfig, projectConfigErr := getProjectConfig(config.RootCommandConfig)
+	projectConfig, projectConfigErr := getProjectConfig(config)
 	if projectConfigErr != nil {
 		return labels, projectConfigErr
 	}
@@ -143,35 +159,64 @@ func getLabels(config *buildCommandConfig) ([]string, error) {
 		return labels, err
 	}
 
-	gitLabels, err := getGitLabels(config.Dryrun)
+	gitLabels, err := getGitLabels(config)
 	if err != nil {
-		Warning.log(err)
+		Info.log(err)
 	}
 
 	for key, value := range stackLabels {
-
-		key = strings.Replace(key, "org.opencontainers.image", "dev.appsody.stack", -1)
+		key = strings.Replace(key, ociKeyPrefix, appsodyStackKeyPrefix, 1)
+		key = strings.Replace(key, appsodyImageCommitKeyPrefix, appsodyStackKeyPrefix+"commit.", 1)
 
 		// This is temporarily until we update the labels in stack dockerfile
 		if key == "appsody.stack" {
-			key = "dev.appsody.stack.id"
+			key = "dev.appsody.stack.tag"
 		}
 
 		delete(configLabels, key)
 
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		labels[key] = value
 	}
 
 	for key, value := range configLabels {
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		labels[key] = value
 	}
 
 	for key, value := range gitLabels {
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		labels[key] = value
 	}
 
 	return labels, nil
+}
+
+func convertLabelsToKubeFormat(labels map[string]string) map[string]string {
+	var kubeLabels = make(map[string]string)
+
+	for key, value := range labels {
+		prefixes := strings.Split(key, ".")
+		nPrefixes := len(prefixes)
+		newKey := ""
+		for i := nPrefixes - 2; i >= 0; i-- {
+			newKey += prefixes[i]
+			if i > 0 {
+				newKey += "."
+			}
+		}
+
+		newKey += "/" + prefixes[nPrefixes-1]
+		kubeLabels[newKey] = value
+	}
+
+	return kubeLabels
+}
+
+func createLabelPairs(labels map[string]string) []string {
+	var labelsArr []string
+
+	for key, value := range labels {
+		labelString := fmt.Sprintf("%s=%s", key, value)
+		labelsArr = append(labelsArr, labelString)
+	}
+
+	return labelsArr
 }

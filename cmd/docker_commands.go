@@ -40,8 +40,8 @@ func RunDockerInspect(imageName string) (string, error) {
 	cmdArgs := []string{"image", "inspect", imageName}
 	Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	output, err := inspectCmd.Output()
-	return string(output), err
+	output, err := SeperateOutput(inspectCmd)
+	return output, err
 }
 
 func RunKubeCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {

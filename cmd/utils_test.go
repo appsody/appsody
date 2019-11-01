@@ -17,6 +17,7 @@ package cmd_test
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -125,8 +126,8 @@ var validProjectNameTests = []string{
 	"m",
 	"m1",
 	"appsody-project",
-	// 127 chars is valid
-	"a234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567",
+	// 68 chars is valid
+	"a2345678901234567890123456789012345678901234567890123456789012345678",
 }
 
 func TestValidProjectNames(t *testing.T) {
@@ -169,9 +170,9 @@ var invalidProjectNameTests = []struct {
 	{"path/to/pr0ject", "pr0ject"},
 	{"/path/to/pr0ject", "pr0ject"},
 	{"path/to/1my-project", "appsody-1my-project"},
-	// 128 chars is invalid
-	{"a2345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678",
-		"a234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567"},
+	// 69 chars is invalid
+	{"a23456789012345678901234567890123456789012345678901234567890123456789",
+		"a2345678901234567890123456789012345678901234567890123456789012345678"},
 }
 
 func TestInvalidProjectNames(t *testing.T) {
@@ -196,4 +197,32 @@ func TestInvalidProjectNames(t *testing.T) {
 			}
 		})
 	}
+}
+
+var invalidCmdsTest = []struct {
+	cmd      string
+	args     []string
+	expected string
+}{
+	{"ls", []string{"invalidname"}, "No such file or directory"},
+	{"cp", []string{"invalidname", "alsoinavalidname"}, "No such file or directory"},
+}
+
+func TestInvalidCmdOutput(t *testing.T) {
+
+	for _, test := range invalidCmdsTest {
+
+		invalidCmd := exec.Command(test.cmd, test.args...)
+
+		t.Run(fmt.Sprintf("Test Invalid "+test.cmd+" Command"), func(t *testing.T) {
+			out, err := cmd.SeperateOutput(invalidCmd)
+			if err == nil {
+				t.Error("Expected an error from '", test.cmd, strings.Join(test.args, " "), "' but it did not return one.")
+			} else if !strings.Contains(out, test.expected) {
+				t.Error("Expected the stdout to contain '" + test.expected + "'. It actually contains: " + out)
+			}
+		})
+
+	}
+
 }
