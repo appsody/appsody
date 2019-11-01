@@ -23,7 +23,7 @@ import (
 func TestStackPackageSimpleStack(t *testing.T) {
 
 	argsPackage := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsodyCmdExec(argsPackage, "./testdata/starter")
+	_, err := cmdtest.RunAppsodyCmdExec(argsPackage, "./testdata/nodejs")
 
 	if err != nil {
 		t.Fatal(err)
