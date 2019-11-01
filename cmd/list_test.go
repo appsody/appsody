@@ -22,7 +22,6 @@ import (
 )
 
 func TestList(t *testing.T) {
-
 	// tests that would have run before this and crashed could leave the repo
 	// in a bad state - mostly leading to: "a repo with this name already exists."
 	// so clean it up pro-actively, ignore any errors.
@@ -69,8 +68,8 @@ func TestListV2(t *testing.T) {
 		t.Error("list command should contain id 'nodejs'")
 	}
 
-	// test the current default hub
-	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "appsodyhub"}, ".")
+	// test the current default repo
+	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "incubator"}, ".")
 
 	if !strings.Contains(output, "java-microprofile") {
 		t.Error("list command should contain id 'java-microprofile'")
@@ -83,7 +82,7 @@ func TestListV2(t *testing.T) {
 		t.Error("list command should contain id 'java-microprofile and 2 nodejs '")
 	}
 
-	// test the current default hub
+	// test the current default repo
 	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "nonexisting"}, ".")
 
 	if !(strings.Contains(output, "cannot locate repository ")) {
@@ -124,6 +123,25 @@ func TestListYaml(t *testing.T) {
 	}
 
 	testContentsListOutput(t, list, output)
+}
+
+func TestListJsonSingleRepository(t *testing.T) {
+	args := []string{"list", "incubator", "-o", "yaml"}
+	output, err := cmdtest.RunAppsodyCmd(args, ".")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := cmdtest.ParseListYAML(cmdtest.ParseYAML(output))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(list.Repositories) != 1 && list.Repositories[0].Name == "incubator" {
+		t.Errorf("Could not find repository incubator! CLI output:\n%s", output)
+	}
 }
 
 func testContentsListOutput(t *testing.T, list cmd.IndexOutputFormat, output string) {
