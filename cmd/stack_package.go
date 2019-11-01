@@ -110,19 +110,19 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			projectPath := rootConfig.ProjectDir
 
 			// make a copy of the folder to apply template to
-			err := copyDir(projectPath, projectPath+"copy")
+			err := copyDir(projectPath, projectPath+"packagecopy")
 			if err != nil {
-				os.RemoveAll(projectPath + "copy")
+				os.RemoveAll(projectPath + "packagecopy")
 				return errors.Errorf("Error trying to copy directory: %v", err)
 			}
 
 			// remove copied folder locally, no matter the output
-			defer os.RemoveAll(projectPath + "copy")
+			defer os.RemoveAll(projectPath + "packagecopy")
 
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
 
-			source, err := ioutil.ReadFile(filepath.Join(projectPath+"copy", "stack.yaml"))
+			source, err := ioutil.ReadFile(filepath.Join(projectPath+"packagecopy", "stack.yaml"))
 			if err != nil {
 				return errors.Errorf("Error trying to read: %v", err)
 			}
@@ -139,10 +139,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			templateMetadata.Version = stackYaml.Version
 
 			// walk through copied directory and apply templating to all files in directory
-			err = filepath.Walk(projectPath+"copy", func(path string, info os.FileInfo, err error) error {
+			err = filepath.Walk(projectPath+"packagecopy", func(path string, info os.FileInfo, err error) error {
 
 				// get old path to check for read only files
-				templatePath := strings.Replace(path, "copy", "", 1)
+				templatePath := strings.Replace(path, "packagecopy", "", 1)
 
 				// ignore .git folder
 				if info.IsDir() && info.Name() == ".git" {
@@ -193,7 +193,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			// sets stack path to be the copied folder
-			stackPath := projectPath + "copy"
+			stackPath := projectPath + "packagecopy"
 			Debug.Log("stackPath is: ", stackPath)
 
 			// check for templates dir, error out if its not there
@@ -219,7 +219,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			// get the stack name from the stack path (removes copy suffix)
-			stackID := filepath.Base(strings.Replace(stackPath, "copy", "", 1))
+			stackID := filepath.Base(strings.Replace(stackPath, "packagecopy", "", 1))
 			Debug.Log("stackID is: ", stackID)
 
 			indexFileLocal := filepath.Join(devLocal, "dev.local-index.yaml")
