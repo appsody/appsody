@@ -141,6 +141,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// walk through copied directory and apply templating to all files in directory
 			err = filepath.Walk(projectPath+"copy", func(path string, info os.FileInfo, err error) error {
 
+				// get old path to check for read only files
+				templatePath := strings.Replace(path, "copy", "", 1)
+
 				// ignore .git folder
 				if info.IsDir() && info.Name() == ".git" {
 					return filepath.SkipDir
@@ -149,24 +152,12 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					//get file name
 					file := filepath.Base(path)
 
-					// checks if file is writable
-					writable, err := CanWrite(path)
-					if !os.IsPermission(err) && err != nil {
-						return errors.Errorf("Error checking if file is read-only: %v", err)
-					}
-
 					// get permission of file
-					fileStat, err := os.Stat(path)
+					fileStat, err := os.Stat(templatePath)
 					if err != nil {
 						return errors.Errorf("Error checking permission of file: %v", err)
 					}
 					permission := fileStat.Mode()
-
-					// sets file to writable
-					err = os.Chmod(path, 0700)
-					if err != nil {
-						return errors.Errorf("Error setting file permission to writable: %v", err)
-					}
 
 					// create new template from parsing file
 					tmpl, err := template.New(file).ParseFiles(path)
@@ -188,12 +179,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 					f.Close()
 
-					// reset file permission
-					if !writable {
-						err := os.Chmod(path, permission)
-						if err != nil {
-							return errors.Errorf("Error reverting file permision: %v", err)
-						}
+					// set file permission to new file
+					err = os.Chmod(path, permission)
+					if err != nil {
+						return errors.Errorf("Error reverting file permision: %v", err)
 					}
 				}
 				return nil
