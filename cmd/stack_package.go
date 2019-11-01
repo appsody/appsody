@@ -278,18 +278,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				indexYaml.APIVersion = "v2"
 				indexYaml.Stacks = make([]IndexYamlStack, 0, 1)
 			}
-			// get the necessary data from the current stack.yaml
-			var stackYaml StackYaml
-
-			source, err := ioutil.ReadFile(filepath.Join(stackPath, "stack.yaml"))
-			if err != nil {
-				return errors.Errorf("Error trying to read: %v", err)
-			}
-
-			err = yaml.Unmarshal(source, &stackYaml)
-			if err != nil {
-				return errors.Errorf("Error trying to unmarshall: %v", err)
-			}
 
 			// docker build
 			// create the image name to be used for the docker image
