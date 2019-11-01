@@ -1,0 +1,10 @@
+name: Starter Sample
+version: 0.1.1
+description: Runnable starter stack, copy to create a new stack
+license: Apache-2.0
+language: bash
+maintainers: 
+  - name: Henry Nash
+    email: henry.nash@uk.ibm.com
+    github-id: henrynash
+default-template: simple
