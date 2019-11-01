@@ -242,7 +242,7 @@ var convertLabelTests = []struct {
 	{"Description", "Description"},
 	{"maintainer", "maintainer"},
 	{"dev.appsody.app.a23456789012345678901234567890123456789012345678901234567890123",
-		"app.appsody.dev/a23456789012345678901234567890123456789012345678901234567890123"}, // exact lenth limit on name
+		"app.appsody.dev/a23456789012345678901234567890123456789012345678901234567890123"}, // exact length limit on name
 }
 
 func TestConvertLabelToKubeFormat(t *testing.T) {
@@ -263,7 +263,7 @@ var invalidConvertLabelTests = []string{
 	"inva$lid",
 	".name",
 	"dev.appsody.",
-	"dev.appsody.app.a234567890123456789012345678901234567890123456789012345678901234", // one over lenth limit
+	"dev.appsody.app.a234567890123456789012345678901234567890123456789012345678901234", // one over length limit
 }
 
 func TestInvalidConvertLabelToKubeFormat(t *testing.T) {
