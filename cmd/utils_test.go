@@ -126,8 +126,8 @@ var validProjectNameTests = []string{
 	"m",
 	"m1",
 	"appsody-project",
-	// 127 chars is valid
-	"a234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567",
+	// 68 chars is valid
+	"a2345678901234567890123456789012345678901234567890123456789012345678",
 }
 
 func TestValidProjectNames(t *testing.T) {
@@ -170,9 +170,9 @@ var invalidProjectNameTests = []struct {
 	{"path/to/pr0ject", "pr0ject"},
 	{"/path/to/pr0ject", "pr0ject"},
 	{"path/to/1my-project", "appsody-1my-project"},
-	// 128 chars is invalid
-	{"a2345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678",
-		"a234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567"},
+	// 69 chars is invalid
+	{"a23456789012345678901234567890123456789012345678901234567890123456789",
+		"a2345678901234567890123456789012345678901234567890123456789012345678"},
 }
 
 func TestInvalidProjectNames(t *testing.T) {
@@ -225,4 +225,54 @@ func TestInvalidCmdOutput(t *testing.T) {
 
 	}
 
+}
+
+var convertLabelTests = []struct {
+	input          string
+	expectedOutput string
+}{
+	{"org.opencontainers.image.created", "image.opencontainers.org/created"},
+	{"dev.appsody.stack.id", "stack.appsody.dev/id"},
+	{"dev.appsody.app.name", "app.appsody.dev/name"},
+	{"dev.appsody.app-name", "appsody.dev/app-name"},
+	{"dev.app-sody.app.name", "dev/app-sody.app.name"},
+	{"d.name", "d/name"},
+	{"app.name", "app/name"},
+	{"app-name", "app-name"},
+	{"Description", "Description"},
+	{"maintainer", "maintainer"},
+	{"dev.appsody.app.a23456789012345678901234567890123456789012345678901234567890123",
+		"app.appsody.dev/a23456789012345678901234567890123456789012345678901234567890123"}, // exact length limit on name
+}
+
+func TestConvertLabelToKubeFormat(t *testing.T) {
+	for _, test := range convertLabelTests {
+		t.Run(test.input, func(t *testing.T) {
+			output, err := cmd.ConvertLabelToKubeFormat(test.input)
+			if err != nil {
+				t.Error(err)
+			} else if output != test.expectedOutput {
+				t.Errorf("Expected %s to convert to %s but got %s", test.input, test.expectedOutput, output)
+			}
+		})
+
+	}
+}
+
+var invalidConvertLabelTests = []string{
+	"inva$lid",
+	".name",
+	"dev.appsody.",
+	"dev.appsody.app.a234567890123456789012345678901234567890123456789012345678901234", // one over length limit
+}
+
+func TestInvalidConvertLabelToKubeFormat(t *testing.T) {
+	for _, test := range invalidConvertLabelTests {
+		t.Run(test, func(t *testing.T) {
+			_, err := cmd.ConvertLabelToKubeFormat(test)
+			if err == nil {
+				t.Errorf("Expected error but got none converting %s", test)
+			}
+		})
+	}
 }
