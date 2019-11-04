@@ -1005,7 +1005,7 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	//Set the owner ref if present
 	if codeWindOwnerRefName != "" && codeWindOwnerRefUID != "" {
 		yamlMap.Metadata.OwnerReferences = []OwnerReference{
-			OwnerReference{
+			{
 				APIVersion:         "apps/v1",
 				BlockOwnerDeletion: true,
 				Controller:         true,
@@ -1216,7 +1216,7 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 	//Set the owner ref if present
 	if codeWindOwnerRefName != "" && codeWindOwnerRefUID != "" {
 		service.Metadata.OwnerReferences = []OwnerReference{
-			OwnerReference{
+			{
 				APIVersion:         "apps/v1",
 				BlockOwnerDeletion: true,
 				Controller:         true,
