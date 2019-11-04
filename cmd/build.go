@@ -76,9 +76,10 @@ func build(config *buildCommandConfig) error {
 
 	// Regardless of pass or fail, remove the local extracted folder
 	defer func() {
-		projectName, _ := getProjectName(config.RootCommandConfig)
-		extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
-		os.RemoveAll(extractDir)
+		if projectName, err := getProjectName(config.RootCommandConfig); err == nil {
+			extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
+			os.RemoveAll(extractDir)
+		}
 	}()
 
 	extractConfig := &extractCommandConfig{RootCommandConfig: config.RootCommandConfig}
