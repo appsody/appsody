@@ -146,7 +146,11 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		Debug.log("Overriding appsody-controller mount with APPSODY_MOUNT_CONTROLLER env variable: ", destController)
 	} else {
 		destController = "appsody-controller"
-		downloaderArgs := []string{"--rm", "-v", "appsody-controller:/.appsody", "chilantim/controller-downloader", "./getController.sh", "qlatest"}
+		controllerImageName := os.Getenv("APPSODY_CONTROLLER_IMAGE")
+		if controllerImageName == "" {
+			controllerImageName = fmt.Sprintf("%s:%s", "appsody/appsody-controller", CONTROLLER_VERSION)
+		}
+		downloaderArgs := []string{"--rm", "-v", "appsody-controller:/.appsody", controllerImageName, "./setController.sh"}
 		controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
 		if config.Dryrun {
 			Info.log("Dry Run - Skipping execCmd.Wait")

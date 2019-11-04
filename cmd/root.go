@@ -34,6 +34,7 @@ import (
 )
 
 var VERSION string
+var CONTROLLER_VERSION string
 
 const APIVersionV1 = "v1"
 
@@ -180,19 +181,26 @@ func getDefaultConfigFile(config *RootCommandConfig) string {
 	return filepath.Join(config.CliConfig.GetString("home"), ".appsody.yaml")
 }
 
-func Execute(version string) {
+func Execute(version string, controller_version string) {
 	dir, err := os.Getwd()
 	if err != nil {
 		fmt.Println("Error getting current directory: ", err)
 		os.Exit(1)
 	}
-	if err := ExecuteE(version, dir, os.Args[1:]); err != nil {
+	if err := ExecuteE(version, controller_version, dir, os.Args[1:]); err != nil {
 		os.Exit(1)
 	}
 }
 
-func ExecuteE(version string, projectDir string, args []string) error {
+func ExecuteE(version string, controller_version string, projectDir string, args []string) error {
 	VERSION = version
+	CONTROLLER_VERSION = controller_version
+	if CONTROLLER_VERSION == "" {
+		CONTROLLER_VERSION = os.Getenv(CONTROLLER_VERSION)
+		if CONTROLLER_VERSION == "" {
+			return errors.Errorf("The required controller version could not be determined. You must set either the CONTROLLER_VERSION or the CONTROLLER_IMAGE env var.")
+		}
+	}
 	rootCmd, err := newRootCmd(projectDir, args)
 	if err != nil {
 		Error.log(err)
