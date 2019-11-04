@@ -345,7 +345,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 		codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
-		if codeWindProjectID != "" {
+		if codeWindProjectID == "" {
 			port := getIngressPort(config.RootCommandConfig)
 			// Generate the Ingress only if it makes sense - i.e. there's a port to expose
 			if port > 0 {
