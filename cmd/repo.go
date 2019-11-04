@@ -54,26 +54,27 @@ type RepoIndices map[string]*RepoIndex
 type ProjectVersions []*ProjectVersion
 
 type ProjectVersion struct {
-	APIVersion        string             `yaml:"apiVersion"`
-	ID                string             `yaml:"id,omitempty"`
-	Created           time.Time          `yaml:"created"`
-	Name              string             `yaml:"name"`
-	Home              string             `yaml:"home"`
-	Version           string             `yaml:"version"`
-	Description       string             `yaml:"description"`
-	Keywords          []string           `yaml:"keywords"`
-	Maintainers       []interface{}      `yaml:"maintainers"`
-	StackRequirements []StackRequirement `yaml:"stack-requirements"`
-	Icon              string             `yaml:"icon"`
-	Digest            string             `yaml:"digest"`
-	URLs              []string           `yaml:"urls"` //V1
-	Templates         []Template         `yaml:"templates,omitempty"`
-	DefaultTemplate   string             `yaml:"default-template"`
+	APIVersion      string           `yaml:"apiVersion"`
+	ID              string           `yaml:"id,omitempty"`
+	Created         time.Time        `yaml:"created"`
+	Name            string           `yaml:"name"`
+	Home            string           `yaml:"home"`
+	Version         string           `yaml:"version"`
+	Description     string           `yaml:"description"`
+	Keywords        []string         `yaml:"keywords"`
+	Maintainers     []interface{}    `yaml:"maintainers"`
+	Requirements    StackRequirement `yaml:"requirements"`
+	Icon            string           `yaml:"icon"`
+	Digest          string           `yaml:"digest"`
+	URLs            []string         `yaml:"urls"` //V1
+	Templates       []Template       `yaml:"templates,omitempty"`
+	DefaultTemplate string           `yaml:"default-template"`
 }
 
 type StackRequirement struct {
 	Docker  string `yaml:"docker-version"`
 	Appsody string `yaml:"appsody-version"`
+	Buildah string `yaml:"buildah-version"`
 }
 
 type RepositoryFile struct {

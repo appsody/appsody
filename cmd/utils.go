@@ -1962,30 +1962,32 @@ func Targz(source, target string) error {
 }
 
 //Compares the minimum requirements of a stack against the user to determine whether they can use the stack or not.
-func CheckStackRequirements(requirementArray []StackRequirement, buildah bool) error {
-	if len(requirementArray) == 0 {
+func CheckStackRequirements(requirementArray StackRequirement, buildah bool) error {
+	if (StackRequirement{}) == requirementArray {
 		Info.log("No restrictions on stack found. Continuing...")
 		return nil
 	}
 
-	v := reflect.ValueOf(requirementArray[0])
+	v := reflect.ValueOf(requirementArray)
 	values := make([]interface{}, v.NumField())
-	versionRegex := regexp.MustCompile("[0-9][0-9.]*[0-9]")
+	versionRegex := regexp.MustCompile("(\\d)+\\.(\\d)+\\.(\\d)+")
 
 	upgradesRequired := 0
 
-	for i := 0; i < v.NumField(); i++ {
-		values[i] = v.Field(i).Interface()
-		technology := v.Type().Field(i).Name
+	for x := 0; x < v.NumField(); x++ {
+		values[x] = v.Field(x).Interface()
+		technology := v.Type().Field(x).Name
 
-		if values[i].(string) == "" {
+		if values[x].(string) == "" {
 			Info.log("Skipping ", technology, " - No requirements set.")
 		} else if technology == "Docker" && buildah {
 			Info.log("Skipping Docker requirement - Buildah is being used.")
+		} else if technology == "Buildah" && !buildah {
+			Info.log("Skipping Buildah requirement - Docker is being used.")
 		} else {
 			Info.log("Checking stack requirements for ", technology)
 
-			if versionConstraint, ok := values[i].(string); ok {
+			if versionConstraint, ok := values[x].(string); ok {
 				setConstraint, err := semver.NewConstraint(versionConstraint)
 				if err != nil {
 					Error.log(err)
@@ -2006,7 +2008,7 @@ func CheckStackRequirements(requirementArray []StackRequirement, buildah bool) e
 					if compareVersion {
 						Info.log(technology + " requirements met")
 					} else {
-						Error.log("The minimum required version of " + technology + " to use this stack is " + versionConstraint + " - Please upgrade.")
+						Error.log("The required version of " + technology + " to use this stack is " + versionConstraint + " - Please upgrade.")
 						upgradesRequired++
 					}
 				}
