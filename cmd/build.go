@@ -127,7 +127,7 @@ func build(config *buildCommandConfig) error {
 	if execError != nil {
 		return execError
 	}
-	if config.push {
+	if config.pushURL != "" || config.push {
 
 		err := DockerPush(buildImage, config.Dryrun)
 		if err != nil {
