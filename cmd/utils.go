@@ -870,7 +870,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -890,6 +890,20 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		SubPath   string `yaml:"subPath,omitempty"`
 	}
 	type Container struct {
+		Args            []string  `yaml:"args,omitempty"`
+		Command         []string  `yaml:"command,omitempty"`
+		Env             []*EnvVar `yaml:"env,omitempty"`
+		Image           string    `yaml:"image"`
+		ImagePullPolicy string    `yaml:"imagePullPolicy,omitempty"`
+		Name            string    `yaml:"name,omitempty"`
+		Ports           []*Port   `yaml:"ports,omitempty"`
+		SecurityContext struct {
+			Privileged bool `yaml:"privileged"`
+		} `yaml:"securityContext,omitempty"`
+		VolumeMounts []VolumeMount `yaml:"volumeMounts"`
+		WorkingDir   string        `yaml:"workingDir,omitempty"`
+	}
+	type InitContainer struct {
 		Args            []string  `yaml:"args,omitempty"`
 		Command         []string  `yaml:"command,omitempty"`
 		Env             []*EnvVar `yaml:"env,omitempty"`
@@ -930,9 +944,10 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 					Labels map[string]string `yaml:"labels"`
 				} `yaml:"metadata"`
 				Spec struct {
-					ServiceAccountName string       `yaml:"serviceAccountName,omitempty"`
-					Containers         []*Container `yaml:"containers"`
-					Volumes            []*Volume    `yaml:"volumes"`
+					ServiceAccountName string           `yaml:"serviceAccountName,omitempty"`
+					InitContainers     []*InitContainer `yaml:"initContainers"`
+					Containers         []*Container     `yaml:"containers"`
+					Volumes            []*Volume        `yaml:"volumes"`
 				} `yaml:"spec"`
 			} `yaml:"template"`
 		} `yaml:"spec"`
@@ -955,6 +970,8 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	} else {
 		Debug.log("No service account name env var, leaving the appsody-sa default")
 	}
+	//Set the controller image
+	yamlMap.Spec.PodTemplate.Spec.InitContainers[0].Image = controllerImageName
 	//Set the image
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].Name = appName
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].Image = imageName
@@ -1092,6 +1109,16 @@ spec:
         app: appsody
     spec:
       serviceAccountName: appsody-sa
+      initContainers:
+      - name: controller-downloader
+        image: chilantim/controller-downloader
+        command:
+        - ./setController.sh
+        resources: {}
+        volumeMounts:
+         - name: appsody-controller
+           mountPath: /.appsody
+        imagePullPolicy: IfNotPresent 
       containers:
       - name: APPSODY_APP_NAME
         image: APPSODY_STACK
