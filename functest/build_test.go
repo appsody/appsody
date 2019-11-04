@@ -116,7 +116,9 @@ var openContainerLabels = []string{
 
 var appsodyPrefixKey = "dev.appsody.stack."
 var appsodyStackLabels = []string{
-	"id",
+	// These will need updating when the stacks CI is updated
+	//"id",
+	"tag",
 	"version",
 	"configured",
 }
@@ -205,7 +207,7 @@ func TestBuildLabels(t *testing.T) {
 		}
 	}
 
-	if labelsMap["dev.appsody.application"] == nil {
+	if labelsMap["dev.appsody.app.name"] == nil {
 		t.Error("Could not find requested stack label in Docker image!")
 	}
 
