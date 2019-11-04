@@ -1217,7 +1217,7 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 	if codeWindOwnerRefName != "" && codeWindOwnerRefUID != "" {
 		service.Metadata.OwnerReferences = []OwnerReference{
 			{
-				APIVersion:         "apps/v1",
+				APIVersion:         "v1",
 				BlockOwnerDeletion: true,
 				Controller:         true,
 				Kind:               "Service",
