@@ -122,6 +122,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 		if strings.Contains(value, branchSeparatorString) {
 			gitInfo.Branch = strings.Trim(stringBetween(value, branchPrefix, branchSeparatorString), trimChars)
 			gitInfo.Upstream = strings.Trim(stringAfter(value, branchSeparatorString), trimChars)
+			gitInfo.Upstream = strings.Split(gitInfo.Upstream, " ")[0]
 		} else {
 			gitInfo.Branch = strings.Trim(stringAfter(value, branchPrefix), trimChars)
 		}
