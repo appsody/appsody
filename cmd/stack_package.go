@@ -66,21 +66,12 @@ type IndexYamlStackTemplate struct {
 
 //TemplateMetadata - Struct for templating to use stack.yaml values
 type TemplateMetadata struct {
-	Name    string
-	Version string
-}
-
-// CanWrite - Function to check read only state of files
-func CanWrite(filepath string) (bool, error) {
-	file, err := os.OpenFile(filepath, os.O_WRONLY, 0666)
-	if err != nil {
-		if os.IsPermission(err) {
-			return false, err
-		}
-	}
-	file.Close()
-	return true, nil
-
+	StackID             string
+	StackName           string
+	StackMajorVersion   string
+	StackMinorVersion   string
+	StackPatchVersion   string
+	StackImageNamespace string
 }
 
 func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
@@ -119,6 +110,14 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// remove copied folder locally, no matter the output
 			defer os.RemoveAll(projectPath + "packagecopy")
 
+			// sets stack path to be the copied folder
+			stackPath := projectPath + "packagecopy"
+			Debug.Log("stackPath is: ", stackPath)
+
+			// get the stack name from the stack path (removes copy suffix)
+			stackID := filepath.Base(strings.Replace(stackPath, "packagecopy", "", 1))
+			Debug.Log("stackID is: ", stackID)
+
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
 
@@ -132,11 +131,18 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error trying to unmarshall: %v", err)
 			}
 
+			// split version number into major, minor and patch strings
+			versionFull := strings.Split(stackYaml.Version, ".")
+
 			// Set data for template metadata
 			var templateMetadata TemplateMetadata
 
-			templateMetadata.Name = stackYaml.Name
-			templateMetadata.Version = stackYaml.Version
+			templateMetadata.StackID = stackID
+			templateMetadata.StackName = stackYaml.Name
+			templateMetadata.StackMajorVersion = versionFull[0]
+			templateMetadata.StackMinorVersion = versionFull[1]
+			templateMetadata.StackPatchVersion = versionFull[2]
+			templateMetadata.StackImageNamespace = "dev.local"
 
 			// walk through copied directory and apply templating to all files in directory
 			err = filepath.Walk(projectPath+"packagecopy", func(path string, info os.FileInfo, err error) error {
@@ -192,10 +198,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error walking through directory: %v", err)
 			}
 
-			// sets stack path to be the copied folder
-			stackPath := projectPath + "packagecopy"
-			Debug.Log("stackPath is: ", stackPath)
-
 			// check for templates dir, error out if its not there
 			check, err := Exists("templates")
 			if err != nil {
@@ -217,10 +219,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			if err != nil {
 				return errors.Errorf("Error creating directory: %v", err)
 			}
-
-			// get the stack name from the stack path (removes copy suffix)
-			stackID := filepath.Base(strings.Replace(stackPath, "packagecopy", "", 1))
-			Debug.Log("stackID is: ", stackID)
 
 			indexFileLocal := filepath.Join(devLocal, "dev.local-index.yaml")
 			Debug.Log("indexFileLocal is: ", indexFileLocal)
