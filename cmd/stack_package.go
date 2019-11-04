@@ -142,6 +142,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			templateMetadata.StackMajorVersion = versionFull[0]
 			templateMetadata.StackMinorVersion = versionFull[1]
 			templateMetadata.StackPatchVersion = versionFull[2]
+			// TODO: use imageNamespace variable
 			templateMetadata.StackImageNamespace = "dev.local"
 
 			// walk through copied directory and apply templating to all files in directory
