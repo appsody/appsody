@@ -1970,7 +1970,7 @@ func CheckStackRequirements(requirementArray StackRequirement, buildah bool) err
 
 	v := reflect.ValueOf(requirementArray)
 	values := make([]interface{}, v.NumField())
-	versionRegex := regexp.MustCompile("(\\d)+\\.(\\d)+\\.(\\d)+")
+	versionRegex := regexp.MustCompile(`(\\d)+\\.(\\d)+\\.(\\d)+`)
 
 	upgradesRequired := 0
 

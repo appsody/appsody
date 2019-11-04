@@ -216,7 +216,6 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		}
 
-		Info.log(stackReqs)
 		checkErr := CheckStackRequirements(stackReqs, config.Buildah)
 		if checkErr != nil {
 			Error.log(checkErr)
