@@ -22,7 +22,6 @@ import (
 )
 
 func TestList(t *testing.T) {
-
 	// tests that would have run before this and crashed could leave the repo
 	// in a bad state - mostly leading to: "a repo with this name already exists."
 	// so clean it up pro-actively, ignore any errors.
