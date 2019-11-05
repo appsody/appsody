@@ -361,20 +361,21 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
 		Info.log(err)
-	}
+	} else {
+		if branchURL, ok := gitLabels[ociKeyPrefix+"source"]; ok {
+			if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {
+				branchURL += contextDir
+				gitLabels[ociKeyPrefix+"url"] = branchURL
+			}
+			// These are enforced by the stack lint so they should exist
+			gitLabels[ociKeyPrefix+"documentation"] = branchURL + "/README.md"
+			gitLabels[ociKeyPrefix+"source"] = branchURL + "/image"
+		}
 
-	branchURL := gitLabels[ociKeyPrefix+"source"]
-	if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {
-		branchURL += contextDir
-		gitLabels[ociKeyPrefix+"url"] = branchURL
-	}
-	// These are enforced by the stack lint so they should exist
-	gitLabels[ociKeyPrefix+"documentation"] = branchURL + "/README.md"
-	gitLabels[ociKeyPrefix+"source"] = branchURL + "/image"
-
-	for key, value := range gitLabels {
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		for key, value := range gitLabels {
+			labelString := fmt.Sprintf("%s=%s", key, value)
+			labels = append(labels, labelString)
+		}
 	}
 
 	// build a ProjectConfig struct from the stackyaml so we can reuse getConfigLabels() func
