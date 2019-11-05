@@ -60,7 +60,8 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	}
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
-	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
+	buildCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of docker.")
+	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker or buildah options to use.  Value must be in \"\".")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the Docker image to the image repository.")
 	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to.")
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
@@ -122,13 +123,18 @@ func build(config *buildCommandConfig) error {
 
 	cmdArgs = append(cmdArgs, "-f", dockerfile, extractDir)
 	Debug.log("final cmd args", cmdArgs)
-	execError := DockerBuild(cmdArgs, DockerLog, config.Verbose, config.Dryrun)
+	var execError error
+	if !config.Buildah {
+		execError = DockerBuild(cmdArgs, DockerLog, config.Verbose, config.Dryrun)
+	} else {
+		execError = BuildahBuild(cmdArgs, DockerLog, config.Verbose, config.Dryrun)
+	}
 
 	if execError != nil {
 		return execError
 	}
 	if config.push {
-
+		// TODO add buildah push?
 		err := DockerPush(buildImage, config.Dryrun)
 		if err != nil {
 			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)

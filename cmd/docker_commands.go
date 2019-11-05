@@ -19,6 +19,19 @@ func DockerBuild(args []string, logger appsodylogger, verbose bool, dryrun bool)
 	buildArgs = append(buildArgs, args...)
 	return RunDockerCommandAndWait(buildArgs, logger, verbose, dryrun)
 }
+func BuildahBuild(args []string, logger appsodylogger, verbose bool, dryrun bool) error {
+	var buildArgs = []string{"bud"}
+	buildArgs = append(buildArgs, args...)
+	cmd, err := RunBuildahCommandAndListen(buildArgs, logger, false, verbose, dryrun)
+	if err != nil {
+		return err
+	}
+	if dryrun {
+		Info.log("Dry Run - Skipping : cmd.Wait")
+		return nil
+	}
+	return cmd.Wait()
+}
 
 func RunDockerCommandAndWait(args []string, logger appsodylogger, verbose bool, dryrun bool) error {
 
@@ -28,7 +41,6 @@ func RunDockerCommandAndWait(args []string, logger appsodylogger, verbose bool, 
 	}
 	if dryrun {
 		Info.log("Dry Run - Skipping : cmd.Wait")
-
 		return nil
 	}
 	return cmd.Wait()
@@ -50,6 +62,10 @@ func RunKubeCommandAndListen(args []string, logger appsodylogger, interactive bo
 }
 func RunDockerCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
 	command := "docker"
+	return RunCommandAndListen(command, args, logger, interactive, verbose, dryrun)
+}
+func RunBuildahCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
+	command := "buildah"
 	return RunCommandAndListen(command, args, logger, interactive, verbose, dryrun)
 }
 
