@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mitchellh/go-spdx"
 	"gopkg.in/yaml.v2"
 )
 
@@ -166,23 +165,12 @@ func (s *StackDetails) checkDescLength() int {
 func (s *StackDetails) checkLicense() int {
 	stackLintErrorCount := 0
 
-	if !checkValidLicense(s.License) {
+	if err :=checkValidLicense(s.License); err != nil {
 		stackLintErrorCount++
-		Error.log("Stack must have a valid SPDX license ID")
+		Error.log(err)
 	}
 	if valid, err := IsValidKubernetesLabelValue(s.License); !valid {
 		Error.logf("The stack.yaml license value is invalid. %v", err)
 	}
 	return stackLintErrorCount
-}
-
-func checkValidLicense(license string) bool {
-	// Get the list of all known licenses
-	list, _ := spdx.List()
-	for _, spdx := range list.Licenses {
-		if spdx.ID == license {
-			return true
-		}
-	}
-	return false
 }

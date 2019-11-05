@@ -34,6 +34,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mitchellh/go-spdx"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
@@ -617,8 +618,10 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	}
 
 	if projectConfig.License != "" {
-		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid || !checkValidLicense(projectConfig.License) {
+		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
+		} else if err :=checkValidLicense(projectConfig.License); err != nil {
+			return labels, err
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
 	}
@@ -1972,4 +1975,15 @@ func SeperateOutput(cmd *exec.Cmd) (string, error) {
 
 	// If there wasn't an error return the stdOut & (lack of) err
 	return strings.TrimSpace(stdOut.String()), err
+}
+
+func checkValidLicense(license string) (error) {
+	// Get the list of all known licenses
+	list, _ := spdx.List()
+	for _, spdx := range list.Licenses {
+		if spdx.ID == license {
+			return nil
+		}
+	}
+	return errors.New("Stack must have a valid SPDX license ID. See https://spdx.org/licenses/ for the list of valid licenses.")
 }
