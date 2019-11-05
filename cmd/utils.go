@@ -1009,7 +1009,7 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 				APIVersion:         "apps/v1",
 				BlockOwnerDeletion: true,
 				Controller:         true,
-				Kind:               "Deployment",
+				Kind:               "ReplicaSet",
 				Name:               codeWindOwnerRefName,
 				UID:                codeWindOwnerRefUID},
 		}
@@ -1220,7 +1220,7 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 				APIVersion:         "apps/v1",
 				BlockOwnerDeletion: true,
 				Controller:         true,
-				Kind:               "Deployment",
+				Kind:               "ReplicaSet",
 				Name:               codeWindOwnerRefName,
 				UID:                codeWindOwnerRefUID},
 		}
