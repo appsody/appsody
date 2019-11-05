@@ -74,9 +74,9 @@ func RunCommandAndListen(commandValue string, args []string, logger appsodylogge
 	var command = commandValue
 	var err error
 	if dryrun {
-		Info.log("Dry Run - Skipping docker command: ", command, " ", strings.Join(args, " "))
+		Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
 	} else {
-		Info.log("Running docker command: ", command, " ", strings.Join(args, " "))
+		Info.log("Running command: ", command, " ", strings.Join(args, " "))
 		execCmd = exec.Command(command, args...)
 
 		// Create io pipes for the command
