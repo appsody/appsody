@@ -194,12 +194,19 @@ func Execute(version string, controller_version string) {
 
 func ExecuteE(version string, controller_version string, projectDir string, args []string) error {
 	VERSION = version
-	CONTROLLER_VERSION = controller_version
-	if CONTROLLER_VERSION == "" {
-		CONTROLLER_VERSION = os.Getenv(CONTROLLER_VERSION)
-		if CONTROLLER_VERSION == "" {
-			return errors.Errorf("The required controller version could not be determined. You must set either the CONTROLLER_VERSION or the CONTROLLER_IMAGE env var.")
+	overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
+	if overrideControllerImage == "" {
+		CONTROLLER_VERSION = controller_version
+		overrideVersion := os.Getenv("APPSODY_CONTROLLER_VERSION")
+		if overrideVersion != "" {
+			CONTROLLER_VERSION = overrideVersion
+			Warning.Log("You have overridden the Appsody controller version and set it to: ", CONTROLLER_VERSION)
 		}
+		if CONTROLLER_VERSION == "latest" {
+			Warning.Log("The Appsody CLI will use the latest version of the controller. This may result in a mismatch or malfunction.")
+		}
+	} else {
+		Warning.Log("The Appsody CLI detected the APPSODY_CONTROLLER_IMAGE env var. The controller image that will be used is: ", overrideControllerImage)
 	}
 	rootCmd, err := newRootCmd(projectDir, args)
 	if err != nil {

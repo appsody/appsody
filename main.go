@@ -20,7 +20,7 @@ import (
 
 var (
 	VERSION            = "vlatest"
-	CONTROLLER_VERSION = ""
+	CONTROLLER_VERSION = "latest"
 )
 
 func main() {
