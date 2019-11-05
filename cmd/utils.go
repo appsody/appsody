@@ -621,7 +621,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
 		} else if err := checkValidLicense(projectConfig.License); err != nil {
-			return labels, err
+			return labels, errors.Errorf("Error, %v", err)
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
 	}
@@ -1985,5 +1985,5 @@ func checkValidLicense(license string) error {
 			return nil
 		}
 	}
-	return errors.New("Stack must have a valid SPDX license ID. See https://spdx.org/licenses/ for the list of valid licenses.")
+	return errors.New("stack must have a valid SPDX license ID, see https://spdx.org/licenses/ for the list of valid licenses")
 }

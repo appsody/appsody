@@ -167,7 +167,7 @@ func (s *StackDetails) checkLicense() int {
 
 	if err := checkValidLicense(s.License); err != nil {
 		stackLintErrorCount++
-		Error.log(err)
+		Error.logf("Error, %v", err)
 	}
 	if valid, err := IsValidKubernetesLabelValue(s.License); !valid {
 		Error.logf("The stack.yaml license value is invalid. %v", err)
