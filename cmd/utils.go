@@ -2027,7 +2027,7 @@ func CheckStackRequirements(requirementArray StackRequirement, buildah bool) err
 
 	v := reflect.ValueOf(requirementArray)
 	values := make([]interface{}, v.NumField())
-	versionRegex := regexp.MustCompile(`(\\d)+\\.(\\d)+\\.(\\d)+`)
+	versionRegex := regexp.MustCompile(`(\d)+\.(\d)+\.(\d)+`)
 
 	upgradesRequired := 0
 
@@ -2056,11 +2056,10 @@ func CheckStackRequirements(requirementArray StackRequirement, buildah bool) err
 					upgradesRequired++
 				} else {
 					parseUserVersion, parseErr := semver.NewVersion(versionRegex.FindString(string(runVersionCmd)))
-					compareVersion := setConstraint.Check(parseUserVersion)
-
 					if parseErr != nil {
 						Error.log(parseErr)
 					}
+					compareVersion := setConstraint.Check(parseUserVersion)
 
 					if compareVersion {
 						Info.log(technology + " requirements met")
