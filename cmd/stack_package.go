@@ -36,7 +36,8 @@ type StackYaml struct {
 	License         string `yaml:"license"`
 	Language        string `yaml:"language"`
 	Maintainers     []Maintainer
-	DefaultTemplate string `yaml:"default-template"`
+	DefaultTemplate string            `yaml:"default-template"`
+	CustomVariables map[string]string `yaml:"custom-variables"`
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -72,6 +73,7 @@ type TemplateMetadata struct {
 	StackMinorVersion   string
 	StackPatchVersion   string
 	StackImageNamespace string
+	StackCustomTemplate map[string]string
 }
 
 func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
@@ -144,6 +146,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			templateMetadata.StackPatchVersion = versionFull[2]
 			// TODO: use imageNamespace variable
 			templateMetadata.StackImageNamespace = "dev.local"
+			templateMetadata.StackCustomTemplate = stackYaml.CustomVariables
 
 			// walk through copied directory and apply templating to all files in directory
 			err = filepath.Walk(projectPath+"packagecopy", func(path string, info os.FileInfo, err error) error {
