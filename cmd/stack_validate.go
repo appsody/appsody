@@ -286,7 +286,7 @@ func TestTest(projectDir string) error {
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
 func TestBuild(stack string, projectDir string) error {
 
-	imageName := "dev.local/" + stack
+	imageName := "dev.local/" + filepath.Base(projectDir)
 
 	Info.Log("******************************************")
 	Info.Log("Running appsody build")
