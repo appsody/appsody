@@ -373,7 +373,7 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 		}
 
 		for key, value := range gitLabels {
-			labelString := fmt.Sprintf("%s=\"%s\"", key, value)
+			labelString := fmt.Sprintf("%s=%s", key, value)
 			labels = append(labels, labelString)
 		}
 	}
