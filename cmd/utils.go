@@ -1408,10 +1408,14 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 	return kerr
 }
 
-//DockerPush pushes a docker image to a docker registry (assumes that the user has done docker login)
-func DockerPush(imageToPush string, dryrun bool) error {
-	Info.log("Pushing docker image ", imageToPush)
+//ImagePush pushes a docker image to a docker registry (assumes that the user has done docker login)
+func ImagePush(imageToPush string, buildah bool, dryrun bool) error {
+	Info.log("Pushing image ", imageToPush)
 	cmdName := "docker"
+	if buildah {
+		cmdName = "buildah"
+	}
+
 	cmdArgs := []string{"push", imageToPush}
 	if dryrun {
 		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
