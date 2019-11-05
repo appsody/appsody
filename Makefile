@@ -24,7 +24,7 @@ BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder
 GH_ORG ?= appsody
-CONTROLLER_VERSION ?=0.2.5
+CONTROLLER_VERSION ?=0.2.6
 CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/$(CONTROLLER_VERSION)
 
 #### Dynamic variables. These change depending on the target name.

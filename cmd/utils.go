@@ -49,6 +49,14 @@ type ProjectConfig struct {
 	License         string
 	Maintainers     []Maintainer
 }
+type OwnerReference struct {
+	APIVersion         string `yaml:"apiVersion"`
+	Kind               string `yaml:"kind"`
+	BlockOwnerDeletion bool   `yaml:"blockOwnerDeletion"`
+	Controller         bool   `yaml:"controller"`
+	Name               string `yaml:"name"`
+	UID                string `yaml:"uid"`
+}
 
 type NotAnAppsodyProject string
 
@@ -283,27 +291,48 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 
 // IsValidProjectName tests the given string against Appsody name rules.
 // This common set of name rules for Appsody must comply to Kubernetes
-// resource and Docker container name rules. The current rules are:
+// resource name, Kubernetes label value, and Docker container name rules.
+// The current rules are:
 // 1. Must start with a lowercase letter
 // 2. Must contain only lowercase letters, digits, and dashes
 // 3. Must end with a letter or digit
-// 4. Must be less than 128 characters
+// 4. Must be 68 characters or less
 func IsValidProjectName(name string) (bool, error) {
-	match, err := regexp.MatchString("^[a-z]([a-z0-9-]*[a-z0-9])?$", name)
+	if name == "" {
+		return false, errors.New("Invalid project-name. The name cannot be an empty string")
+	}
+	if len(name) > 68 {
+		return false, errors.Errorf("Invalid project-name \"%s\". The name must be 68 characters or less", name)
+	}
 
+	match, err := regexp.MatchString("^[a-z]([a-z0-9-]*[a-z0-9])?$", name)
 	if err != nil {
 		return false, err
 	}
 
 	if match {
-		if len(name) < 128 {
-			return match, nil
-		}
-		return false, errors.Errorf("Invalid project-name \"%s\". The name must be less than 128 characters", name)
+		return true, nil
+	}
+	return false, errors.Errorf("Invalid project-name \"%s\". The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash.", name)
+}
+
+func IsValidKubernetesLabelValue(value string) (bool, error) {
+	if value == "" {
+		return true, nil
+	}
+	if len(value) > 63 {
+		return false, errors.New("The label must be 63 characters or less")
 	}
 
-	return match, errors.Errorf("Invalid project-name \"%s\". The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash.", name)
+	match, err := regexp.MatchString("^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z])?$", value)
+	if err != nil {
+		return false, err
+	}
 
+	if match {
+		return true, nil
+	}
+	return false, errors.Errorf("Invalid label \"%s\". The label must begin and end with an alphanumeric character ([a-z0-9A-Z]) with dashes (-), underscores (_), dots (.), and alphanumerics between.", value)
 }
 
 // ConvertToValidProjectName takes an existing string or directory path
@@ -314,8 +343,8 @@ func ConvertToValidProjectName(projectDir string) (string, error) {
 
 	if !valid {
 		projectName = strings.ToLower(filepath.Base(projectDir))
-		if len(projectName) >= 128 {
-			projectName = projectName[0:127]
+		if len(projectName) > 68 {
+			projectName = projectName[0:68]
 		}
 
 		if projectName[0] < 'a' || projectName[0] > 'z' {
@@ -589,10 +618,16 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	}
 
 	if projectConfig.Version != "" {
+		if valid, err := IsValidKubernetesLabelValue(projectConfig.Version); !valid {
+			return labels, errors.Errorf("%s version value is invalid. %v", ConfigFile, err)
+		}
 		labels[ociKeyPrefix+"version"] = projectConfig.Version
 	}
 
 	if projectConfig.License != "" {
+		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
+			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
+		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
 	}
 
@@ -608,7 +643,10 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	}
 
 	if projectConfig.ApplicationName != "" {
-		labels["dev.appsody.application"] = projectConfig.ApplicationName
+		if valid, err := IsValidKubernetesLabelValue(projectConfig.ApplicationName); !valid {
+			return labels, errors.Errorf("%s application-name value is invalid. %v", ConfigFile, err)
+		}
+		labels["dev.appsody.app.name"] = projectConfig.ApplicationName
 	}
 
 	return labels, nil
@@ -626,6 +664,11 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		labels[ociKeyPrefix+"url"] = gitInfo.RemoteURL
 		labels[ociKeyPrefix+"documentation"] = gitInfo.RemoteURL
 		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + gitInfo.Branch
+		upstreamSplit := strings.Split(gitInfo.Upstream, "/")
+		if len(upstreamSplit) > 1 {
+			labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + upstreamSplit[1]
+		}
+
 	}
 
 	var commitInfo = gitInfo.Commit
@@ -874,7 +917,11 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
-
+	// Codewind project ID if provided
+	codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
+	// Codewind onwner ref name and uid
+	codeWindOwnerRefName := os.Getenv("CODEWIND_OWNER_NAME")
+	codeWindOwnerRefUID := os.Getenv("CODEWIND_OWNER_UID")
 	// Deployment YAML structs
 	type Port struct {
 		Name          string `yaml:"name,omitempty"`
@@ -931,8 +978,10 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
-			Name      string `yaml:"name"`
-			Namespace string `yaml:"namespace,omitempty"`
+			Name            string            `yaml:"name"`
+			Namespace       string            `yaml:"namespace,omitempty"`
+			Labels          map[string]string `yaml:"labels,omitempty"`
+			OwnerReferences []OwnerReference  `yaml:"ownerReferences,omitempty"`
 		} `yaml:"metadata"`
 		Spec struct {
 			Selector struct {
@@ -962,6 +1011,24 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 	}
 	//Set the name
 	yamlMap.Metadata.Name = appName
+
+	//Set the codewind label if present
+	if codeWindProjectID != "" {
+		yamlMap.Metadata.Labels = make(map[string]string)
+		yamlMap.Metadata.Labels["projectID"] = codeWindProjectID
+	}
+	//Set the owner ref if present
+	if codeWindOwnerRefName != "" && codeWindOwnerRefUID != "" {
+		yamlMap.Metadata.OwnerReferences = []OwnerReference{
+			{
+				APIVersion:         "apps/v1",
+				BlockOwnerDeletion: true,
+				Controller:         true,
+				Kind:               "Deployment",
+				Name:               codeWindOwnerRefName,
+				UID:                codeWindOwnerRefUID},
+		}
+	}
 	//Set the service account if provided by an env var
 	serviceAccount := os.Getenv("SERVICE_ACCOUNT_NAME")
 	if serviceAccount != "" {
@@ -1133,6 +1200,7 @@ spec:
 
 //GenServiceYaml returns the file name of a generated K8S Service yaml
 func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (fileName string, err error) {
+
 	type Port struct {
 		Name       string `yaml:"name,omitempty"`
 		Port       int    `yaml:"port"`
@@ -1142,8 +1210,9 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
-			Name   string            `yaml:"name"`
-			Labels map[string]string `yaml:"labels"`
+			Name            string            `yaml:"name"`
+			Labels          map[string]string `yaml:"labels,omitempty"`
+			OwnerReferences []OwnerReference  `yaml:"ownerReferences,omitempty"`
 		} `yaml:"metadata"`
 		Spec struct {
 			Selector    map[string]string `yaml:"selector"`
@@ -1152,14 +1221,37 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 		} `yaml:"spec"`
 	}
 
+	// Codewind project ID if provided
+	codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
+	// Codewind onwner ref name and uid
+	codeWindOwnerRefName := os.Getenv("CODEWIND_OWNER_NAME")
+	codeWindOwnerRefUID := os.Getenv("CODEWIND_OWNER_UID")
+
 	var service Service
+
 	service.APIVersion = "v1"
 	service.Kind = "Service"
 	service.Metadata.Name = fmt.Sprintf("%s-%s", appName, "service")
 
-	//Set the release label to the container name
-	service.Metadata.Labels = make(map[string]string, 1)
+	//Set the release and projectID labels
+	service.Metadata.Labels = make(map[string]string)
 	service.Metadata.Labels["release"] = appName
+	if codeWindProjectID != "" {
+		service.Metadata.Labels["projectID"] = codeWindProjectID
+	}
+
+	//Set the owner ref if present
+	if codeWindOwnerRefName != "" && codeWindOwnerRefUID != "" {
+		service.Metadata.OwnerReferences = []OwnerReference{
+			{
+				APIVersion:         "apps/v1",
+				BlockOwnerDeletion: true,
+				Controller:         true,
+				Kind:               "Deployment",
+				Name:               codeWindOwnerRefName,
+				UID:                codeWindOwnerRefUID},
+		}
+	}
 
 	service.Spec.Selector = make(map[string]string, 1)
 	service.Spec.Selector["app"] = appName
@@ -1354,11 +1446,16 @@ func DockerPush(imageToPush string, dryrun bool) error {
 	}
 
 	pushCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := SeperateOutput(pushCmd)
-	if kerr != nil {
-		return errors.Errorf("docker push failed: %s", kout)
+
+	pushOut, pushErr := pushCmd.Output()
+	if pushErr != nil {
+		if !(strings.Contains(pushErr.Error(), "[DEPRECATION NOTICE] registry v2") || strings.Contains(string(pushOut[:]), "[DEPRECATION NOTICE] registry v2")) {
+			Error.log("Could not push the image: ", pushErr, " ", string(pushOut[:]))
+
+			return pushErr
+		}
 	}
-	return kerr
+	return pushErr
 }
 
 // DockerRunBashCmd issues a shell command in a docker image, overriding its entrypoint
