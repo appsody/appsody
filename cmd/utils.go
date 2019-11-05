@@ -620,7 +620,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	if projectConfig.License != "" {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
-		} else if err :=checkValidLicense(projectConfig.License); err != nil {
+		} else if err := checkValidLicense(projectConfig.License); err != nil {
 			return labels, err
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
@@ -1977,7 +1977,7 @@ func SeperateOutput(cmd *exec.Cmd) (string, error) {
 	return strings.TrimSpace(stdOut.String()), err
 }
 
-func checkValidLicense(license string) (error) {
+func checkValidLicense(license string) error {
 	// Get the list of all known licenses
 	list, _ := spdx.List()
 	for _, spdx := range list.Licenses {

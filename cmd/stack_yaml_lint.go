@@ -165,7 +165,7 @@ func (s *StackDetails) checkDescLength() int {
 func (s *StackDetails) checkLicense() int {
 	stackLintErrorCount := 0
 
-	if err :=checkValidLicense(s.License); err != nil {
+	if err := checkValidLicense(s.License); err != nil {
 		stackLintErrorCount++
 		Error.log(err)
 	}
