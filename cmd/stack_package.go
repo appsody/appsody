@@ -39,7 +39,7 @@ type StackYaml struct {
 	Language        string `yaml:"language"`
 	Maintainers     []Maintainer
 	DefaultTemplate string            `yaml:"default-template"`
-	CustomVariables map[string]string `yaml:"custom-variables"`
+	TemplatingData  map[string]string `yaml:"templating-data"`
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -153,7 +153,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			stack["image"] = image
 
 			// loop through user variables and add them to map, must begin with alphanumeric character
-			for key, value := range stackYaml.CustomVariables {
+			for key, value := range stackYaml.TemplatingData {
 
 				// validates that key starts with alphanumeric character
 				runes := []rune(key)
