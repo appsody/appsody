@@ -49,6 +49,14 @@ type ProjectConfig struct {
 	License         string
 	Maintainers     []Maintainer
 }
+type OwnerReference struct {
+	APIVersion         string `yaml:"apiVersion"`
+	Kind               string `yaml:"kind"`
+	BlockOwnerDeletion bool   `yaml:"blockOwnerDeletion"`
+	Controller         bool   `yaml:"controller"`
+	Name               string `yaml:"name"`
+	UID                string `yaml:"uid"`
+}
 
 type NotAnAppsodyProject string
 
@@ -909,7 +917,11 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
-
+	// Codewind project ID if provided
+	codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
+	// Codewind onwner ref name and uid
+	codeWindOwnerRefName := os.Getenv("CODEWIND_OWNER_NAME")
+	codeWindOwnerRefUID := os.Getenv("CODEWIND_OWNER_UID")
 	// Deployment YAML structs
 	type Port struct {
 		Name          string `yaml:"name,omitempty"`
@@ -952,8 +964,10 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
-			Name      string `yaml:"name"`
-			Namespace string `yaml:"namespace,omitempty"`
+			Name            string            `yaml:"name"`
+			Namespace       string            `yaml:"namespace,omitempty"`
+			Labels          map[string]string `yaml:"labels,omitempty"`
+			OwnerReferences []OwnerReference  `yaml:"ownerReferences,omitempty"`
 		} `yaml:"metadata"`
 		Spec struct {
 			Selector struct {
@@ -982,6 +996,24 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	}
 	//Set the name
 	yamlMap.Metadata.Name = appName
+
+	//Set the codewind label if present
+	if codeWindProjectID != "" {
+		yamlMap.Metadata.Labels = make(map[string]string)
+		yamlMap.Metadata.Labels["projectID"] = codeWindProjectID
+	}
+	//Set the owner ref if present
+	if codeWindOwnerRefName != "" && codeWindOwnerRefUID != "" {
+		yamlMap.Metadata.OwnerReferences = []OwnerReference{
+			{
+				APIVersion:         "apps/v1",
+				BlockOwnerDeletion: true,
+				Controller:         true,
+				Kind:               "ReplicaSet",
+				Name:               codeWindOwnerRefName,
+				UID:                codeWindOwnerRefUID},
+		}
+	}
 	//Set the service account if provided by an env var
 	serviceAccount := os.Getenv("SERVICE_ACCOUNT_NAME")
 	if serviceAccount != "" {
@@ -1075,12 +1107,14 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		*volumeMounts = append(*volumeMounts, newVolumeMount)
 	}
 	// Dependencies mount
-
-	if depsMount != "" {
-		// Now the volume mount
-		depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
-		*volumeMounts = append(*volumeMounts, depVolumeMount)
-	}
+	// Issue #597: we remove this mount, since it doesn't seem to work with Python etc.
+	// And provides no benefit
+	/*
+		if depsMount != "" {
+			// Now the volume mount
+			depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
+			*volumeMounts = append(*volumeMounts, depVolumeMount)
+		}*/
 
 	//subPath := filepath.Base(pdir)
 	//workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
@@ -1141,6 +1175,7 @@ spec:
 
 //GenServiceYaml returns the file name of a generated K8S Service yaml
 func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (fileName string, err error) {
+
 	type Port struct {
 		Name       string `yaml:"name,omitempty"`
 		Port       int    `yaml:"port"`
@@ -1150,8 +1185,9 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
-			Name   string            `yaml:"name"`
-			Labels map[string]string `yaml:"labels"`
+			Name            string            `yaml:"name"`
+			Labels          map[string]string `yaml:"labels,omitempty"`
+			OwnerReferences []OwnerReference  `yaml:"ownerReferences,omitempty"`
 		} `yaml:"metadata"`
 		Spec struct {
 			Selector    map[string]string `yaml:"selector"`
@@ -1160,14 +1196,37 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 		} `yaml:"spec"`
 	}
 
+	// Codewind project ID if provided
+	codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
+	// Codewind onwner ref name and uid
+	codeWindOwnerRefName := os.Getenv("CODEWIND_OWNER_NAME")
+	codeWindOwnerRefUID := os.Getenv("CODEWIND_OWNER_UID")
+
 	var service Service
+
 	service.APIVersion = "v1"
 	service.Kind = "Service"
 	service.Metadata.Name = fmt.Sprintf("%s-%s", appName, "service")
 
-	//Set the release label to the container name
-	service.Metadata.Labels = make(map[string]string, 1)
+	//Set the release and projectID labels
+	service.Metadata.Labels = make(map[string]string)
 	service.Metadata.Labels["release"] = appName
+	if codeWindProjectID != "" {
+		service.Metadata.Labels["projectID"] = codeWindProjectID
+	}
+
+	//Set the owner ref if present
+	if codeWindOwnerRefName != "" && codeWindOwnerRefUID != "" {
+		service.Metadata.OwnerReferences = []OwnerReference{
+			{
+				APIVersion:         "apps/v1",
+				BlockOwnerDeletion: true,
+				Controller:         true,
+				Kind:               "ReplicaSet",
+				Name:               codeWindOwnerRefName,
+				UID:                codeWindOwnerRefUID},
+		}
+	}
 
 	service.Spec.Selector = make(map[string]string, 1)
 	service.Spec.Selector["app"] = appName
