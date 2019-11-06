@@ -21,6 +21,8 @@ import (
 	"runtime"
 	"strings"
 	"text/template"
+	"time"
+	"unicode"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -65,17 +67,6 @@ type IndexYamlStackTemplate struct {
 	URL string `yaml:"url"`
 }
 
-//TemplateMetadata - Struct for templating to use stack.yaml values
-type TemplateMetadata struct {
-	StackID             string
-	StackName           string
-	StackMajorVersion   string
-	StackMinorVersion   string
-	StackPatchVersion   string
-	StackImageNamespace string
-	StackCustomTemplate map[string]string
-}
-
 func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	// stack package is a tool for local stack developers to package their stack
@@ -99,6 +90,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			Info.Log("******************************************")
 			Info.Log("Running appsody stack package")
 			Info.Log("******************************************")
+
+			// get current time
+			currentTime := time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 
 			projectPath := rootConfig.ProjectDir
 
@@ -136,17 +130,40 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// split version number into major, minor and patch strings
 			versionFull := strings.Split(stackYaml.Version, ".")
 
-			// Set data for template metadata
-			var templateMetadata TemplateMetadata
+			// Create map that holds stack variables
 
-			templateMetadata.StackID = stackID
-			templateMetadata.StackName = stackYaml.Name
-			templateMetadata.StackMajorVersion = versionFull[0]
-			templateMetadata.StackMinorVersion = versionFull[1]
-			templateMetadata.StackPatchVersion = versionFull[2]
-			// TODO: use imageNamespace variable
-			templateMetadata.StackImageNamespace = "dev.local"
-			templateMetadata.StackCustomTemplate = stackYaml.CustomVariables
+			// create stack variables and add to templateMetadata map
+			var templateMetadata = make(map[string]interface{})
+
+			var stack = make(map[string]interface{})
+			stack["id"] = stackID
+			stack["name"] = stackYaml.Name
+			stack["description"] = stackYaml.Description
+			stack["created"] = currentTime
+			// create version map and add to templateMetadata map
+			var version = make(map[string]string)
+			version["major"] = versionFull[0]
+			version["minor"] = versionFull[1]
+			version["patch"] = versionFull[2]
+			version["full"] = stackYaml.Version
+			stack["version"] = version
+			// create image map add to templateMetadata map
+			var image = make(map[string]string)
+			image["namespace"] = "dev.local"
+			stack["image"] = image
+
+			// loop through user variables and add them to map, must begin with alphanumeric character
+			for key, value := range stackYaml.CustomVariables {
+
+				// validates that key starts with alphanumeric character
+				runes := []rune(key)
+				firstRune := runes[0]
+				if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
+					stack[key] = value
+				}
+			}
+
+			templateMetadata["stack"] = stack
 
 			// walk through copied directory and apply templating to all files in directory
 			err = filepath.Walk(projectPath+"packagecopy", func(path string, info os.FileInfo, err error) error {
