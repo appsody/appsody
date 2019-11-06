@@ -1024,7 +1024,7 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 				APIVersion:         "apps/v1",
 				BlockOwnerDeletion: true,
 				Controller:         true,
-				Kind:               "Deployment",
+				Kind:               "ReplicaSet",
 				Name:               codeWindOwnerRefName,
 				UID:                codeWindOwnerRefUID},
 		}
@@ -1124,12 +1124,14 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 		*volumeMounts = append(*volumeMounts, newVolumeMount)
 	}
 	// Dependencies mount
-
-	if depsMount != "" {
-		// Now the volume mount
-		depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
-		*volumeMounts = append(*volumeMounts, depVolumeMount)
-	}
+	// Issue #597: we remove this mount, since it doesn't seem to work with Python etc.
+	// And provides no benefit
+	/*
+		if depsMount != "" {
+			// Now the volume mount
+			depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
+			*volumeMounts = append(*volumeMounts, depVolumeMount)
+		}*/
 
 	//subPath := filepath.Base(pdir)
 	//workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
@@ -1247,7 +1249,7 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 				APIVersion:         "apps/v1",
 				BlockOwnerDeletion: true,
 				Controller:         true,
-				Kind:               "Deployment",
+				Kind:               "ReplicaSet",
 				Name:               codeWindOwnerRefName,
 				UID:                codeWindOwnerRefUID},
 		}

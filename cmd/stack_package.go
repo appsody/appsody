@@ -71,6 +71,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// 3. build a docker image
 	// 4. create/update an appsody repo for the stack
 
+	var imageNamespace string
+
 	var stackPackageCmd = &cobra.Command{
 		Use:   "package",
 		Short: "Package a stack in the local Appsody environment",
@@ -176,7 +178,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// docker build
 			// create the image name to be used for the docker image
-			buildImage := "dev.local/" + stackID + ":SNAPSHOT"
+			buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
 
 			imageDir := filepath.Join(stackPath, "image")
 			Debug.Log("imageDir is: ", imageDir)
@@ -352,6 +354,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			return nil
 		},
 	}
+
+	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
+
 	return stackPackageCmd
 }
 
@@ -361,20 +366,21 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
 		Info.log(err)
-	}
+	} else {
+		if branchURL, ok := gitLabels[ociKeyPrefix+"source"]; ok {
+			if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {
+				branchURL += contextDir
+				gitLabels[ociKeyPrefix+"url"] = branchURL
+			}
+			// These are enforced by the stack lint so they should exist
+			gitLabels[ociKeyPrefix+"documentation"] = branchURL + "/README.md"
+			gitLabels[ociKeyPrefix+"source"] = branchURL + "/image"
+		}
 
-	branchURL := gitLabels[ociKeyPrefix+"source"]
-	if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {
-		branchURL += contextDir
-		gitLabels[ociKeyPrefix+"url"] = branchURL
-	}
-	// These are enforced by the stack lint so they should exist
-	gitLabels[ociKeyPrefix+"documentation"] = branchURL + "/README.md"
-	gitLabels[ociKeyPrefix+"source"] = branchURL + "/image"
-
-	for key, value := range gitLabels {
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		for key, value := range gitLabels {
+			labelString := fmt.Sprintf("%s=%s", key, value)
+			labels = append(labels, labelString)
+		}
 	}
 
 	// build a ProjectConfig struct from the stackyaml so we can reuse getConfigLabels() func
