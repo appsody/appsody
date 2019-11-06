@@ -141,32 +141,32 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	// Mount the controller
-	destController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
+	//destController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
 	controllerImageName := os.Getenv("APPSODY_CONTROLLER_IMAGE")
-	if destController != "" {
-		Debug.log("Overriding appsody-controller mount with APPSODY_MOUNT_CONTROLLER env variable: ", destController)
-	} else {
-		destController = "appsody-controller"
-		if controllerImageName == "" {
-			controllerImageName = fmt.Sprintf("%s:%s", "appsody/appsody-controller", CONTROLLER_VERSION)
+	//if destController != "" {
+	//	Debug.log("Overriding appsody-controller mount with APPSODY_MOUNT_CONTROLLER env variable: ", destController)
+	//} else {
+	destController := "appsody-controller"
+	if controllerImageName == "" {
+		controllerImageName = fmt.Sprintf("%s:%s", "appsody/appsody-controller", CONTROLLER_VERSION)
+	}
+	if !config.Buildah {
+		//In local mode, run the appsody-controller image
+		downloaderArgs := []string{"--rm", "-v", "appsody-controller:/.appsody", controllerImageName, "./setController.sh"}
+		controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
+		if config.Dryrun {
+			Info.log("Dry Run - Skipping execCmd.Wait")
+		} else {
+			if err == nil {
+				err = controllerDownloader.Wait()
+			}
 		}
-		if !config.Buildah {
-			//In local mode, run the appsody-controller image
-			downloaderArgs := []string{"--rm", "-v", "appsody-controller:/.appsody", controllerImageName, "./setController.sh"}
-			controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
-			if config.Dryrun {
-				Info.log("Dry Run - Skipping execCmd.Wait")
-			} else {
-				if err == nil {
-					err = controllerDownloader.Wait()
-				}
-			}
-			if err != nil {
-				Debug.Log("Error checking the version of the controller or copying the controller to the volume: ", err)
-				return err
-			}
+		if err != nil {
+			Debug.Log("Error checking the version of the controller or copying the controller to the volume: ", err)
+			return err
 		}
 	}
+
 	controllerMount := destController + ":/appsody"
 	Debug.log("Adding controller to volume mounts: ", controllerMount)
 	volumeMaps = append(volumeMaps, "-v", controllerMount)

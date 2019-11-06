@@ -1078,34 +1078,36 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 	}
 	//Set the volume mounts
 	//Start with the Controller
-	appsodyMountController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
-	var controllerSubpath string
-	if appsodyMountController != "" {
-		appsodyMountControllerDir, err := filepath.Rel(codeWindWorkspace, filepath.Dir(appsodyMountController))
-		if err != nil {
-			Debug.Log("Problems with APPSODY_MOUNT_CONTROLLER: ", appsodyMountController)
-			return "", err
+	/*
+			appsodyMountController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
+			var controllerSubpath string
+			if appsodyMountController != "" {
+				appsodyMountControllerDir, err := filepath.Rel(codeWindWorkspace, filepath.Dir(appsodyMountController))
+				if err != nil {
+					Debug.Log("Problems with APPSODY_MOUNT_CONTROLLER: ", appsodyMountController)
+					return "", err
+				}
+				controllerSubpath = filepath.Join(".", appsodyMountControllerDir)
+				Debug.Log("APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
+			} else {
+				controllerSubpath = "./.extensions/codewind-appsody-extension/bin/"
+				Debug.Log("No APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
+
+			}
+
+		controllerVolumeMount := VolumeMount{"appsody-workspace", "/.appsody", controllerSubpath}
+		volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
+		volMountIdx := len(*volumeMounts)
+		if volMountIdx == 0 {
+			*volumeMounts = make([]VolumeMount, 1)
+			(*volumeMounts)[0] = controllerVolumeMount
+		} else {
+			*volumeMounts = append(*volumeMounts, controllerVolumeMount)
 		}
-		controllerSubpath = filepath.Join(".", appsodyMountControllerDir)
-		Debug.Log("APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
-	} else {
-		controllerSubpath = "./.extensions/codewind-appsody-extension/bin/"
-		Debug.Log("No APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
-
-	}
-	controllerVolumeMount := VolumeMount{"appsody-workspace", "/.appsody", controllerSubpath}
-	volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
-	volMountIdx := len(*volumeMounts)
-	if volMountIdx == 0 {
-		*volumeMounts = make([]VolumeMount, 1)
-		(*volumeMounts)[0] = controllerVolumeMount
-	} else {
-		*volumeMounts = append(*volumeMounts, controllerVolumeMount)
-	}
-
+	*/
 	//Now the code mounts
 	//We need to iterate through the docker mounts
-
+	volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
 	for _, appsodyMount := range dockerMounts {
 		if appsodyMount == "-v" {
 			continue
@@ -1179,22 +1181,25 @@ spec:
     spec:
       serviceAccountName: appsody-sa
       initContainers:
-      - name: controller-downloader
-        image: chilantim/controller-downloader
+      - name: init-appsody-controller
+        image: appsody/appsody-controller
         command:
         - ./setController.sh
         resources: {}
         volumeMounts:
-         - name: appsody-controller
-           mountPath: /.appsody
+        - name: appsody-controller
+          mountPath: /.appsody
         imagePullPolicy: IfNotPresent 
       containers:
       - name: APPSODY_APP_NAME
         image: APPSODY_STACK
         imagePullPolicy: Always
         command: ["/.appsody/appsody-controller"]
+        volumeMounts:
+        - name: appsody-controller
+          mountPath: /.appsody
       volumes:
-      - name: dependencies
+      - name: appsody-controller
         emptyDir: {}
 `
 	return yamltempl
