@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -51,6 +52,7 @@ Examples:
 The stack name must start with a lowercase letter, and can contain only lowercase letters, numbers, or dashes, and cannot end with a dash. The stack name cannot exceed 128 characters.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ExistingStackFolderExist := false
+			currentTime := time.Now().Format("20060102150405")
 
 			if len(args) < 1 {
 				return errors.New("Required parameter missing. You must specify a stack name")
@@ -59,12 +61,11 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			stack := args[0]
 
 			match, err := IsValidProjectName(stack)
-
 			if !match {
 				return err
 			}
-			exists, err := Exists(stack)
 
+			exists, err := Exists(stack)
 			if err != nil {
 				return err
 			}
@@ -74,14 +75,12 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			extractFolderExists, err := Exists(filepath.Join(getHome(rootConfig), "extract"))
-
 			if err != nil {
 				return err
 			}
 
 			if !extractFolderExists {
 				err = os.MkdirAll(filepath.Join(getHome(rootConfig), "extract"), os.ModePerm)
-
 				if err != nil {
 					return err
 				}
@@ -97,7 +96,6 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			valid, unzipErr := unzip(filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy, config.Dryrun)
-
 			if unzipErr != nil {
 				return unzipErr
 			}
@@ -120,7 +118,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				}
 
 				if ExistingStackFolderExist {
-					err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType+"-temp")
+					err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType+"-"+currentTime)
 					if err != nil {
 						return err
 					}
@@ -142,7 +140,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			} else {
 				if ExistingStackFolderExist {
-					err = os.Rename(projectType+"-temp", stack)
+					err = os.Rename(projectType+"-"+currentTime, stack)
 					if err != nil {
 						return err
 					}
