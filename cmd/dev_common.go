@@ -148,7 +148,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	//} else {
 	destController := "appsody-controller"
 	if controllerImageName == "" {
-		controllerImageName = fmt.Sprintf("%s:%s", "appsody/appsody-controller", CONTROLLER_VERSION)
+		controllerImageName = fmt.Sprintf("%s:%s", "appsody/appsody-controller", CONTROLLERVERSION)
 	}
 	if !config.Buildah {
 		//In local mode, run the appsody-controller image

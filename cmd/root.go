@@ -34,7 +34,7 @@ import (
 )
 
 var VERSION string
-var CONTROLLER_VERSION string
+var CONTROLLERVERSION string
 
 const APIVersionV1 = "v1"
 
@@ -181,28 +181,28 @@ func getDefaultConfigFile(config *RootCommandConfig) string {
 	return filepath.Join(config.CliConfig.GetString("home"), ".appsody.yaml")
 }
 
-func Execute(version string, controller_version string) {
+func Execute(version string, controllerVersion string) {
 	dir, err := os.Getwd()
 	if err != nil {
 		fmt.Println("Error getting current directory: ", err)
 		os.Exit(1)
 	}
-	if err := ExecuteE(version, controller_version, dir, os.Args[1:]); err != nil {
+	if err := ExecuteE(version, controllerVersion, dir, os.Args[1:]); err != nil {
 		os.Exit(1)
 	}
 }
 
-func ExecuteE(version string, controller_version string, projectDir string, args []string) error {
+func ExecuteE(version string, controllerVersion string, projectDir string, args []string) error {
 	VERSION = version
 	overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
 	if overrideControllerImage == "" {
-		CONTROLLER_VERSION = controller_version
+		CONTROLLERVERSION = controllerVersion
 		overrideVersion := os.Getenv("APPSODY_CONTROLLER_VERSION")
 		if overrideVersion != "" {
-			CONTROLLER_VERSION = overrideVersion
-			Warning.Log("You have overridden the Appsody controller version and set it to: ", CONTROLLER_VERSION)
+			CONTROLLERVERSION = overrideVersion
+			Warning.Log("You have overridden the Appsody controller version and set it to: ", CONTROLLERVERSION)
 		}
-		if CONTROLLER_VERSION == "latest" {
+		if CONTROLLERVERSION == "latest" {
 			Warning.Log("The Appsody CLI will use the latest version of the controller. This may result in a mismatch or malfunction.")
 		}
 	} else {

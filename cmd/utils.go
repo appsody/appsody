@@ -18,10 +18,10 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
-	"crypto/sha256"
+	//"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"hash"
+	//"hash"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -1782,6 +1782,7 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 	return err
 }
 
+/*
 func createChecksumHash(fileName string) (hash.Hash, error) {
 	Debug.log("Checksum oldFile", fileName)
 	newFile, err := os.Open(fileName)
@@ -1797,7 +1798,9 @@ func createChecksumHash(fileName string) (hash.Hash, error) {
 	}
 	return computedSha256, nil
 }
+*/
 
+/*
 func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
 	var checkValue bool
 
@@ -1816,7 +1819,7 @@ func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
 	Debug.log("Checksum returned: ", checkValue)
 
 	return checkValue, nil
-}
+}*/
 
 func getLatestVersion() string {
 	var version string
