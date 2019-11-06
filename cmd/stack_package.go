@@ -104,7 +104,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			appsodyHome := getHome(rootConfig)
 			Debug.Log("appsodyHome is:", appsodyHome)
 
-			devLocal := filepath.Join(appsodyHome, "stacks", imageNamespace)
+			devLocal := filepath.Join(appsodyHome, "stacks", "dev.local")
 			Debug.Log("devLocal is: ", devLocal)
 
 			// create the devLocal directory in appsody home
@@ -232,9 +232,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error reading directories: %v", err)
 			}
 
-			repoDirName := filepath.Base(filepath.Dir(stackPath))
-			Debug.Log("repoDirName is: ", repoDirName)
-
 			// loop through the template directories and create the id and url
 			for i := range templates {
 				Debug.Log("template is: ", templates[i])
@@ -247,7 +244,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				Debug.Log("sourceDir is: ", sourceDir)
 
 				// create name for the tar files
-				versionedArchive := filepath.Join(devLocal, repoDirName+"."+stackID+".v"+stackYaml.Version+".templates.")
+				versionedArchive := filepath.Join(devLocal, stackID+".v"+stackYaml.Version+".templates.")
 				Debug.Log("versionedArchive is: ", versionedArchive)
 
 				versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
