@@ -50,6 +50,7 @@ Examples:
 
 The stack name must start with a lowercase letter, and can contain only lowercase letters, numbers, or dashes, and cannot end with a dash. The stack name cannot exceed 128 characters.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ExistingStackFolderExist := false
 
 			if len(args) < 1 {
 				return errors.New("Required parameter missing. You must specify a stack name")
@@ -113,23 +114,43 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				Info.logf("Dry Run -Skipping moving out of stack: %s from %s", projectType, filepath.Join(stack, "stacks-master", config.copy))
 
 			} else {
-				err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType)
+				ExistingStackFolderExist, err = Exists(projectType)
 				if err != nil {
 					return err
 				}
+
+				if ExistingStackFolderExist {
+					err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType+"-temp")
+					if err != nil {
+						return err
+					}
+				} else {
+					err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType)
+					if err != nil {
+						return err
+					}
+				}
+
 			}
 
 			//deleting the folder from which stack is extracted
 			os.RemoveAll(stack)
 
-			//rename the stack to the name which user want
+			// rename the stack to the name which user want
 			if config.Dryrun {
 				Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", projectType, stack)
 
 			} else {
-				err = os.Rename(projectType, stack)
-				if err != nil {
-					return err
+				if ExistingStackFolderExist {
+					err = os.Rename(projectType+"-temp", stack)
+					if err != nil {
+						return err
+					}
+				} else {
+					err = os.Rename(projectType, stack)
+					if err != nil {
+						return err
+					}
 				}
 			}
 
