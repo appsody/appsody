@@ -41,14 +41,12 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 By default, the new stack is based on the example stack: samples/sample-stack. If you want to use a different stack as the basis for your new stack, use the copy flag to specify the stack you want to use as the starting point. You can use 'appsody list' to see the available stacks.
 
-Examples:
-  appsody stack create my-stack
+The stack name must start with a lowercase letter, and can contain only lowercase letters, numbers, or dashes, and cannot end with a dash. The stack name cannot exceed 128 characters.`,
+		Example: `  appsody stack create my-stack  
   Creates a stack called my-stack, based on the example stack “samples/sample-stack”.
 
-  appsody stack create my-stack --copy incubator/nodejs-express
-  Creates a stack called my-stack, based on the Node.js Express stack.
-
-The stack name must start with a lowercase letter, and can contain only lowercase letters, numbers, or dashes, and cannot end with a dash. The stack name cannot exceed 128 characters.`,
+  appsody stack create my-stack --copy incubator/nodejs-express  
+  Creates a stack called my-stack, based on the Node.js Express stack.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
