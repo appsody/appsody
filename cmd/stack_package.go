@@ -14,7 +14,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -92,7 +91,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			Info.Log("******************************************")
 
 			// get current time
-			currentTime := time.Now().Format("2006-01-02 15:04:05 -0700 MST")
+			currentTime := time.Now().Format(time.RFC3339)
 
 			projectPath := rootConfig.ProjectDir
 
@@ -303,8 +302,13 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			// overriding time label with stack package currentTime generated earlier
+			labels["org.opencontainers.image.created"] = currentTime
+			labelPairs := CreateLabelPairs(labels)
+
 			// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
-			for _, label := range labels {
+			for _, label := range labelPairs {
 				cmdArgs = append(cmdArgs, "--label", label)
 			}
 
@@ -469,8 +473,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	return stackPackageCmd
 }
 
-func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYaml, config *RootCommandConfig) ([]string, error) {
-	var labels []string
+func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYaml, config *RootCommandConfig) (map[string]string, error) {
+	var labels = make(map[string]string)
 
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
@@ -487,8 +491,7 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 		}
 
 		for key, value := range gitLabels {
-			labelString := fmt.Sprintf("%s=%s", key, value)
-			labels = append(labels, labelString)
+			labels[key] = value
 		}
 	}
 
@@ -508,8 +511,7 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	configLabels[appsodyStackKeyPrefix+"tag"] = buildImage
 
 	for key, value := range configLabels {
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		labels[key] = value
 	}
 
 	return labels, nil
