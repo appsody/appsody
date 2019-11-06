@@ -113,7 +113,7 @@ func build(config *buildCommandConfig) error {
 		return err
 	}
 
-	labelPairs := createLabelPairs(labels)
+	labelPairs := CreateLabelPairs(labels)
 
 	// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
 	for _, label := range labelPairs {
@@ -248,7 +248,7 @@ func ConvertLabelToKubeFormat(key string) (string, error) {
 	return prefix + name, nil
 }
 
-func createLabelPairs(labels map[string]string) []string {
+func CreateLabelPairs(labels map[string]string) []string {
 	var labelsArr []string
 
 	for key, value := range labels {

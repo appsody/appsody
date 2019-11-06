@@ -150,7 +150,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			stack["version"] = version
 			// create image map add to templateMetadata map
 			var image = make(map[string]string)
-			image["namespace"] = "dev.local"
+			image["namespace"] = imageNamespace
 			stack["image"] = image
 
 			// loop through user variables and add them to map, must begin with alphanumeric character
