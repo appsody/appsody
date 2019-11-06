@@ -39,6 +39,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// vars for --no-package and --no-lint parms
 	var noPackage bool
 	var noLint bool
+	var imageNamespace string
 
 	var stackValidateCmd = &cobra.Command{
 		Use:   "validate",
@@ -112,7 +113,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// package
 			if !noPackage {
-				_, err = RunAppsodyCmdExec([]string{"stack", "package"}, stackPath)
+				_, err = RunAppsodyCmdExec([]string{"stack", "package", "--image-namespace", imageNamespace}, stackPath)
 				if err != nil {
 					//logs error but keeps going
 					Error.Log(err)
@@ -199,6 +200,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	stackValidateCmd.PersistentFlags().BoolVar(&noPackage, "no-package", false, "Skips running appsody stack package")
 	stackValidateCmd.PersistentFlags().BoolVar(&noLint, "no-lint", false, "Skips running appsody stack lint")
+	stackValidateCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
 
 	return stackValidateCmd
 }
