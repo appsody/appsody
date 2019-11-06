@@ -216,7 +216,13 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		}
 
-		checkErr := CheckStackRequirements(stackReqs, config.Buildah)
+		reqsMap := map[string]string{
+			"Docker":  stackReqs.Docker,
+			"Appsody": stackReqs.Appsody,
+			"Buildah": stackReqs.Buildah,
+		}
+
+		checkErr := CheckStackRequirements(reqsMap, config.Buildah)
 		if checkErr != nil {
 			Error.log(checkErr)
 			os.Exit(1)

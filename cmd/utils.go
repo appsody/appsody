@@ -28,7 +28,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -2019,23 +2018,14 @@ func Targz(source, target string) error {
 }
 
 //Compares the minimum requirements of a stack against the user to determine whether they can use the stack or not.
-func CheckStackRequirements(requirementArray StackRequirement, buildah bool) error {
-	if (StackRequirement{}) == requirementArray {
-		Info.log("No restrictions on stack found. Continuing...")
-		return nil
-	}
-
-	v := reflect.ValueOf(requirementArray)
-	values := make([]interface{}, v.NumField())
+func CheckStackRequirements(requirementArray map[string]string, buildah bool) error {
 	versionRegex := regexp.MustCompile(`(\d)+\.(\d)+\.(\d)+`)
-
 	upgradesRequired := 0
 
-	for x := 0; x < v.NumField(); x++ {
-		values[x] = v.Field(x).Interface()
-		technology := v.Type().Field(x).Name
+	Info.log("Checking stack requirements...")
 
-		if values[x].(string) == "" {
+	for technology, minVersion := range requirementArray {
+		if minVersion == "" {
 			Info.log("Skipping ", technology, " - No requirements set.")
 		} else if technology == "Docker" && buildah {
 			Info.log("Skipping Docker requirement - Buildah is being used.")
@@ -2044,29 +2034,27 @@ func CheckStackRequirements(requirementArray StackRequirement, buildah bool) err
 		} else {
 			Info.log("Checking stack requirements for ", technology)
 
-			if versionConstraint, ok := values[x].(string); ok {
-				setConstraint, err := semver.NewConstraint(versionConstraint)
-				if err != nil {
-					Error.log(err)
+			setConstraint, err := semver.NewConstraint(minVersion)
+			if err != nil {
+				Error.log(err)
+			}
+
+			runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
+			if appErr != nil {
+				Error.log(appErr, " - Are you sure ", technology, " is installed?")
+				upgradesRequired++
+			} else {
+				parseUserVersion, parseErr := semver.NewVersion(versionRegex.FindString(string(runVersionCmd)))
+				if parseErr != nil {
+					Error.log(parseErr)
 				}
+				compareVersion := setConstraint.Check(parseUserVersion)
 
-				runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
-				if appErr != nil {
-					Error.log(appErr, " - Are you sure ", technology, " is installed?")
-					upgradesRequired++
+				if compareVersion {
+					Info.log(technology + " requirements met")
 				} else {
-					parseUserVersion, parseErr := semver.NewVersion(versionRegex.FindString(string(runVersionCmd)))
-					if parseErr != nil {
-						Error.log(parseErr)
-					}
-					compareVersion := setConstraint.Check(parseUserVersion)
-
-					if compareVersion {
-						Info.log(technology + " requirements met")
-					} else {
-						Error.log("The required version of " + technology + " to use this stack is " + versionConstraint + " - Please upgrade.")
-						upgradesRequired++
-					}
+					Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
+					upgradesRequired++
 				}
 			}
 		}
