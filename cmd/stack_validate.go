@@ -88,6 +88,12 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			Info.Log("Created project dir: " + projectDir)
 
+			Debug.Log("Setting environment variable APPSODY_PULL_POLICY=IFNOTPRESENT")
+			err = os.Setenv("APPSODY_PULL_POLICY", "IFNOTPRESENT")
+			if err != nil {
+				return errors.Errorf("Could not set environment variable APPSODY_PULL_POLICY. %v", err)
+			}
+
 			// call tests...
 
 			// lint
