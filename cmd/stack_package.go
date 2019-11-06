@@ -76,6 +76,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// 3. build a docker image
 	// 4. create/update an appsody repo for the stack
 
+	var imageNamespace string
+
 	var stackPackageCmd = &cobra.Command{
 		Use:   "package",
 		Short: "Package a stack in the local Appsody environment",
@@ -289,7 +291,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// docker build
 			// create the image name to be used for the docker image
-			buildImage := "dev.local/" + stackID + ":SNAPSHOT"
+			buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
 
 			imageDir := filepath.Join(stackPath, "image")
 			Debug.Log("imageDir is: ", imageDir)
@@ -466,6 +468,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			return nil
 		},
 	}
+
+	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
+
 	return stackPackageCmd
 }
 
