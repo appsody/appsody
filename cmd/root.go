@@ -17,6 +17,7 @@ package cmd
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -261,6 +262,24 @@ func (l appsodylogger) LogfSkipConsole(fmtString string, args ...interface{}) {
 	l.internalLog(msgString, true, args...)
 }
 
+// Location for standard output (default: stdout)
+var outWriter io.Writer = os.Stdout
+
+// Location for error output (default: stderr)
+var errWriter io.Writer = os.Stderr
+
+// SetStdout sets the Writer to be used for outputting console output. By default,
+// system stdout is used, but this can be changed, for example to a file or buffer.
+func SetStdout(w io.Writer) {
+	outWriter = w
+}
+
+// SetStderr sets the Writer to be used for outputting error output. By default,
+// system stderr is used, but this can be changed, for example to a file or buffer.
+func SetStderr(w io.Writer) {
+	errWriter = w
+}
+
 func (l appsodylogger) internalLog(msgString string, skipConsole bool, args ...interface{}) {
 	if l == Debug && !l.verbose {
 		return
@@ -283,11 +302,11 @@ func (l appsodylogger) internalLog(msgString string, skipConsole bool, args ...i
 	if !skipConsole {
 		// Print to console
 		if l == Info {
-			fmt.Fprintln(os.Stdout, msgString)
+			fmt.Fprintln(outWriter, msgString)
 		} else if l == Container {
-			fmt.Fprint(os.Stdout, msgString)
+			fmt.Fprint(outWriter, msgString)
 		} else {
-			fmt.Fprintln(os.Stderr, msgString)
+			fmt.Fprintln(errWriter, msgString)
 		}
 	}
 

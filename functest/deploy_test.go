@@ -73,7 +73,7 @@ func TestDeploySimple(t *testing.T) {
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -85,14 +85,14 @@ func TestDeploySimple(t *testing.T) {
 
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// appsody deploy
 		t.Log("Running appsody deploy...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "-t", "testdeploy/testimage", "--dryrun"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "-t", "testdeploy/testimage", "--dryrun"}, projectDir, t)
 		if err != nil {
 			t.Log("WARNING: deploy dryrun failed. Ignoring for now until that gets fixed.")
 			// TODO We need to fix the deploy --dryrun option so it doesn't fail, then uncomment the line below

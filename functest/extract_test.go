@@ -64,14 +64,14 @@ func TestExtract(t *testing.T) {
 
 		// appsody init inside projectDir
 		t.Log("Now running appsody init...")
-		_, err := cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err := cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// appsody extract: running in projectDir, extracting into extractDir
 		t.Log("Now running appsody extract...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"extract", "--target-dir", extractDir, "-v"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"extract", "--target-dir", extractDir, "-v"}, projectDir, t)
 		if err != nil {
 			t.Fatal(err)
 		}
