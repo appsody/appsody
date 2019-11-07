@@ -20,7 +20,6 @@ import (
 	"runtime"
 	"strings"
 	"text/template"
-	"time"
 	"unicode"
 
 	"github.com/pkg/errors"
@@ -92,9 +91,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			Info.Log("Running appsody stack package")
 			Info.Log("******************************************")
 
-			// get current time
-			currentTime := time.Now().Format(time.RFC3339)
-
 			projectPath := rootConfig.ProjectDir
 
 			// make a copy of the folder to apply template to
@@ -127,94 +123,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			if err != nil {
 				return errors.Errorf("Error trying to unmarshall: %v", err)
 			}
-
-			// split version number into major, minor and patch strings
-			versionFull := strings.Split(stackYaml.Version, ".")
-
-			// Create map that holds stack variables
-
-			// create stack variables and add to templateMetadata map
-			var templateMetadata = make(map[string]interface{})
-
-			var stack = make(map[string]interface{})
-			stack["id"] = stackID
-			stack["name"] = stackYaml.Name
-			stack["description"] = stackYaml.Description
-			stack["created"] = currentTime
-			// create version map and add to templateMetadata map
-			var version = make(map[string]string)
-			version["major"] = versionFull[0]
-			version["minor"] = versionFull[1]
-			version["patch"] = versionFull[2]
-			version["full"] = stackYaml.Version
-			stack["version"] = version
-			// create image map add to templateMetadata map
-			var image = make(map[string]string)
-			image["namespace"] = imageNamespace
-			stack["image"] = image
-
-			// loop through user variables and add them to map, must begin with alphanumeric character
-			for key, value := range stackYaml.TemplatingData {
-
-				// validates that key starts with alphanumeric character
-				runes := []rune(key)
-				firstRune := runes[0]
-				if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
-					stack[key] = value
-				}
-			}
-
-			templateMetadata["stack"] = stack
-
-			// walk through copied directory and apply templating to all files in directory
-			err = filepath.Walk(projectPath+"packagecopy", func(path string, info os.FileInfo, err error) error {
-
-				// get old path to check for read only files
-				templatePath := strings.Replace(path, "packagecopy", "", 1)
-
-				// ignore .git folder
-				if info.IsDir() && info.Name() == ".git" {
-					return filepath.SkipDir
-				} else if !info.IsDir() {
-
-					//get file name
-					file := filepath.Base(path)
-
-					// get permission of file
-					fileStat, err := os.Stat(templatePath)
-					if err != nil {
-						return errors.Errorf("Error checking permission of file: %v", err)
-					}
-					permission := fileStat.Mode()
-
-					// create new template from parsing file
-					tmpl, err := template.New(file).ParseFiles(path)
-					if err != nil {
-						return errors.Errorf("Error creating new template from file: %v", err)
-					}
-
-					// open file at path
-					f, err := os.Create(path)
-					if err != nil {
-						return errors.Errorf("Error opening file: %v", err)
-					}
-
-					// apply template to file
-					err = tmpl.ExecuteTemplate(f, file, templateMetadata)
-					if err != nil {
-						return errors.Errorf("Error executing template: %v", err)
-					}
-
-					f.Close()
-
-					// set file permission to new file
-					err = os.Chmod(path, permission)
-					if err != nil {
-						return errors.Errorf("Error reverting file permision: %v", err)
-					}
-				}
-				return nil
-			})
 
 			if err != nil {
 				return errors.Errorf("Error walking through directory: %v", err)
@@ -305,8 +213,13 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return err
 			}
 
+			// create the template metadata
+			var templateMetadata = createTemplateMap(stackID, labels, stackYaml, imageNamespace)
+
+			// apply templating to stack
+			applyTemplating(projectPath, templateMetadata)
+
 			// overriding time label with stack package currentTime generated earlier
-			labels["org.opencontainers.image.created"] = currentTime
 			labelPairs := CreateLabelPairs(labels)
 
 			// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
@@ -520,4 +433,112 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	}
 
 	return labels, nil
+}
+
+// createTemplateMap uses the git labels, stack.yaml, stackID and imageNamespace to create a map
+// with all the necessary data needed for the template
+func createTemplateMap(stackID string, labels map[string]string, stackYaml StackYaml, imageNamespace string) map[string]interface{} {
+
+	// split version number into major, minor and patch strings
+
+	versionLabel := labels[ociKeyPrefix+"version"]
+	versionFull := strings.Split(versionLabel, ".")
+
+	// Create map that holds stack variables
+
+	// create stack variables and add to templateMetadata map
+	var templateMetadata = make(map[string]interface{})
+
+	var stack = make(map[string]interface{})
+	stack["id"] = stackID
+	stack["name"] = labels[ociKeyPrefix+"title"]
+	stack["description"] = labels[ociKeyPrefix+"description"]
+	stack["created"] = labels[ociKeyPrefix+"created"]
+	// create version map and add to templateMetadata map
+	var version = make(map[string]string)
+	version["major"] = versionFull[0]
+	version["minor"] = versionFull[1]
+	version["patch"] = versionFull[2]
+	version["full"] = versionLabel
+	stack["version"] = version
+	// create image map add to templateMetadata map
+	var image = make(map[string]string)
+	image["namespace"] = imageNamespace
+	stack["image"] = image
+
+	// loop through user variables and add them to map, must begin with alphanumeric character
+	for key, value := range stackYaml.TemplatingData {
+
+		// validates that key starts with alphanumeric character
+		runes := []rune(key)
+		firstRune := runes[0]
+		if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
+			stack[key] = value
+		}
+	}
+
+	templateMetadata["stack"] = stack
+	return templateMetadata
+
+}
+
+// applyTemplating walks through the copied folder directory and applies a template using the
+// previously created templateMetada to all files in the target directory
+func applyTemplating(projectPath string, templateMetadata interface{}) error {
+
+	err := filepath.Walk(projectPath+"packagecopy", func(path string, info os.FileInfo, err error) error {
+
+		// get old path to check for read only files
+		templatePath := strings.Replace(path, "packagecopy", "", 1)
+
+		// ignore .git folder
+		if info.IsDir() && info.Name() == ".git" {
+			return filepath.SkipDir
+		} else if !info.IsDir() {
+
+			//get file name
+			file := filepath.Base(path)
+
+			// get permission of file
+			fileStat, err := os.Stat(templatePath)
+			if err != nil {
+				return errors.Errorf("Error checking permission of file: %v", err)
+			}
+			permission := fileStat.Mode()
+
+			// create new template from parsing file
+			tmpl, err := template.New(file).ParseFiles(path)
+			if err != nil {
+				return errors.Errorf("Error creating new template from file: %v", err)
+			}
+
+			// open file at path§
+			f, err := os.Create(path)
+			if err != nil {
+				return errors.Errorf("Error opening file: %v", err)
+			}
+
+			// apply template to file
+			err = tmpl.ExecuteTemplate(f, file, templateMetadata)
+			if err != nil {
+				return errors.Errorf("Error executing template: %v", err)
+			}
+
+			f.Close()
+
+			// set file permission to new file
+			err = os.Chmod(path, permission)
+			if err != nil {
+				return errors.Errorf("Error reverting file permision: %v", err)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return errors.Errorf("Error walking through directory: %v", err)
+	}
+
+	return nil
+
 }
