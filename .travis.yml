@@ -44,7 +44,9 @@ jobs:
     - <<: *test-template
       name: Unit Test on Windows
       os: windows
-      script: make unittest
+      script: 
+      - choco install make
+      - make unittest
     - name: Deploy Release
       stage: deploy
       os: linux
