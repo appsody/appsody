@@ -52,8 +52,17 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// buildCmd provides the ability run local builds, or setup/delete Tekton builds, for an appsody project
 	var buildCmd = &cobra.Command{
 		Use:   "build",
-		Short: "Locally build a docker image of your appsody project",
-		Long:  `This allows you to build a local Docker image from your Appsody project. Extract is run before the docker build.`,
+		Short: "Locally build a docker image of your Appsody project",
+		Long:  `Build a local Docker image of your Appsody project. The stack along with your Appsody project is first extracted to a local directory, before the docker build is run.
+		
+By default, the built image is tagged with the project name you specified when first initialising your Appsody project. If you did not specify a project name at the time of initialisation, the built image will be tagged with directory name at the root of your Appsody project.
+
+If you want to push the built image to an image repository using the [--push] options, you must specify the relevant [--tag].`,
+		Example: `  appsody build -t my-repo/nodejs-express --push
+  Builds the docker image, tags it with my-repo/nodejs-express and pushes it to the registry the docker CLI is currently logged in.
+
+  appsody build -t my-repo/nodejs-express --push-url my-registry-url
+  Builds the docker image, tags it with my-repo/nodejs-express and pushes it to my-registry-url/my-repo/nodejs-express:0.1.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return build(config)
 		},
