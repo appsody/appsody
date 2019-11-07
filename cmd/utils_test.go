@@ -215,7 +215,7 @@ func TestInvalidCmdOutput(t *testing.T) {
 		invalidCmd := exec.Command(test.cmd, test.args...)
 
 		t.Run(fmt.Sprintf("Test Invalid "+test.cmd+" Command"), func(t *testing.T) {
-			out, err := cmd.SeperateOutput(invalidCmd)
+			out, err := cmd.SeparateOutput(invalidCmd)
 			if err == nil {
 				t.Error("Expected an error from '", test.cmd, strings.Join(test.args, " "), "' but it did not return one.")
 			} else if !strings.Contains(out, test.expected) {

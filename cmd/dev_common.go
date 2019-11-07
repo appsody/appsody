@@ -100,6 +100,20 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 }
 
 func commonCmd(config *devCommonConfig, mode string) error {
+	// Checking whether the controller is being overridden
+	overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
+	if overrideControllerImage == "" {
+		overrideVersion := os.Getenv("APPSODY_CONTROLLER_VERSION")
+		if overrideVersion != "" {
+			CONTROLLERVERSION = overrideVersion
+			Warning.Log("You have overridden the Appsody controller version and set it to: ", CONTROLLERVERSION)
+		}
+		if CONTROLLERVERSION == "latest" {
+			Warning.Log("The Appsody CLI will use the latest version of the controller. This may result in a mismatch or malfunction.")
+		}
+	} else {
+		Warning.Log("The Appsody CLI detected the APPSODY_CONTROLLER_IMAGE env var. The controller image that will be used is: ", overrideControllerImage)
+	}
 
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
@@ -142,34 +156,43 @@ func commonCmd(config *devCommonConfig, mode string) error {
 
 	// Mount the controller
 	//destController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
-	controllerImageName := os.Getenv("APPSODY_CONTROLLER_IMAGE")
+	controllerImageName := overrideControllerImage
 	//if destController != "" {
 	//	Debug.log("Overriding appsody-controller mount with APPSODY_MOUNT_CONTROLLER env variable: ", destController)
 	//} else {
 	destController := "appsody-controller"
+	controllerVolumeName := fmt.Sprintf("%s-%s", "appsody-controller", CONTROLLERVERSION)
+	controllerVolumeMount := fmt.Sprintf("%s:%s", controllerVolumeName, "/.appsody")
 	if controllerImageName == "" {
-		controllerImageName = fmt.Sprintf("%s:%s", "appsody/appsody-controller", CONTROLLERVERSION)
+		controllerImageName = fmt.Sprintf("%s:%s", "appsody/init-controller", CONTROLLERVERSION)
 	}
 	if !config.Buildah {
-		//In local mode, run the appsody-controller image
-		downloaderArgs := []string{"--rm", "-v", "appsody-controller:/.appsody", controllerImageName, "./setController.sh"}
-		controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
-		if config.Dryrun {
-			Info.log("Dry Run - Skipping execCmd.Wait")
-		} else {
-			if err == nil {
-				err = controllerDownloader.Wait()
-			}
-		}
+		//In local mode, run the init-controller image if necessary
+		foundVolName, err := RunDockerVolumeList(controllerVolumeName)
 		if err != nil {
-			Debug.Log("Error checking the version of the controller or copying the controller to the volume: ", err)
+			Debug.Log("Error attempting to query volumes for ", controllerVolumeName, " :", err)
 			return err
+		}
+		if foundVolName == "" || foundVolName != controllerVolumeName {
+			Debug.Logf"Controller volume not found - launching the %s image to populate it", controllerImageName)
+			downloaderArgs := []string{"--rm", "-v", controllerVolumeMount, controllerImageName}
+			controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
+			if config.Dryrun {
+				Info.log("Dry Run - Skipping execCmd.Wait")
+			} else {
+				if err == nil {
+					err = controllerDownloader.Wait()
+				}
+			}
+			if err != nil {
+				Debug.Log("Error populating the controller volume: ", err)
+			}
 		}
 	}
 
-	controllerMount := destController + ":/appsody"
+	//controllerMount := controllerVolumeName + ":/appsody"
 	Debug.log("Adding controller to volume mounts: ", controllerMount)
-	volumeMaps = append(volumeMaps, "-v", controllerMount)
+	volumeMaps = append(volumeMaps, "-v", controllerVolumeMount)
 	if !config.Buildah {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -224,7 +247,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.interactive {
 		cmdArgs = append(cmdArgs, "-i")
 	}
-	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/appsody/appsody-controller", platformDefinition, "--mode="+mode)
+	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode)
 	if config.Verbose {
 		cmdArgs = append(cmdArgs, "-v")
 	}

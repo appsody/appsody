@@ -40,10 +40,23 @@ func RunDockerInspect(imageName string) (string, error) {
 	cmdArgs := []string{"image", "inspect", imageName}
 	Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	output, err := SeperateOutput(inspectCmd)
+	output, err := SeparateOutput(inspectCmd)
 	return output, err
 }
 
+// RunDockerVolumeList lists all the volumes containing a certain string
+func RunDockerVolumeList(volName string) (string, error) {
+	cmdName := "docker"
+	cmdArgs := []string{"volume", "ls", "--format", "{{.Name}}"}
+	if volName != "" {
+		volNameArg := fmt.Sprintf("name=%s", volName)
+		cmdArgs = append(cmdArgs, "-f", volNameArg)
+	}
+	Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
+	inspectCmd := exec.Command(cmdName, cmdArgs...)
+	output, err := SeparateOutput(inspectCmd)
+	return output, err
+}
 func RunKubeCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
 	command := "kubectl"
 	return RunCommandAndListen(command, args, logger, interactive, verbose, dryrun)
