@@ -214,7 +214,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			// create the template metadata
-			var templateMetadata = createTemplateMap(stackID, labels, stackYaml, imageNamespace)
+			var templateMetadata = createTemplateMap(labels, stackYaml, imageNamespace)
 
 			// apply templating to stack
 			applyTemplating(projectPath, templateMetadata)
@@ -437,7 +437,7 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 
 // createTemplateMap uses the git labels, stack.yaml, stackID and imageNamespace to create a map
 // with all the necessary data needed for the template
-func createTemplateMap(stackID string, labels map[string]string, stackYaml StackYaml, imageNamespace string) map[string]interface{} {
+func createTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string) map[string]interface{} {
 
 	// split version number into major, minor and patch strings
 
@@ -450,15 +450,18 @@ func createTemplateMap(stackID string, labels map[string]string, stackYaml Stack
 	var templateMetadata = make(map[string]interface{})
 
 	var stack = make(map[string]interface{})
-	stack["id"] = stackID
+	stack["id"] = labels[appsodyStackKeyPrefix+"id"]
 	stack["name"] = labels[ociKeyPrefix+"title"]
 	stack["description"] = labels[ociKeyPrefix+"description"]
 	stack["created"] = labels[ociKeyPrefix+"created"]
+	stack["tag"] = labels[appsodyStackKeyPrefix+"tag"]
+	stack["authors"] = labels[ociKeyPrefix+"authors"]
 	// create version map and add to templateMetadata map
 	var version = make(map[string]string)
 	version["major"] = versionFull[0]
 	version["minor"] = versionFull[1]
 	version["patch"] = versionFull[2]
+	version["majorminor"] = strings.Join(versionFull[0:2], ".")
 	version["full"] = versionLabel
 	stack["version"] = version
 	// create image map add to templateMetadata map
