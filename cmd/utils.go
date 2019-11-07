@@ -1819,7 +1819,7 @@ func doVersionCheck(config *RootCommandConfig) {
 
 // GetUpdateString Returns a format string to advise the user how to upgrade
 func GetUpdateString(osName string, version string, latest string) string {
-	var updateString = ""
+	var updateString string
 	switch osName {
 	case "darwin":
 		updateString = "Please run `brew upgrade appsody` to upgrade"
