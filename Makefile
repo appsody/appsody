@@ -10,6 +10,7 @@ GO_TEST_COVER_VIEWER := go tool cover -func=cover.out && go tool cover -html=cov
 VERSION ?= 0.0.0
 COMMAND := appsody
 BUILD_PATH := $(PWD)/build
+LOCAL_BIN_PATH := $(PWD)/bin
 PACKAGE_PATH := $(PWD)/package
 DOCS_PATH := $(PWD)/my-project
 GO_PATH := $(shell go env GOPATH)
@@ -100,6 +101,7 @@ ensure: $(DEP_BINARY) ## Runs `dep ensure` to make sure the Gopkg.lock and /vend
 .PHONY: clean
 clean: ## Removes existing build artifacts in order to get a fresh build
 	rm -rf $(BUILD_PATH)
+	rm -rf $(LOCAL_BIN_PATH)
 	rm -rf $(PACKAGE_PATH)
 	rm -f $(GOLANGCI_LINT_BINARY)
 	rm -f $(DEP_BINARY)
@@ -122,6 +124,19 @@ build-linux build-windows: ## Build the binary of the respective operating syste
 
 build-darwin: ## Build the OSX binary
 	GOOS=$(os) GOARCH=amd64 go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION) -X main.CONTROLLERVERSION=$(APPSODY_CONTROLLER_VERSION)"
+
+.PHONY: localbin-darwin
+localbin-darwin: ## copy the darwin binary to local bin
+
+.PHONY: localbin-darwin
+localbin-linux: ## copy the linux binary to local bin
+
+.PHONY: localbin-darwin
+localbin-windows: ## copy the windows binary to local bin
+
+localbin-darwin localbin-linux localbin-windows:
+	mkdir -p $(LOCAL_BIN_PATH)
+	cp -p $(BUILD_PATH)/$(build_binary) $(LOCAL_BIN_PATH)/appsody
 
 .PHONY: package
 package: build-docs tar-linux deb-linux rpm-linux tar-darwin brew-darwin tar-windows ## Creates packages for all operating systems and store them in package/ dir
