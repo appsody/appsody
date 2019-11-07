@@ -173,7 +173,8 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			Debug.Log("Error attempting to query volumes for ", controllerVolumeName, " :", err)
 			return err
 		}
-		if foundVolName == "" || foundVolName != controllerVolumeName {
+		Debug.Log("Retrieved volume name: [", foundVolName, "]")
+		if foundVolName == "" || (foundVolName != "" && foundVolName != controllerVolumeName) {
 			Debug.Logf("Controller volume not found - launching the %s image to populate it", controllerImageName)
 			downloaderArgs := []string{"--rm", "-v", controllerVolumeMount, controllerImageName}
 			controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
