@@ -160,7 +160,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	//if destController != "" {
 	//	Debug.log("Overriding appsody-controller mount with APPSODY_MOUNT_CONTROLLER env variable: ", destController)
 	//} else {
-	destController := "appsody-controller"
+	//destController := "appsody-controller"
 	controllerVolumeName := fmt.Sprintf("%s-%s", "appsody-controller", CONTROLLERVERSION)
 	controllerVolumeMount := fmt.Sprintf("%s:%s", controllerVolumeName, "/.appsody")
 	if controllerImageName == "" {
@@ -174,7 +174,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 		if foundVolName == "" || foundVolName != controllerVolumeName {
-			Debug.Logf"Controller volume not found - launching the %s image to populate it", controllerImageName)
+			Debug.Logf("Controller volume not found - launching the %s image to populate it", controllerImageName)
 			downloaderArgs := []string{"--rm", "-v", controllerVolumeMount, controllerImageName}
 			controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
 			if config.Dryrun {
@@ -191,7 +191,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	//controllerMount := controllerVolumeName + ":/appsody"
-	Debug.log("Adding controller to volume mounts: ", controllerMount)
+	Debug.log("Adding controller to volume mounts: ", controllerVolumeMount)
 	volumeMaps = append(volumeMaps, "-v", controllerVolumeMount)
 	if !config.Buildah {
 		c := make(chan os.Signal, 1)
