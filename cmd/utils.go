@@ -1183,8 +1183,6 @@ spec:
       initContainers:
       - name: init-appsody-controller
         image: appsody/appsody-controller
-        command:
-        - ./setController.sh
         resources: {}
         volumeMounts:
         - name: appsody-controller
