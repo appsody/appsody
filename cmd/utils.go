@@ -1805,7 +1805,7 @@ func getLatestVersion() string {
 func doVersionCheck(config *RootCommandConfig) {
 	var latest = getLatestVersion()
 	var currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
-	if true || latest != "" && VERSION != "vlatest" && VERSION != latest {
+	if latest != "" && VERSION != "vlatest" && VERSION != latest {
 		updateString := GetUpdateString(runtime.GOOS, VERSION, latest)
 		Warning.logf(updateString)
 	}
