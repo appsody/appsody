@@ -33,7 +33,9 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var listCmd = &cobra.Command{
 		Use:   "list [repository]",
 		Short: "Lists the available Appsody stacks.",
-		Long:  `Lists all the Appsody stacks available in your repositories.`,
+		Long: `Lists all the Appsody stacks available in your repositories. 
+
+An asterisk under the repository column denotes the default repository. An asterisk under the template column denotes the default stack template you will get when you initialise an Appsody project.`,
 		Example: `  appsody list
   Lists all available stacks for each of your repositories.
   
