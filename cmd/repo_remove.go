@@ -25,8 +25,10 @@ func newRepoRemoveCmd(config *RootCommandConfig) *cobra.Command {
 	// initCmd represents the init command
 	var removeCmd = &cobra.Command{
 		Use:   "remove <name>",
-		Short: "Remove a configured Appsody repository",
-		Long:  ``,
+		Short: "Removes an Appsody repository.",
+		Long:  `Removes an Appsody repository from your list of configured Appsody repositories.`,
+		Example: `  appsody repo remove my-local-repo
+  Removes the "my-local-repo" repository from your list of configured repositories.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("Error, you must specify repository name")

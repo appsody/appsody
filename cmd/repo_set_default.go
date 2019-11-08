@@ -25,8 +25,12 @@ func newRepoDefaultCmd(config *RootCommandConfig) *cobra.Command {
 	// initCmd represents the init command
 	var setDefaultCmd = &cobra.Command{
 		Use:   "set-default <name>",
-		Short: "Set desired default repository",
-		Long:  ``,
+		Short: "Sets a default repository.",
+		Long: `Sets your specified repository to be the default repository. The "incubator" repository is the initial default repository you will get upon installing Appsody. The default repository cannot be removed from you list of configured Appsody repositories. To remove a default repository, you would first have to set a different default repository.
+
+The default repository is denoted by an asterisk when you run "appsody repo list" or "appsody list". As a result of setting this default repository, you will not have to specify the repository, when initialising a new project using a stack in that repository.`,
+		Example: `  appsody repo set-default my-local-repo
+  Sets your default repository to "my-local-repo".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("Error, you must specify desired default repository")

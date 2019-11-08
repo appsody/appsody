@@ -31,8 +31,8 @@ func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
 	// repo list represent repo list cmd
 	var repoListCmd = &cobra.Command{
 		Use:   "list",
-		Short: "List configured Appsody repositories",
-		Long:  `List configured Appsody repositories. An asterisk denotes the default repository.`,
+		Short: "Lists your Appsody repositories.",
+		Long:  `Lists all your configured Appsody repositories. An asterisk denotes the default repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var repos RepositoryFile
 
