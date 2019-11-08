@@ -93,28 +93,28 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			projectPath := rootConfig.ProjectDir
 
+			// sets stack path to be the copied folder
+			stackPath := projectPath + "stackPath"
+			Debug.Log("stackPath is: ", stackPath)
+
 			// make a copy of the folder to apply template to
-			err := copyDir(projectPath, projectPath+"packagecopy")
+			err := copyDir(projectPath, stackPath)
 			if err != nil {
-				os.RemoveAll(projectPath + "packagecopy")
+				os.RemoveAll(stackPath)
 				return errors.Errorf("Error trying to copy directory: %v", err)
 			}
 
 			// remove copied folder locally, no matter the output
-			defer os.RemoveAll(projectPath + "packagecopy")
+			defer os.RemoveAll(stackPath)
 
-			// sets stack path to be the copied folder
-			stackPath := projectPath + "packagecopy"
-			Debug.Log("stackPath is: ", stackPath)
-
-			// get the stack name from the stack path (removes copy suffix)
-			stackID := filepath.Base(strings.Replace(stackPath, "packagecopy", "", 1))
+			// get the stack name from the stack path
+			stackID := filepath.Base(projectPath)
 			Debug.Log("stackID is: ", stackID)
 
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
 
-			source, err := ioutil.ReadFile(filepath.Join(projectPath+"packagecopy", "stack.yaml"))
+			source, err := ioutil.ReadFile(filepath.Join(stackPath, "stack.yaml"))
 			if err != nil {
 				return errors.Errorf("Error trying to read: %v", err)
 			}
@@ -452,18 +452,19 @@ func createTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	var stack = make(map[string]interface{})
 	stack["id"] = labels[appsodyStackKeyPrefix+"id"]
 	stack["name"] = labels[ociKeyPrefix+"title"]
+	stack["version"] = versionLabel
 	stack["description"] = labels[ociKeyPrefix+"description"]
 	stack["created"] = labels[ociKeyPrefix+"created"]
 	stack["tag"] = labels[appsodyStackKeyPrefix+"tag"]
-	stack["authors"] = labels[ociKeyPrefix+"authors"]
+	stack["maintainers"] = labels[ociKeyPrefix+"authors"]
 	// create version map and add to templateMetadata map
-	var version = make(map[string]string)
-	version["major"] = versionFull[0]
-	version["minor"] = versionFull[1]
-	version["patch"] = versionFull[2]
-	version["majorminor"] = strings.Join(versionFull[0:2], ".")
-	version["full"] = versionLabel
-	stack["version"] = version
+	var semver = make(map[string]string)
+	semver["major"] = versionFull[0]
+	semver["minor"] = versionFull[1]
+	semver["patch"] = versionFull[2]
+	semver["majorminor"] = strings.Join(versionFull[0:2], ".")
+	semver["full"] = versionLabel
+	stack["semver"] = semver
 	// create image map add to templateMetadata map
 	var image = make(map[string]string)
 	image["namespace"] = imageNamespace
@@ -489,10 +490,11 @@ func createTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 // previously created templateMetada to all files in the target directory
 func applyTemplating(projectPath string, templateMetadata interface{}) error {
 
-	err := filepath.Walk(projectPath+"packagecopy", func(path string, info os.FileInfo, err error) error {
+	// sets stack path to be the copied folder
+	stackPath := projectPath + "stackPath"
+	Debug.Log("stackPath is: ", stackPath)
 
-		// get old path to check for read only files
-		templatePath := strings.Replace(path, "packagecopy", "", 1)
+	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
 		// ignore .git folder
 		if info.IsDir() && info.Name() == ".git" {
@@ -503,7 +505,7 @@ func applyTemplating(projectPath string, templateMetadata interface{}) error {
 			file := filepath.Base(path)
 
 			// get permission of file
-			fileStat, err := os.Stat(templatePath)
+			fileStat, err := os.Stat(projectPath)
 			if err != nil {
 				return errors.Errorf("Error checking permission of file: %v", err)
 			}
