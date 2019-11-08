@@ -32,8 +32,13 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// listCmd represents the list command
 	var listCmd = &cobra.Command{
 		Use:   "list [repository]",
-		Short: "List the Appsody stacks available to init",
-		Long:  `This command lists all the stacks available in your repositories. If you omit the  optional [repository] parameter, the stacks for all the repositories are listed. If you specify the repository name [repository], only the stacks in that repository will be listed.`,
+		Short: "Lists the available Appsody stacks.",
+		Long:  `Lists all the Appsody stacks available in your repositories.`,
+		Example: `  appsody list
+  Lists all available stacks for each of your repositories.
+  
+  appsody list my-repo
+  Lists available stacks only in your "my-repo" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var repos RepositoryFile
 
