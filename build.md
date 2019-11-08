@@ -13,7 +13,7 @@ After setting the `GOPATH` env var correctly, just run `make <action...>` from t
 
 For the actual CLI binaries, three main target systems are supported:
 
-* `darwin` (OS/X)
+* `darwin` (macOS)
 * `linux`
 * `windows`
 
@@ -27,7 +27,7 @@ These core makefile targets take the form of:
 
 {component}-{target system}
 
-For instance, to build the CLI for OS/X, you would enter:
+For instance, to build the CLI for macOS, you would enter:
 
 ```bash
 make build-darwin
@@ -51,7 +51,7 @@ make
 
 ## Running the locally-built CLI
 
-As mentioned above, the `build` makefile target will produce a binary for the requested system, named accordingly. While you can just execute that locally from the `build` sub-directory, the makefile also supports an additional target that will copy this to a `bin` sub-directory and rename it `appsody`, for example to do this on OS/X:
+As mentioned above, the `build` makefile target will produce a binary for the requested system, named accordingly. While you can just execute that locally from the `build` sub-directory, the makefile also supports an additional target that will copy this to a `bin` sub-directory and rename it `appsody`, for example to do this on macOS:
 
 ```bash
 make build-darwin localbin-darwin
