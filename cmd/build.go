@@ -52,23 +52,23 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// buildCmd provides the ability run local builds, or setup/delete Tekton builds, for an appsody project
 	var buildCmd = &cobra.Command{
 		Use:   "build",
-		Short: "Locally build a container image of your Appsody project",
-		Long: `Build a local container image of your Appsody project. The stack along with your Appsody project is first extracted to a local directory, before the docker build is run.
+		Short: "Build a local container image of your Appsody project.",
+		Long: `Build a local container image of your Appsody project. The stack along with your Appsody project, is extracted to a local directory before the docker build is run.
 
-By default, the built image is tagged with the project name you specified when first initialising your Appsody project. If you did not specify a project name at the time of initialisation, the built image will be tagged with directory name at the root of your Appsody project.
+By default, the built image is tagged with the project name that you specified when you initialised your Appsody project. If you did not specify a name, the image is tagged with the name of the directory at the root of your Appsody project.
 
 If you want to push the built image to an image repository using the [--push] options, you must specify the relevant image tag.`,
 		Example: `  appsody build -t my-repo/nodejs-express --push
-  Builds the container image, tags it with my-repo/nodejs-express and pushes it to the registry the docker CLI is currently logged in.
+  Builds the container image, tags it with my-repo/nodejs-express, and pushes it to the registry the docker CLI is currently logged into.
 
   appsody build -t my-repo/nodejs-express --push-url my-registry-url
-  Builds the container image, tags it with my-repo/nodejs-express and pushes it to my-registry-url/my-repo/nodejs-express:0.1.`,
+  Builds the container image, tags it with my-repo/nodejs-express, and pushes it to my-registry-url/my-repo/nodejs-express:0.1.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return build(config)
 		},
 	}
 
-	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Container image name and optionally a tag in the 'name:tag' format")
+	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Container image name and optionally, a tag in the 'name:tag' format.")
 	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the container image to the image repository.")
 	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
