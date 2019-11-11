@@ -124,10 +124,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error trying to unmarshall: %v", err)
 			}
 
-			if err != nil {
-				return errors.Errorf("Error walking through directory: %v", err)
-			}
-
 			// check for templates dir, error out if its not there
 			check, err := Exists("templates")
 			if err != nil {
@@ -217,7 +213,11 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			var templateMetadata = createTemplateMap(labels, stackYaml, imageNamespace)
 
 			// apply templating to stack
-			applyTemplating(projectPath, stackPath, templateMetadata)
+			err = applyTemplating(projectPath, stackPath, templateMetadata)
+
+			if err != nil {
+				return errors.Errorf("Error applying templating: %v", err)
+			}
 
 			// overriding time label with stack package currentTime generated earlier
 			labelPairs := CreateLabelPairs(labels)
