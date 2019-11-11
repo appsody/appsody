@@ -108,13 +108,20 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			CONTROLLERVERSION = overrideVersion
 			Warning.Log("You have overridden the Appsody controller version and set it to: ", CONTROLLERVERSION)
 		}
-		if CONTROLLERVERSION == "latest" {
-			Warning.Log("The Appsody CLI will use the latest version of the controller. This may result in a mismatch or malfunction.")
-		}
 	} else {
 		Warning.Log("The Appsody CLI detected the APPSODY_CONTROLLER_IMAGE env var. The controller image that will be used is: ", overrideControllerImage)
+		imageSplit := strings.Split(overrideControllerImage, ":")
+		if len(imageSplit) == 1 {
+			// this is an implicit reference to latest
+			CONTROLLERVERSION = "latest"
+		} else {
+			CONTROLLERVERSION = imageSplit[1]
+			//This also could be latest
+		}
 	}
-
+	if CONTROLLERVERSION == "latest" {
+		Warning.Log("The Appsody CLI will use the latest version of the controller image. This may result in a mismatch or malfunction.")
+	}
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
 		return perr
@@ -155,27 +162,41 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	// Mount the controller
-	//destController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
+
 	controllerImageName := overrideControllerImage
-	//if destController != "" {
-	//	Debug.log("Overriding appsody-controller mount with APPSODY_MOUNT_CONTROLLER env variable: ", destController)
-	//} else {
-	//destController := "appsody-controller"
-	controllerVolumeName := fmt.Sprintf("%s-%s", "appsody-controller", CONTROLLERVERSION)
-	controllerVolumeMount := fmt.Sprintf("%s:%s", controllerVolumeName, "/.appsody")
 	if controllerImageName == "" {
 		controllerImageName = fmt.Sprintf("%s:%s", "appsody/init-controller", CONTROLLERVERSION)
 	}
+	controllerVolumeName := fmt.Sprintf("%s-%s", "appsody-controller", CONTROLLERVERSION)
+	controllerVolumeMount := fmt.Sprintf("%s:%s", controllerVolumeName, "/.appsody")
+
 	if !config.Buildah {
 		//In local mode, run the init-controller image if necessary
-		foundVolName, err := RunDockerVolumeList(controllerVolumeName)
-		if err != nil {
-			Debug.Log("Error attempting to query volumes for ", controllerVolumeName, " :", err)
-			return err
+		updateController := false
+		if CONTROLLERVERSION == "latest" {
+			updateController = true
+		} else {
+			volNames, err := RunDockerVolumeList(controllerVolumeName)
+			if err != nil {
+				Debug.Log("Error attempting to query volumes for ", controllerVolumeName, " :", err)
+				return err
+			}
+			Debug.Log("Retrieved volume name(s): [", volNames, "]")
+			volNamesSlice := strings.Split(volNames, "\n")
+			foundVolName := ""
+			for _, volName := range volNamesSlice {
+				if volName == controllerVolumeName {
+					foundVolName = volName
+				}
+			}
+
+			if foundVolName == "" {
+				updateController = true
+			}
 		}
-		Debug.Log("Retrieved volume name: [", foundVolName, "]")
-		if foundVolName == "" || (foundVolName != "" && foundVolName != controllerVolumeName) {
-			Debug.Logf("Controller volume not found - launching the %s image to populate it", controllerImageName)
+		// We run the image if there no volume that matches the controller version or if the controller version is "latest"
+		if updateController {
+			Debug.Logf("Controller volume not found or version is latest - launching the %s image to populate it", controllerImageName)
 			downloaderArgs := []string{"--rm", "-v", controllerVolumeMount, controllerImageName}
 			controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
 			if config.Dryrun {
@@ -187,6 +208,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			}
 			if err != nil {
 				Debug.Log("Error populating the controller volume: ", err)
+				return err
 			}
 		}
 	}
@@ -289,11 +311,6 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if portsErr != nil {
 			return portsErr
 		}
-		/*
-			projectName, err := getProjectName(config.RootCommandConfig)
-			if err != nil {
-				return err
-			}*/
 
 		projectDir, err := getProjectDir(config.RootCommandConfig)
 		if err != nil {

@@ -24,8 +24,8 @@ BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder:0.1.0
 GH_ORG ?= appsody
-CONTROLLER_VERSION ?=0.3.0
-#CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/$(CONTROLLER_VERSION)
+export APPSODY_CONTROLLER_VERSION ?=0.3.0
+#CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/$(APPSODY_CONTROLLER_VERSION)
 
 #### Dynamic variables. These change depending on the target name.
 # Gets the current os from the target name, e.g. the 'build-linux' target will result in os = 'linux'
@@ -127,12 +127,12 @@ build-linux: ## Build the linux binary
 build-windows: ## Build the windows binary
 
 build-linux build-windows: ## Build the binary of the respective operating system
-	GOOS=$(os) CGO_ENABLED=0 GOARCH=amd64 go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION)" -ldflags "-X main.CONTROLLERVERSION=$(CONTROLLER_VERSION)"
+	GOOS=$(os) CGO_ENABLED=0 GOARCH=amd64 go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION)" -ldflags "-X main.CONTROLLERVERSION=$(APPSODY_CONTROLLER_VERSION)"
 
 .PHONY: build-darwin
 
 build-darwin: ## Build the OSX binary
-	GOOS=$(os) GOARCH=amd64 go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION)" -ldflags "-X main.CONTROLLERVERSION=$(CONTROLLER_VERSION)"
+	GOOS=$(os) GOARCH=amd64 go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION)" -ldflags "-X main.CONTROLLERVERSION=$(APPSODY_CONTROLLER_VERSION)"
 
 .PHONY: package
 package: build-docs tar-linux deb-linux rpm-linux tar-darwin brew-darwin tar-windows ## Creates packages for all operating systems and store them in package/ dir
