@@ -93,8 +93,12 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			projectPath := rootConfig.ProjectDir
 
+			// get the stack name from the stack path
+			stackID := filepath.Base(projectPath)
+			Debug.Log("stackID is: ", stackID)
+
 			// sets stack path to be the copied folder
-			stackPath := projectPath + "stackPath"
+			stackPath := filepath.Join(getHome(rootConfig), "stacks", "packaging-"+stackID)
 			Debug.Log("stackPath is: ", stackPath)
 
 			// make a copy of the folder to apply template to
@@ -106,10 +110,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// remove copied folder locally, no matter the output
 			defer os.RemoveAll(stackPath)
-
-			// get the stack name from the stack path
-			stackID := filepath.Base(projectPath)
-			Debug.Log("stackID is: ", stackID)
 
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
@@ -217,7 +217,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			var templateMetadata = createTemplateMap(labels, stackYaml, imageNamespace)
 
 			// apply templating to stack
-			applyTemplating(projectPath, templateMetadata)
+			applyTemplating(projectPath, stackPath, templateMetadata)
 
 			// overriding time label with stack package currentTime generated earlier
 			labelPairs := CreateLabelPairs(labels)
@@ -488,11 +488,7 @@ func createTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 
 // applyTemplating walks through the copied folder directory and applies a template using the
 // previously created templateMetada to all files in the target directory
-func applyTemplating(projectPath string, templateMetadata interface{}) error {
-
-	// sets stack path to be the copied folder
-	stackPath := projectPath + "stackPath"
-	Debug.Log("stackPath is: ", stackPath)
+func applyTemplating(projectPath string, stackPath string, templateMetadata interface{}) error {
 
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
