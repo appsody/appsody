@@ -49,11 +49,11 @@ func newInitCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var initCmd = &cobra.Command{
 		Use:   "init [stack] or [repository]/[stack] [template]",
 		Short: "Initialize an Appsody project.",
-		Long: `Sets up the local Appsody development environment. You can do this for an existing project or create a new template application. 
+		Long: `Set up the local Appsody development environment. You can do this for an existing project or use the template application provided by the stack. 
 
 By default, the command creates an Appsody stack configuration file and provides a simple default application. You can also choose to initialize a project with a different template application, or no template at all. 
 
-This command will fail if you want to initialise a project with a template application, but you are not in an empty directory, unless you specify you want to overwrite those existing files.
+If you run this command in a directory that is not empty, and you want to initialise a project with a template application, the command fails unless you specify the "overwrite" option [--overwrite].
 Use 'appsody list' to see the available stacks and templates.`,
 		Example: `  appsody init nodejs-express
   Initializes a project with the default template from the "nodejs-express" stack in the default repository.
