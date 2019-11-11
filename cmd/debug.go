@@ -26,7 +26,7 @@ func newDebugCmd(rootConfig *RootCommandConfig) *cobra.Command {
   Starts the debugging environment, passing the "--privileged" option to the "docker run" command as a flag.
   
   appsody debug --name my-project-dev2 -p 3001:3000
-  Starts the debugging environment, names the development container "my-project-dev2", binds the container port 3000 to the host port 3001.`,
+  Starts the debugging environment, names the development container "my-project-dev2", and binds the container port 3000 to the host port 3001.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.log("Running debug environment")
