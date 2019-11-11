@@ -103,7 +103,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// creates stackPath dir if it doesn't exist
 			if _, err := os.Stat(stackPath); os.IsNotExist(err) {
-				err = os.Mkdir(stackPath, os.ModeDir)
+				err = os.MkdirAll(stackPath, os.ModeDir)
 				if err != nil {
 					return errors.Errorf("Error creating stack path directory: %v", err)
 				}
