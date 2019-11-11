@@ -49,21 +49,21 @@ func newInitCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var initCmd = &cobra.Command{
 		Use:   "init [stack] or [repository]/[stack] [template]",
 		Short: "Initialize an Appsody project.",
-		Long: `Sets up the local Appsody development environment around an existing project or, optionally provides a template project. In all cases, this command unzips a template application, and runs the stack init script to setup the local development environment. 
+		Long: `Sets up the local Appsody development environment. You can do this for an existing project or create a new template application. 
 
 By default, the command creates an Appsody stack configuration file and provides a simple default application. You can also choose to initialize a project with a different template application, or no template at all. 
 
-This command will fail if you are not in an empty directory, unless you specify you want to overwrite these files.
-Use 'appsody list' to see the available stack options.`,
-		Example: `  appsody init experimental/quarkus 
-  Initializes a project with the "quarkus" default stack template from your "experimental" repository.
-
+This command will fail if you want to initialise a project with a template application, but you are not in an empty directory, unless you specify you want to overwrite those existing files.
+Use 'appsody list' to see the available stacks and templates.`,
+		Example: `  appsody init nodejs-express
+  Initializes a project with the default template from the "nodejs-express" stack in the default repository.
+  
   appsody init nodejs-express scaffold
-  Initializes a project with the "nodejs-express" "scaffold" stack template from your default repository.
-  
-  appsody init nodejs-express none
-  Initializes a project with the "nodejs-express" stack from your default repository, with no initial template application provided.
-  
+  Initializes a project with the "scaffold" template from "nodejs-express" stack in the default repository.
+
+  appsody init experimental/quarkus none
+  Initializes a project with the default template for the "quarkus" stack in the "experimental" repository.
+
   appsody init
   Runs the stack init script to set up the local development environment. Must only be run on an existing Appsody project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
