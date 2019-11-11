@@ -51,7 +51,6 @@ Examples:
 
 The stack name must start with a lowercase letter, and can contain only lowercase letters, numbers, or dashes, and cannot end with a dash. The stack name cannot exceed 128 characters.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ExistingStackFolderExist := false
 			currentTime := time.Now().Format("20060102150405")
 
 			if len(args) < 1 {
@@ -90,7 +89,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			if err != nil {
 				return err
 			}
-			_, projectType, err := parseProjectParm(config.copy, config.RootCommandConfig)
+			_, stackTempDir, err := parseProjectParm(config.copy, config.RootCommandConfig)
 			if err != nil {
 				return err
 			}
@@ -109,26 +108,15 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			//moving out the stack which we need
 			if config.Dryrun {
-				Info.logf("Dry Run -Skipping moving out of stack: %s from %s", projectType, filepath.Join(stack, "stacks-master", config.copy))
+				Info.logf("Dry Run -Skipping moving out of stack: %s from %s", stackTempDir, filepath.Join(stack, "stacks-master", config.copy))
 
 			} else {
-				ExistingStackFolderExist, err = Exists(projectType)
+				stackTempDir = ".temp-" + stackTempDir + "-" + currentTime
+
+				err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), stackTempDir)
 				if err != nil {
 					return err
 				}
-
-				if ExistingStackFolderExist {
-					err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType+"-"+currentTime)
-					if err != nil {
-						return err
-					}
-				} else {
-					err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType)
-					if err != nil {
-						return err
-					}
-				}
-
 			}
 
 			//deleting the folder from which stack is extracted
@@ -136,19 +124,12 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			// rename the stack to the name which user want
 			if config.Dryrun {
-				Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", projectType, stack)
+				Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", stackTempDir, stack)
 
 			} else {
-				if ExistingStackFolderExist {
-					err = os.Rename(projectType+"-"+currentTime, stack)
-					if err != nil {
-						return err
-					}
-				} else {
-					err = os.Rename(projectType, stack)
-					if err != nil {
-						return err
-					}
+				err = os.Rename(stackTempDir, stack)
+				if err != nil {
+					return err
 				}
 			}
 
