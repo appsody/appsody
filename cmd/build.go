@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -74,10 +75,6 @@ func build(config *buildCommandConfig) error {
 	// 2. docker build -t <project name> -f Dockerfile ./extracted
 
 	extractConfig := &extractCommandConfig{RootCommandConfig: config.RootCommandConfig}
-	extractErr := extract(extractConfig)
-	if extractErr != nil {
-		return extractErr
-	}
 
 	projectName, perr := getProjectName(config.RootCommandConfig)
 	if perr != nil {
@@ -87,6 +84,14 @@ func build(config *buildCommandConfig) error {
 	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
 	dockerfile := filepath.Join(extractDir, "Dockerfile")
 	buildImage := projectName //Lowercased
+
+	// Regardless of pass or fail, remove the local extracted folder
+	defer os.RemoveAll(extractDir)
+
+	extractErr := extract(extractConfig)
+	if extractErr != nil {
+		return extractErr
+	}
 
 	// If a tag is specified, change the buildImage
 	if config.tag != "" {
