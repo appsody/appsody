@@ -14,6 +14,7 @@
 package functest
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -97,13 +98,17 @@ func TestExtract(t *testing.T) {
 		if err != nil {
 			t.Fatal("Error changing directory: ", err)
 		}
-		config := &cmd.RootCommandConfig{}
+		var outBuffer bytes.Buffer
+		loggingConfig := &cmd.LoggingConfig{}
+		loggingConfig.InitLogging(&outBuffer, &outBuffer)
+		config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
 		err = cmd.InitConfig(config)
 		if err != nil {
 			t.Fatal("Could not init appsody config", err)
 		}
 		mounts, _ := cmd.GetEnvVar("APPSODY_MOUNTS", config)
 		pDir, _ := cmd.GetEnvVar("APPSODY_PROJECT_DIR", config)
+		t.Log(outBuffer.String())
 
 		err = os.Chdir(oldDir)
 		if err != nil {

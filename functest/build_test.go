@@ -252,7 +252,7 @@ func TestDeploymentConfig(t *testing.T) {
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -264,7 +264,7 @@ func TestDeploymentConfig(t *testing.T) {
 
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -273,14 +273,14 @@ func TestDeploymentConfig(t *testing.T) {
 		imageName := filepath.Base(projectDir)
 		pullURL := "my-pull-url"
 
-		_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName, "--pull-url", pullURL, "--knative"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName, "--pull-url", pullURL, "--knative"}, projectDir, t)
 		if err != nil {
 			t.Error("appsody build command returned err: ", err)
 		}
 		checkDeploymentConfig(t, filepath.Join(projectDir, deployFile), pullURL, imageName)
 
 		//delete the image
-		deleteImage(imageName)
+		deleteImage(imageName, t)
 
 		// clean up
 		cleanup()

@@ -103,19 +103,13 @@ func RunAppsodyCmdExec(args []string, workingDir string, t *testing.T) (string, 
 // RunAppsodyCmd runs the appsody CLI with the given args
 // The stdout and stderr are captured, printed and returned
 // args will be passed to the appsody command
-// workingDir will be the directory the command runs in
-func RunAppsodyCmd(args []string, workingDir string, t *testing.T) (string, error) {
+// projectDir will be the directory the command acts upon
+func RunAppsodyCmd(args []string, projectDir string, t *testing.T) (string, error) {
 
 	args = append(args, "-v")
 
 	// Direct cmd console output to a buffer
 	outReader, outWriter, _ := os.Pipe()
-	cmd.SetStdout(outWriter)
-	cmd.SetStderr(outWriter)
-	defer func() {
-		cmd.SetStdout(os.Stdout)
-		cmd.SetStderr(os.Stderr)
-	}()
 
 	// copy the output to the buffer, and also to the test log
 	var outBuffer bytes.Buffer
@@ -129,7 +123,7 @@ func RunAppsodyCmd(args []string, workingDir string, t *testing.T) (string, erro
 		}
 	}()
 
-	err := cmd.ExecuteE("vlatest", "latest", workingDir, args)
+	err := cmd.ExecuteE("vlatest", "latest", projectDir, outWriter, outWriter, args)
 
 	// close the reader and writer
 	outWriter.Close()

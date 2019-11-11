@@ -123,7 +123,7 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -135,7 +135,7 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -144,7 +144,7 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 		pullURL := "my-pull-url"
 		// appsody deploy
 		t.Log("Running appsody deploy...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative"}, projectDir, t)
 		if err != nil {
 			t.Log("WARNING: deploy dryrun failed. Ignoring for now until that gets fixed.")
 			// TODO We need to fix the deploy --dryrun option so it doesn't fail, then uncomment the line below

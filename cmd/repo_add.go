@@ -64,17 +64,17 @@ func newRepoAddCmd(config *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("A repository with the URL '%s' already exists.", repoURL)
 
 			}
-			index, err := downloadIndex(repoURL)
+			index, err := downloadIndex(config.LoggingConfig, repoURL)
 			if err != nil {
 
 				return err
 			}
 			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
-				Warning.log("The repository " + repoName + " contains an APIVersion in its .yaml file more recent than the current Appsody CLI supports(" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
+				config.Warning.log("The repository " + repoName + " contains an APIVersion in its .yaml file more recent than the current Appsody CLI supports(" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
 			}
 
 			if config.Dryrun {
-				Info.logf("Dry Run - Skipping appsody repo add repository Name: %s, URL: %s", repoName, repoURL)
+				config.Info.logf("Dry Run - Skipping appsody repo add repository Name: %s, URL: %s", repoName, repoURL)
 			} else {
 				var newEntry = RepositoryEntry{
 					Name: repoName,
