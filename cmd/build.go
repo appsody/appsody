@@ -63,7 +63,7 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the Docker image to the image repository.")
-	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to.")
+	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
 	buildCmd.AddCommand(newSetupCmd(config))
 	return buildCmd
@@ -132,7 +132,7 @@ func build(config *buildCommandConfig) error {
 	if execError != nil {
 		return execError
 	}
-	if config.push {
+	if config.pushURL != "" || config.push {
 
 		err := DockerPush(buildImage, config.Dryrun)
 		if err != nil {
