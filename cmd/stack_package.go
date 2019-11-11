@@ -14,6 +14,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -111,8 +112,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			// get the stack name from the stack path
-			stackName := filepath.Base(stackPath)
-			Debug.Log("stackName is: ", stackName)
+			stackID := filepath.Base(stackPath)
+			Debug.Log("stackName is: ", stackID)
 
 			indexFileLocal := filepath.Join(devLocal, "index-dev-local.yaml")
 			Debug.Log("indexFileLocal is: ", indexFileLocal)
@@ -142,8 +143,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				// find the index of the stack
 				foundStack := -1
 				for i, stack := range indexYaml.Stacks {
-					if stack.ID == stackName {
-						Debug.Log("Existing stack: " + stackName + "found")
+					if stack.ID == stackID {
+						Debug.Log("Existing stack: " + stackID + "found")
 						foundStack = i
 						break
 					}
@@ -160,9 +161,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				indexYaml.Stacks = make([]IndexYamlStack, 0, 1)
 			}
 
-			// build up stack struct for the new stack
-			newStackStruct := IndexYamlStack{}
-
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
 
@@ -176,8 +174,41 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("Error trying to unmarshall: %v", err)
 			}
 
+			// docker build
+			// create the image name to be used for the docker image
+			buildImage := "dev.local/" + stackID + ":SNAPSHOT"
+
+			imageDir := filepath.Join(stackPath, "image")
+			Debug.Log("imageDir is: ", imageDir)
+
+			dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
+			Debug.Log("dockerFile is: ", dockerFile)
+
+			cmdArgs := []string{"-t", buildImage}
+
+			labels, err := getLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
+			if err != nil {
+				return err
+			}
+			// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
+			for _, label := range labels {
+				cmdArgs = append(cmdArgs, "--label", label)
+			}
+
+			cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
+			Debug.Log("cmdArgs is: ", cmdArgs)
+
+			Info.Log("Running docker build")
+
+			err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
+			if err != nil {
+				return errors.Errorf("Error during docker build: %v", err)
+			}
+
+			// build up stack struct for the new stack
+			newStackStruct := IndexYamlStack{}
 			// set the data in the new stack struct
-			newStackStruct.ID = stackName
+			newStackStruct.ID = stackID
 			newStackStruct.Name = stackYaml.Name
 			newStackStruct.Version = stackYaml.Version
 			newStackStruct.Description = stackYaml.Description
@@ -211,7 +242,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				Debug.Log("sourceDir is: ", sourceDir)
 
 				// create name for the tar files
-				versionedArchive := filepath.Join(devLocal, stackName+".v"+stackYaml.Version+".templates.")
+				versionedArchive := filepath.Join(devLocal, stackID+".v"+stackYaml.Version+".templates.")
 				Debug.Log("versionedArchive is: ", versionedArchive)
 
 				versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
@@ -229,28 +260,6 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				newTemplateStruct.URL = versionArchiveTar
 
 				newStackStruct.Templates = append(newStackStruct.Templates, newTemplateStruct)
-
-				// docker build
-
-				// create the image name to be used for the docker image
-				buildImage := "dev.local/" + stackName + ":SNAPSHOT"
-
-				imageDir := filepath.Join(stackPath, "image")
-				Debug.Log("imageDir is: ", imageDir)
-
-				dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
-				Debug.Log("dockerFile is: ", dockerFile)
-
-				cmdArgs := []string{"-t", buildImage}
-				cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
-				Debug.Log("cmdArgs is: ", cmdArgs)
-
-				Info.Log("Running docker build")
-
-				err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
-				if err != nil {
-					return errors.Errorf("Error during docker build: %v", err)
-				}
 
 				// create a config yaml file for the tarball
 				configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
@@ -300,31 +309,70 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			// list repos
-			repos, err := RunAppsodyCmdExec([]string{"repo", "list", "-o", "yaml"}, ".")
-			if err != nil {
-				return err
+			var repoFile RepositoryFile
+			repos, repoErr := repoFile.getRepos(rootConfig)
+			if repoErr != nil {
+				return repoErr
 			}
-
-			// if dev.local exists then remove it
-			if strings.Contains(repos, "name: dev.local") {
-				Info.Log("Existing dev.local repo found")
-				Info.Log("Removing dev.local repository")
-
-				_, err := RunAppsodyCmdExec([]string{"repo", "remove", "dev.local"}, ".")
+			// See if a configured repo already points to the local index file
+			repoName := ""
+			for _, repo := range repos.Repositories {
+				if strings.Contains(repo.URL, indexFileLocal) {
+					repoName = repo.Name
+					break
+				}
+			}
+			if repoName == "" {
+				repoName = "dev.local"
+				// could not find existing repo, so create it
+				// create an appsody repo for the stack
+				Info.Logf("Creating %s repository", repoName)
+				_, err = AddLocalFileRepo(repoName, indexFileLocal)
 				if err != nil {
-					return err
+					return errors.Errorf("Error adding local repository. Your stack may not be available to appsody commands. %v", err)
 				}
 			}
 
-			// create an appsody repo for the stack
-			Info.Log("Creating dev.local repository")
-			_, err = AddLocalFileRepo("dev.local", indexFileLocal)
-			if err != nil {
-				return errors.Errorf("Error running appsody command: %v", err)
-			}
+			Info.log("Your local stack is available as part of repo ", repoName)
 
 			return nil
 		},
 	}
 	return stackPackageCmd
+}
+
+func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYaml, config *RootCommandConfig) ([]string, error) {
+	var labels []string
+
+	gitLabels, err := getGitLabels(config)
+	if err != nil {
+		Info.log(err)
+	}
+
+	for key, value := range gitLabels {
+		labelString := fmt.Sprintf("%s=%s", key, value)
+		labels = append(labels, labelString)
+	}
+
+	// build a ProjectConfig struct from the stackyaml so we can reuse getConfigLabels() func
+	projectConfig := ProjectConfig{
+		ProjectName: stackYaml.Name,
+		Version:     stackYaml.Version,
+		Description: stackYaml.Description,
+		License:     stackYaml.License,
+		Maintainers: stackYaml.Maintainers,
+	}
+	configLabels, err := getConfigLabels(projectConfig)
+	if err != nil {
+		return labels, err
+	}
+	configLabels[appsodyStackKeyPrefix+"id"] = stackID
+	configLabels[appsodyStackKeyPrefix+"tag"] = buildImage
+
+	for key, value := range configLabels {
+		labelString := fmt.Sprintf("%s=%s", key, value)
+		labels = append(labels, labelString)
+	}
+
+	return labels, nil
 }
