@@ -104,6 +104,11 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			// creates stackPath dir if it doesn't exist
 			if _, err := os.Stat(stackPath); os.IsNotExist(err) {
 				os.Mkdir(stackPath, os.ModeDir)
+
+				if err != nil {
+					errors.Errorf("Error createing stack path directory: %v", err)
+				}
+
 			}
 
 			// make a copy of the folder to apply template to
