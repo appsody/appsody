@@ -49,21 +49,23 @@ func newInitCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var initCmd = &cobra.Command{
 		Use:   "init [stack] or [repository]/[stack] [template]",
 		Short: "Initialize an Appsody project.",
-		Long: `Creates a new Appsody project in a local directory or sets up the local Appsody development environment around your existing project.
+		Long: `Sets up the local Appsody development environment around an existing project or, optionally provides a template project. In all cases, this command unzips a template application, and runs the stack init script to setup the local development environment. 
 
-With the [stack] argument, this command creates an Appsody stack configuration file, unzips a template application, and runs the stack initialization script to setup the local development environment. 
-It is typically run on an empty directory and may fail if files already exist. See the --overwrite and --no-template options for more details.
-Use 'appsody list' to see the available stack options.
+By default, the command creates an Appsody stack configuration file and provides a simple default application. You can also choose to initialize a project with a different template application, or no template at all. 
 
-Without the [stack] argument, this command must be run on an existing Appsody project, and will only run the stack initialization script to setup the local development environment.`,
-		Example: `  appsody init nodejs-express scaffold
+This command will fail if you are not in an empty directory, unless you specify you want to overwrite these files.
+Use 'appsody list' to see the available stack options.`,
+		Example: `  appsody init experimental/quarkus 
+  Initializes a project with the "quarkus" default stack template from your "experimental" repository.
+
+  appsody init nodejs-express scaffold
   Initializes a project with the "nodejs-express" "scaffold" stack template from your default repository.
   
-  appsody init experimental/quarkus 
-  Initializes a project with the "quarkus" default stack template from your "experimental" repository.
-  
   appsody init nodejs-express none
-  Initializes a project to use Appsody with no initial template application provided.`,
+  Initializes a project with the "nodejs-express" stack from your default repository, with no initial template application provided.
+  
+  appsody init
+  Runs the stack init script to set up the local development environment. Must only be run on an existing Appsody project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var stack string
 			var template string
