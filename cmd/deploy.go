@@ -178,7 +178,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			}
 			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
 			buildConfig.Verbose = config.Verbose
-			if config.push {
+			if config.pushURL != "" || config.push {
 				pushPath := deployImage
 				if config.pushURL != "" {
 
@@ -301,7 +301,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 	deployCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push this image to an external Docker registry. Assumes that you have previously successfully done docker login")
 	deployCmd.PersistentFlags().BoolVar(&config.knative, "knative", false, "Deploy as a Knative Service")
-	deployCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "Remote repository to push image to.")
+	deployCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "Remote repository to push image to.  This will also trigger a push if the --push flag is not specified.")
 	deployCmd.PersistentFlags().StringVar(&config.pullURL, "pull-url", "", "Remote repository to pull image from.")
 	deployCmd.AddCommand(newDeleteDeploymentCmd(config))
 	return deployCmd
