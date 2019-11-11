@@ -213,13 +213,10 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	volumeMaps = append(volumeMaps, "-v", controllerMount)
 	if !config.Buildah {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 		go func() {
 			<-c
-			err := dockerStop(config.containerName, config.Dryrun)
-			if err != nil {
-				Error.log(err)
-			}
+			// note we still need this signaling block otherwise the signal is not caught and termination doesn't occur propertly
 			//containerRemove(containerName) is not needed due to --rm flag
 		}()
 	}
@@ -287,8 +284,12 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			// TODO presumably you can query the error itself
 			error := fmt.Sprintf("%s", err)
 			//Linux and Windows return a different error on Ctrl-C
-			if error == "signal: interrupt" || error == "exit status 2" {
-				Info.log("Closing down, development environment was interrupted.")
+			if error == "signal: interrupt" || error == "signal: terminated" || error == "exit status 2" {
+				Info.log("Closing down, development environment was interrupted will now sleep 10 secondsx.")
+				err := dockerStop(config.containerName, config.Dryrun)
+				if err != nil {
+					Error.log(err)
+				}
 			} else {
 				return errors.Errorf("Error in 'appsody %s': %s", mode, error)
 

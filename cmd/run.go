@@ -20,7 +20,9 @@ import (
 
 func dockerStop(imageName string, dryrun bool) error {
 	cmdName := "docker"
-	cmdArgs := []string{"stop", imageName}
+	signalInterval := "10" // numnrt of seconds to wait prior to sending SIGKILL
+	Info.logf("Performing docker stop. Shutdown will occur in %s seconds", signalInterval)
+	cmdArgs := []string{"stop", imageName, "-t", signalInterval}
 	err := execAndWait(cmdName, cmdArgs, Debug, dryrun)
 	if err != nil {
 		return err
