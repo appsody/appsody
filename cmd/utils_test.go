@@ -276,3 +276,27 @@ func TestInvalidConvertLabelToKubeFormat(t *testing.T) {
 		})
 	}
 }
+
+var getUpdateStringTests = []struct {
+	input        string
+	version      string
+	latest       string
+	updateString string
+}{
+	{"darwin", "1", "2", "Please run `brew upgrade appsody` to upgrade"},
+	{"anythingelse", "1", "2", "Please go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade"},
+	{"", "1", "2", "Please go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade"},
+}
+
+func TestGetUpdateString(t *testing.T) {
+	for _, test := range getUpdateStringTests {
+		t.Run(test.input, func(t *testing.T) {
+			output := cmd.GetUpdateString(test.input, test.version, test.latest)
+			expectedOutput := fmt.Sprintf("\n*\n*\n*\n\nA new CLI update is available.\n%s from %s --> %s.\n\n*\n*\n*\n", test.updateString, test.version, test.latest)
+			if output != expectedOutput {
+				t.Errorf("Expected %s to convert to %s but got %s", test.input, expectedOutput, output)
+			}
+		})
+
+	}
+}
