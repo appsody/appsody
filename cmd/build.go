@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -62,7 +63,7 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the Docker image to the image repository.")
-	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to.")
+	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
 	buildCmd.AddCommand(newSetupCmd(config))
 	return buildCmd
@@ -74,10 +75,6 @@ func build(config *buildCommandConfig) error {
 	// 2. docker build -t <project name> -f Dockerfile ./extracted
 
 	extractConfig := &extractCommandConfig{RootCommandConfig: config.RootCommandConfig}
-	extractErr := extract(extractConfig)
-	if extractErr != nil {
-		return extractErr
-	}
 
 	projectName, perr := getProjectName(config.RootCommandConfig)
 	if perr != nil {
@@ -87,6 +84,14 @@ func build(config *buildCommandConfig) error {
 	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
 	dockerfile := filepath.Join(extractDir, "Dockerfile")
 	buildImage := projectName //Lowercased
+
+	// Regardless of pass or fail, remove the local extracted folder
+	defer os.RemoveAll(extractDir)
+
+	extractErr := extract(extractConfig)
+	if extractErr != nil {
+		return extractErr
+	}
 
 	// If a tag is specified, change the buildImage
 	if config.tag != "" {
@@ -108,13 +113,15 @@ func build(config *buildCommandConfig) error {
 		cmdArgs = append(cmdArgs, options...)
 	}
 
-	labels, err := getLabels(config)
+	labels, err := getLabels(config.RootCommandConfig)
 	if err != nil {
 		return err
 	}
 
+	labelPairs := createLabelPairs(labels)
+
 	// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
-	for _, label := range labels {
+	for _, label := range labelPairs {
 		cmdArgs = append(cmdArgs, "--label", label)
 	}
 
@@ -125,7 +132,7 @@ func build(config *buildCommandConfig) error {
 	if execError != nil {
 		return execError
 	}
-	if config.push {
+	if config.pushURL != "" || config.push {
 
 		err := DockerPush(buildImage, config.Dryrun)
 		if err != nil {
@@ -135,18 +142,19 @@ func build(config *buildCommandConfig) error {
 	if !config.Dryrun {
 		Info.log("Built docker image ", buildImage)
 	}
+
 	return nil
 }
 
-func getLabels(config *buildCommandConfig) ([]string, error) {
-	var labels []string
+func getLabels(config *RootCommandConfig) (map[string]string, error) {
+	var labels = make(map[string]string)
 
-	stackLabels, err := getStackLabels(config.RootCommandConfig)
+	stackLabels, err := getStackLabels(config)
 	if err != nil {
 		return labels, err
 	}
 
-	projectConfig, projectConfigErr := getProjectConfig(config.RootCommandConfig)
+	projectConfig, projectConfigErr := getProjectConfig(config)
 	if projectConfigErr != nil {
 		return labels, projectConfigErr
 	}
@@ -156,35 +164,102 @@ func getLabels(config *buildCommandConfig) ([]string, error) {
 		return labels, err
 	}
 
-	gitLabels, err := getGitLabels(config.RootCommandConfig)
+	gitLabels, err := getGitLabels(config)
 	if err != nil {
 		Info.log(err)
 	}
 
 	for key, value := range stackLabels {
-
-		key = strings.Replace(key, "org.opencontainers.image", "dev.appsody.stack", -1)
+		key = strings.Replace(key, ociKeyPrefix, appsodyStackKeyPrefix, 1)
+		key = strings.Replace(key, appsodyImageCommitKeyPrefix, appsodyStackKeyPrefix+"commit.", 1)
 
 		// This is temporarily until we update the labels in stack dockerfile
 		if key == "appsody.stack" {
-			key = "dev.appsody.stack.id"
+			key = "dev.appsody.stack.tag"
 		}
 
 		delete(configLabels, key)
 
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		labels[key] = value
 	}
 
 	for key, value := range configLabels {
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		labels[key] = value
 	}
 
 	for key, value := range gitLabels {
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		labels[key] = value
 	}
 
 	return labels, nil
+}
+
+func convertLabelsToKubeFormat(labels map[string]string) map[string]string {
+	var kubeLabels = make(map[string]string)
+
+	for key, value := range labels {
+		newKey, err := ConvertLabelToKubeFormat(key)
+		if err != nil {
+			Debug.logf("Skipping image label \"%s\" - %v", key, err)
+		} else {
+			kubeLabels[newKey] = value
+		}
+	}
+
+	return kubeLabels
+}
+
+func ConvertLabelToKubeFormat(key string) (string, error) {
+	// regular expression to strip off the domain prefix
+	// this matches anything starting with an alphanumeric, followed by
+	// alphanumerics or dots, and ending with a dot
+	regex, err := regexp.Compile(`^[a-z0-9A-Z][a-z0-9A-Z.]*\.`)
+	if err != nil {
+		return "", err
+	}
+	loc := regex.FindStringIndex(key)
+	var prefix string
+	var name string
+	if loc == nil {
+		// did not start with a domain so there will be no prefix
+		prefix = ""
+		name = key
+	} else {
+		prefix = key[0:loc[1]]
+		name = key[loc[1]:]
+		// reverse the prefix domain
+		domainSections := strings.Split(prefix, ".")
+		newPrefix := ""
+		for i := len(domainSections) - 1; i >= 0; i-- {
+			if domainSections[i] != "" {
+				newPrefix += domainSections[i]
+				if i > 0 {
+					newPrefix += "."
+				}
+			}
+		}
+		prefix = newPrefix + "/"
+	}
+	if name == "" {
+		return "", errors.New("Invalid kubernetes metadata name. Must not be empty")
+	}
+	if len(prefix) > 253 {
+		return "", errors.New("Invalid kubernetes metadata prefix. Must be less than 253 characters")
+	}
+	match, err := IsValidKubernetesLabelValue(name)
+	if !match {
+		return "", errors.Errorf("Invalid kubernetes metadata name. %v", err)
+	}
+	return prefix + name, nil
+}
+
+func createLabelPairs(labels map[string]string) []string {
+	var labelsArr []string
+
+	for key, value := range labels {
+		labelString := fmt.Sprintf("%s=%s", key, value)
+		labelsArr = append(labelsArr, labelString)
+	}
+
+	return labelsArr
 }

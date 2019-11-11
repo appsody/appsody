@@ -71,15 +71,17 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// 3. build a docker image
 	// 4. create/update an appsody repo for the stack
 
+	var imageNamespace string
+
 	var stackPackageCmd = &cobra.Command{
 		Use:   "package",
 		Short: "Package a stack in the local Appsody environment",
 		Long: `This command is a tool for stack developers to package a stack from their local Appsody development environment. Once the stack is packaged it can then be tested via Appsody commands. The package command performs the following:
-- Creates/updates an index file named "index-dev-local.yaml" and stores it in .appsody/stacks/dev.local
+- Creates/updates an index file named "dev.local-index.yaml" and stores it in .appsody/stacks/dev.local
 - Creates a tar.gz for each stack template and stores it in .appsody/stacks/dev.local
 - Builds a Docker image named "dev.local/[stack name]:SNAPSHOT"
-- Creates an Appsody repository named "dev-local"
-- Adds/updates the "dev-local" repository of your Appsody configuration`,
+- Creates an Appsody repository named "dev.local"
+- Adds/updates the "dev.local" repository of your Appsody configuration`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.Log("******************************************")
@@ -115,7 +117,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			stackID := filepath.Base(stackPath)
 			Debug.Log("stackName is: ", stackID)
 
-			indexFileLocal := filepath.Join(devLocal, "index-dev-local.yaml")
+			indexFileLocal := filepath.Join(devLocal, "dev.local-index.yaml")
 			Debug.Log("indexFileLocal is: ", indexFileLocal)
 
 			// create IndexYaml struct and populate the APIVersion and Stacks header
@@ -176,7 +178,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// docker build
 			// create the image name to be used for the docker image
-			buildImage := "dev.local/" + stackID + ":SNAPSHOT"
+			buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
 
 			imageDir := filepath.Join(stackPath, "image")
 			Debug.Log("imageDir is: ", imageDir)
@@ -314,18 +316,32 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			if repoErr != nil {
 				return repoErr
 			}
-			// See if a configured repo already points to the local index file
-			repoName := ""
-			for _, repo := range repos.Repositories {
-				if strings.Contains(repo.URL, indexFileLocal) {
-					repoName = repo.Name
-					break
+			// See if a configured repo already points to dev.local, if so remove it
+			repoName := "dev.local"
+
+			repo := repos.GetRepo(repoName)
+			if repo == nil || !strings.Contains(repo.URL, indexFileLocal) {
+				// the repo is setup wrong, delete and recreate it
+				if repo != nil {
+					Info.logf("Appsody repo %s is configured with the wrong URL. Deleting and recreating it.", repoName)
+					repos.Remove(repoName)
 				}
-			}
-			if repoName == "" {
-				repoName = "dev.local"
-				// could not find existing repo, so create it
-				// create an appsody repo for the stack
+				// check for a different repo with the same file url
+				var repoNameToDelete string
+				for _, repo := range repos.Repositories {
+					if strings.Contains(repo.URL, indexFileLocal) {
+						repoNameToDelete = repo.Name
+						break
+					}
+				}
+				if repoNameToDelete != "" {
+					Info.logf("Appsody repo %s is configured with %s's URL. Deleting it to setup %s.", repoNameToDelete, repoName, repoName)
+					repos.Remove(repoNameToDelete)
+				}
+				err = repos.WriteFile(getRepoFileLocation(rootConfig))
+				if err != nil {
+					return errors.Errorf("Error writing to repo file %s. %v", getRepoFileLocation(rootConfig), err)
+				}
 				Info.Logf("Creating %s repository", repoName)
 				_, err = AddLocalFileRepo(repoName, indexFileLocal)
 				if err != nil {
@@ -338,6 +354,9 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			return nil
 		},
 	}
+
+	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
+
 	return stackPackageCmd
 }
 
@@ -347,11 +366,21 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
 		Info.log(err)
-	}
+	} else {
+		if branchURL, ok := gitLabels[ociKeyPrefix+"source"]; ok {
+			if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {
+				branchURL += contextDir
+				gitLabels[ociKeyPrefix+"url"] = branchURL
+			}
+			// These are enforced by the stack lint so they should exist
+			gitLabels[ociKeyPrefix+"documentation"] = branchURL + "/README.md"
+			gitLabels[ociKeyPrefix+"source"] = branchURL + "/image"
+		}
 
-	for key, value := range gitLabels {
-		labelString := fmt.Sprintf("%s=%s", key, value)
-		labels = append(labels, labelString)
+		for key, value := range gitLabels {
+			labelString := fmt.Sprintf("%s=%s", key, value)
+			labels = append(labels, labelString)
+		}
 	}
 
 	// build a ProjectConfig struct from the stackyaml so we can reuse getConfigLabels() func

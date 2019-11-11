@@ -26,9 +26,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+
+	//"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 type deployCommandConfig struct {
@@ -38,16 +41,26 @@ type deployCommandConfig struct {
 }
 
 type AppsodyApplication struct {
-	APIVersion string   `yaml:"apiVersion"`
-	Kind       string   `yaml:"kind"`
-	Metadata   Metadata `yaml:"metadata"`
-	Spec       Spec     `yaml:"spec"`
+	APIVersion string                         `yaml:"apiVersion" json:"apiVersion"`
+	Kind       string                         `yaml:"kind" json:"kind"`
+	Metadata   Metadata                       `yaml:"metadata" json:"metadata"`
+	Spec       v1beta1.AppsodyApplicationSpec `yaml:"spec" json:"spec"`
 }
 type Metadata struct {
-	Name string `yaml:"name"`
+	Name        string            `yaml:"name" json:"name"`
+	Labels      map[string]string `yaml:"labels" json:"labels"`
+	Annotations map[string]string `yaml:"annotations" json:"annotations"`
 }
-type Spec struct {
-	ApplicationImage string `yaml:"applicationImage"`
+
+//These are the current supported labels for Kubernetes,
+//the rest of the labels provided will be annotations.
+var supportedKubeLabels = []string{
+	"image.opencontainers.org/title",
+	"image.opencontainers.org/version",
+	"image.opencontainers.org/licenses",
+	"stack.appsody.dev/id",
+	"stack.appsody.dev/version",
+	"app.appsody.dev/name",
 }
 
 func findNamespaceRepositoryAndTag(image string) string {
@@ -165,7 +178,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			}
 			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
 			buildConfig.Verbose = config.Verbose
-			if config.push {
+			if config.pushURL != "" || config.push {
 				pushPath := deployImage
 				if config.pushURL != "" {
 
@@ -288,7 +301,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 	deployCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push this image to an external Docker registry. Assumes that you have previously successfully done docker login")
 	deployCmd.PersistentFlags().BoolVar(&config.knative, "knative", false, "Deploy as a Knative Service")
-	deployCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "Remote repository to push image to.")
+	deployCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "Remote repository to push image to.  This will also trigger a push if the --push flag is not specified.")
 	deployCmd.PersistentFlags().StringVar(&config.pullURL, "pull-url", "", "Remote repository to pull image from.")
 	deployCmd.AddCommand(newDeleteDeploymentCmd(config))
 	return deployCmd
@@ -453,7 +466,9 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 	if removeErr != nil {
 		Error.log("containerRemove error ", removeErr)
 	}
+
 	yamlReader, err := ioutil.ReadFile(configFile)
+
 	if !config.Dryrun && err != nil {
 		if os.IsNotExist(err) {
 			return errors.Errorf("Config file does not exist %s. ", configFile)
@@ -511,13 +526,35 @@ func generateDeploymentConfig(config *deployCommandConfig) error {
 		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(imageName), -1)
 		output = bytes.Replace(output, []byte("APPSODY_STACK"), []byte(stack), -1)
 		output = bytes.Replace(output, []byte("APPSODY_PORT"), []byte(portStr), -1)
-		knativeString := "  createKnativeService: " + strconv.FormatBool(config.knative)
-		lastChar := output[len(output)-1:]
 
-		if bytes.Equal([]byte("\n"), lastChar) {
-			output = append(output, []byte(knativeString)...)
-		} else {
-			output = append(output, []byte("\n"+knativeString)...)
+		var appsodyApplication AppsodyApplication
+		err = yaml.Unmarshal(output, &appsodyApplication)
+		if err != nil {
+			return err
+		}
+
+		labels, err := getLabels(config.RootCommandConfig)
+		if err != nil {
+			return errors.Errorf("Could not get labels: %s", err)
+		}
+
+		labels = convertLabelsToKubeFormat(labels)
+
+		var selectedLabels = make(map[string]string)
+		for _, label := range supportedKubeLabels {
+			if labels[label] != "" {
+				selectedLabels[label] = labels[label]
+				delete(labels, label)
+			}
+		}
+
+		appsodyApplication.Metadata.Labels = selectedLabels
+		appsodyApplication.Metadata.Annotations = labels
+		appsodyApplication.Spec.CreateKnativeService = &config.knative
+
+		output, err = yaml.Marshal(appsodyApplication)
+		if err != nil {
+			return errors.Errorf("Could not marshall AppsodyApplication to YAML when generating the app-deploy.yaml: %s", err)
 		}
 
 		err = ioutil.WriteFile(configFile, output, 0666)
