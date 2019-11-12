@@ -621,7 +621,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
 		} else if err := checkValidLicense(projectConfig.License); err != nil {
-			return labels, errors.Errorf("The .appsody-config.yaml SPDX license ID is invalid: %v.", err)
+			return labels, errors.Errorf("The stack.yaml SPDX license ID is invalid: %v.", err)
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
 	}
