@@ -825,97 +825,6 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 
 }
 
-//GenKnativeYaml generates a simple yaml for KNative serving
-func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, deployImage string, pullImage bool, configFile string, dryrun bool) (fileName string, yamlErr error) {
-	// KNative serving YAML representation in a struct
-	type Y struct {
-		APIVersion string `yaml:"apiVersion"`
-		Kind       string `yaml:"kind"`
-		Metadata   struct {
-			Name      string `yaml:"name"`
-			Namespace string `yaml:"namespace,omitempty"`
-		} `yaml:"metadata"`
-		Spec struct {
-			RunLatest struct {
-				Configuration struct {
-					RevisionTemplate struct {
-						Spec struct {
-							Container struct {
-								Image           string           `yaml:"image"`
-								ImagePullPolicy string           `yaml:"imagePullPolicy"`
-								Ports           []map[string]int `yaml:"ports"`
-							} `yaml:"container"`
-						} `yaml:"spec"`
-					} `yaml:"revisionTemplate"`
-				} `yaml:"configuration"`
-			} `yaml:"runLatest"`
-		} `yaml:"spec"`
-	}
-	yamlMap := Y{}
-	err := yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
-	//Set the name
-	yamlMap.Metadata.Name = serviceName
-	//Set the image
-	yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Image = deployImage
-	//Set the image pull policy to Never if we're not pushing an image to a registry
-	if !pullImage {
-		yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.ImagePullPolicy = "Never"
-	}
-	//Set the containerPort
-	ports := yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Ports
-	if len(ports) > 1 {
-		//KNative only allows a single port entry
-		Warning.log("KNative yaml template defines more than one port. This is invalid.")
-	}
-
-	if len(ports) >= 1 {
-		found := false
-		for _, thePort := range ports {
-			Debug.log("Detected KNative template port: ", thePort)
-			_, found = thePort["containerPort"]
-			if found {
-				Debug.log("YAML template defined a single port - setting it to: ", deployPort)
-				thePort["containerPort"] = deployPort
-				break
-			}
-		}
-		if !found {
-			//This template is invalid because the only value that's allowed is containerPort
-			Warning.log("The Knative template defines a port with a key other than containerPort. This is invalid.")
-			Warning.log("Adding containerPort - you will have to edit the yaml file manually.")
-			newPort := map[string]int{"containerPort": deployPort}
-			ports = append(ports, newPort)
-			yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Ports = ports
-		}
-	} else { //no ports defined
-		var newPorts [1]map[string]int
-		newPorts[0] = map[string]int{"containerPort": deployPort}
-		yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Ports = newPorts[:]
-	}
-	if err != nil {
-		Error.log("Could not create the YAML structure from template. Exiting.")
-		return "", err
-	}
-	Debug.logf("YAML map: \n%v\n", yamlMap)
-	yamlStr, err := yaml.Marshal(&yamlMap)
-	if err != nil {
-		Error.log("Could not create the YAML string from Map. Exiting.")
-		return "", err
-	}
-	Debug.logf("Generated YAML: \n%s\n", yamlStr)
-	// Generate file based on supplied config, defaulting to app-deploy.yaml
-	yamlFile := configFile
-	if dryrun {
-		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
-		return yamlFile, nil
-	}
-	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
-	if err != nil {
-		return "", fmt.Errorf("Could not create the yaml file for KNative deployment %v", err)
-	}
-	return yamlFile, nil
-}
-
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
 func GenDeploymentYaml(appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
 
@@ -1362,26 +1271,6 @@ func getIngressPort(config *RootCommandConfig) int {
 	}
 	Debug.Logf("Error converting port %s - returning 0: %v", ports[0], err)
 	return 0
-}
-
-func getKNativeTemplate() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Always
-            ports:
-            - containerPort: 8080
-`
-	return yamltempl
 }
 
 // DockerTag tags a docker image

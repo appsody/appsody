@@ -16,13 +16,20 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/yaml"
+
+	"bytes"
+	"strconv"
 )
 
 type buildCommandConfig struct {
@@ -32,6 +39,20 @@ type buildCommandConfig struct {
 	buildahBuildOptions string
 	pushURL             string
 	push                bool
+	pullURL             string
+	appDeployFile       string
+	knative             bool
+}
+
+//These are the current supported labels for Kubernetes,
+//the rest of the labels provided will be annotations.
+var supportedKubeLabels = []string{
+	"image.opencontainers.org/title",
+	"image.opencontainers.org/version",
+	"image.opencontainers.org/licenses",
+	"stack.appsody.dev/id",
+	"stack.appsody.dev/version",
+	"app.appsody.dev/name",
 }
 
 func checkDockerBuildOptions(options []string) error {
@@ -76,6 +97,9 @@ If you want to push the built image to an image repository using the [--push] op
 	buildCmd.PersistentFlags().StringVar(&config.buildahBuildOptions, "buildah-options", "", "Specify the buildah build options to use. Value must be in \"\".")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the container image to the image repository.")
 	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
+	buildCmd.PersistentFlags().StringVar(&config.pullURL, "pull-url", "", "Remote repository to pull image from.")
+	buildCmd.PersistentFlags().BoolVar(&config.knative, "knative", false, "Deploy as a Knative Service")
+	buildCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
 
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
 	buildCmd.AddCommand(newSetupCmd(config))
@@ -169,6 +193,12 @@ func build(config *buildCommandConfig) error {
 	}
 	if !config.Dryrun {
 		Info.log("Built docker image ", buildImage)
+	}
+
+	// Generate app-deploy
+	err = generateDeploymentConfig(config)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -290,4 +320,208 @@ func CreateLabelPairs(labels map[string]string) []string {
 	}
 
 	return labelsArr
+}
+
+func generateDeploymentConfig(config *buildCommandConfig) error {
+	containerConfigDir := "/config/app-deploy.yaml"
+	configFile := config.appDeployFile
+
+	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
+	if configErr != nil {
+		return configErr
+	}
+	err := CheckPrereqs()
+	if err != nil {
+		Warning.logf("Failed to check prerequisites: %v\n", err)
+	}
+	stackImage := projectConfig.Stack
+	Debug.log("Stack image: ", stackImage)
+	Debug.log("Config directory: ", containerConfigDir)
+
+	exists, err := Exists(configFile)
+	if err != nil {
+		return errors.Errorf("Error checking status of %s", configFile)
+	}
+
+	if exists {
+		Info.log("Found existing deployment manifest ", configFile)
+		updateDeploymentConfig(config)
+		Info.log("Updated existing deployment manifest ", configFile)
+		return nil
+	}
+
+	var cmdName string
+	var cmdArgs []string
+	pullErr := pullImage(stackImage, config.RootCommandConfig)
+	if pullErr != nil {
+		return pullErr
+	}
+	extractContainerName := defaultExtractContainerName(config.RootCommandConfig)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		err := dockerStop(extractContainerName, config.Dryrun)
+		if err != nil {
+			Error.log(err)
+		}
+		os.Exit(1)
+	}()
+	cmdName = "docker"
+	var configDir string
+	cmdArgs = []string{"--name", extractContainerName}
+
+	cmdArgs = append([]string{"create"}, cmdArgs...)
+	cmdArgs = append(cmdArgs, stackImage)
+	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
+	if err != nil {
+		Error.log("docker create command failed: ", err)
+
+		// TODO: We shouldn't remove the container if it already exists
+		removeErr := containerRemove(extractContainerName, false, config.Dryrun)
+		if removeErr != nil {
+			Error.log("Error in containerRemove", removeErr)
+		}
+		return err
+	}
+	configDir = extractContainerName + ":" + containerConfigDir
+
+	cmdArgs = []string{"cp", configDir, "./" + configFile}
+	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
+
+	removeErr := containerRemove(extractContainerName, false, config.Dryrun)
+	if removeErr != nil {
+		Error.log("containerRemove error ", removeErr)
+	}
+
+	if err != nil {
+		return errors.Errorf("docker cp command failed: %v", err)
+	}
+
+	yamlReader, err := ioutil.ReadFile(configFile)
+
+	if !config.Dryrun && err != nil {
+		if os.IsNotExist(err) {
+			return errors.Errorf("Config file does not exist %s. ", configFile)
+
+		}
+		return errors.Errorf("Failed reading file %s", configFile)
+
+	}
+
+	projectName, perr := getProjectName(config.RootCommandConfig)
+	if perr != nil {
+		return errors.Errorf("%v", perr)
+	}
+
+	port, err := getEnvVarInt("PORT", config.RootCommandConfig)
+	if err != nil {
+		//try and get the exposed ports and use the first one
+		Warning.log("Could not detect a container port (PORT env var).")
+		portsStr, portsErr := getExposedPorts(config.RootCommandConfig)
+		if portsErr != nil {
+			return portsErr
+		}
+		if len(portsStr) == 0 {
+			//No ports exposed
+			Warning.log("This container exposes no ports. The service will not be accessible.")
+			port = 0 //setting this to 0
+		} else {
+			portStr := portsStr[0]
+			Warning.log("Picking the first exposed port as the KNative service port. This may not be the correct port.")
+			port, err = strconv.Atoi(portStr)
+			if err != nil {
+				Warning.log("The exposed port is not a valid integer. The service will not be accessible.")
+				port = 0
+			}
+		}
+	}
+	portStr := strconv.Itoa(port)
+
+	split := strings.Split(stackImage, ":")
+	stack := split[len(split)-2]
+	split = strings.Split(stack, "/")
+	stack = split[len(split)-1]
+
+	imageName := "dev.local/" + projectName
+
+	if !config.Dryrun {
+		output := bytes.Replace(yamlReader, []byte("APPSODY_PROJECT_NAME"), []byte(projectName), -1)
+		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(imageName), -1)
+		output = bytes.Replace(output, []byte("APPSODY_STACK"), []byte(stack), -1)
+		output = bytes.Replace(output, []byte("APPSODY_PORT"), []byte(portStr), -1)
+
+		err = ioutil.WriteFile(configFile, output, 0666)
+		if err != nil {
+			return errors.Errorf("Failed to write local application configuration file: %s", err)
+		}
+
+		updateDeploymentConfig(config)
+	} else {
+		Info.logf("Dry run skipped construction of file %s", configFile)
+	}
+	Info.log("Created deployment manifest: ", configFile)
+	return nil
+}
+
+func updateDeploymentConfig(config *buildCommandConfig) error {
+	configFile := config.appDeployFile
+
+	appsodyApplication, err := getAppsodyApplication(configFile)
+	if err != nil {
+		return err
+	}
+
+	labels, err := getLabels(config.RootCommandConfig)
+	if err != nil {
+		return errors.Errorf("Could not get labels: %s", err)
+	}
+
+	labels = convertLabelsToKubeFormat(labels)
+
+	var selectedLabels = make(map[string]string)
+	for _, label := range supportedKubeLabels {
+		if labels[label] != "" {
+			selectedLabels[label] = labels[label]
+			delete(labels, label)
+		}
+	}
+
+	appsodyApplication.Metadata.Labels = selectedLabels
+	appsodyApplication.Metadata.Annotations = labels
+	appsodyApplication.Spec.CreateKnativeService = &config.knative
+
+	imageName := appsodyApplication.Spec.ApplicationImage
+	if config.tag != "" {
+		imageName = config.tag
+	}
+
+	if config.pullURL != "" {
+		imageName = config.pullURL + "/" + findNamespaceRepositoryAndTag(imageName)
+	}
+
+	appsodyApplication.Spec.ApplicationImage = imageName
+
+	err = writeAppsodyApplication(appsodyApplication, config)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeAppsodyApplication(appsodyApplication AppsodyApplication, config *buildCommandConfig) error {
+	configFile := config.appDeployFile
+
+	output, err := yaml.Marshal(appsodyApplication)
+	if err != nil {
+		return errors.Errorf("Could not marshall AppsodyApplication to YAML when updating the app-deploy.yaml: %s", err)
+	}
+
+	err = ioutil.WriteFile(configFile, output, 0666)
+	if err != nil {
+		return errors.Errorf("Failed to write local application configuration file: %s", err)
+	}
+
+	return nil
 }
