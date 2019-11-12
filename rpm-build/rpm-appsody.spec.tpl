@@ -12,7 +12,7 @@ Group: System
 Packager: Michele Chilanti
 Requires: bash
 Source0: %{name}
-Source1: CONTROLLER_BASE_URL/%{name}-controller
+#Source1: CONTROLLER_BASE_URL/%{name}-controller
 
 %description
 The PACKAGE_NAME Command-line Interface 
@@ -34,12 +34,12 @@ mkdir -p %{buildroot}/%{_bindir}
 # mkdir -p %{buildroot}/%{_datadir}/.appsody
 #
 install -m 0755 %{SOURCE0} %{buildroot}/%{_bindir}
-install -m 0755 %{SOURCE1} %{buildroot}/%{_bindir}
+#install -m 0755 %{SOURCE1} %{buildroot}/%{_bindir}
 
 
 %files
 %{_bindir}/%{name}
-%{_bindir}/%{name}-controller
+#%{_bindir}/%{name}-controller
 
 %pre
 

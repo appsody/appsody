@@ -19,9 +19,10 @@ import (
 )
 
 var (
-	VERSION = "vlatest"
+	VERSION           = "vlatest"
+	CONTROLLERVERSION = "latest"
 )
 
 func main() {
-	cmd.Execute(VERSION)
+	cmd.Execute(VERSION, CONTROLLERVERSION)
 }
