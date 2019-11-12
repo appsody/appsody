@@ -53,7 +53,7 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var buildCmd = &cobra.Command{
 		Use:   "build",
 		Short: "Build a local container image of your Appsody project.",
-		Long: `Build a local container image of your Appsody project. The stack along with your Appsody project, is extracted to a local directory before the docker build is run.
+		Long: `Build a local container image of your Appsody project. The stack, along with your Appsody project, is extracted to a local directory before the docker build is run.
 
 By default, the built image is tagged with the project name that you specified when you initialised your Appsody project. If you did not specify a name, the image is tagged with the name of the directory at the root of your Appsody project.
 
