@@ -18,9 +18,11 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+
 	//"crypto/sha256"
 	"encoding/json"
 	"fmt"
+
 	//"hash"
 	"io"
 	"io/ioutil"
@@ -913,7 +915,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, mode string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -1003,7 +1005,7 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 	}
 
 	yamlMap := Deployment{}
-	yamlTemplate := getDeploymentTemplate()
+	yamlTemplate := getDeploymentTemplate(mode)
 	err = yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
 	if err != nil {
 		Error.log("Could not create the YAML structure from template. Exiting.")
@@ -1121,7 +1123,7 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 	}
 	return yamlFile, nil
 }
-func getDeploymentTemplate() string {
+func getDeploymentTemplate(mode string) string {
 	yamltempl := `
 apiVersion: apps/v1
 kind: Deployment
@@ -1150,7 +1152,7 @@ spec:
       - name: APPSODY_APP_NAME
         image: APPSODY_STACK
         imagePullPolicy: Always
-        command: ["/.appsody/appsody-controller"]
+        command: ["/.appsody/appsody-controller --mode="` + mode + `"]
         volumeMounts:
         - name: appsody-controller
           mountPath: /.appsody
