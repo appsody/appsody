@@ -1107,12 +1107,14 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		*volumeMounts = append(*volumeMounts, newVolumeMount)
 	}
 	// Dependencies mount
-
-	if depsMount != "" {
-		// Now the volume mount
-		depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
-		*volumeMounts = append(*volumeMounts, depVolumeMount)
-	}
+	// Issue #597: we remove this mount, since it doesn't seem to work with Python etc.
+	// And provides no benefit
+	/*
+		if depsMount != "" {
+			// Now the volume mount
+			depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
+			*volumeMounts = append(*volumeMounts, depVolumeMount)
+		}*/
 
 	//subPath := filepath.Base(pdir)
 	//workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
@@ -1807,14 +1809,9 @@ func getLatestVersion() string {
 func doVersionCheck(config *RootCommandConfig) {
 	var latest = getLatestVersion()
 	var currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
-
 	if latest != "" && VERSION != "vlatest" && VERSION != latest {
-		switch os := runtime.GOOS; os {
-		case "darwin":
-			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease run `brew upgrade appsody` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
-		default:
-			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
-		}
+		updateString := GetUpdateString(runtime.GOOS, VERSION, latest)
+		Warning.logf(updateString)
 	}
 
 	config.CliConfig.Set("lastversioncheck", currentTime)
@@ -1822,6 +1819,18 @@ func doVersionCheck(config *RootCommandConfig) {
 		Error.logf("Writing default config file %s", err)
 
 	}
+}
+
+// GetUpdateString Returns a format string to advise the user how to upgrade
+func GetUpdateString(osName string, version string, latest string) string {
+	var updateString string
+	switch osName {
+	case "darwin":
+		updateString = "Please run `brew upgrade appsody` to upgrade"
+	default:
+		updateString = "Please go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade"
+	}
+	return fmt.Sprintf("\n*\n*\n*\n\nA new CLI update is available.\n%s from %s --> %s.\n\n*\n*\n*\n", updateString, version, latest)
 }
 
 func getLastCheckTime(config *RootCommandConfig) string {

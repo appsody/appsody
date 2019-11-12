@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -65,7 +66,7 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use. Value must be in \"\".")
 	buildCmd.PersistentFlags().StringVar(&config.buildahBuildOptions, "buildah-options", "", "Specify the buildah build options to use. Value must be in \"\".")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the Docker image to the image repository.")
-	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to.")
+	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
 	buildCmd.AddCommand(newSetupCmd(config))
 	return buildCmd
@@ -90,10 +91,6 @@ func build(config *buildCommandConfig) error {
 	}
 
 	extractConfig := &extractCommandConfig{RootCommandConfig: config.RootCommandConfig}
-	extractErr := extract(extractConfig)
-	if extractErr != nil {
-		return extractErr
-	}
 
 	projectName, perr := getProjectName(config.RootCommandConfig)
 	if perr != nil {
@@ -103,6 +100,14 @@ func build(config *buildCommandConfig) error {
 	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
 	dockerfile := filepath.Join(extractDir, "Dockerfile")
 	buildImage := projectName //Lowercased
+
+	// Regardless of pass or fail, remove the local extracted folder
+	defer os.RemoveAll(extractDir)
+
+	extractErr := extract(extractConfig)
+	if extractErr != nil {
+		return extractErr
+	}
 
 	// If a tag is specified, change the buildImage
 	if config.tag != "" {
@@ -146,7 +151,7 @@ func build(config *buildCommandConfig) error {
 	if execError != nil {
 		return execError
 	}
-	if config.push {
+	if config.pushURL != "" || config.push {
 		err := ImagePush(buildImage, config.Buildah, config.Dryrun)
 		if err != nil {
 			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
