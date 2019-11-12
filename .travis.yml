@@ -18,14 +18,9 @@ stages:
   - name: deploy
     if: tag IS present
 
-#install-controller: &install-controller
-#  install:
-#      - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
-#      - make install-controller
-      
+     
 test-template: &test-template
   stage: test
-#  <<: *install-controller
   install: if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
   script: make cover
 
@@ -46,7 +41,6 @@ jobs:
       name: Unit Test on Windows
       os: windows
       script: 
-#      - choco install make
       - make unittest
     - name: Deploy Release
       stage: deploy
