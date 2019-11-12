@@ -102,14 +102,14 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			Debug.Log("stackPath is: ", stackPath)
 
 			// creates stackPath dir if it doesn't exist
-			err := os.MkdirAll(strings.Replace(stackPath, stackID, "", 1), 0777)
+			err := os.MkdirAll(stackPath, 0777)
 
 			if err != nil {
 				return errors.Errorf("Error creating stackPath: %v", err)
 			}
 
 			// make a copy of the folder to apply template to
-			err = copyDir(projectPath, stackPath)
+			err = CopyDir(projectPath, stackPath)
 			if err != nil {
 				os.RemoveAll(stackPath)
 				return errors.Errorf("Error trying to copy directory: %v", err)
@@ -211,16 +211,16 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			cmdArgs := []string{"-t", buildImage}
 
-			labels, err := getLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
+			labels, err := GetLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
 			if err != nil {
 				return err
 			}
 
 			// create the template metadata
-			var templateMetadata = createTemplateMap(labels, stackYaml, imageNamespace)
+			var templateMetadata = CreateTemplateMap(labels, stackYaml, imageNamespace)
 
 			// apply templating to stack
-			err = applyTemplating(projectPath, stackPath, templateMetadata)
+			err = ApplyTemplating(projectPath, stackPath, templateMetadata)
 
 			if err != nil {
 				return errors.Errorf("Error applying templating: %v", err)
@@ -398,7 +398,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	return stackPackageCmd
 }
 
-func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYaml, config *RootCommandConfig) (map[string]string, error) {
+// GetLabelsForStackImage - Gets labels associated with the stack image
+func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYaml, config *RootCommandConfig) (map[string]string, error) {
 	var labels = make(map[string]string)
 
 	gitLabels, err := getGitLabels(config)
@@ -442,9 +443,9 @@ func getLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	return labels, nil
 }
 
-// createTemplateMap uses the git labels, stack.yaml, stackID and imageNamespace to create a map
+// CreateTemplateMap - uses the git labels, stack.yaml, stackID and imageNamespace to create a map
 // with all the necessary data needed for the template
-func createTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string) map[string]interface{} {
+func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string) map[string]interface{} {
 
 	// split version number into major, minor and patch strings
 
@@ -470,7 +471,6 @@ func createTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	semver["minor"] = versionFull[1]
 	semver["patch"] = versionFull[2]
 	semver["majorminor"] = strings.Join(versionFull[0:2], ".")
-	semver["full"] = versionLabel
 	stack["semver"] = semver
 	// create image map add to templateMetadata map
 	var image = make(map[string]string)
@@ -493,13 +493,12 @@ func createTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 
 }
 
-// applyTemplating walks through the copied folder directory and applies a template using the
+// ApplyTemplating -  walks through the copied folder directory and applies a template using the
 // previously created templateMetada to all files in the target directory
-func applyTemplating(projectPath string, stackPath string, templateMetadata interface{}) error {
+func ApplyTemplating(projectPath string, stackPath string, templateMetadata interface{}) error {
 
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
-		// ignore .git folder
 		if info.IsDir() && info.Name() == ".git" {
 			return filepath.SkipDir
 		} else if !info.IsDir() {
