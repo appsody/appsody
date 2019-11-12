@@ -492,7 +492,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	// loop through user variables and add them to map, must begin with alphanumeric character
 	for key, value := range stackYaml.TemplatingData {
 
-		if reflect.TypeOf(key).Name() != "string" && reflect.TypeOf(key).Name() != "string" {
+		if reflect.TypeOf(key).Name() != "string" && reflect.TypeOf(value).Name() != "string" {
 
 			// validates that key starts with alphanumeric character
 			runes := []rune(key)
