@@ -1,8 +1,5 @@
 name: Starter Sample
 version: 0.1.1
-templating-data:
-  variable1: value1
-  variable2: value2
 description: Runnable starter stack, copy to create a new stack
 license: Apache-2.0
 language: bash
@@ -11,3 +8,6 @@ maintainers:
   email: henry.nash@uk.ibm.com
   github-id: henrynash
 default-template: simple
+templating-data:
+  variable1: value1
+  variable2: value2

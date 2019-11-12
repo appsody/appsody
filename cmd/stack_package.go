@@ -17,7 +17,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"text/template"
@@ -103,7 +102,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			Debug.Log("stackPath is: ", stackPath)
 
 			// creates stackPath dir if it doesn't exist
-			err := os.MkdirAll(stackPath, 0777)
+			err := os.MkdirAll(strings.Replace(stackPath, "packaging-"+stackID, "", 1), 0777)
 
 			if err != nil {
 				return errors.Errorf("Error creating stackPath: %v", err)
@@ -492,20 +491,14 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	// loop through user variables and add them to map, must begin with alphanumeric character
 	for key, value := range stackYaml.TemplatingData {
 
-		if reflect.TypeOf(key).Name() != "string" && reflect.TypeOf(value).Name() != "string" {
-
-			// validates that key starts with alphanumeric character
-			runes := []rune(key)
-			firstRune := runes[0]
-			if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
-				stack[key] = value
-			} else {
-				err = errors.Errorf("Variable name didn't start with alphanumeric character")
-			}
+		// validates that key starts with alphanumeric character
+		runes := []rune(key)
+		firstRune := runes[0]
+		if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
+			stack[key] = value
 		} else {
-			return templateMetadata, errors.Errorf("Variable and/or value is not of type string")
+			err = errors.Errorf("Variable name didn't start with alphanumeric character")
 		}
-
 	}
 	templateMetadata["stack"] = stack
 	return templateMetadata, err
