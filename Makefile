@@ -1,8 +1,6 @@
 .DEFAULT_GOAL := help
 
 #### Constant variables
-#export APPSODY_MOUNT_CONTROLLER ?= ${HOME}/.appsody/appsody-controller
-#CONTROLLER_DIR := $(shell dirname $(APPSODY_MOUNT_CONTROLLER))
 export STACKSLIST ?= incubator/nodejs
 # use -count=1 to disable cache and -p=1 to stream output live
 GO_TEST_COMMAND := go test -v -count=1 -p=1 -covermode=count -coverprofile=cover.out -coverpkg ./cmd
@@ -26,7 +24,6 @@ DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder:0.1.0
 GH_ORG ?= appsody
 export APPSODY_CONTROLLER_VERSION ?=0.3.0
-#CONTROLLER_BASE_URL := https://github.com/${GH_ORG}/controller/releases/download/$(APPSODY_CONTROLLER_VERSION)
 
 #### Dynamic variables. These change depending on the target name.
 # Gets the current os from the target name, e.g. the 'build-linux' target will result in os = 'linux'
@@ -40,18 +37,8 @@ package_binary = $(COMMAND)$(BINARY_EXT_$(os))
 .PHONY: all
 all: lint test package ## Run lint, test, build, and package
 
-# not PHONY, installs golangci-lint if it doesn't exist
-#$(APPSODY_MOUNT_CONTROLLER):
-#	wget $(CONTROLLER_BASE_URL)/appsody-controller
-#	mkdir -p $(CONTROLLER_DIR)
-#	mv appsody-controller $(APPSODY_MOUNT_CONTROLLER)
-#	chmod +x $(APPSODY_MOUNT_CONTROLLER)
-
-#.PHONY: install-controller
-#install-controller: $(APPSODY_MOUNT_CONTROLLER) ## Downloads the controller and install it to APPSODY_MOUNT_CONTROLLER if it doesn't already exist
-
 .PHONY: test
-test: install-controller ## Run the all the automated tests
+test: ## Run the all the automated tests
 	$(GO_TEST_COMMAND) ./... $(GO_TEST_LOGGING)
 
 
@@ -60,7 +47,7 @@ unittest: ## Run the automated unit tests
 	$(GO_TEST_COMMAND) ./cmd $(GO_TEST_LOGGING)
 
 .PHONY: functest
-functest: install-controller  ## Run the automated functional tests
+functest: ## Run the automated functional tests
 	$(GO_TEST_COMMAND) ./functest $(GO_TEST_LOGGING)
 
 
@@ -117,7 +104,6 @@ clean: ## Removes existing build artifacts in order to get a fresh build
 	rm -f $(GOLANGCI_LINT_BINARY)
 	rm -f $(DEP_BINARY)
 	rm -rf $(DOCS_PATH)
-	#rm $(APPSODY_MOUNT_CONTROLLER)
 	go clean
 
 .PHONY: build
