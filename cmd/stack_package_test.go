@@ -71,11 +71,6 @@ func TestTemplatingAllValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
-	//defer os.RemoveAll(stackPath)
-
-	t.Log(labels)
-
-	t.Logf("stackyaml: %v", stackYaml)
 
 	restoreLine := ""
 	projectFile, err := ioutil.ReadFile(projectPath + "/templates/simple/hello.sh")
@@ -104,6 +99,8 @@ func TestTemplatingAllValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	defer os.RemoveAll(stackPath)
+
 	// create the template metadata
 	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
 
@@ -117,14 +114,20 @@ func TestTemplatingAllValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	/*
-		stackFile, err := ioutil.ReadFile(stackPath + "/templates/simple/hello.sh")
-		if err != nil {
-			t.Fatal(err)
-		}
 
-		stackLines := strings.Split(string(stackFile), "\n")
-	*/
+	stackFile, err := ioutil.ReadFile(stackPath + "/templates/simple/hello.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stackLines := strings.Split(string(stackFile), "\n")
+
+	for _, line := range stackLines {
+		if line != "id: starter, name: Starter Sample, version: 0.1.1, description: Runnable starter stack, copy to create a new stack, created: 2019-11-12T13:46:10Z, tag: dev.local/starter:SNAPSHOT, maintainers: Henry Nash <henry.nash@uk.ibm.com>, semver.major: 0, semver.minor: 1, semver.patch: 1, semver.majorminor: 0.1, image.namespace: dev.local, customvariable1: value1, customvariable2: value2" {
+			t.Fatalf("Templating text does not match")
+		}
+	}
+
 	for i, line := range projectLines {
 		if line == "id: {{.stack.id}}, name: {{.stack.name}}, version: {{.stack.version}}, description: {{.stack.description}}, created: {{.stack.created}}, tag: {{.stack.tag}}, maintainers: {{.stack.maintainers}}, semver.major: {{.stack.semver.major}}, semver.minor: {{.stack.semver.minor}}, semver.patch: {{.stack.semver.patch}}, semver.majorminor: {{.stack.semver.majorminor}}, image.namespace: {{.stack.image.namespace}}, customvariable1: {{.stack.variable1}}, customvariable2: {{.stack.variable2}}" {
 			projectLines[i] = restoreLine
