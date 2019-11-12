@@ -31,7 +31,9 @@ func TestTemplatingNoTemplating(t *testing.T) {
 
 	imageNamespace, projectPath, stackPath, stackYaml, labels, err := setup()
 
-	cmd.CopyDir(projectPath, stackPath)
+	if err != nil {
+		t.Fatalf("Error during setup: %v", err)
+	}
 
 	err = cmd.CopyDir(projectPath, stackPath)
 
@@ -66,6 +68,9 @@ func TestTemplatingNoTemplating(t *testing.T) {
 func TestTemplatingAllValues(t *testing.T) {
 
 	imageNamespace, projectPath, stackPath, stackYaml, labels, err := setup()
+	if err != nil {
+		t.Fatalf("Error during setup: %v", err)
+	}
 	//defer os.RemoveAll(stackPath)
 
 	t.Log(labels)
@@ -139,19 +144,27 @@ func setup() (string, string, string, cmd.StackYaml, map[string]string, error) {
 
 	var rootConfig = &cmd.RootCommandConfig{}
 	var labels = map[string]string{}
+	var stackPath string
+	var stackYaml cmd.StackYaml
 	stackID := "starter"
 	imageNamespace := "dev.local"
 	buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
 	// sets stack path to be the copied folder
 	projectPath, err := filepath.Abs("./testdata/starter")
+
+	if err != nil {
+		return imageNamespace, projectPath, stackPath, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
+	}
+
 	rootConfig.ProjectDir = projectPath
 	rootConfig.Dryrun = false
-	cmd.InitConfig(rootConfig)
+	err = cmd.InitConfig(rootConfig)
 
-	stackPath := filepath.Join(rootConfig.CliConfig.GetString("home"), "stacks", "packaging-"+stackID)
+	if err != nil {
+		return imageNamespace, projectPath, stackPath, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
+	}
 
-	// get the necessary data from the current stack.yaml
-	var stackYaml cmd.StackYaml
+	stackPath = filepath.Join(rootConfig.CliConfig.GetString("home"), "stacks", "packaging-"+stackID)
 
 	source, err := ioutil.ReadFile(filepath.Join(projectPath, "stack.yaml"))
 	if err != nil {
