@@ -1005,12 +1005,15 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 	}
 
 	yamlMap := Deployment{}
-	yamlTemplate := getDeploymentTemplate(mode)
+	yamlTemplate := getDeploymentTemplate()
 	err = yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
 	if err != nil {
 		Error.log("Could not create the YAML structure from template. Exiting.")
 		return "", err
 	}
+	//Set the args
+	yamlMap.Spec.PodTemplate.Spec.Containers[0].Args = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Args, mode)
+
 	//Set the name
 	yamlMap.Metadata.Name = appName
 
@@ -1078,6 +1081,7 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 	} else {
 		yamlMap.Spec.PodTemplate.Spec.Volumes = append(yamlMap.Spec.PodTemplate.Spec.Volumes, &workspaceVolume)
 	}
+
 	//Set the code mounts
 	//We need to iterate through the docker mounts
 	volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
@@ -1123,7 +1127,7 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 	}
 	return yamlFile, nil
 }
-func getDeploymentTemplate(mode string) string {
+func getDeploymentTemplate() string {
 	yamltempl := `
 apiVersion: apps/v1
 kind: Deployment
@@ -1152,7 +1156,8 @@ spec:
       - name: APPSODY_APP_NAME
         image: APPSODY_STACK
         imagePullPolicy: Always
-        command: ["/.appsody/appsody-controller --mode="` + mode + `"]
+		command: ["/.appsody/appsody-controller"]
+		args: ["--mode"]
         volumeMounts:
         - name: appsody-controller
           mountPath: /.appsody
