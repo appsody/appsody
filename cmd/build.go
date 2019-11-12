@@ -345,7 +345,10 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 
 	if exists {
 		Info.log("Found existing deployment manifest ", configFile)
-		updateDeploymentConfig(config)
+		err := updateDeploymentConfig(config)
+		if err != nil {
+			return err
+		}
 		Info.log("Updated existing deployment manifest ", configFile)
 		return nil
 	}
@@ -456,7 +459,10 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 			return errors.Errorf("Failed to write local application configuration file: %s", err)
 		}
 
-		updateDeploymentConfig(config)
+		err = updateDeploymentConfig(config)
+		if err != nil {
+			return errors.Errorf("Failed to update deployment config file: %s", err)
+		}
 	} else {
 		Info.logf("Dry run skipped construction of file %s", configFile)
 	}

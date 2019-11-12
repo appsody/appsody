@@ -97,11 +97,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			buildConfig.buildahBuildOptions = config.buildahBuildOptions
 
 			buildConfig.tag = config.tag
-
-			if config.pullURL != "" {
-				buildConfig.pullURL = config.pullURL
-			}
-
+			buildConfig.pullURL = config.pullURL
 			buildConfig.knative = knative
 			buildConfig.appDeployFile = configFile
 
@@ -165,6 +161,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			return nil
 		},
 	}
+
 	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "Only generate the deployment configuration file. Do not deploy the project.")
 	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
 	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "default", "Target namespace in your Kubernetes cluster")
