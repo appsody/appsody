@@ -102,7 +102,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			Debug.Log("stackPath is: ", stackPath)
 
 			// creates stackPath dir if it doesn't exist
-			err := os.MkdirAll(strings.Replace(stackPath, "packaging-"+stackID, "", 1), 0777)
+			err := os.MkdirAll(filepath.Dir(stackPath), 0777)
 
 			if err != nil {
 				return errors.Errorf("Error creating stackPath: %v", err)
@@ -127,6 +127,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			err = yaml.Unmarshal(source, &stackYaml)
+
 			if err != nil {
 				return errors.Errorf("Error trying to unmarshall: %v", err)
 			}
