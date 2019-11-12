@@ -223,7 +223,12 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			return errors.Errorf("Error downloading tar %v", err)
 
 		}
-		Info.log("Download complete. Extracting files from ", filename)
+		if inputTemplateName != "none" {
+			Info.log("Download complete. Extracting files from ", filename)
+		} else {
+			Info.log("Download complete. Do not unzip the template project. Only extracting .appsody-config.yaml file from ", filename)
+		}
+
 		//if noTemplate
 		errUntar := untar(filename, noTemplate, config.overwrite, config.Dryrun)
 
@@ -241,7 +246,6 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			Info.log("If you wish to proceed and overwrite files in the current directory, try again with the --overwrite option.")
 			// this leave the tar file in the dir
 			return errors.Errorf("Error extracting project template: %v", errUntar)
-
 		}
 
 	}
@@ -249,7 +253,14 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if err != nil {
 		return err
 	}
-	Info.log("Successfully initialized Appsody project")
+	if template == "" {
+		Info.logf("Successfully initialized Appsody project with the %s stack and the default template.", stack)
+	} else if template != "none" {
+		Info.logf("Successfully initialized Appsody project with the %s stack and the %s template.", stack, template)
+	} else {
+		Info.logf("Successfully initialized Appsody project with the %s stack and no template.", stack)
+	}
+
 	return nil
 }
 
