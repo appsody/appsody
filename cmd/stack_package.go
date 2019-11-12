@@ -17,6 +17,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"text/template"
@@ -217,7 +218,11 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 
 			// create the template metadata
-			var templateMetadata = CreateTemplateMap(labels, stackYaml, imageNamespace)
+			templateMetadata, err := CreateTemplateMap(labels, stackYaml, imageNamespace)
+
+			if err != nil {
+				return errors.Errorf("Error creating templating mal: %v", err)
+			}
 
 			// apply templating to stack
 			err = ApplyTemplating(projectPath, stackPath, templateMetadata)
@@ -445,18 +450,23 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 
 // CreateTemplateMap - uses the git labels, stack.yaml, stackID and imageNamespace to create a map
 // with all the necessary data needed for the template
-func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string) map[string]interface{} {
-
-	// split version number into major, minor and patch strings
-
-	versionLabel := labels[ociKeyPrefix+"version"]
-	versionFull := strings.Split(versionLabel, ".")
-
-	// Create map that holds stack variables
+func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string) (map[string]interface{}, error) {
 
 	// create stack variables and add to templateMetadata map
 	var templateMetadata = make(map[string]interface{})
 
+	// split version number into major, minor and patch strings
+	var err error
+
+	versionLabel := labels[ociKeyPrefix+"version"]
+	versionFull := strings.Split(versionLabel, ".")
+
+	if len(versionFull) != 3 {
+		err = errors.Errorf("Verison format incorrect")
+		return templateMetadata, err
+	}
+
+	// create map that holds stack variables
 	var stack = make(map[string]interface{})
 	stack["id"] = labels[appsodyStackKeyPrefix+"id"]
 	stack["name"] = labels[ociKeyPrefix+"title"]
@@ -465,6 +475,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	stack["created"] = labels[ociKeyPrefix+"created"]
 	stack["tag"] = labels[appsodyStackKeyPrefix+"tag"]
 	stack["maintainers"] = labels[ociKeyPrefix+"authors"]
+
 	// create version map and add to templateMetadata map
 	var semver = make(map[string]string)
 	semver["major"] = versionFull[0]
@@ -472,6 +483,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	semver["patch"] = versionFull[2]
 	semver["majorminor"] = strings.Join(versionFull[0:2], ".")
 	stack["semver"] = semver
+
 	// create image map add to templateMetadata map
 	var image = make(map[string]string)
 	image["namespace"] = imageNamespace
@@ -480,16 +492,23 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	// loop through user variables and add them to map, must begin with alphanumeric character
 	for key, value := range stackYaml.TemplatingData {
 
-		// validates that key starts with alphanumeric character
-		runes := []rune(key)
-		firstRune := runes[0]
-		if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
-			stack[key] = value
-		}
-	}
+		if reflect.TypeOf(key).Name() != "string" && reflect.TypeOf(key).Name() != "string" {
 
+			// validates that key starts with alphanumeric character
+			runes := []rune(key)
+			firstRune := runes[0]
+			if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
+				stack[key] = value
+			} else {
+				err = errors.Errorf("Variable name didn't start with alphanumeric character")
+			}
+		} else {
+			return templateMetadata, errors.Errorf("Variable and/or value is not of type string")
+		}
+
+	}
 	templateMetadata["stack"] = stack
-	return templateMetadata
+	return templateMetadata, err
 
 }
 

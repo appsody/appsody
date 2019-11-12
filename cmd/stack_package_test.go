@@ -30,11 +30,23 @@ import (
 func TestTemplatingNoTemplating(t *testing.T) {
 
 	imageNamespace, projectPath, stackPath, stackYaml, labels, err := setup()
+
 	cmd.CopyDir(projectPath, stackPath)
+
+	err = cmd.CopyDir(projectPath, stackPath)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	defer os.RemoveAll(stackPath)
 
 	// create the template metadata
-	var templateMetadata = cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
+	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// apply templating to stack
 	err = cmd.ApplyTemplating(projectPath, stackPath, templateMetadata)
@@ -81,10 +93,18 @@ func TestTemplatingAllValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmd.CopyDir(projectPath, stackPath)
+	err = cmd.CopyDir(projectPath, stackPath)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// create the template metadata
-	var templateMetadata = cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
+	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// apply templating to stack
 	err = cmd.ApplyTemplating(projectPath, stackPath, templateMetadata)
@@ -118,6 +138,7 @@ func TestTemplatingAllValues(t *testing.T) {
 func setup() (string, string, string, cmd.StackYaml, map[string]string, error) {
 
 	var rootConfig = &cmd.RootCommandConfig{}
+	var labels = map[string]string{}
 	stackID := "starter"
 	imageNamespace := "dev.local"
 	buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
@@ -134,17 +155,17 @@ func setup() (string, string, string, cmd.StackYaml, map[string]string, error) {
 
 	source, err := ioutil.ReadFile(filepath.Join(projectPath, "stack.yaml"))
 	if err != nil {
-		errors.Errorf("Error trying to read: %v", err)
+		return imageNamespace, projectPath, stackPath, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
 	}
 
 	err = yaml.Unmarshal(source, &stackYaml)
 	if err != nil {
-		errors.Errorf("Error trying to unmarshall: %v", err)
+		return imageNamespace, projectPath, stackPath, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
 	}
 
-	labels, err := cmd.GetLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
+	labels, err = cmd.GetLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
 	if err != nil {
-		errors.Errorf("Error getting labels: %v", err)
+		return imageNamespace, projectPath, stackPath, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
 	}
 
 	return imageNamespace, projectPath, stackPath, stackYaml, labels, err
