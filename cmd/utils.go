@@ -1154,8 +1154,8 @@ spec:
         imagePullPolicy: IfNotPresent 
       containers:
       - name: APPSODY_APP_NAME
-        image: APPSODY_STACK
-        imagePullPolicy: Always
+		image: APPSODY_STACK
+		imagePullPolicy: Always
 		command: ["/.appsody/appsody-controller"]
 		args: ["--mode"]
         volumeMounts:
