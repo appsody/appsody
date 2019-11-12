@@ -1,6 +1,6 @@
 # Dependencies
 The Appsody CLI depends on a number of assets:
-1. The `Appsody Controller`, which is available [here](https://github.com/appsody/controller). The controller version to pull is located in the `Makefile` as `CONTROLLER_VERSION` variable. The version is updated manually as needed, there is no automatic update when a new controller is release. However, the dependent controller version does need to be released first, as the build process for the Appsody CLI retrieves the controller binaries and does not build them. Once the dependent controller has been released, a Pull Request with the `CONTROLLER_VERSION` changes to the `Makefile` needs to be created and merged before continuing on with the CLI release.
+1. The `Appsody Controller`, which is available [here](https://github.com/appsody/controller). During the execution of certain Appsody CLI commands, such as `appsody run`, the appropriate version of the `Appsody Controller` is pulled from the Docker registry. The version of the controller that is pulled is defined within the `Makefile` by means of the `APPSODY_CONTROLLER_VERSION` variable. The version is updated manually as needed, there is no automatic update when a new controller is release. However, the dependent controller version does need to be released first, as the build process for the Appsody CLI retrieves the controller image that contains the binaries, and does not build them. Once the dependent controller has been released, a Pull Request with the `APPSODY_CONTROLLER_VERSION` changes to the `Makefile` needs to be created and merged before continuing on with the CLI release.
 1. The `debian-builder` Docker image, which is built separately from [this repo](https://github.com/appsody/debian-builder). The `Makefile` has a variable that points to the latest version of this image, called `DOCKER_IMAGE_DEB`. This image is used during the deploy stage to generate the Debian installer for Appsody. 
 1. The `rpmbuilder` Docker image, which builds the RPM installer for Appsody. Currently, we use the image provided by `alectolytic`, and we point to it through the `Makefile` env var `DOCKER_IMAGE_RPM`.
 
@@ -18,7 +18,7 @@ Follow this process to create a new release of the Appsody CLI.
 
 ## Create a GitHub release
 The Appsody CLI is made available by creating a tagged GitHub release
-1. If there is a new dependent controller, a Pull Request with the `CONTROLLER_VERSION` changes to the `Makefile` needs to be created and merged before continuing
+1. If there is a new dependent controller, a Pull Request with the `APPSODY_CONTROLLER_VERSION` changes to the `Makefile` needs to be created and merged before continuing
 1. Navigate to https://github.com/appsody/appsody/releases
 1. Click _Draft a new release_
 1. Ensure the target branch is __master__
@@ -41,7 +41,7 @@ The Appsody CLI is made available by creating a tagged GitHub release
     * appsody-homebrew-x.y.z.tar.gz
     * appsody.rb
     * appsody_x.y.z_amd64.deb
-1. Edit the release and uncheck _This is a pre-relsease_ then click _Update relsease_
+1. Edit the release and uncheck _This is a pre-relsease_ then click _Update release_
 
 ## Create a PR in the homebrew repo
 1. Go to the [appsody/homebrew-appsody](https://github.com/appsody/homebrew-appsody/branches) repo and create a PR for the new Travis build branch.
