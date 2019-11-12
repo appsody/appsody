@@ -6,6 +6,7 @@
 export STACKSLIST ?= incubator/nodejs
 # use -count=1 to disable cache and -p=1 to stream output live
 GO_TEST_COMMAND := go test -v -count=1 -p=1 -covermode=count -coverprofile=cover.out -coverpkg ./cmd
+GO_TEST_LOGGING := | tee test.out | grep -E "^\s*(---|===)" ; tail -3 test.out ; awk '/--- FAIL/,/===/' test.out ; ! grep -E "(--- FAIL)" test.out
 GO_TEST_COVER_VIEWER := go tool cover -func=cover.out && go tool cover -html=cover.out
 # Set a default VERSION only if it is not already set
 VERSION ?= 0.0.0
@@ -50,16 +51,18 @@ all: lint test package ## Run lint, test, build, and package
 #install-controller: $(APPSODY_MOUNT_CONTROLLER) ## Downloads the controller and install it to APPSODY_MOUNT_CONTROLLER if it doesn't already exist
 
 .PHONY: test
-test: ## Run the all the automated tests
-	$(GO_TEST_COMMAND) ./...
+test: install-controller ## Run the all the automated tests
+	$(GO_TEST_COMMAND) ./... $(GO_TEST_LOGGING)
+
 
 .PHONY: unittest
 unittest: ## Run the automated unit tests
-	$(GO_TEST_COMMAND) ./cmd
+	$(GO_TEST_COMMAND) ./cmd $(GO_TEST_LOGGING)
 
 .PHONY: functest
-functest: ## Run the automated functional tests
-	$(GO_TEST_COMMAND) ./functest
+functest: install-controller  ## Run the automated functional tests
+	$(GO_TEST_COMMAND) ./functest $(GO_TEST_LOGGING)
+
 
 .PHONY: cover
 cover: test ## Run all tests and open test coverage report
