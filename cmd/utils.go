@@ -537,7 +537,7 @@ func MoveDir(fromDir string, toDir string) error {
 	}
 	// If we are here, we need to use copy
 	Debug.log("os.Rename did not work to move directories... attempting copy. From dir:", fromDir, " target dir: ", toDir)
-	err = copyDir(fromDir, toDir)
+	err = CopyDir(fromDir, toDir)
 	if err != nil {
 		Error.log("Could not move ", fromDir, " to ", toDir)
 		return err
@@ -545,7 +545,8 @@ func MoveDir(fromDir string, toDir string) error {
 	return nil
 }
 
-func copyDir(fromDir string, toDir string) error {
+// CopyDir Copies folder from source destination to target destination
+func CopyDir(fromDir string, toDir string) error {
 	_, err := os.Stat(fromDir)
 	if err != nil {
 		Error.logf("Cannot find source directory %s to copy", fromDir)

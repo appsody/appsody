@@ -1,0 +1,16 @@
+#Configuration file for deploying an appsody project
+
+#For more information, see: https://github.com/appsody/appsody-operator/blob/master/doc/user-guide.md
+
+apiVersion: appsody.dev/v1beta1
+kind: AppsodyApplication
+metadata: 
+  name: APPSODY_PROJECT_NAME
+spec:
+  version: 1.0.0
+  applicationImage: APPSODY_DOCKER_IMAGE
+  stack: APPSODY_STACK
+  service:
+    type: NodePort
+    port: APPSODY_PORT
+  expose: true
