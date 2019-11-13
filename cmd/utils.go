@@ -2007,9 +2007,12 @@ func CheckStackRequirements(requirementArray map[string]string, buildah bool) er
 				Error.log(appErr, " - Are you sure ", technology, " is installed?")
 				upgradesRequired++
 			} else {
-				parseUserVersion, parseErr := semver.NewVersion(versionRegex.FindString(string(runVersionCmd)))
-				if parseErr != nil {
+				cutCmdOutput := versionRegex.FindString(string(runVersionCmd))
+				parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
+				if parseErr != nil || cutCmdOutput == "0.0.0" {
 					Error.log(parseErr)
+					Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
+					return nil
 				}
 				compareVersion := setConstraint.Check(parseUserVersion)
 
