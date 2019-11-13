@@ -288,9 +288,10 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			// 'signal: interrupt'
 			// TODO presumably you can query the error itself
 			error := fmt.Sprintf("%s", err)
+			Debug.log("CLI exit error is:  ", error)
 			//Linux and Windows return a different error on Ctrl-C
 			if error == "signal: interrupt" || error == "signal: terminated" || error == "exit status 2" {
-				Info.log("Closing down, development environment was interupted will now sleep 10 secondsx.")
+				Info.log("Closing down, development environment was interupted will now sleep 10 seconds.")
 				err := dockerStop(config.containerName, config.Dryrun)
 				if err != nil {
 					Error.log(err)
