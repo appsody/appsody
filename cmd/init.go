@@ -58,14 +58,17 @@ Use 'appsody list' to see the available stacks and templates.`,
 		Example: `  appsody init nodejs-express
   Initializes a project with the default template from the "nodejs-express" stack in the default repository.
   
+  appsody init experimental/nodejs-functions
+  Initializes a project with the default template from the "nodejs-functions" stack in the "experimental" repository.
+  
   appsody init nodejs-express scaffold
   Initializes a project with the "scaffold" template from "nodejs-express" stack in the default repository.
 
-  appsody init experimental/quarkus none
-  Initializes a project with the default template for the "quarkus" stack in the "experimental" repository.
+  appsody init nodejs none
+  Initializes a project without a template for the "nodejs" stack in the default repository.
 
   appsody init
-  Runs the stack init script to set up the local development environment. Must only be run on an existing Appsody project.`,
+  Runs the stack init script to set up the local development environment on an existing Appsody project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var stack string
 			var template string
