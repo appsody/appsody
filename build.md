@@ -15,7 +15,7 @@ make clean package
 ```
 which will run the `clean` action, and then the `package` action. The latter produces the built binaries (as described in the next section).
 
-If you inspect the `Makefile`, you'll notice that it invokes a number of scripts - and you'll notice a few conditional paths, because certain Linux commands behave differently on OS/X and elsewhere.
+If you inspect the `Makefile`, you'll notice that it invokes a number of scripts - and you'll notice a few conditional paths, because certain Linux commands behave differently on macOS and elsewhere.
 
 
 
