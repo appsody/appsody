@@ -61,8 +61,9 @@ func (s *StackDetails) validateYaml(stackPath string) (int, int) {
 	stackLintErrorCount += s.validateFields()
 	stackLintErrorCount += s.checkVersion()
 	stackLintErrorCount += s.checkDescLength()
-	stackLintErrorCount, stackLintWarningCount := s.checkTemplatingData()
-	return stackLintErrorCount, stackLintWarningCount
+	templateErrorCount, templateWarningCount := s.checkTemplatingData()
+	stackLintErrorCount += templateErrorCount
+	return stackLintErrorCount, templateWarningCount
 }
 
 func (s *StackDetails) validateFields() int {

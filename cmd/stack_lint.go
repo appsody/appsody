@@ -157,7 +157,8 @@ This command can be run from the base directory of your stack or you can supply 
 			stackLintWarningCount += dockerFileWarningCount
 
 			var s StackDetails
-			stackLintErrorCount, stackYamlWarningCount := s.validateYaml(stackPath)
+			stackYamlErrorCount, stackYamlWarningCount := s.validateYaml(stackPath)
+			stackLintErrorCount += stackYamlErrorCount
 			stackLintWarningCount += stackYamlWarningCount
 
 			Info.log("TOTAL ERRORS: ", stackLintErrorCount)
