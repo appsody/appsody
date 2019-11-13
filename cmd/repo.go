@@ -63,7 +63,7 @@ type ProjectVersion struct {
 	Description     string           `yaml:"description"`
 	Keywords        []string         `yaml:"keywords"`
 	Maintainers     []interface{}    `yaml:"maintainers"`
-	Requirements    StackRequirement `yaml:"requirements"`
+	Requirements    StackRequirement `yaml:"requirements,omitempty"`
 	Icon            string           `yaml:"icon"`
 	Digest          string           `yaml:"digest"`
 	URLs            []string         `yaml:"urls"` //V1
