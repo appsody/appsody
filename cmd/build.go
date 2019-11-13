@@ -27,10 +27,11 @@ import (
 
 type buildCommandConfig struct {
 	*RootCommandConfig
-	tag                string
-	dockerBuildOptions string
-	pushURL            string
-	push               bool
+	tag                 string
+	dockerBuildOptions  string
+	buildahBuildOptions string
+	pushURL             string
+	push                bool
 }
 
 func checkDockerBuildOptions(options []string) error {
@@ -61,7 +62,9 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	}
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
-	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
+	buildCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of docker.")
+	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use. Value must be in \"\".")
+	buildCmd.PersistentFlags().StringVar(&config.buildahBuildOptions, "buildah-options", "", "Specify the buildah build options to use. Value must be in \"\".")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the Docker image to the image repository.")
 	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
@@ -73,6 +76,19 @@ func build(config *buildCommandConfig) error {
 	// This needs to do:
 	// 1. appsody Extract
 	// 2. docker build -t <project name> -f Dockerfile ./extracted
+	buildOptions := ""
+	if config.dockerBuildOptions != "" {
+		if config.Buildah {
+			return errors.New("Cannot specify --docker-options flag with --buildah")
+		}
+		buildOptions = strings.TrimSpace(config.dockerBuildOptions)
+	}
+	if config.buildahBuildOptions != "" {
+		if !config.Buildah {
+			return errors.New("Cannot specify --buildah-options flag without --buildah")
+		}
+		buildOptions = strings.TrimSpace(config.buildahBuildOptions)
+	}
 
 	extractConfig := &extractCommandConfig{RootCommandConfig: config.RootCommandConfig}
 
@@ -102,10 +118,8 @@ func build(config *buildCommandConfig) error {
 	}
 	cmdArgs := []string{"-t", buildImage}
 
-	if config.dockerBuildOptions != "" {
-		dockerBuildOptions := strings.TrimPrefix(config.dockerBuildOptions, " ")
-		dockerBuildOptions = strings.TrimSuffix(dockerBuildOptions, " ")
-		options := strings.Split(dockerBuildOptions, " ")
+	if buildOptions != "" {
+		options := strings.Split(buildOptions, " ")
 		err := checkDockerBuildOptions(options)
 		if err != nil {
 			return err
@@ -127,14 +141,18 @@ func build(config *buildCommandConfig) error {
 
 	cmdArgs = append(cmdArgs, "-f", dockerfile, extractDir)
 	Debug.log("final cmd args", cmdArgs)
-	execError := DockerBuild(cmdArgs, DockerLog, config.Verbose, config.Dryrun)
+	var execError error
+	if !config.Buildah {
+		execError = DockerBuild(cmdArgs, DockerLog, config.Verbose, config.Dryrun)
+	} else {
+		execError = BuildahBuild(cmdArgs, BuildahLog, config.Verbose, config.Dryrun)
+	}
 
 	if execError != nil {
 		return execError
 	}
 	if config.pushURL != "" || config.push {
-
-		err := DockerPush(buildImage, config.Dryrun)
+		err := ImagePush(buildImage, config.Buildah, config.Dryrun)
 		if err != nil {
 			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
 		}
