@@ -53,13 +53,13 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var buildCmd = &cobra.Command{
 		Use:   "build",
 		Short: "Build a local container image of your Appsody project.",
-		Long: `Build a local container image of your Appsody project. The stack, along with your Appsody project, is extracted to a local directory before the docker build is run.
+		Long: `Build a local container image of your Appsody project. The stack, along with your Appsody project, is extracted to a local directory before the container build is run.
 
 By default, the built image is tagged with the project name that you specified when you initialised your Appsody project. If you did not specify a name, the image is tagged with the name of the directory at the root of your Appsody project.
 
 If you want to push the built image to an image repository using the [--push] options, you must specify the relevant image tag.`,
 		Example: `  appsody build -t my-repo/nodejs-express --push
-  Builds the container image, tags it with my-repo/nodejs-express, and pushes it to the registry the docker CLI is currently logged into.
+  Builds the container image, tags it with my-repo/nodejs-express, and pushes it to the container registry the Docker CLI is currently logged into.
 
   appsody build -t my-repo/nodejs-express:0.1 --push-url my-registry-url
   Builds the container image, tags it with my-repo/nodejs-express, and pushes it to my-registry-url/my-repo/nodejs-express:0.1.`,
@@ -69,7 +69,7 @@ If you want to push the built image to an image repository using the [--push] op
 	}
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Container image name and optionally, a tag in the 'name:tag' format.")
-	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
+	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the Docker build options to use.  Value must be in \"\".")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the container image to the image repository.")
 	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
