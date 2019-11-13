@@ -32,7 +32,7 @@ func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Example: `  appsody stack lint
 		Checks the structure of the stack in the current directory"
 		
-		appsody stack lint [path/to/my-stack]
+		appsody stack lint path/to/my-stack
 		Checks the structure of the stack "my-stack" in the path "path/to/my-stack"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
