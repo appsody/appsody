@@ -18,10 +18,10 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
-	"crypto/sha256"
+	//"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"hash"
+	//"hash"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -118,7 +118,7 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := SeperateOutput(inspectCmd)
+	inspectOut, inspectErr := SeparateOutput(inspectCmd)
 	if inspectErr != nil {
 		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
 	}
@@ -914,7 +914,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -938,6 +938,20 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		SubPath   string `yaml:"subPath,omitempty"`
 	}
 	type Container struct {
+		Args            []string  `yaml:"args,omitempty"`
+		Command         []string  `yaml:"command,omitempty"`
+		Env             []*EnvVar `yaml:"env,omitempty"`
+		Image           string    `yaml:"image"`
+		ImagePullPolicy string    `yaml:"imagePullPolicy,omitempty"`
+		Name            string    `yaml:"name,omitempty"`
+		Ports           []*Port   `yaml:"ports,omitempty"`
+		SecurityContext struct {
+			Privileged bool `yaml:"privileged"`
+		} `yaml:"securityContext,omitempty"`
+		VolumeMounts []VolumeMount `yaml:"volumeMounts"`
+		WorkingDir   string        `yaml:"workingDir,omitempty"`
+	}
+	type InitContainer struct {
 		Args            []string  `yaml:"args,omitempty"`
 		Command         []string  `yaml:"command,omitempty"`
 		Env             []*EnvVar `yaml:"env,omitempty"`
@@ -980,9 +994,10 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 					Labels map[string]string `yaml:"labels"`
 				} `yaml:"metadata"`
 				Spec struct {
-					ServiceAccountName string       `yaml:"serviceAccountName,omitempty"`
-					Containers         []*Container `yaml:"containers"`
-					Volumes            []*Volume    `yaml:"volumes"`
+					ServiceAccountName string           `yaml:"serviceAccountName,omitempty"`
+					InitContainers     []*InitContainer `yaml:"initContainers"`
+					Containers         []*Container     `yaml:"containers"`
+					Volumes            []*Volume        `yaml:"volumes"`
 				} `yaml:"spec"`
 			} `yaml:"template"`
 		} `yaml:"spec"`
@@ -1023,6 +1038,8 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	} else {
 		Debug.log("No service account name env var, leaving the appsody-sa default")
 	}
+	//Set the controller image
+	yamlMap.Spec.PodTemplate.Spec.InitContainers[0].Image = controllerImageName
 	//Set the image
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].Name = appName
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].Image = imageName
@@ -1060,36 +1077,9 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	} else {
 		yamlMap.Spec.PodTemplate.Spec.Volumes = append(yamlMap.Spec.PodTemplate.Spec.Volumes, &workspaceVolume)
 	}
-	//Set the volume mounts
-	//Start with the Controller
-	appsodyMountController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
-	var controllerSubpath string
-	if appsodyMountController != "" {
-		appsodyMountControllerDir, err := filepath.Rel(codeWindWorkspace, filepath.Dir(appsodyMountController))
-		if err != nil {
-			Debug.Log("Problems with APPSODY_MOUNT_CONTROLLER: ", appsodyMountController)
-			return "", err
-		}
-		controllerSubpath = filepath.Join(".", appsodyMountControllerDir)
-		Debug.Log("APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
-	} else {
-		controllerSubpath = "./.extensions/codewind-appsody-extension/bin/"
-		Debug.Log("No APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
-
-	}
-	controllerVolumeMount := VolumeMount{"appsody-workspace", "/.appsody", controllerSubpath}
-	volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
-	volMountIdx := len(*volumeMounts)
-	if volMountIdx == 0 {
-		*volumeMounts = make([]VolumeMount, 1)
-		(*volumeMounts)[0] = controllerVolumeMount
-	} else {
-		*volumeMounts = append(*volumeMounts, controllerVolumeMount)
-	}
-
-	//Now the code mounts
+	//Set the code mounts
 	//We need to iterate through the docker mounts
-
+	volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
 	for _, appsodyMount := range dockerMounts {
 		if appsodyMount == "-v" {
 			continue
@@ -1107,19 +1097,6 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		Debug.Log("Appending volume mount: ", newVolumeMount)
 		*volumeMounts = append(*volumeMounts, newVolumeMount)
 	}
-	// Dependencies mount
-	// Issue #597: we remove this mount, since it doesn't seem to work with Python etc.
-	// And provides no benefit
-	/*
-		if depsMount != "" {
-			// Now the volume mount
-			depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
-			*volumeMounts = append(*volumeMounts, depVolumeMount)
-		}*/
-
-	//subPath := filepath.Base(pdir)
-	//workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
-	//yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, workspaceMount)
 
 	//Set the deployment selector and pod label
 	projectLabel := appName
@@ -1162,13 +1139,24 @@ spec:
         app: appsody
     spec:
       serviceAccountName: appsody-sa
+      initContainers:
+      - name: init-appsody-controller
+        image: appsody/appsody-controller
+        resources: {}
+        volumeMounts:
+        - name: appsody-controller
+          mountPath: /.appsody
+        imagePullPolicy: IfNotPresent 
       containers:
       - name: APPSODY_APP_NAME
         image: APPSODY_STACK
         imagePullPolicy: Always
         command: ["/.appsody/appsody-controller"]
+        volumeMounts:
+        - name: appsody-controller
+          mountPath: /.appsody
       volumes:
-      - name: dependencies
+      - name: appsody-controller
         emptyDir: {}
 `
 	return yamltempl
@@ -1403,7 +1391,7 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 		return nil
 	}
 	tagCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := SeperateOutput(tagCmd)
+	kout, kerr := SeparateOutput(tagCmd)
 	if kerr != nil {
 		return errors.Errorf("docker image tag failed: %s", kout)
 	}
@@ -1451,7 +1439,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 	Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
 
-	kout, kerr := SeperateOutput(dockerCmd)
+	kout, kerr := SeparateOutput(dockerCmd)
 	if kerr != nil {
 		return kout, kerr
 	}
@@ -1474,7 +1462,7 @@ func KubeGet(args []string, namespace string, dryrun bool) (string, error) {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
@@ -1496,7 +1484,7 @@ func KubeApply(fileToApply string, namespace string, dryrun bool) error {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return errors.Errorf("kubectl apply failed: %s", kout)
 	}
@@ -1520,7 +1508,7 @@ func KubeDelete(fileToApply string, namespace string, dryrun bool) error {
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return errors.Errorf("kubectl delete failed: %s", kout)
 	}
@@ -1567,7 +1555,7 @@ func KubeGetKnativeURL(service string, namespace string, dryrun bool) (url strin
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
@@ -1618,7 +1606,7 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 	cmdName := "docker"
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
-	imagelsOut, imagelsErr := SeperateOutput(imagelsCmd)
+	imagelsOut, imagelsErr := SeparateOutput(imagelsCmd)
 	Debug.log("Docker image ls command output: ", imagelsOut)
 
 	if imagelsErr != nil {
@@ -1749,42 +1737,6 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 		}
 	}
 	return err
-}
-
-func createChecksumHash(fileName string) (hash.Hash, error) {
-	Debug.log("Checksum oldFile", fileName)
-	newFile, err := os.Open(fileName)
-	if err != nil {
-		return nil, errors.Errorf("File open failed for %s controller binary: %v", fileName, err)
-
-	}
-	defer newFile.Close()
-
-	computedSha256 := sha256.New()
-	if _, err := io.Copy(computedSha256, newFile); err != nil {
-		return nil, errors.Errorf("sha256 copy failed for %s controller binary %v", fileName, err)
-	}
-	return computedSha256, nil
-}
-
-func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
-	var checkValue bool
-
-	oldSha256, errOld := createChecksumHash(oldFileName)
-	if errOld != nil {
-		return false, errOld
-	}
-	newSha256, errNew := createChecksumHash(newFileName)
-	if errNew != nil {
-		return false, errNew
-	}
-	Debug.logf("%x\n", oldSha256.Sum(nil))
-	Debug.logf("%x\n", newSha256.Sum(nil))
-	checkValue = bytes.Equal(oldSha256.Sum(nil), newSha256.Sum(nil))
-
-	Debug.log("Checksum returned: ", checkValue)
-
-	return checkValue, nil
 }
 
 func getLatestVersion() string {
@@ -2026,7 +1978,7 @@ func Targz(source, target string) error {
 		})
 }
 
-func SeperateOutput(cmd *exec.Cmd) (string, error) {
+func SeparateOutput(cmd *exec.Cmd) (string, error) {
 	var stdErr, stdOut bytes.Buffer
 	cmd.Stderr = &stdErr
 	cmd.Stdout = &stdOut
