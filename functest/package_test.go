@@ -23,7 +23,7 @@ import (
 func TestPackage(t *testing.T) {
 
 	args := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsodyCmd(args, "../cmd/testdata/starter")
+	_, err := cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/starter")
 
 	if err != nil {
 		t.Fatal(err)
