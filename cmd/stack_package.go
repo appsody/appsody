@@ -76,11 +76,14 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var stackPackageCmd = &cobra.Command{
 		Use:   "package",
 		Short: "Package your stack.",
-		Long: `Package your stack in a local Appsody development environment. You must run this command from the root directory of your stack..
+		Long: `Package your stack in a local Appsody development environment. You must run this command from the root directory of your stack.
 
 The packaging process builds the stack image, generates the "tar.gz" archive files for each template, and adds your stack to the "dev.local" repository in your Appsody configuration. You can see the list of your packaged stacks by running "appsody list dev.local".`,
-		Example: `  appsody stack package --image-namespace my-local
-  Packages the stack in the current directory, tags the built image with the "my-local" namespace, and adds the stack to the "dev.local" repository."`,
+		Example: `  appsody stack package
+  Packages the stack in the current directory, tags the built image with the "dev.local" namespace, and adds the stack to the "dev.local" repository.
+  
+  appsody stack package --image-namespace my-namespace
+  Packages the stack in the current directory, tags the built image with the "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.Log("******************************************")
