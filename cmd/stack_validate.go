@@ -44,7 +44,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var stackValidateCmd = &cobra.Command{
 		Use:   "validate",
 		Short: "Run validation tests against your stack.",
-		Long: `A tool for stack developers to validate your stack in their local Appsody development environment. 
+		Long: `Run validation tests against your stack, in your local Appsody development environment. 
 		
 Runs the following validation tests against the stack:
   * appsody stack lint
