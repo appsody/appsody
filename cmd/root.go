@@ -226,6 +226,7 @@ var (
 	Container  = appsodylogger{name: "Container"}
 	InitScript = appsodylogger{name: "InitScript"}
 	DockerLog  = appsodylogger{name: "Docker"}
+	BuildahLog = appsodylogger{name: "Buildah"}
 )
 
 var allLoggers = []*appsodylogger{&Info, &Warning, &Error, &Debug, &Container, &InitScript, &DockerLog}
