@@ -55,7 +55,7 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Build a local container image of your Appsody project.",
 		Long: `Build a local container image of your Appsody project. The stack, along with your Appsody project, is extracted to a local directory before the container build is run.
 
-By default, the built image is tagged with the project name that you specified when you initialised your Appsody project. If you did not specify a name, the image is tagged with the name of the directory at the root of your Appsody project.
+By default, the built image is tagged with the project name that you specified when you initialised your Appsody project. If you did not specify a name, the image is tagged with the name of the root directory of your Appsody project.
 
 If you want to push the built image to an image repository using the [--push] options, you must specify the relevant image tag.`,
 		Example: `  appsody build -t my-repo/nodejs-express --push
