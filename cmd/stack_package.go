@@ -129,7 +129,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			err = yaml.Unmarshal(source, &stackYaml)
 
 			if err != nil {
-				return errors.Errorf("Error trying to unmarshall: %v", err)
+				return errors.Errorf("Error parsing the stack.yaml file: %v", err)
 			}
 
 			// check for templates dir, error out if its not there
