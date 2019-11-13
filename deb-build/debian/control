@@ -9,5 +9,5 @@ Homepage: http://appsody.dev
 Package: PACKAGE_NAME
 Architecture: amd64
 Depends: ${misc:Depends}
-Description: This is the Debian package for the KapN Command Line Interface
- This is the package for the KapN CLI. 
+Description: This is the Debian package for the Appsody Command Line Interface
+ This is the package for the Appsody CLI. 
