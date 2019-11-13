@@ -215,7 +215,7 @@ func TestInvalidCmdOutput(t *testing.T) {
 		invalidCmd := exec.Command(test.cmd, test.args...)
 
 		t.Run(fmt.Sprintf("Test Invalid "+test.cmd+" Command"), func(t *testing.T) {
-			out, err := cmd.SeperateOutput(invalidCmd)
+			out, err := cmd.SeparateOutput(invalidCmd)
 			if err == nil {
 				t.Error("Expected an error from '", test.cmd, strings.Join(test.args, " "), "' but it did not return one.")
 			} else if !strings.Contains(out, test.expected) {
@@ -274,5 +274,29 @@ func TestInvalidConvertLabelToKubeFormat(t *testing.T) {
 				t.Errorf("Expected error but got none converting %s", test)
 			}
 		})
+	}
+}
+
+var getUpdateStringTests = []struct {
+	input        string
+	version      string
+	latest       string
+	updateString string
+}{
+	{"darwin", "1", "2", "Please run `brew upgrade appsody` to upgrade"},
+	{"anythingelse", "1", "2", "Please go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade"},
+	{"", "1", "2", "Please go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade"},
+}
+
+func TestGetUpdateString(t *testing.T) {
+	for _, test := range getUpdateStringTests {
+		t.Run(test.input, func(t *testing.T) {
+			output := cmd.GetUpdateString(test.input, test.version, test.latest)
+			expectedOutput := fmt.Sprintf("\n*\n*\n*\n\nA new CLI update is available.\n%s from %s --> %s.\n\n*\n*\n*\n", test.updateString, test.version, test.latest)
+			if output != expectedOutput {
+				t.Errorf("Expected %s to convert to %s but got %s", test.input, expectedOutput, output)
+			}
+		})
+
 	}
 }
