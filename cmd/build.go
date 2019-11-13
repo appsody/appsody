@@ -61,7 +61,7 @@ If you want to push the built image to an image repository using the [--push] op
 		Example: `  appsody build -t my-repo/nodejs-express --push
   Builds the container image, tags it with my-repo/nodejs-express, and pushes it to the registry the docker CLI is currently logged into.
 
-  appsody build -t my-repo/nodejs-express --push-url my-registry-url
+  appsody build -t my-repo/nodejs-express:0.1 --push-url my-registry-url
   Builds the container image, tags it with my-repo/nodejs-express, and pushes it to my-registry-url/my-repo/nodejs-express:0.1.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return build(config)
