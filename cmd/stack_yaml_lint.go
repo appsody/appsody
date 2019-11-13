@@ -15,11 +15,10 @@
 package cmd
 
 import (
-	"bufio"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -27,19 +26,21 @@ import (
 )
 
 type StackDetails struct {
-	Name        string            `yaml:"name"`
-	Version     string            `yaml:"version"`
-	Description string            `yaml:"description"`
-	License     string            `yaml:"license"`
-	Language    string            `yaml:"language"`
-	Maintainers []StackMaintainer `yaml:"maintainers"`
+	Name            string            `yaml:"name"`
+	Version         string            `yaml:"version"`
+	Description     string            `yaml:"description"`
+	License         string            `yaml:"license"`
+	Language        string            `yaml:"language"`
+	Maintainers     []StackMaintainer `yaml:"maintainers"`
+	TemplatingData  map[string]string `yaml:"templating-data"`
+	DefaultTemplate string            `yaml:"default-template"`
 }
 
 type StackMaintainer struct {
 	Email string `yaml:"email"`
 }
 
-func (s *StackDetails) validateYaml(stackPath string) int {
+func (s *StackDetails) validateYaml(stackPath string) (int, int) {
 	stackLintErrorCount := 0
 	arg := filepath.Join(stackPath, "/stack.yaml")
 
@@ -57,40 +58,11 @@ func (s *StackDetails) validateYaml(stackPath string) int {
 		stackLintErrorCount++
 	}
 
-	stackLintErrorCount += s.checkDefaultTemplate(arg)
 	stackLintErrorCount += s.validateFields()
 	stackLintErrorCount += s.checkVersion()
 	stackLintErrorCount += s.checkDescLength()
-	return stackLintErrorCount
-}
-
-func (s *StackDetails) checkDefaultTemplate(arg string) int {
-	stackLintErrorCount := 0
-	defaultTemplateFound := false
-	file, err := os.Open(arg)
-	if err != nil {
-		Error.log(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		yamlFields := strings.Split(scanner.Text(), ":")
-		if yamlFields[0] == "default-template" && yamlFields[1] != "" {
-			defaultTemplateFound = true
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		Error.log(err)
-	}
-
-	if !defaultTemplateFound {
-		Error.log("Missing value for field: default-template")
-		stackLintErrorCount++
-	}
-
-	return stackLintErrorCount
+	stackLintErrorCount, stackLintWarningCount := s.checkTemplatingData()
+	return stackLintErrorCount, stackLintWarningCount
 }
 
 func (s *StackDetails) validateFields() int {
@@ -159,4 +131,33 @@ func (s *StackDetails) checkDescLength() int {
 	}
 
 	return stackLintErrorCount
+}
+
+func (s *StackDetails) checkTemplatingData() (int, int) {
+	stackLintErrorCount := 0
+	stackLintWarningCount := 0
+	versionRegex := regexp.MustCompile("^[a-zA-Z0-9]*$")
+
+	if len(s.TemplatingData) == 0 {
+		Warning.log("No custom templating variables defined - You will not be able to reuse variables across the stack")
+		stackLintWarningCount++
+		return stackLintErrorCount, stackLintWarningCount
+	}
+
+	for key, value := range s.TemplatingData {
+		checkKey := versionRegex.FindString(string(key))
+		checkValue := versionRegex.FindString(string(value))
+
+		if checkKey == "" {
+			Error.log("Key variable: ", key, " is not in an alphanumeric format")
+			stackLintErrorCount++
+		}
+
+		if checkValue == "" {
+			Error.log("Value associated with key: ", key, " is not in an alphanumeric format")
+			stackLintErrorCount++
+		}
+	}
+
+	return stackLintErrorCount, stackLintWarningCount
 }
