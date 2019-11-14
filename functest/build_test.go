@@ -19,11 +19,14 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	"github.com/appsody/appsody/cmd/cmdtest"
+	"sigs.k8s.io/yaml"
 )
 
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
@@ -228,5 +231,89 @@ func deleteImage(imageName string) {
 	_, err := cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName})
 	if err != nil {
 		fmt.Printf("Ignoring error running docker image rm: %s", err)
+	}
+}
+
+func TestDeploymentConfig(t *testing.T) {
+	t.Log("stacksList is: ", stacksList)
+
+	// if stacksList is empty there is nothing to test so return
+	if stacksList == "" {
+		t.Log("stacksList is empty, exiting test...")
+		return
+	}
+
+	// split the appsodyStack env variable
+	stackRaw := strings.Split(stacksList, " ")
+
+	// loop through the stacks
+	for i := range stackRaw {
+
+		t.Log("***Testing stack: ", stackRaw[i], "***")
+
+		// first add the test repo index
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// create a temporary dir to create the project and run the test
+		projectDir := cmdtest.GetTempProjectDir(t)
+		defer os.RemoveAll(projectDir)
+		t.Log("Created project dir: " + projectDir)
+
+		// appsody init
+		t.Log("Running appsody init...")
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// appsody build
+		imageName := filepath.Base(projectDir)
+		pullURL := "my-pull-url"
+
+		_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName, "--pull-url", pullURL, "--knative"}, projectDir)
+		if err != nil {
+			t.Error("appsody build command returned err: ", err)
+		}
+		checkDeploymentConfig(t, filepath.Join(projectDir, deployFile), pullURL, imageName)
+
+		//delete the image
+		deleteImage(imageName)
+
+		// clean up
+		cleanup()
+	}
+}
+
+func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imageTag string) {
+	_, err := os.Stat(deployFile)
+	if err != nil && os.IsNotExist(err) {
+		t.Errorf("Could not find %s", deployFile)
+	}
+	yamlFileBytes, err := ioutil.ReadFile(deployFile)
+	if err != nil {
+		t.Errorf("Could not read %s: %s", deployFile, err)
+	}
+
+	var appsodyApplication v1beta1.AppsodyApplication
+
+	err = yaml.Unmarshal(yamlFileBytes, &appsodyApplication)
+	if err != nil {
+		t.Logf("app-deploy.yaml formatting error: %s", err)
+	}
+
+	expectedApplicationImage := imageTag
+	if pullURL != "" {
+		expectedApplicationImage = pullURL + "/" + imageTag
+	}
+
+	if appsodyApplication.Spec.ApplicationImage != expectedApplicationImage {
+		t.Error("Incorrect ApplicationImage in app-deploy.yaml")
+	}
+
+	if *appsodyApplication.Spec.CreateKnativeService != true {
+		t.Error("CreateKnativeService not set to true in the app-deploy.yaml when using --knative flag")
 	}
 }
