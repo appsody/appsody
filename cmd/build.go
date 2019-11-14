@@ -24,6 +24,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
@@ -493,8 +494,8 @@ func updateDeploymentConfig(config *buildCommandConfig) error {
 		}
 	}
 
-	appsodyApplication.Metadata.Labels = selectedLabels
-	appsodyApplication.Metadata.Annotations = labels
+	appsodyApplication.Labels = selectedLabels
+	appsodyApplication.Annotations = labels
 	appsodyApplication.Spec.CreateKnativeService = &config.knative
 
 	imageName := appsodyApplication.Spec.ApplicationImage
@@ -516,12 +517,27 @@ func updateDeploymentConfig(config *buildCommandConfig) error {
 	return nil
 }
 
-func writeAppsodyApplication(appsodyApplication AppsodyApplication, config *buildCommandConfig) error {
+func getAppsodyApplication(configFile string) (v1beta1.AppsodyApplication, error) {
+	var appsodyApplication v1beta1.AppsodyApplication
+	yamlFileBytes, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		return appsodyApplication, errors.Errorf("Could not read %s file: %s", configFile, err)
+	}
+
+	err = yaml.Unmarshal(yamlFileBytes, &appsodyApplication)
+	if err != nil {
+		return appsodyApplication, errors.Errorf("%s formatting error: %s", configFile, err)
+	}
+
+	return appsodyApplication, err
+}
+
+func writeAppsodyApplication(appsodyApplication v1beta1.AppsodyApplication, config *buildCommandConfig) error {
 	configFile := config.appDeployFile
 
 	output, err := yaml.Marshal(appsodyApplication)
 	if err != nil {
-		return errors.Errorf("Could not marshall AppsodyApplication to YAML when updating the app-deploy.yaml: %s", err)
+		return errors.Errorf("Could not marshall AppsodyApplication to YAML when updating the %s: %s", configFile, err)
 	}
 
 	err = ioutil.WriteFile(configFile, output, 0666)

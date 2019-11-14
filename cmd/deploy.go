@@ -15,16 +15,11 @@
 package cmd
 
 import (
-	"io/ioutil"
 	"strings"
 	"time"
 
-	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-
-	//"gopkg.in/yaml.v2"
-	"sigs.k8s.io/yaml"
 )
 
 type deployCommandConfig struct {
@@ -35,43 +30,17 @@ type deployCommandConfig struct {
 	buildahBuildOptions                             string
 }
 
-type AppsodyApplication struct {
-	APIVersion string                         `yaml:"apiVersion" json:"apiVersion"`
-	Kind       string                         `yaml:"kind" json:"kind"`
-	Metadata   Metadata                       `yaml:"metadata" json:"metadata"`
-	Spec       v1beta1.AppsodyApplicationSpec `yaml:"spec" json:"spec"`
-}
-type Metadata struct {
-	Name        string            `yaml:"name" json:"name"`
-	Labels      map[string]string `yaml:"labels" json:"labels"`
-	Annotations map[string]string `yaml:"annotations" json:"annotations"`
-}
-
 func findNamespaceRepositoryAndTag(image string) string {
 	nameSpaceRepositoryAndTag := firstAfter(image, "/")
 	return nameSpaceRepositoryAndTag
 }
+
 func firstAfter(value string, a string) string {
 	values := strings.Split(value, a)
 	if len(values) == 3 {
 		return values[1] + a + values[2]
 	}
 	return value
-}
-func getAppsodyApplication(configFile string) (AppsodyApplication, error) {
-	var appsodyApplication AppsodyApplication
-	yamlFileBytes, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return appsodyApplication, errors.Errorf("Could not read app-deploy.yaml file: %s", err)
-
-	}
-
-	err = yaml.Unmarshal(yamlFileBytes, &appsodyApplication)
-	if err != nil {
-
-		return appsodyApplication, errors.Errorf("app-deploy.yaml formatting error: %s", err)
-	}
-	return appsodyApplication, err
 }
 
 func newDeployCmd(rootConfig *RootCommandConfig) *cobra.Command {
@@ -86,7 +55,6 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 			dryrun := config.Dryrun
 			namespace := config.namespace
-			knative := config.knative
 			configFile := config.appDeployFile
 
 			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
@@ -98,7 +66,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 			buildConfig.tag = config.tag
 			buildConfig.pullURL = config.pullURL
-			buildConfig.knative = knative
+			buildConfig.knative = config.knative
 			buildConfig.appDeployFile = configFile
 
 			if config.generate {
@@ -146,8 +114,8 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
-			Info.log("Appsody Deployment name is: ", appsodyApplication.Metadata.Name)
-			out, err := KubeGetDeploymentURL(appsodyApplication.Metadata.Name, namespace, dryrun)
+			Info.log("Appsody Deployment name is: ", appsodyApplication.Name)
+			out, err := KubeGetDeploymentURL(appsodyApplication.Name, namespace, dryrun)
 			// Performing the kubectl apply
 			if err != nil {
 				return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
@@ -162,8 +130,9 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 		},
 	}
 
-	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "Only generate the deployment configuration file. Do not deploy the project.")
+	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment configuration file. Do not deploy the project.")
 	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
+	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment configuration file if one exists.")
 	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "default", "Target namespace in your Kubernetes cluster")
 	deployCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of docker.")

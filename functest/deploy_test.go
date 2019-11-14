@@ -142,6 +142,7 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 
 		imageTag := "testdeploy/testimage"
 		pullURL := "my-pull-url"
+		knative := true
 		// appsody deploy
 		t.Log("Running appsody deploy...")
 		_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative"}, projectDir)
@@ -151,7 +152,7 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 			// t.Fatal(err)
 		}
 
-		checkDeploymentConfig(t, pullURL, imageTag)
+		checkDeploymentConfig(t, pullURL, imageTag, knative)
 
 		// cleanup tasks
 		os.Remove("app-deploy.yaml")
