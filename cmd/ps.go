@@ -36,8 +36,10 @@ func newPsCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// psCmd represents the ps command
 	var psCmd = &cobra.Command{
 		Use:   "ps",
-		Short: "List the appsody containers running in the local docker environment",
-		Long:  `This command lists all stack-based containers, that are currently running in the local docker envionment.`,
+		Short: "List the Appsody containers running in the local docker environment.",
+		Long: `List all stack-based containers, that are currently running in the local docker envionment. 
+		
+Shows the following information about the currently running Appsody containers: container ID, container name, image and status.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			containers, err := listContainers()
