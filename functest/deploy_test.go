@@ -15,15 +15,19 @@ package functest
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
+var deployFile = "app-deploy.yaml"
+
 // Test parsing environment variable with stack info
 func TestParser(t *testing.T) {
 
+	stacksList = "incubator/nodejs"
 	t.Log("stacksList is: ", stacksList)
 	if stacksList == "" {
 		t.Log("stacksList is empty, exiting test...")
@@ -94,6 +98,60 @@ func TestDeploySimple(t *testing.T) {
 			// TODO We need to fix the deploy --dryrun option so it doesn't fail, then uncomment the line below
 			// t.Fatal(err)
 		}
+
+		// cleanup tasks
+		cleanup()
+	}
+}
+
+// Testing generation of app-deploy.yaml
+func TestGenerationDeploymentConfig(t *testing.T) {
+	t.Log("stacksList is: ", stacksList)
+
+	// if stacksList is empty there is nothing to test so return
+	if stacksList == "" {
+		t.Log("stacksList is empty, exiting test...")
+		return
+	}
+
+	// split the appsodyStack env variable
+	stackRaw := strings.Split(stacksList, " ")
+
+	// loop through the stacks
+	for i := range stackRaw {
+
+		t.Log("***Testing stack: ", stackRaw[i], "***")
+
+		// first add the test repo index
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// create a temporary dir to create the project and run the test
+		projectDir := cmdtest.GetTempProjectDir(t)
+		defer os.RemoveAll(projectDir)
+		t.Log("Created project dir: " + projectDir)
+
+		// appsody init
+		t.Log("Running appsody init...")
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		imageTag := "testdeploy/testimage"
+		pullURL := "my-pull-url"
+		// appsody deploy
+		t.Log("Running appsody deploy...")
+		_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative"}, projectDir)
+		if err != nil {
+			t.Log("WARNING: deploy dryrun failed. Ignoring for now until that gets fixed.")
+			// TODO We need to fix the deploy --dryrun option so it doesn't fail, then uncomment the line below
+			// t.Fatal(err)
+		}
+
+		checkDeploymentConfig(t, filepath.Join(projectDir, deployFile), pullURL, imageTag)
 
 		// cleanup tasks
 		cleanup()
