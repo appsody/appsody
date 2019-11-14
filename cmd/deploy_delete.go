@@ -24,10 +24,10 @@ func newDeleteDeploymentCmd(deployConfig *deployCommandConfig) *cobra.Command {
 	var deleteDeploymentCmd = &cobra.Command{
 		Use:   "delete",
 		Short: "Delete your deployed Appsody project from a Kubernetes cluster.",
-		Long:  `Delete your deployed Appsody project from the configured Kubernetes cluster using your existing deployment manifest.
+		Long: `Delete your deployed Appsody project from the configured Kubernetes cluster using your existing deployment manifest.
 
 By default, the command looks for the deployed project in the "default" namespace, and uses the generated "app-deploy.yaml" deployment manifest, unless you specify otherwise.`,
-		Example:`  appsody deploy delete -f my-deploy.yaml
+		Example: `  appsody deploy delete -f my-deploy.yaml
   Deletes the pod using the type and name specified in the "my-deploy.yaml" deployment manifest, in the "default" namespace.
   
   appsody deploy delete --namespace my-namespace
