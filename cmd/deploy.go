@@ -97,9 +97,16 @@ func newDeployCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	var deployCmd = &cobra.Command{
 		Use:   "deploy",
-		Short: "Build and deploy your Appsody project to your Kubernetes cluster",
-		Long: `This command extracts the code from your project, builds a local Docker image for deployment,
-generates a deployment manifest (yaml) file if one is not present, and uses it to deploy your image to a Kubernetes cluster, either via the Appsody operator or as a Knative service.`,
+		Short: "Build and deploy your Appsody project to Kubernetes.",
+		Long: `Build and deploy a local container image of your Appsody project to your Kubernetes cluster. 
+		
+The stack, along with your Appsody project, is extracted to a local directory before the container image of your Appsody project is built for deployment.
+The command generates a deployment manifest file, "app-deploy.yaml", if one is not present. The CLI uses this file to deploy your image to your Kubernetes cluster, either via the Appsody operator or as a Knative service.`,
+		Example: `  appsody deploy --namespace my-namespace
+  Builds and deploys your project to the "my-namespace" namespace in your local Kubernetes cluster.
+  
+  appsody deploy -t my-repo/nodejs-express --push-url external-registry-url --pull-url internal-registry-url
+  Builds the container image, tags it with my-repo/nodejs-express, pushes image to "external-registry-url/my-repo/nodejs-express", and pulls image from "internal-registry-url/my-repo/nodejs-express"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if config.generate {
 				return generateDeploymentConfig(config)
