@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -48,6 +49,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
   appsody stack create my-stack --copy incubator/nodejs-express  
   Creates a stack called my-stack, based on the Node.js Express stack.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			currentTime := time.Now().Format("20060102150405")
 
 			if len(args) < 1 {
 				return errors.New("Required parameter missing. You must specify a stack name")
@@ -56,12 +58,11 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			stack := args[0]
 
 			match, err := IsValidProjectName(stack)
-
 			if !match {
 				return err
 			}
-			exists, err := Exists(stack)
 
+			exists, err := Exists(stack)
 			if err != nil {
 				return err
 			}
@@ -71,14 +72,12 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			extractFolderExists, err := Exists(filepath.Join(getHome(rootConfig), "extract"))
-
 			if err != nil {
 				return err
 			}
 
 			if !extractFolderExists {
 				err = os.MkdirAll(filepath.Join(getHome(rootConfig), "extract"), os.ModePerm)
-
 				if err != nil {
 					return err
 				}
@@ -88,13 +87,12 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			if err != nil {
 				return err
 			}
-			_, projectType, err := parseProjectParm(config.copy, config.RootCommandConfig)
+			_, stackTempDir, err := parseProjectParm(config.copy, config.RootCommandConfig)
 			if err != nil {
 				return err
 			}
 
 			valid, unzipErr := unzip(filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy, config.Dryrun)
-
 			if unzipErr != nil {
 				return unzipErr
 			}
@@ -108,10 +106,12 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			//moving out the stack which we need
 			if config.Dryrun {
-				Info.logf("Dry Run -Skipping moving out of stack: %s from %s", projectType, filepath.Join(stack, "stacks-master", config.copy))
+				Info.logf("Dry Run -Skipping moving out of stack: %s from %s", stackTempDir, filepath.Join(stack, "stacks-master", config.copy))
 
 			} else {
-				err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), projectType)
+				stackTempDir = ".temp-" + stackTempDir + "-" + currentTime
+
+				err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), stackTempDir)
 				if err != nil {
 					return err
 				}
@@ -120,12 +120,12 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			//deleting the folder from which stack is extracted
 			os.RemoveAll(stack)
 
-			//rename the stack to the name which user want
+			// rename the stack to the name which user want
 			if config.Dryrun {
-				Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", projectType, stack)
+				Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", stackTempDir, stack)
 
 			} else {
-				err = os.Rename(projectType, stack)
+				err = os.Rename(stackTempDir, stack)
 				if err != nil {
 					return err
 				}

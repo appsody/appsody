@@ -20,7 +20,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"os/user"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -101,7 +100,28 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 }
 
 func commonCmd(config *devCommonConfig, mode string) error {
-
+	// Checking whether the controller is being overridden
+	overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
+	if overrideControllerImage == "" {
+		overrideVersion := os.Getenv("APPSODY_CONTROLLER_VERSION")
+		if overrideVersion != "" {
+			CONTROLLERVERSION = overrideVersion
+			Warning.Log("You have overridden the Appsody controller version and set it to: ", CONTROLLERVERSION)
+		}
+	} else {
+		Warning.Log("The Appsody CLI detected the APPSODY_CONTROLLER_IMAGE env var. The controller image that will be used is: ", overrideControllerImage)
+		imageSplit := strings.Split(overrideControllerImage, ":")
+		if len(imageSplit) == 1 {
+			// this is an implicit reference to latest
+			CONTROLLERVERSION = "latest"
+		} else {
+			CONTROLLERVERSION = imageSplit[1]
+			//This also could be latest
+		}
+	}
+	if CONTROLLERVERSION == "latest" {
+		Warning.Log("The Appsody CLI will use the latest version of the controller image. This may result in a mismatch or malfunction.")
+	}
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
 		return perr
@@ -142,75 +162,60 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	// Mount the controller
-	destController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
-	if destController != "" {
-		Debug.log("Overriding appsody-controller mount with APPSODY_MOUNT_CONTROLLER env variable: ", destController)
-	} else {
-		// Copy the controller from the installation directory to the home (.appsody)
-		destController = filepath.Join(getHome(config.RootCommandConfig), "appsody-controller")
-		// Debug.log("Attempting to load the controller from ", destController)
-		//if _, err := os.Stat(destController); os.IsNotExist(err) {
-		// Always copy it from the executable dir
-		//Retrieving the path of the binaries appsody and appsody-controller
-		//Debug.log("Didn't find the controller in .appsody - copying from the binary directory...")
-		executable, _ := os.Executable()
-		binaryLocation, err := filepath.Abs(filepath.Dir(executable))
-		Debug.log("Binary location ", binaryLocation)
-		if err != nil {
-			return errors.New("fatal error - can't retrieve the binary path... exiting")
-		}
-		controllerExists, existsErr := Exists(destController)
-		if existsErr != nil {
-			return existsErr
-		}
-		Debug.log("appsody-controller exists: ", controllerExists)
-		checksumMatch := false
-		if controllerExists {
-			var checksumMatchErr error
-			binaryControllerPath := filepath.Join(binaryLocation, "appsody-controller")
-			binaryControllerExists, existsErr := Exists(binaryControllerPath)
-			if existsErr != nil {
-				return existsErr
-			}
-			if binaryControllerExists {
-				checksumMatch, checksumMatchErr = checksum256TestFile(binaryControllerPath, destController)
-				Debug.log("checksum returned: ", checksumMatch)
-				if checksumMatchErr != nil {
-					return checksumMatchErr
-				}
-			} else {
-				//the binary controller did not exist so skip copying it
-				Warning.log("The binary controller could not be found.")
-				checksumMatch = true
-			}
-		}
-		// if the controller doesn't exist
-		if !controllerExists || (controllerExists && !checksumMatch) {
-			Debug.log("Replacing Controller")
 
-			//Construct the appsody-controller mount
-			sourceController := filepath.Join(binaryLocation, "appsody-controller")
-			if config.Dryrun {
-				Info.logf("Dry Run - Skipping copy of controller binary from %s to %s", sourceController, destController)
-			} else {
-				Debug.log("Attempting to copy the source controller from: ", sourceController)
-				//Copy the controller from the binary location to $HOME/.appsody
-				copyError := CopyFile(sourceController, destController)
-				if copyError != nil {
-					return errors.Errorf("Cannot retrieve controller - exiting: %v", copyError)
-				}
-				// Making the controller executable in case CopyFile loses permissions
-				chmodErr := os.Chmod(destController, 0755)
-				if chmodErr != nil {
-					return errors.Errorf("Cannot make the controller  executable - exiting: %v", chmodErr)
+	controllerImageName := overrideControllerImage
+	if controllerImageName == "" {
+		controllerImageName = fmt.Sprintf("%s:%s", "appsody/init-controller", CONTROLLERVERSION)
+	}
+	controllerVolumeName := fmt.Sprintf("%s-%s", "appsody-controller", CONTROLLERVERSION)
+	controllerVolumeMount := fmt.Sprintf("%s:%s", controllerVolumeName, "/.appsody")
+
+	if !config.Buildah {
+		//In local mode, run the init-controller image if necessary
+		updateController := false
+		if CONTROLLERVERSION == "latest" {
+			updateController = true
+		} else {
+			volNames, err := RunDockerVolumeList(controllerVolumeName)
+			if err != nil {
+				Debug.Log("Error attempting to query volumes for ", controllerVolumeName, " :", err)
+				return err
+			}
+			Debug.Log("Retrieved volume name(s): [", volNames, "]")
+			volNamesSlice := strings.Split(volNames, "\n")
+			foundVolName := ""
+			for _, volName := range volNamesSlice {
+				if volName == controllerVolumeName {
+					foundVolName = volName
 				}
 			}
+
+			if foundVolName == "" {
+				updateController = true
+			}
 		}
-		//} Used to close the "if controller does not exist"
+		// We run the image if there no volume that matches the controller version or if the controller version is "latest"
+		if updateController {
+			Debug.Logf("Controller volume not found or version is latest - launching the %s image to populate it", controllerImageName)
+			downloaderArgs := []string{"--rm", "-v", controllerVolumeMount, controllerImageName}
+			controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
+			if config.Dryrun {
+				Info.log("Dry Run - Skipping execCmd.Wait")
+			} else {
+				if err == nil {
+					err = controllerDownloader.Wait()
+				}
+			}
+			if err != nil {
+				Debug.Log("Error populating the controller volume: ", err)
+				return err
+			}
+		}
 	}
-	controllerMount := destController + ":/appsody/appsody-controller"
-	Debug.log("Adding controller to volume mounts: ", controllerMount)
-	volumeMaps = append(volumeMaps, "-v", controllerMount)
+
+	//controllerMount := controllerVolumeName + ":/appsody"
+	Debug.log("Adding controller to volume mounts: ", controllerVolumeMount)
+	volumeMaps = append(volumeMaps, "-v", controllerVolumeMount)
 	if !config.Buildah {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -265,7 +270,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.interactive {
 		cmdArgs = append(cmdArgs, "-i")
 	}
-	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/appsody/appsody-controller", platformDefinition, "--mode="+mode)
+	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode)
 	if config.Verbose {
 		cmdArgs = append(cmdArgs, "-v")
 	}
@@ -306,11 +311,6 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if portsErr != nil {
 			return portsErr
 		}
-		/*
-			projectName, err := getProjectName(config.RootCommandConfig)
-			if err != nil {
-				return err
-			}*/
 
 		projectDir, err := getProjectDir(config.RootCommandConfig)
 		if err != nil {
@@ -324,7 +324,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, portList, projectDir, dockerMounts, depsMount, dryrun)
+		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, depsMount, dryrun)
 		if err != nil {
 			return err
 		}
