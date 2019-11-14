@@ -23,8 +23,15 @@ func newDeleteDeploymentCmd(deployConfig *deployCommandConfig) *cobra.Command {
 	var deployConfigFile string
 	var deleteDeploymentCmd = &cobra.Command{
 		Use:   "delete",
-		Short: "Delete your deployed Appsody project from a Kubernetes cluster",
-		Long:  `This command deletes your deployed Appsody project from the configured Kubernetes cluster using your existing deployment manifest.`,
+		Short: "Delete your deployed Appsody project from a Kubernetes cluster.",
+		Long:  `Delete your deployed Appsody project from the configured Kubernetes cluster using your existing deployment manifest.
+
+By default, the command looks for the deployed project in the "default" namespace, and uses the generated "app-deploy.yaml" deployment manifest, unless you specify otherwise.`,
+		Example:`  appsody deploy delete -f my-deploy.yaml
+  Deletes the pod using the type and name specified in the "my-deploy.yaml" deployment manifest, in the "default" namespace.
+  
+  appsody deploy delete --namespace my-namespace
+  Deletes the pod using the type and name specified in the "app-deploy.yaml" deployment manifest, in the "my-namespace" namespace.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			exists, err := Exists(deployConfigFile)
@@ -45,6 +52,6 @@ func newDeleteDeploymentCmd(deployConfig *deployCommandConfig) *cobra.Command {
 		},
 	}
 
-	deleteDeploymentCmd.PersistentFlags().StringVarP(&deployConfigFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
+	deleteDeploymentCmd.PersistentFlags().StringVarP(&deployConfigFile, "file", "f", "app-deploy.yaml", "Name of the deployment configuration you want to use.")
 	return deleteDeploymentCmd
 }
