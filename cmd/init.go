@@ -48,18 +48,27 @@ func newInitCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// initCmd represents the init command
 	var initCmd = &cobra.Command{
 		Use:   "init [stack] or [repository]/[stack] [template]",
-		Short: "Initialize an Appsody project with a stack and template app",
-		Long: `This creates a new Appsody project in a local directory or sets up the local dev environment of an existing Appsody project.
+		Short: "Initialize an Appsody project.",
+		Long: `Set up the local Appsody development environment. You can do this for an existing project or use the template application provided by the stack. 
 
-If the [repository] is not specified the default repository will be used. If no [template] is specified, the default template will be used.
-With the [stack], [repository]/[stack], [stack] [template] or [repository]/[stack] [template] arguments, this command will setup a new Appsody project. It will create an Appsody stack config file, unzip a template app, and run the stack init script to setup the local dev environment. It is typically run on an empty directory and may fail
-if files already exist. See the --overwrite and --no-template options for more details.
-Use 'appsody list' to see the available stack options.
+By default, the command creates an Appsody stack configuration file and provides a simple default application. You can also initialize a project with a different template application, or no template. 
 
-If keyword "none" is specified instead of a [template], the project will be initialized to use Appsody, and no template will be provided.
+To initialize a project with a template application, in a directory that is not empty, you need to specify the "overwrite" option [--overwrite].
+Use 'appsody list' to see the available stacks and templates.`,
+		Example: `  appsody init nodejs-express
+  Initializes a project with the default template from the "nodejs-express" stack in the default repository.
+  
+  appsody init experimental/nodejs-functions
+  Initializes a project with the default template from the "nodejs-functions" stack in the "experimental" repository.
+  
+  appsody init nodejs-express scaffold
+  Initializes a project with the "scaffold" template from "nodejs-express" stack in the default repository.
 
-Without the [stack] argument, this command must be run on an existing Appsody project and will only run the stack init script to
-setup the local dev environment.`,
+  appsody init nodejs none
+  Initializes a project without a template for the "nodejs" stack in the default repository.
+
+  appsody init
+  Runs the stack init script to set up the local development environment on an existing Appsody project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var stack string
 			var template string
@@ -141,6 +150,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		index = indices[repoName]
 		projectFound := false
 		stackFound := false
+		var stackReqs StackRequirement
 
 		if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 			Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
@@ -157,8 +167,9 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			projectName = index.Projects[projectType][0].URLs[0]
 
 		}
-		for _, stack := range index.Stacks {
+		for indexNo, stack := range index.Stacks {
 			if stack.ID == projectType {
+				stackReqs = index.Stacks[indexNo].Requirements
 				stackFound = true
 				Debug.log("Stack ", projectType, " found in repo ", repoName)
 				URL := ""
@@ -212,6 +223,18 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			Info.log("If you wish to proceed and possibly overwrite files in the current directory, try again with the --overwrite option.")
 			return errors.New("non-empty directory found with files which may conflict with the template project")
 
+		}
+
+		reqsMap := map[string]string{
+			"Docker":  stackReqs.Docker,
+			"Appsody": stackReqs.Appsody,
+			"Buildah": stackReqs.Buildah,
+		}
+
+		checkErr := CheckStackRequirements(reqsMap, config.Buildah)
+		if checkErr != nil {
+			Error.log(checkErr)
+			os.Exit(1)
 		}
 
 		Info.log("Running appsody init...")
