@@ -34,6 +34,7 @@ import (
 )
 
 var VERSION string
+var CONTROLLERVERSION string
 
 const APIVersionV1 = "v1"
 
@@ -180,19 +181,21 @@ func getDefaultConfigFile(config *RootCommandConfig) string {
 	return filepath.Join(config.CliConfig.GetString("home"), ".appsody.yaml")
 }
 
-func Execute(version string) {
+func Execute(version string, controllerVersion string) {
 	dir, err := os.Getwd()
 	if err != nil {
 		fmt.Println("Error getting current directory: ", err)
 		os.Exit(1)
 	}
-	if err := ExecuteE(version, dir, os.Args[1:]); err != nil {
+	if err := ExecuteE(version, controllerVersion, dir, os.Args[1:]); err != nil {
 		os.Exit(1)
 	}
 }
 
-func ExecuteE(version string, projectDir string, args []string) error {
+func ExecuteE(version string, controllerVersion string, projectDir string, args []string) error {
 	VERSION = version
+	CONTROLLERVERSION = controllerVersion
+
 	rootCmd, err := newRootCmd(projectDir, args)
 	if err != nil {
 		Error.log(err)
@@ -223,6 +226,7 @@ var (
 	Container  = appsodylogger{name: "Container"}
 	InitScript = appsodylogger{name: "InitScript"}
 	DockerLog  = appsodylogger{name: "Docker"}
+	BuildahLog = appsodylogger{name: "Buildah"}
 )
 
 var allLoggers = []*appsodylogger{&Info, &Warning, &Error, &Debug, &Container, &InitScript, &DockerLog}
