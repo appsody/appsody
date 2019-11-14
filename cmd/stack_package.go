@@ -204,15 +204,14 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// docker build
 			// create the image name to be used for the docker image
-			buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
+			namespaceAndRepo := imageNamespace + "/" + stackID
+			buildImage := namespaceAndRepo + ":" + stackYaml.Version
 
 			imageDir := filepath.Join(stackPath, "image")
 			Debug.Log("imageDir is: ", imageDir)
 
 			dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
 			Debug.Log("dockerFile is: ", dockerFile)
-
-			cmdArgs := []string{"-t", buildImage}
 
 			labels, err := GetLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
 			if err != nil {
@@ -221,22 +220,24 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// create the template metadata
 			templateMetadata, err := CreateTemplateMap(labels, stackYaml, imageNamespace)
-
 			if err != nil {
 				return errors.Errorf("Error creating templating mal: %v", err)
 			}
 
 			// apply templating to stack
 			err = ApplyTemplating(projectPath, stackPath, templateMetadata)
-
 			if err != nil {
 				return errors.Errorf("Error applying templating: %v", err)
 			}
 
-			// overriding time label with stack package currentTime generated earlier
-			labelPairs := CreateLabelPairs(labels)
+			// tag with the full version then mojorminor, major, and latest
+			cmdArgs := []string{"-t", buildImage}
+			semver := templateMetadata["stack"].(map[string]interface{})["semver"].(map[string]string)
+			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["majorminor"])
+			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["major"])
+			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo)
 
-			// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
+			labelPairs := CreateLabelPairs(labels)
 			for _, label := range labelPairs {
 				cmdArgs = append(cmdArgs, "--label", label)
 			}
