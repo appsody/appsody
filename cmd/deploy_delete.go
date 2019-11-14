@@ -28,10 +28,10 @@ func newDeleteDeploymentCmd(deployConfig *deployCommandConfig) *cobra.Command {
 
 By default, the command looks for the deployed project in the "default" namespace, and uses the generated "app-deploy.yaml" deployment manifest, unless you specify otherwise.`,
 		Example: `  appsody deploy delete -f my-deploy.yaml
-  Deletes the pod using the type and name specified in the "my-deploy.yaml" deployment manifest, in the "default" namespace.
+  Deletes the AppsodyApplication using the name and type specified in the "my-deploy.yaml" deployment manifest, in the "default" namespace.
   
   appsody deploy delete --namespace my-namespace
-  Deletes the pod using the type and name specified in the "app-deploy.yaml" deployment manifest, in the "my-namespace" namespace.`,
+  Deletes the AppsodyApplication using the name and type specified in the "app-deploy.yaml" deployment manifest, in the "my-namespace" namespace.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			exists, err := Exists(deployConfigFile)
