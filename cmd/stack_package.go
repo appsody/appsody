@@ -498,7 +498,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 		if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
 			stack[key] = value
 		} else {
-			err = errors.Errorf("Variable name didn't start with alphanumeric character")
+			return templateMetadata, errors.Errorf("Variable name didn't start with alphanumeric character")
 		}
 	}
 	templateMetadata["stack"] = stack
