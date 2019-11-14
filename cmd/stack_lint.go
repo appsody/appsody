@@ -25,11 +25,15 @@ import (
 func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var lintCmd = &cobra.Command{
 		Use:   "lint",
-		Short: "Lint your stack to verify that it conforms to the structure of an Appsody stack",
-		Long: `This command will validate that your stack has the structure of an Appsody stack. It will inform you of files/directories
-missing and warn you if your stack could be enhanced.
+		Short: "Check your stack structure.",
+		Long: `Check that the structure of your stack is valid. Error messages indicate critical issues in your stack structure, such as missing files, directories, or stack variables. Warning messages suggest optional stack enhancements.
 
-This command can be run from the base directory of your stack or you can supply a path to the stack as an argument.`,
+		Run this command from the base directory of your stack, or specify the path to your stack.`,
+		Example: `  appsody stack lint
+		Checks the structure of the stack in the current directory"
+		
+		appsody stack lint path/to/my-stack
+		Checks the structure of the stack "my-stack" in the path "path/to/my-stack"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			var stackLintErrorCount int
