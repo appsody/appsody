@@ -91,8 +91,7 @@ func TestTemplatingAllVariables(t *testing.T) {
 
 }
 
-// Tests all templating variables with a starter stack in testdata.  Does not test for .stack.created.
-// Expect to fail as text will not match.
+// Test templating with an incorrect variable name
 func TestTemplatingWrongVariables(t *testing.T) {
 
 	// gets all the necessary data from a setup function
