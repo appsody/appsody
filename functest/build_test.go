@@ -272,7 +272,6 @@ func TestDeploymentConfig(t *testing.T) {
 		runChannel := make(chan error)
 		imageName := "testbuildimage"
 		pullURL := "my-pull-url"
-		knative := true
 
 		go func() {
 			_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName, "--pull-url", pullURL, "--knative"}, projectDir)
@@ -304,7 +303,7 @@ func TestDeploymentConfig(t *testing.T) {
 			t.Fatal("image was never built")
 		}
 
-		checkDeploymentConfig(t, pullURL, imageName, knative)
+		checkDeploymentConfig(t, pullURL, imageName)
 
 		//delete the image
 		deleteImage(imageName)
@@ -314,7 +313,7 @@ func TestDeploymentConfig(t *testing.T) {
 	}
 }
 
-func checkDeploymentConfig(t *testing.T, pullURL string, imageTag string, knative bool) {
+func checkDeploymentConfig(t *testing.T, pullURL string, imageTag string) {
 	_, err := os.Stat(deployFile)
 	if err != nil && os.IsNotExist(err) {
 		t.Fatalf("Could not find %s", deployFile)
@@ -340,7 +339,7 @@ func checkDeploymentConfig(t *testing.T, pullURL string, imageTag string, knativ
 		t.Fatal("Incorrect ApplicationImage in app-deploy.yaml")
 	}
 
-	if *appsodyApplication.Spec.CreateKnativeService == knative {
+	if *appsodyApplication.Spec.CreateKnativeService {
 		t.Fatal("CreateKnativeService not set to true in the app-deploy.yaml when using --knative flag")
 	}
 }
