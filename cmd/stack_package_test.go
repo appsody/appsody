@@ -56,6 +56,12 @@ func TestTemplatingAllVariables(t *testing.T) {
 		t.Fatalf("Error saving file: %v", err)
 	}
 
+	// creates stackPath dir if it doesn't exist
+	err = os.MkdirAll(filepath.Dir(stackPath), 0777)
+	if err != nil {
+		t.Fatalf("Error creating stackPath: %v", err)
+	}
+
 	err = cmd.CopyDir(projectPath, stackPath)
 	if err != nil {
 		t.Fatalf("Error copying directory: %v", err)
