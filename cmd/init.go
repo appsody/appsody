@@ -141,6 +141,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		index = indices[repoName]
 		projectFound := false
 		stackFound := false
+		var stackReqs StackRequirement
 
 		if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 			Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
@@ -157,8 +158,9 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			projectName = index.Projects[projectType][0].URLs[0]
 
 		}
-		for _, stack := range index.Stacks {
+		for indexNo, stack := range index.Stacks {
 			if stack.ID == projectType {
+				stackReqs = index.Stacks[indexNo].Requirements
 				stackFound = true
 				Debug.log("Stack ", projectType, " found in repo ", repoName)
 				URL := ""
@@ -214,6 +216,18 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		}
 
+		reqsMap := map[string]string{
+			"Docker":  stackReqs.Docker,
+			"Appsody": stackReqs.Appsody,
+			"Buildah": stackReqs.Buildah,
+		}
+
+		checkErr := CheckStackRequirements(reqsMap, config.Buildah)
+		if checkErr != nil {
+			Error.log(checkErr)
+			os.Exit(1)
+		}
+
 		Info.log("Running appsody init...")
 		Info.logf("Downloading %s template project from %s", projectType, projectName)
 		filename := filepath.Join(dir, projectType+".tar.gz")
@@ -223,7 +237,12 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			return errors.Errorf("Error downloading tar %v", err)
 
 		}
-		Info.log("Download complete. Extracting files from ", filename)
+		if inputTemplateName != "none" {
+			Info.log("Download complete. Extracting files from ", filename)
+		} else {
+			Info.log("Download complete. Do not unzip the template project. Only extracting .appsody-config.yaml file from ", filename)
+		}
+
 		//if noTemplate
 		errUntar := untar(filename, noTemplate, config.overwrite, config.Dryrun)
 
@@ -241,7 +260,6 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			Info.log("If you wish to proceed and overwrite files in the current directory, try again with the --overwrite option.")
 			// this leave the tar file in the dir
 			return errors.Errorf("Error extracting project template: %v", errUntar)
-
 		}
 
 	}
@@ -249,7 +267,14 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if err != nil {
 		return err
 	}
-	Info.log("Successfully initialized Appsody project")
+	if template == "" {
+		Info.logf("Successfully initialized Appsody project with the %s stack and the default template.", stack)
+	} else if template != "none" {
+		Info.logf("Successfully initialized Appsody project with the %s stack and the %s template.", stack, template)
+	} else {
+		Info.logf("Successfully initialized Appsody project with the %s stack and no template.", stack)
+	}
+
 	return nil
 }
 
