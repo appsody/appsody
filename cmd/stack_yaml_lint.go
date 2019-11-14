@@ -25,22 +25,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type StackDetails struct {
-	Name            string            `yaml:"name"`
-	Version         string            `yaml:"version"`
-	Description     string            `yaml:"description"`
-	License         string            `yaml:"license"`
-	Language        string            `yaml:"language"`
-	Maintainers     []StackMaintainer `yaml:"maintainers"`
-	TemplatingData  map[string]string `yaml:"templating-data"`
-	DefaultTemplate string            `yaml:"default-template"`
-}
-
-type StackMaintainer struct {
-	Email string `yaml:"email"`
-}
-
-func (s *StackDetails) validateYaml(stackPath string) (int, int) {
+func (stackDetails *StackYaml) validateYaml(stackPath string) (int, int) {
 	stackLintErrorCount := 0
 	arg := filepath.Join(stackPath, "/stack.yaml")
 
@@ -52,23 +37,23 @@ func (s *StackDetails) validateYaml(stackPath string) (int, int) {
 		stackLintErrorCount++
 	}
 
-	err = yaml.Unmarshal([]byte(stackyaml), s)
+	err = yaml.Unmarshal([]byte(stackyaml), stackDetails)
 	if err != nil {
 		Error.log("Unmarshal: Error unmarshalling stack.yaml")
 		stackLintErrorCount++
 	}
 
-	stackLintErrorCount += s.validateFields()
-	stackLintErrorCount += s.checkVersion()
-	stackLintErrorCount += s.checkDescLength()
-	templateErrorCount, templateWarningCount := s.checkTemplatingData()
+	stackLintErrorCount += stackDetails.validateFields()
+	stackLintErrorCount += stackDetails.checkVersion()
+	stackLintErrorCount += stackDetails.checkDescLength()
+	templateErrorCount, templateWarningCount := stackDetails.checkTemplatingData()
 	stackLintErrorCount += templateErrorCount
 	return stackLintErrorCount, templateWarningCount
 }
 
-func (s *StackDetails) validateFields() int {
+func (stackDetails *StackYaml) validateFields() int {
 	stackLintErrorCount := 0
-	v := reflect.ValueOf(s).Elem()
+	v := reflect.ValueOf(stackDetails).Elem()
 	yamlValues := make([]interface{}, v.NumField())
 
 	for i := 0; i < v.NumField(); i++ {
@@ -79,29 +64,29 @@ func (s *StackDetails) validateFields() int {
 		}
 	}
 
-	stackLintErrorCount += s.checkMaintainer(yamlValues)
+	stackLintErrorCount += stackDetails.checkMaintainer(yamlValues)
 	return stackLintErrorCount
 
 }
 
-func (s *StackDetails) checkMaintainer(yamlValues []interface{}) int {
+func (stackDetails *StackYaml) checkMaintainer(yamlValues []interface{}) int {
 	stackLintErrorCount := 0
 	Map := make(map[string]interface{})
 	Map["maintainerEmails"] = yamlValues[5]
 
-	maintainerEmails := Map["maintainerEmails"].([]StackMaintainer)
+	maintainerEmails := Map["maintainerEmails"].([]Maintainer)
 
 	if len(maintainerEmails) == 0 {
-		Error.log("Email is not provided under field: maintainers")
+		Error.log("Please list a stack maintainer with the following details: Name, Email, and Github ID")
 		stackLintErrorCount++
 	}
 
 	return stackLintErrorCount
 }
 
-func (s *StackDetails) checkVersion() int {
+func (stackDetails *StackYaml) checkVersion() int {
 	stackLintErrorCount := 0
-	versionNo := strings.Split(s.Version, ".")
+	versionNo := strings.Split(stackDetails.Version, ".")
 
 	for _, mmp := range versionNo {
 		_, err := strconv.Atoi(mmp)
@@ -118,15 +103,15 @@ func (s *StackDetails) checkVersion() int {
 	return stackLintErrorCount
 }
 
-func (s *StackDetails) checkDescLength() int {
+func (stackDetails *StackYaml) checkDescLength() int {
 	stackLintErrorCount := 0
 
-	if len(s.Description) > 70 {
+	if len(stackDetails.Description) > 70 {
 		Error.log("Description must be under 70 characters")
 		stackLintErrorCount++
 	}
 
-	if len(s.Name) > 30 {
+	if len(stackDetails.Name) > 30 {
 		Error.log("Stack name must be under 30 characters")
 		stackLintErrorCount++
 	}
@@ -134,18 +119,18 @@ func (s *StackDetails) checkDescLength() int {
 	return stackLintErrorCount
 }
 
-func (s *StackDetails) checkTemplatingData() (int, int) {
+func (stackDetails *StackYaml) checkTemplatingData() (int, int) {
 	stackLintErrorCount := 0
 	stackLintWarningCount := 0
 	versionRegex := regexp.MustCompile("^[a-zA-Z0-9]*$")
 
-	if len(s.TemplatingData) == 0 {
+	if len(stackDetails.TemplatingData) == 0 {
 		Warning.log("No custom templating variables defined - You will not be able to reuse variables across the stack")
 		stackLintWarningCount++
 		return stackLintErrorCount, stackLintWarningCount
 	}
 
-	for key, value := range s.TemplatingData {
+	for key, value := range stackDetails.TemplatingData {
 		checkKey := versionRegex.FindString(string(key))
 		checkValue := versionRegex.FindString(string(value))
 
