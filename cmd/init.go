@@ -150,6 +150,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		index = indices[repoName]
 		projectFound := false
 		stackFound := false
+		var stackReqs StackRequirement
 
 		if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 			Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
@@ -166,8 +167,9 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			projectName = index.Projects[projectType][0].URLs[0]
 
 		}
-		for _, stack := range index.Stacks {
+		for indexNo, stack := range index.Stacks {
 			if stack.ID == projectType {
+				stackReqs = index.Stacks[indexNo].Requirements
 				stackFound = true
 				Debug.log("Stack ", projectType, " found in repo ", repoName)
 				URL := ""
@@ -221,6 +223,18 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			Info.log("If you wish to proceed and possibly overwrite files in the current directory, try again with the --overwrite option.")
 			return errors.New("non-empty directory found with files which may conflict with the template project")
 
+		}
+
+		reqsMap := map[string]string{
+			"Docker":  stackReqs.Docker,
+			"Appsody": stackReqs.Appsody,
+			"Buildah": stackReqs.Buildah,
+		}
+
+		checkErr := CheckStackRequirements(reqsMap, config.Buildah)
+		if checkErr != nil {
+			Error.log(checkErr)
+			os.Exit(1)
 		}
 
 		Info.log("Running appsody init...")

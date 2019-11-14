@@ -27,10 +27,11 @@ import (
 
 type buildCommandConfig struct {
 	*RootCommandConfig
-	tag                string
-	dockerBuildOptions string
-	pushURL            string
-	push               bool
+	tag                 string
+	dockerBuildOptions  string
+	buildahBuildOptions string
+	pushURL             string
+	push                bool
 }
 
 func checkDockerBuildOptions(options []string) error {
@@ -53,17 +54,29 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// buildCmd provides the ability run local builds, or setup/delete Tekton builds, for an appsody project
 	var buildCmd = &cobra.Command{
 		Use:   "build",
-		Short: "Locally build a docker image of your appsody project",
-		Long:  `This allows you to build a local Docker image from your Appsody project. Extract is run before the docker build.`,
+		Short: "Build a local container image of your Appsody project.",
+		Long: `Build a local container image of your Appsody project. The stack, along with your Appsody project, is extracted to a local directory before the container build is run.
+
+By default, the built image is tagged with the project name that you specified when you initialised your Appsody project. If you did not specify a name, the image is tagged with the name of the root directory of your Appsody project.
+
+If you want to push the built image to an image repository using the [--push] options, you must specify the relevant image tag.`,
+		Example: `  appsody build -t my-repo/nodejs-express --push
+  Builds the container image, tags it with my-repo/nodejs-express, and pushes it to the container registry the Docker CLI is currently logged into.
+
+  appsody build -t my-repo/nodejs-express:0.1 --push-url my-registry-url
+  Builds the container image, tags it with my-repo/nodejs-express, and pushes it to my-registry-url/my-repo/nodejs-express:0.1.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return build(config)
 		},
 	}
 
-	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
-	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use.  Value must be in \"\".")
-	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the Docker image to the image repository.")
+	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Container image name and optionally, a tag in the 'name:tag' format.")
+	buildCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of Docker.")
+	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the Docker build options to use. Value must be in \"\".")
+	buildCmd.PersistentFlags().StringVar(&config.buildahBuildOptions, "buildah-options", "", "Specify the buildah build options to use. Value must be in \"\".")
+	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the container image to the image repository.")
 	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
+
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
 	buildCmd.AddCommand(newSetupCmd(config))
 	return buildCmd
@@ -73,6 +86,19 @@ func build(config *buildCommandConfig) error {
 	// This needs to do:
 	// 1. appsody Extract
 	// 2. docker build -t <project name> -f Dockerfile ./extracted
+	buildOptions := ""
+	if config.dockerBuildOptions != "" {
+		if config.Buildah {
+			return errors.New("Cannot specify --docker-options flag with --buildah")
+		}
+		buildOptions = strings.TrimSpace(config.dockerBuildOptions)
+	}
+	if config.buildahBuildOptions != "" {
+		if !config.Buildah {
+			return errors.New("Cannot specify --buildah-options flag without --buildah")
+		}
+		buildOptions = strings.TrimSpace(config.buildahBuildOptions)
+	}
 
 	extractConfig := &extractCommandConfig{RootCommandConfig: config.RootCommandConfig}
 
@@ -102,10 +128,8 @@ func build(config *buildCommandConfig) error {
 	}
 	cmdArgs := []string{"-t", buildImage}
 
-	if config.dockerBuildOptions != "" {
-		dockerBuildOptions := strings.TrimPrefix(config.dockerBuildOptions, " ")
-		dockerBuildOptions = strings.TrimSuffix(dockerBuildOptions, " ")
-		options := strings.Split(dockerBuildOptions, " ")
+	if buildOptions != "" {
+		options := strings.Split(buildOptions, " ")
 		err := checkDockerBuildOptions(options)
 		if err != nil {
 			return err
@@ -118,7 +142,7 @@ func build(config *buildCommandConfig) error {
 		return err
 	}
 
-	labelPairs := createLabelPairs(labels)
+	labelPairs := CreateLabelPairs(labels)
 
 	// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
 	for _, label := range labelPairs {
@@ -127,14 +151,18 @@ func build(config *buildCommandConfig) error {
 
 	cmdArgs = append(cmdArgs, "-f", dockerfile, extractDir)
 	Debug.log("final cmd args", cmdArgs)
-	execError := DockerBuild(cmdArgs, DockerLog, config.Verbose, config.Dryrun)
+	var execError error
+	if !config.Buildah {
+		execError = DockerBuild(cmdArgs, DockerLog, config.Verbose, config.Dryrun)
+	} else {
+		execError = BuildahBuild(cmdArgs, BuildahLog, config.Verbose, config.Dryrun)
+	}
 
 	if execError != nil {
 		return execError
 	}
 	if config.pushURL != "" || config.push {
-
-		err := DockerPush(buildImage, config.Dryrun)
+		err := ImagePush(buildImage, config.Buildah, config.Dryrun)
 		if err != nil {
 			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
 		}
@@ -253,7 +281,7 @@ func ConvertLabelToKubeFormat(key string) (string, error) {
 	return prefix + name, nil
 }
 
-func createLabelPairs(labels map[string]string) []string {
+func CreateLabelPairs(labels map[string]string) []string {
 	var labelsArr []string
 
 	for key, value := range labels {
