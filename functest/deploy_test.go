@@ -15,6 +15,7 @@ package functest
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -99,7 +100,6 @@ func TestDeploySimple(t *testing.T) {
 		}
 
 		// cleanup tasks
-		os.Remove("app-deploy.yaml")
 		cleanup()
 	}
 }
@@ -151,10 +151,9 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 			// t.Fatal(err)
 		}
 
-		checkDeploymentConfig(t, pullURL, imageTag)
+		checkDeploymentConfig(t, filepath.Join(projectDir, deployFile), pullURL, imageTag)
 
 		// cleanup tasks
-		os.Remove("app-deploy.yaml")
 		cleanup()
 	}
 }

@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -53,9 +54,14 @@ func newDeployCmd(rootConfig *RootCommandConfig) *cobra.Command {
 generates a deployment manifest (yaml) file if one is not present, and uses it to deploy your image to a Kubernetes cluster, either via the Appsody operator or as a Knative service.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			projectDir, err := getProjectDir(config.RootCommandConfig)
+			if err != nil {
+				return err
+			}
+
 			dryrun := config.Dryrun
 			namespace := config.namespace
-			configFile := config.appDeployFile
+			configFile := filepath.Join(projectDir, config.appDeployFile)
 
 			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
 			buildConfig.Verbose = config.Verbose
@@ -102,7 +108,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			}
 
 			// Performing the kubectl apply
-			err := KubeApply(configFile, namespace, dryrun)
+			err = KubeApply(configFile, namespace, dryrun)
 			if err != nil {
 				return errors.Errorf("Failed to deploy to your Kubernetes cluster: %v", err)
 			}

@@ -86,6 +86,12 @@ If you want to push the built image to an image repository using the [--push] op
   appsody build -t my-repo/nodejs-express:0.1 --push-url my-registry-url
   Builds the container image, tags it with my-repo/nodejs-express, and pushes it to my-registry-url/my-repo/nodejs-express:0.1.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			projectDir, err := getProjectDir(config.RootCommandConfig)
+			if err != nil {
+				return err
+			}
+			config.appDeployFile = filepath.Join(projectDir, config.appDeployFile)
 			return build(config)
 		},
 	}
@@ -329,9 +335,11 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	if configErr != nil {
 		return configErr
 	}
-	err := CheckPrereqs()
-	if err != nil {
-		Warning.logf("Failed to check prerequisites: %v\n", err)
+	if !config.Buildah {
+		err := CheckPrereqs()
+		if err != nil {
+			Warning.logf("Failed to check prerequisites: %v\n", err)
+		}
 	}
 	stackImage := projectConfig.Stack
 	Debug.log("Stack image: ", stackImage)
@@ -376,10 +384,10 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	cmdArgs = append(cmdArgs, stackImage)
 	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
 	if err != nil {
-		Error.log("docker create command failed: ", err)
+		Error.log("Container create command failed: ", err)
 
 		// TODO: We shouldn't remove the container if it already exists
-		removeErr := containerRemove(extractContainerName, false, config.Dryrun)
+		removeErr := containerRemove(extractContainerName, config.Buildah, config.Dryrun)
 		if removeErr != nil {
 			Error.log("Error in containerRemove", removeErr)
 		}
@@ -387,19 +395,25 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	}
 	configDir = extractContainerName + ":" + containerConfigDir
 
-	cmdArgs = []string{"cp", configDir, "./" + configFile}
+	cmdArgs = []string{"cp", configDir, configFile}
 	if config.Buildah {
-		cmdArgs = []string{"copy", configDir, "./" + configFile}
+		// buildah does not support copying from the container to the filesystem
+		// we'll need to convert this to a mount, like we do in extract
+		//cmdArgs = []string{"copy", configDir, configFile}
+		configDir = containerConfigDir
+		cmdName = "/bin/sh"
+		script := fmt.Sprintf("x=`buildah mount %s`; cp -f $x/%s %s", extractContainerName, configDir, configFile)
+		cmdArgs = []string{"-c", script}
 	}
 	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
 
-	removeErr := containerRemove(extractContainerName, false, config.Dryrun)
+	removeErr := containerRemove(extractContainerName, config.Buildah, config.Dryrun)
 	if removeErr != nil {
 		Error.log("containerRemove error ", removeErr)
 	}
 
 	if err != nil {
-		return errors.Errorf("docker cp command failed: %v", err)
+		return errors.Errorf("Container copy command failed: %v", err)
 	}
 
 	yamlReader, err := ioutil.ReadFile(configFile)

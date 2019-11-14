@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -269,41 +270,14 @@ func TestDeploymentConfig(t *testing.T) {
 		}
 
 		// appsody build
-		runChannel := make(chan error)
-		imageName := "testbuildimage"
+		imageName := filepath.Base(projectDir)
 		pullURL := "my-pull-url"
 
-		go func() {
-			_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName, "--pull-url", pullURL, "--knative"}, projectDir)
-			runChannel <- err
-		}()
-
-		// It will take a while for the image to build, so lets use docker image ls to wait for it
-		t.Log("calling docker image ls to wait for the image")
-		imageBuilt := false
-		count := 900
-		for {
-			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"image", "ls", imageName})
-			if dockerErr != nil {
-				t.Log("Ignoring error running docker image ls "+imageName, dockerErr)
-			}
-			if strings.Contains(dockerOutput, imageName) {
-				t.Log("docker image " + imageName + " was found")
-				imageBuilt = true
-			} else {
-				time.Sleep(2 * time.Second)
-				count = count - 1
-			}
-			if count == 0 || imageBuilt {
-				break
-			}
+		_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName, "--pull-url", pullURL, "--knative"}, projectDir)
+		if err != nil {
+			t.Error("appsody build command returned err: ", err)
 		}
-
-		if !imageBuilt {
-			t.Fatal("image was never built")
-		}
-
-		checkDeploymentConfig(t, pullURL, imageName)
+		checkDeploymentConfig(t, filepath.Join(projectDir, deployFile), pullURL, imageName)
 
 		//delete the image
 		deleteImage(imageName)
@@ -313,14 +287,14 @@ func TestDeploymentConfig(t *testing.T) {
 	}
 }
 
-func checkDeploymentConfig(t *testing.T, pullURL string, imageTag string) {
+func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imageTag string) {
 	_, err := os.Stat(deployFile)
 	if err != nil && os.IsNotExist(err) {
-		t.Fatalf("Could not find %s", deployFile)
+		t.Errorf("Could not find %s", deployFile)
 	}
 	yamlFileBytes, err := ioutil.ReadFile(deployFile)
 	if err != nil {
-		t.Fatalf("Could not read %s: %s", deployFile, err)
+		t.Errorf("Could not read %s: %s", deployFile, err)
 	}
 
 	var appsodyApplication v1beta1.AppsodyApplication
@@ -336,10 +310,10 @@ func checkDeploymentConfig(t *testing.T, pullURL string, imageTag string) {
 	}
 
 	if appsodyApplication.Spec.ApplicationImage != expectedApplicationImage {
-		t.Fatal("Incorrect ApplicationImage in app-deploy.yaml")
+		t.Error("Incorrect ApplicationImage in app-deploy.yaml")
 	}
 
-	if *appsodyApplication.Spec.CreateKnativeService {
-		t.Fatal("CreateKnativeService not set to true in the app-deploy.yaml when using --knative flag")
+	if *appsodyApplication.Spec.CreateKnativeService != true {
+		t.Error("CreateKnativeService not set to true in the app-deploy.yaml when using --knative flag")
 	}
 }
