@@ -18,10 +18,12 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
-	"crypto/sha256"
+
+	//"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"hash"
+
+	//"hash"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -34,6 +36,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
@@ -118,7 +121,7 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := SeperateOutput(inspectCmd)
+	inspectOut, inspectErr := SeparateOutput(inspectCmd)
 	if inspectErr != nil {
 		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
 	}
@@ -535,7 +538,7 @@ func MoveDir(fromDir string, toDir string) error {
 	}
 	// If we are here, we need to use copy
 	Debug.log("os.Rename did not work to move directories... attempting copy. From dir:", fromDir, " target dir: ", toDir)
-	err = copyDir(fromDir, toDir)
+	err = CopyDir(fromDir, toDir)
 	if err != nil {
 		Error.log("Could not move ", fromDir, " to ", toDir)
 		return err
@@ -543,7 +546,8 @@ func MoveDir(fromDir string, toDir string) error {
 	return nil
 }
 
-func copyDir(fromDir string, toDir string) error {
+// CopyDir Copies folder from source destination to target destination
+func CopyDir(fromDir string, toDir string) error {
 	_, err := os.Stat(fromDir)
 	if err != nil {
 		Error.logf("Cannot find source directory %s to copy", fromDir)
@@ -913,7 +917,7 @@ func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, dep
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -937,6 +941,20 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		SubPath   string `yaml:"subPath,omitempty"`
 	}
 	type Container struct {
+		Args            []string  `yaml:"args,omitempty"`
+		Command         []string  `yaml:"command,omitempty"`
+		Env             []*EnvVar `yaml:"env,omitempty"`
+		Image           string    `yaml:"image"`
+		ImagePullPolicy string    `yaml:"imagePullPolicy,omitempty"`
+		Name            string    `yaml:"name,omitempty"`
+		Ports           []*Port   `yaml:"ports,omitempty"`
+		SecurityContext struct {
+			Privileged bool `yaml:"privileged"`
+		} `yaml:"securityContext,omitempty"`
+		VolumeMounts []VolumeMount `yaml:"volumeMounts"`
+		WorkingDir   string        `yaml:"workingDir,omitempty"`
+	}
+	type InitContainer struct {
 		Args            []string  `yaml:"args,omitempty"`
 		Command         []string  `yaml:"command,omitempty"`
 		Env             []*EnvVar `yaml:"env,omitempty"`
@@ -979,9 +997,10 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 					Labels map[string]string `yaml:"labels"`
 				} `yaml:"metadata"`
 				Spec struct {
-					ServiceAccountName string       `yaml:"serviceAccountName,omitempty"`
-					Containers         []*Container `yaml:"containers"`
-					Volumes            []*Volume    `yaml:"volumes"`
+					ServiceAccountName string           `yaml:"serviceAccountName,omitempty"`
+					InitContainers     []*InitContainer `yaml:"initContainers"`
+					Containers         []*Container     `yaml:"containers"`
+					Volumes            []*Volume        `yaml:"volumes"`
 				} `yaml:"spec"`
 			} `yaml:"template"`
 		} `yaml:"spec"`
@@ -1022,6 +1041,8 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	} else {
 		Debug.log("No service account name env var, leaving the appsody-sa default")
 	}
+	//Set the controller image
+	yamlMap.Spec.PodTemplate.Spec.InitContainers[0].Image = controllerImageName
 	//Set the image
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].Name = appName
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].Image = imageName
@@ -1059,36 +1080,9 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	} else {
 		yamlMap.Spec.PodTemplate.Spec.Volumes = append(yamlMap.Spec.PodTemplate.Spec.Volumes, &workspaceVolume)
 	}
-	//Set the volume mounts
-	//Start with the Controller
-	appsodyMountController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
-	var controllerSubpath string
-	if appsodyMountController != "" {
-		appsodyMountControllerDir, err := filepath.Rel(codeWindWorkspace, filepath.Dir(appsodyMountController))
-		if err != nil {
-			Debug.Log("Problems with APPSODY_MOUNT_CONTROLLER: ", appsodyMountController)
-			return "", err
-		}
-		controllerSubpath = filepath.Join(".", appsodyMountControllerDir)
-		Debug.Log("APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
-	} else {
-		controllerSubpath = "./.extensions/codewind-appsody-extension/bin/"
-		Debug.Log("No APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
-
-	}
-	controllerVolumeMount := VolumeMount{"appsody-workspace", "/.appsody", controllerSubpath}
-	volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
-	volMountIdx := len(*volumeMounts)
-	if volMountIdx == 0 {
-		*volumeMounts = make([]VolumeMount, 1)
-		(*volumeMounts)[0] = controllerVolumeMount
-	} else {
-		*volumeMounts = append(*volumeMounts, controllerVolumeMount)
-	}
-
-	//Now the code mounts
+	//Set the code mounts
 	//We need to iterate through the docker mounts
-
+	volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
 	for _, appsodyMount := range dockerMounts {
 		if appsodyMount == "-v" {
 			continue
@@ -1106,19 +1100,6 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		Debug.Log("Appending volume mount: ", newVolumeMount)
 		*volumeMounts = append(*volumeMounts, newVolumeMount)
 	}
-	// Dependencies mount
-	// Issue #597: we remove this mount, since it doesn't seem to work with Python etc.
-	// And provides no benefit
-	/*
-		if depsMount != "" {
-			// Now the volume mount
-			depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
-			*volumeMounts = append(*volumeMounts, depVolumeMount)
-		}*/
-
-	//subPath := filepath.Base(pdir)
-	//workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
-	//yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, workspaceMount)
 
 	//Set the deployment selector and pod label
 	projectLabel := appName
@@ -1161,13 +1142,24 @@ spec:
         app: appsody
     spec:
       serviceAccountName: appsody-sa
+      initContainers:
+      - name: init-appsody-controller
+        image: appsody/appsody-controller
+        resources: {}
+        volumeMounts:
+        - name: appsody-controller
+          mountPath: /.appsody
+        imagePullPolicy: IfNotPresent 
       containers:
       - name: APPSODY_APP_NAME
         image: APPSODY_STACK
         imagePullPolicy: Always
         command: ["/.appsody/appsody-controller"]
+        volumeMounts:
+        - name: appsody-controller
+          mountPath: /.appsody
       volumes:
-      - name: dependencies
+      - name: appsody-controller
         emptyDir: {}
 `
 	return yamltempl
@@ -1402,7 +1394,7 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 		return nil
 	}
 	tagCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := SeperateOutput(tagCmd)
+	kout, kerr := SeparateOutput(tagCmd)
 	if kerr != nil {
 		return errors.Errorf("docker image tag failed: %s", kout)
 	}
@@ -1410,10 +1402,14 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 	return kerr
 }
 
-//DockerPush pushes a docker image to a docker registry (assumes that the user has done docker login)
-func DockerPush(imageToPush string, dryrun bool) error {
-	Info.log("Pushing docker image ", imageToPush)
+//ImagePush pushes a docker image to a docker registry (assumes that the user has done docker login)
+func ImagePush(imageToPush string, buildah bool, dryrun bool) error {
+	Info.log("Pushing image ", imageToPush)
 	cmdName := "docker"
+	if buildah {
+		cmdName = "buildah"
+	}
+
 	cmdArgs := []string{"push", imageToPush}
 	if dryrun {
 		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
@@ -1450,7 +1446,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 	Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
 
-	kout, kerr := SeperateOutput(dockerCmd)
+	kout, kerr := SeparateOutput(dockerCmd)
 	if kerr != nil {
 		return kout, kerr
 	}
@@ -1473,7 +1469,7 @@ func KubeGet(args []string, namespace string, dryrun bool) (string, error) {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
@@ -1495,7 +1491,7 @@ func KubeApply(fileToApply string, namespace string, dryrun bool) error {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return errors.Errorf("kubectl apply failed: %s", kout)
 	}
@@ -1519,7 +1515,7 @@ func KubeDelete(fileToApply string, namespace string, dryrun bool) error {
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return errors.Errorf("kubectl delete failed: %s", kout)
 	}
@@ -1566,7 +1562,7 @@ func KubeGetKnativeURL(service string, namespace string, dryrun bool) (url strin
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
@@ -1617,7 +1613,7 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 	cmdName := "docker"
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
-	imagelsOut, imagelsErr := SeperateOutput(imagelsCmd)
+	imagelsOut, imagelsErr := SeparateOutput(imagelsCmd)
 	Debug.log("Docker image ls command output: ", imagelsOut)
 
 	if imagelsErr != nil {
@@ -1750,42 +1746,6 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 	return err
 }
 
-func createChecksumHash(fileName string) (hash.Hash, error) {
-	Debug.log("Checksum oldFile", fileName)
-	newFile, err := os.Open(fileName)
-	if err != nil {
-		return nil, errors.Errorf("File open failed for %s controller binary: %v", fileName, err)
-
-	}
-	defer newFile.Close()
-
-	computedSha256 := sha256.New()
-	if _, err := io.Copy(computedSha256, newFile); err != nil {
-		return nil, errors.Errorf("sha256 copy failed for %s controller binary %v", fileName, err)
-	}
-	return computedSha256, nil
-}
-
-func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
-	var checkValue bool
-
-	oldSha256, errOld := createChecksumHash(oldFileName)
-	if errOld != nil {
-		return false, errOld
-	}
-	newSha256, errNew := createChecksumHash(newFileName)
-	if errNew != nil {
-		return false, errNew
-	}
-	Debug.logf("%x\n", oldSha256.Sum(nil))
-	Debug.logf("%x\n", newSha256.Sum(nil))
-	checkValue = bytes.Equal(oldSha256.Sum(nil), newSha256.Sum(nil))
-
-	Debug.log("Checksum returned: ", checkValue)
-
-	return checkValue, nil
-}
-
 func getLatestVersion() string {
 	var version string
 	Debug.log("Getting latest version ", LatestVersionURL)
@@ -1805,14 +1765,9 @@ func getLatestVersion() string {
 func doVersionCheck(config *RootCommandConfig) {
 	var latest = getLatestVersion()
 	var currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
-
 	if latest != "" && VERSION != "vlatest" && VERSION != latest {
-		switch os := runtime.GOOS; os {
-		case "darwin":
-			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease run `brew upgrade appsody` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
-		default:
-			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
-		}
+		updateString := GetUpdateString(runtime.GOOS, VERSION, latest)
+		Warning.logf(updateString)
 	}
 
 	config.CliConfig.Set("lastversioncheck", currentTime)
@@ -1820,6 +1775,18 @@ func doVersionCheck(config *RootCommandConfig) {
 		Error.logf("Writing default config file %s", err)
 
 	}
+}
+
+// GetUpdateString Returns a format string to advise the user how to upgrade
+func GetUpdateString(osName string, version string, latest string) string {
+	var updateString string
+	switch osName {
+	case "darwin":
+		updateString = "Please run `brew upgrade appsody` to upgrade"
+	default:
+		updateString = "Please go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade"
+	}
+	return fmt.Sprintf("\n*\n*\n*\n\nA new CLI update is available.\n%s from %s --> %s.\n\n*\n*\n*\n", updateString, version, latest)
 }
 
 func getLastCheckTime(config *RootCommandConfig) string {
@@ -2018,7 +1985,58 @@ func Targz(source, target string) error {
 		})
 }
 
-func SeperateOutput(cmd *exec.Cmd) (string, error) {
+//Compares the minimum requirements of a stack against the user to determine whether they can use the stack or not.
+func CheckStackRequirements(requirementArray map[string]string, buildah bool) error {
+	versionRegex := regexp.MustCompile(`(\d)+\.(\d)+\.(\d)+`)
+	upgradesRequired := 0
+
+	Info.log("Checking stack requirements...")
+
+	for technology, minVersion := range requirementArray {
+		if minVersion == "" {
+			Info.log("Skipping ", technology, " - No requirements set.")
+		} else if technology == "Docker" && buildah {
+			Info.log("Skipping Docker requirement - Buildah is being used.")
+		} else if technology == "Buildah" && !buildah {
+			Info.log("Skipping Buildah requirement - Docker is being used.")
+		} else {
+			Info.log("Checking stack requirements for ", technology)
+
+			setConstraint, err := semver.NewConstraint(minVersion)
+			if err != nil {
+				Error.log(err)
+			}
+
+			runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
+			if appErr != nil {
+				Error.log(appErr, " - Are you sure ", technology, " is installed?")
+				upgradesRequired++
+			} else {
+				cutCmdOutput := versionRegex.FindString(string(runVersionCmd))
+				parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
+				if parseErr != nil || cutCmdOutput == "0.0.0" {
+					Error.log(parseErr)
+					Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
+					return nil
+				}
+				compareVersion := setConstraint.Check(parseUserVersion)
+
+				if compareVersion {
+					Info.log(technology + " requirements met")
+				} else {
+					Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
+					upgradesRequired++
+				}
+			}
+		}
+	}
+	if upgradesRequired > 0 {
+		return errors.Errorf("One or more technologies need upgrading to use this stack. Upgrades required: %v", upgradesRequired)
+	}
+	return nil
+}
+
+func SeparateOutput(cmd *exec.Cmd) (string, error) {
 	var stdErr, stdOut bytes.Buffer
 	cmd.Stderr = &stdErr
 	cmd.Stdout = &stdOut
