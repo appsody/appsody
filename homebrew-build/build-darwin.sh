@@ -1,18 +1,19 @@
 #!/bin/bash
 set -e
 cd $(dirname "$0")
-VERSION=$4
+VERSION=$3
 FILE_PREFIX="appsody-homebrew"
 REPO_NAME=${TRAVIS_REPO_SLUG}
 RELEASE_TAG=${TRAVIS_TAG}
 echo $VERSION
 
 cp appsody-formula-template.rb ./$2.rb
-wget $3/$2-controller
-chmod 755 $2-controller
+#wget $3/$2-controller
+#chmod 755 $2-controller
 cp ../$2 .
 cp ../LICENSE .
-tar -cvzf $FILE_PREFIX-$VERSION.tar.gz $2 $2-controller LICENSE
+#tar -cvzf $FILE_PREFIX-$VERSION.tar.gz $2 $2-controller LICENSE
+tar -cvzf $FILE_PREFIX-$VERSION.tar.gz $2 LICENSE
 SHA_256=`shasum -a 256 $FILE_PREFIX-$VERSION.tar.gz | cut -c -64`
 if [[ "$OSTYPE" == "darwin"* ]]; then
 echo "FOR LOCAL DEBUG ONLY..."
@@ -32,6 +33,6 @@ fi
 
 mv $FILE_PREFIX-$VERSION.tar.gz $1/
 mv ./$2.rb $1/
-rm $2 $2-controller
-
+#rm $2 $2-controller
+rm $2 
 cd -
