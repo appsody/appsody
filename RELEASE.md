@@ -1,5 +1,6 @@
 # Dependencies
 The Appsody CLI depends on a number of assets:
+
 1. The `Appsody Controller`, which is available [here](https://github.com/appsody/controller). During the execution of certain Appsody CLI commands, such as `appsody run`, the appropriate version of the `Appsody Controller` is pulled from the Docker registry. The version of the controller that is pulled is defined within the `Makefile` by means of the `APPSODY_CONTROLLER_VERSION` variable. The version is updated manually as needed, there is no automatic update when a new controller is release. However, the dependent controller version does need to be released first, as the build process for the Appsody CLI retrieves the controller image that contains the binaries, and does not build them. Once the dependent controller has been released, a Pull Request with the `APPSODY_CONTROLLER_VERSION` changes to the `Makefile` needs to be created and merged before continuing on with the CLI release.
 1. The `debian-builder` Docker image, which is built separately from [this repo](https://github.com/appsody/debian-builder). The `Makefile` has a variable that points to the latest version of this image, called `DOCKER_IMAGE_DEB`. This image is used during the deploy stage to generate the Debian installer for Appsody. 
 1. The `rpmbuilder` Docker image, which builds the RPM installer for Appsody. Currently, we use the image provided by `alectolytic`, and we point to it through the `Makefile` env var `DOCKER_IMAGE_RPM`.
@@ -50,6 +51,13 @@ The Appsody CLI is made available by creating a tagged GitHub release
 ## Create a PR in the website repo
 1. Go to the [appsody/website](https://github.com/appsody/website/branches) repo and create a PR for the new Travis build branch.
 1. Review and merge the PR.
+
+## Inform users about the new release
+1.  Post a message to the `cli` slack channel about the new release, providing a link to the relevant release notes
+    ```
+    We’ve released appsody version <version>
+    Release notes: https://github.com/appsody/appsody/releases/tag/<version>
+    ```
 
 # Release schedule
 We plan to release the Appsody CLI at the end of each sprint - approximately every two weeks.
