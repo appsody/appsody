@@ -52,7 +52,7 @@ The Appsody CLI is made available by creating a tagged GitHub release
 1. Review and merge the PR.
 
 ## Inform users about the new release
-1.  Post a message on the `cli` slack channel about the new release and provide a link to the release notes for the release.
+1.  Post a message to the `cli` slack channel about the new release, providing a link to the relevant release notes
     ```
     We’ve released appsody version <version>
     Release notes: https://github.com/appsody/appsody/releases/tag/<version>
