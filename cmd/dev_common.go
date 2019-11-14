@@ -221,7 +221,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		go func() {
 			<-c
-			err := dockerStop(config.containerName, config.Dryrun)
+			err := stopCmd(config.containerName, config.Buildah, config.Dryrun)
 			if err != nil {
 				Error.log(err)
 			}

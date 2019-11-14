@@ -365,17 +365,26 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		err := dockerStop(extractContainerName, config.Dryrun)
+		err := stopCmd(extractContainerName, config.Buildah, config.Dryrun)
 		if err != nil {
 			Error.log(err)
 		}
 		os.Exit(1)
 	}()
+
 	cmdName = "docker"
+	if config.Buildah {
+		cmdName = "buildah"
+	}
+
 	var configDir string
 	cmdArgs = []string{"--name", extractContainerName}
 
-	cmdArgs = append([]string{"create"}, cmdArgs...)
+	if config.Buildah {
+		cmdArgs = append([]string{"from"}, cmdArgs...)
+	} else {
+		cmdArgs = append([]string{"create"}, cmdArgs...)
+	}
 	cmdArgs = append(cmdArgs, stackImage)
 	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
 	if err != nil {
@@ -391,6 +400,9 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	configDir = extractContainerName + ":" + containerConfigDir
 
 	cmdArgs = []string{"cp", configDir, "./" + configFile}
+	if config.Buildah {
+		cmdArgs = []string{"copy", configDir, "./" + configFile}
+	}
 	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
 
 	removeErr := containerRemove(extractContainerName, false, config.Dryrun)

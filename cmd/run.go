@@ -18,8 +18,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func dockerStop(imageName string, dryrun bool) error {
+func stopCmd(imageName string, buildah bool, dryrun bool) error {
 	cmdName := "docker"
+	if buildah {
+		cmdName = "buildah"
+	}
 	cmdArgs := []string{"stop", imageName}
 	err := execAndWait(cmdName, cmdArgs, Debug, dryrun)
 	if err != nil {
