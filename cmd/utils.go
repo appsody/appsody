@@ -2050,3 +2050,14 @@ func SeparateOutput(cmd *exec.Cmd) (string, error) {
 	// If there wasn't an error return the stdOut & (lack of) err
 	return strings.TrimSpace(stdOut.String()), err
 }
+
+func CheckValidSemver(version string) error {
+	versionRegex := regexp.MustCompile("^(?P<major>0|[1-9]\\d*)\\.(?P<minor>0|[1-9]\\d*)\\.(?P<patch>0|[1-9]\\d*)(?:-(?P<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$")
+	checkVersionNo := versionRegex.FindString(version)
+
+	if checkVersionNo == "" {
+		return errors.Errorf("Version must be formatted in accordance to semver - Please see: https://semver.org/ for valid versions.")
+	}
+
+	return nil
+}

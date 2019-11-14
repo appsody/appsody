@@ -19,7 +19,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -44,7 +43,11 @@ func (stackDetails *StackYaml) validateYaml(stackPath string) (int, int) {
 	}
 
 	stackLintErrorCount += stackDetails.validateFields()
-	stackLintErrorCount += stackDetails.checkVersion()
+	validSemver := CheckValidSemver(string(stackDetails.Version))
+	if validSemver != nil {
+		Error.log(validSemver)
+		stackLintErrorCount++
+	}
 	stackLintErrorCount += stackDetails.checkDescLength()
 	templateErrorCount, templateWarningCount := stackDetails.checkTemplatingData()
 	stackLintErrorCount += templateErrorCount
@@ -84,25 +87,6 @@ func (stackDetails *StackYaml) checkMaintainer(yamlValues []interface{}) int {
 	return stackLintErrorCount
 }
 
-func (stackDetails *StackYaml) checkVersion() int {
-	stackLintErrorCount := 0
-	versionNo := strings.Split(stackDetails.Version, ".")
-
-	for _, mmp := range versionNo {
-		_, err := strconv.Atoi(mmp)
-		if err != nil {
-			Error.log("Each version field must be an integer")
-		}
-	}
-
-	if len(versionNo) < 3 {
-		Error.log("Version must contain 3 or 4 elements")
-		stackLintErrorCount++
-	}
-
-	return stackLintErrorCount
-}
-
 func (stackDetails *StackYaml) checkDescLength() int {
 	stackLintErrorCount := 0
 
@@ -122,7 +106,7 @@ func (stackDetails *StackYaml) checkDescLength() int {
 func (stackDetails *StackYaml) checkTemplatingData() (int, int) {
 	stackLintErrorCount := 0
 	stackLintWarningCount := 0
-	versionRegex := regexp.MustCompile("^[a-zA-Z0-9]*$")
+	keyRegex := regexp.MustCompile("^[a-zA-Z0-9]*$")
 
 	if len(stackDetails.TemplatingData) == 0 {
 		Warning.log("No custom templating variables defined - You will not be able to reuse variables across the stack")
@@ -131,8 +115,8 @@ func (stackDetails *StackYaml) checkTemplatingData() (int, int) {
 	}
 
 	for key, value := range stackDetails.TemplatingData {
-		checkKey := versionRegex.FindString(string(key))
-		checkValue := versionRegex.FindString(string(value))
+		checkKey := keyRegex.FindString(string(key))
+		checkValue := keyRegex.FindString(string(value))
 
 		if checkKey == "" {
 			Error.log("Key variable: ", key, " is not in an alphanumeric format")
