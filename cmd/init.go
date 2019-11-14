@@ -58,14 +58,17 @@ Use 'appsody list' to see the available stacks and templates.`,
 		Example: `  appsody init nodejs-express
   Initializes a project with the default template from the "nodejs-express" stack in the default repository.
   
+  appsody init experimental/nodejs-functions
+  Initializes a project with the default template from the "nodejs-functions" stack in the "experimental" repository.
+  
   appsody init nodejs-express scaffold
   Initializes a project with the "scaffold" template from "nodejs-express" stack in the default repository.
 
-  appsody init experimental/quarkus none
-  Initializes a project with the default template for the "quarkus" stack in the "experimental" repository.
+  appsody init nodejs none
+  Initializes a project without a template for the "nodejs" stack in the default repository.
 
   appsody init
-  Runs the stack init script to set up the local development environment. Must only be run on an existing Appsody project.`,
+  Runs the stack init script to set up the local development environment on an existing Appsody project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var stack string
 			var template string
@@ -229,7 +232,12 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			return errors.Errorf("Error downloading tar %v", err)
 
 		}
-		Info.log("Download complete. Extracting files from ", filename)
+		if inputTemplateName != "none" {
+			Info.log("Download complete. Extracting files from ", filename)
+		} else {
+			Info.log("Download complete. Do not unzip the template project. Only extracting .appsody-config.yaml file from ", filename)
+		}
+
 		//if noTemplate
 		errUntar := untar(filename, noTemplate, config.overwrite, config.Dryrun)
 
@@ -247,7 +255,6 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			Info.log("If you wish to proceed and overwrite files in the current directory, try again with the --overwrite option.")
 			// this leave the tar file in the dir
 			return errors.Errorf("Error extracting project template: %v", errUntar)
-
 		}
 
 	}
@@ -255,7 +262,14 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if err != nil {
 		return err
 	}
-	Info.log("Successfully initialized Appsody project")
+	if template == "" {
+		Info.logf("Successfully initialized Appsody project with the %s stack and the default template.", stack)
+	} else if template != "none" {
+		Info.logf("Successfully initialized Appsody project with the %s stack and the %s template.", stack, template)
+	} else {
+		Info.logf("Successfully initialized Appsody project with the %s stack and no template.", stack)
+	}
+
 	return nil
 }
 
