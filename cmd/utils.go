@@ -18,9 +18,11 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+
 	//"crypto/sha256"
 	"encoding/json"
 	"fmt"
+
 	//"hash"
 	"io"
 	"io/ioutil"
@@ -34,6 +36,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
@@ -535,7 +538,7 @@ func MoveDir(fromDir string, toDir string) error {
 	}
 	// If we are here, we need to use copy
 	Debug.log("os.Rename did not work to move directories... attempting copy. From dir:", fromDir, " target dir: ", toDir)
-	err = copyDir(fromDir, toDir)
+	err = CopyDir(fromDir, toDir)
 	if err != nil {
 		Error.log("Could not move ", fromDir, " to ", toDir)
 		return err
@@ -543,7 +546,8 @@ func MoveDir(fromDir string, toDir string) error {
 	return nil
 }
 
-func copyDir(fromDir string, toDir string) error {
+// CopyDir Copies folder from source destination to target destination
+func CopyDir(fromDir string, toDir string) error {
 	_, err := os.Stat(fromDir)
 	if err != nil {
 		Error.logf("Cannot find source directory %s to copy", fromDir)
@@ -1398,10 +1402,14 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 	return kerr
 }
 
-//DockerPush pushes a docker image to a docker registry (assumes that the user has done docker login)
-func DockerPush(imageToPush string, dryrun bool) error {
-	Info.log("Pushing docker image ", imageToPush)
+//ImagePush pushes a docker image to a docker registry (assumes that the user has done docker login)
+func ImagePush(imageToPush string, buildah bool, dryrun bool) error {
+	Info.log("Pushing image ", imageToPush)
 	cmdName := "docker"
+	if buildah {
+		cmdName = "buildah"
+	}
+
 	cmdArgs := []string{"push", imageToPush}
 	if dryrun {
 		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
@@ -1975,6 +1983,57 @@ func Targz(source, target string) error {
 			_, err = io.Copy(tarball, file)
 			return err
 		})
+}
+
+//Compares the minimum requirements of a stack against the user to determine whether they can use the stack or not.
+func CheckStackRequirements(requirementArray map[string]string, buildah bool) error {
+	versionRegex := regexp.MustCompile(`(\d)+\.(\d)+\.(\d)+`)
+	upgradesRequired := 0
+
+	Info.log("Checking stack requirements...")
+
+	for technology, minVersion := range requirementArray {
+		if minVersion == "" {
+			Info.log("Skipping ", technology, " - No requirements set.")
+		} else if technology == "Docker" && buildah {
+			Info.log("Skipping Docker requirement - Buildah is being used.")
+		} else if technology == "Buildah" && !buildah {
+			Info.log("Skipping Buildah requirement - Docker is being used.")
+		} else {
+			Info.log("Checking stack requirements for ", technology)
+
+			setConstraint, err := semver.NewConstraint(minVersion)
+			if err != nil {
+				Error.log(err)
+			}
+
+			runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
+			if appErr != nil {
+				Error.log(appErr, " - Are you sure ", technology, " is installed?")
+				upgradesRequired++
+			} else {
+				cutCmdOutput := versionRegex.FindString(string(runVersionCmd))
+				parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
+				if parseErr != nil || cutCmdOutput == "0.0.0" {
+					Error.log(parseErr)
+					Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
+					return nil
+				}
+				compareVersion := setConstraint.Check(parseUserVersion)
+
+				if compareVersion {
+					Info.log(technology + " requirements met")
+				} else {
+					Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
+					upgradesRequired++
+				}
+			}
+		}
+	}
+	if upgradesRequired > 0 {
+		return errors.Errorf("One or more technologies need upgrading to use this stack. Upgrades required: %v", upgradesRequired)
+	}
+	return nil
 }
 
 func SeparateOutput(cmd *exec.Cmd) (string, error) {
