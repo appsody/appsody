@@ -180,21 +180,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				if err != nil {
 					return errors.Errorf("Error trying to unmarshall: %v", err)
 				}
-
-				// find the index of the stack
-				foundStack := -1
-				for i, stack := range indexYaml.Stacks {
-					if stack.ID == stackID {
-						Debug.Log("Existing stack: " + stackID + "found")
-						foundStack = i
-						break
-					}
-				}
-
-				// delete index foundStack from indexYaml.Stacks as we will append the new stack later
-				if foundStack != -1 {
-					indexYaml.Stacks = indexYaml.Stacks[:foundStack+copy(indexYaml.Stacks[foundStack:], indexYaml.Stacks[foundStack+1:])]
-				}
+				indexYaml = findStackAndRemove(stackID, indexYaml)
 			} else {
 				// create the beginning of the index yaml
 				indexYaml = IndexYaml{}
@@ -253,17 +239,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// build up stack struct for the new stack
-			newStackStruct := IndexYamlStack{}
-
-			// set the data in the new stack struct
-			newStackStruct.ID = stackID
-			newStackStruct.Name = stackYaml.Name
-			newStackStruct.Version = stackYaml.Version
-			newStackStruct.Description = stackYaml.Description
-			newStackStruct.License = stackYaml.License
-			newStackStruct.Language = stackYaml.License
-			newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
-			newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
+			newStackStruct := initialiseStackData(stackID, stackYaml)
 
 			// find and open the template path so we can loop through the templates
 			templatePath := filepath.Join(stackPath, "templates")
@@ -404,6 +380,58 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
 
 	return stackPackageCmd
+}
+
+func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
+	// build up stack struct for the new stack
+	newStackStruct := IndexYamlStack{}
+	// set the data in the new stack struct
+	newStackStruct.ID = stackID
+	newStackStruct.Name = stackYaml.Name
+	newStackStruct.Version = stackYaml.Version
+	newStackStruct.Description = stackYaml.Description
+	newStackStruct.License = stackYaml.License
+	newStackStruct.Language = stackYaml.License
+	newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
+	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
+
+	return newStackStruct
+}
+
+func getStackData(stackPath string) (StackYaml, error) {
+	// get the necessary data from the current stack.yaml
+	var stackYaml StackYaml
+
+	source, err := ioutil.ReadFile(filepath.Join(stackPath, "stack.yaml"))
+	if err != nil {
+		return stackYaml, errors.Errorf("Error trying to read: %v", err)
+	}
+
+	err = yaml.Unmarshal(source, &stackYaml)
+	if err != nil {
+		return stackYaml, errors.Errorf("Error trying to unmarshall: %v", err)
+	}
+
+	return stackYaml, nil
+}
+
+func findStackAndRemove(stackID string, indexYaml IndexYaml) IndexYaml {
+	// find the index of the stack
+	foundStack := -1
+	for i, stack := range indexYaml.Stacks {
+		if stack.ID == stackID {
+			Debug.Log("Existing stack: '" + stackID + "' found")
+			foundStack = i
+			break
+		}
+	}
+
+	// delete index foundStack from indexYaml.Stacks as we will append the new stack later
+	if foundStack != -1 {
+		indexYaml.Stacks = indexYaml.Stacks[:foundStack+copy(indexYaml.Stacks[foundStack:], indexYaml.Stacks[foundStack+1:])]
+	}
+
+	return indexYaml
 }
 
 // GetLabelsForStackImage - Gets labels associated with the stack image
