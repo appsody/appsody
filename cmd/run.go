@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func stopCmd(imageName string, buildah bool, dryrun bool) error {
+func dockerStop(imageName string, dryrun bool) error {
 	cmdName := "docker"
 	signalInterval := "10" // numnrt of seconds to wait prior to sending SIGKILL
 	cmdArgs := []string{"stop", imageName, "-t", signalInterval}

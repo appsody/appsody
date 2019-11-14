@@ -18,11 +18,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 
 	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	"github.com/pkg/errors"
@@ -361,16 +359,6 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 		return pullErr
 	}
 	extractContainerName := defaultExtractContainerName(config.RootCommandConfig)
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		err := stopCmd(extractContainerName, config.Buildah, config.Dryrun)
-		if err != nil {
-			Error.log(err)
-		}
-		os.Exit(1)
-	}()
 
 	cmdName = "docker"
 	if config.Buildah {

@@ -33,7 +33,7 @@ To see a list of all your running docker containers, run the command "docker ps"
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !rootConfig.Buildah {
 				Info.log("Stopping development environment")
-				err := stopCmd(containerName, rootConfig.Buildah, rootConfig.Dryrun)
+				err := dockerStop(containerName, rootConfig.Dryrun)
 				if err != nil {
 					return err
 				}
