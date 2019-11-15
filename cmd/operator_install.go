@@ -34,7 +34,7 @@ func newOperatorInstallCmd(operatorConfig *operatorCommandConfig) *cobra.Command
 	var installCmd = &cobra.Command{
 		Use:   "install",
 		Short: "Install the Appsody Operator.",
-		Long:  `Install the Appsody Operator into your configured Kubernetes cluster.
+		Long: `Install the Appsody Operator into your configured Kubernetes cluster.
 		
 The Appsody Operator deploys an Operator container with the controller, and listens for incoming AppsodyApplication resources.`,
 		Example: `  appsody operator install --watchspace my-namespace
