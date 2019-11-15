@@ -228,7 +228,7 @@ func TestTemplatingFilePermissions(t *testing.T) {
 
 	writable, err := canWrite(stackPath + "/templating.txt")
 
-	if writable {
+	if writable && err == nil {
 		t.Fatalf("Opened read only file")
 	}
 
