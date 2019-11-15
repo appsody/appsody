@@ -551,11 +551,17 @@ func ApplyTemplating(projectPath string, stackPath string, templateMetadata inte
 			file := filepath.Base(path)
 
 			// get permission of file
-			fileStat, err := os.Stat(projectPath)
+			fileStat, err := os.Stat(path)
 			if err != nil {
 				return errors.Errorf("Error checking permission of file: %v", err)
 			}
 			permission := fileStat.Mode()
+
+			// set file permission to writable to apply templating
+			err = os.Chmod(path, 0700)
+			if err != nil {
+				return errors.Errorf("Error reverting file permision: %v", err)
+			}
 
 			// create new template from parsing file
 			tmpl, err := template.New(file).ParseFiles(path)
@@ -563,7 +569,7 @@ func ApplyTemplating(projectPath string, stackPath string, templateMetadata inte
 				return errors.Errorf("Error creating new template from file: %v", err)
 			}
 
-			// open file at path§
+			// open file at path
 			f, err := os.Create(path)
 			if err != nil {
 				return errors.Errorf("Error opening file: %v", err)
@@ -575,13 +581,12 @@ func ApplyTemplating(projectPath string, stackPath string, templateMetadata inte
 				return errors.Errorf("Error executing template: %v", err)
 			}
 
-			f.Close()
-
-			// set file permission to new file
+			// set old file permission to new file
 			err = os.Chmod(path, permission)
 			if err != nil {
 				return errors.Errorf("Error reverting file permision: %v", err)
 			}
+			f.Close()
 		}
 		return nil
 	})
