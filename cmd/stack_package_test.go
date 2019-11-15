@@ -18,6 +18,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -159,6 +160,12 @@ func TestTemplatingWrongVariables(t *testing.T) {
 }
 
 func TestTemplatingFilePermissions(t *testing.T) {
+
+	// file permissions do not work the same way on windows
+	// user has to specify a RUN chmod in their dockerfile for windows
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
 
 	// gets all the necessary data from a setup function
 	imageNamespace, projectPath, stackPath, stackYaml, labels, err := setup()
