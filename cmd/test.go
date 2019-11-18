@@ -21,7 +21,11 @@ func newTestCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var testCmd = &cobra.Command{
 		Use:   "test",
 		Short: "Test your project in the local Appsody environment",
-		Long:  `This starts a docker container for your project and runs your test in it.`,
+		Long: `Test your project in the local Appsody environment, starting a container for your project, running the stack provided and user specified tests.
+		
+You must be in the base directory of your Appsody project when running this command.`,
+		Example: `  appsody test --no-watcher
+  Runs the tests for your Appsody project with file watching disabled. The process runs the tests, terminates and returns with the result of the executed command.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.log("Running test environment")
