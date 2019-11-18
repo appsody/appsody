@@ -50,7 +50,7 @@ func newRunCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// runCmd represents the run command
 	var runCmd = &cobra.Command{
 		Use:   "run",
-		Short: "Run the local Appsody environment.",
+		Short: "Run your project in the local Appsody environment.",
 		Long:  `Run the local Appsody environment, starting a container based continuous build environment for your project.
 		
 You must be in the base directory of your Appsody project when running this command.`,
