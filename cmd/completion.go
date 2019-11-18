@@ -25,17 +25,17 @@ func newCompletionCmd(rootCmd *cobra.Command) *cobra.Command {
 	// bash completions
 	var bashCompletionCmd = &cobra.Command{
 		Use:   "completion",
-		Short: "Generates bash tab completions",
-		Long: `Outputs a bash completion script for appsody to stdout.  Bash completion is optionally available for your convenience. It helps you fill out appsody commands when you type the [TAB] key.
+		Short: "Generate bash tab completions.",
+		Long: `Generate a bash completion script for Appsody to stdout.  Bash completion is optionally available for your convenience. It helps you fill out Appsody commands when you type the [TAB] key.
 
 	To install on macOS
 	1. brew install bash-completion
-	2. Make sure to update your ~/.bash_profile as instructed
+	2. Make sure to update your ~/.bash_profile as instructed.
 	3. appsody completion > /usr/local/etc/bash_completion.d/appsody
 
 	To install on Linux
 	1. On a current Linux OS (in a non-minimal installation), bash completion should be available.
-	2. For Debian see the following link for more information:  https://debian-administration.org/article/316/An_introduction_to_bash_completion_part_1
+	2. For Debian see the following link for more information:  https://debian-administration.org/article/316/An_introduction_to_bash_completion_part_1.
 	3. Make sure to copy the appsody completion file generated above into the appropriate directory for your Linux distribution e.g.
 	appsody completion >  /etc/bash_completion.d/appsody`,
 
