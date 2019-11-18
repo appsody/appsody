@@ -15,7 +15,6 @@
 package cmd_test
 
 import (
-	"bytes"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -113,15 +112,9 @@ func TestInvalidVersionAgainstStack(t *testing.T) {
 		"Docker":  "402.05.6",
 		"Appsody": "402.05.6",
 	}
-
-	log := &cmd.LoggingConfig{}
-	var outBuffer bytes.Buffer
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	err := cmd.CheckStackRequirements(log, reqsMap, false)
+	err := cmd.CheckStackRequirements(reqsMap, false)
 
 	if err == nil {
-		t.Log(outBuffer)
 		t.Fatal(err)
 	}
 }

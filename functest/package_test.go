@@ -15,7 +15,6 @@
 package functest
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
@@ -24,7 +23,7 @@ import (
 func TestPackage(t *testing.T) {
 
 	args := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsodyCmdExec(args, filepath.Join("..", "cmd", "testdata", "starter"), t)
+	_, err := cmdtest.RunAppsodyCmdExec(args, "../cmd/testdata/starter")
 
 	if err != nil {
 		t.Fatal(err)

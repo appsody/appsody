@@ -14,7 +14,6 @@
 package functest
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -35,12 +34,7 @@ func TestDockerInspect(t *testing.T) {
 	for _, test := range invalidDockerCmdsTest {
 
 		t.Run(fmt.Sprintf("Test Invalid DockerInspect"), func(t *testing.T) {
-			var outBuffer bytes.Buffer
-			config := &cmd.LoggingConfig{}
-			config.InitLogging(&outBuffer, &outBuffer)
-
-			out, err := cmd.RunDockerInspect(config, test.file)
-			t.Log(outBuffer.String())
+			out, err := cmd.RunDockerInspect(test.file)
 
 			if err == nil {
 				t.Error("Expected an error from '", test.file, "' name but it did not return one.")

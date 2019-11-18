@@ -14,7 +14,6 @@
 package functest
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -65,14 +64,14 @@ func TestExtract(t *testing.T) {
 
 		// appsody init inside projectDir
 		t.Log("Now running appsody init...")
-		_, err := cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
+		_, err := cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// appsody extract: running in projectDir, extracting into extractDir
 		t.Log("Now running appsody extract...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"extract", "--target-dir", extractDir, "-v"}, projectDir, t)
+		_, err = cmdtest.RunAppsodyCmd([]string{"extract", "--target-dir", extractDir, "-v"}, projectDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -98,17 +97,13 @@ func TestExtract(t *testing.T) {
 		if err != nil {
 			t.Fatal("Error changing directory: ", err)
 		}
-		var outBuffer bytes.Buffer
-		loggingConfig := &cmd.LoggingConfig{}
-		loggingConfig.InitLogging(&outBuffer, &outBuffer)
-		config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+		config := &cmd.RootCommandConfig{}
 		err = cmd.InitConfig(config)
 		if err != nil {
 			t.Fatal("Could not init appsody config", err)
 		}
 		mounts, _ := cmd.GetEnvVar("APPSODY_MOUNTS", config)
 		pDir, _ := cmd.GetEnvVar("APPSODY_PROJECT_DIR", config)
-		t.Log(outBuffer.String())
 
 		err = os.Chdir(oldDir)
 		if err != nil {
