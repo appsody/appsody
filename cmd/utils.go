@@ -36,8 +36,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchellh/go-spdx"
 	"github.com/Masterminds/semver"
+	"github.com/mitchellh/go-spdx"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
