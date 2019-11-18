@@ -113,7 +113,6 @@ func TestInvalidVersionAgainstStack(t *testing.T) {
 		"Docker":  "402.05.6",
 		"Appsody": "402.05.6",
 	}
-
 	log := &cmd.LoggingConfig{}
 	var outBuffer bytes.Buffer
 	log.InitLogging(&outBuffer, &outBuffer)
