@@ -591,7 +591,7 @@ func UserHomeDir() string {
 	return homeDir
 }
 
-func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
+func getConfigLabels(projectConfig ProjectConfig, filename string) (map[string]string, error) {
 	var labels = make(map[string]string)
 
 	t := time.Now()
@@ -621,7 +621,7 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
 		} else if err := checkValidLicense(projectConfig.License); err != nil {
-			return labels, errors.Errorf("The stack.yaml SPDX license ID is invalid: %v.", err)
+			return labels, errors.Errorf("The %v SPDX license ID is invalid: %v.", filename, err)
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
 	}

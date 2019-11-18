@@ -154,7 +154,7 @@ func getLabels(config *RootCommandConfig) (map[string]string, error) {
 		return labels, projectConfigErr
 	}
 
-	configLabels, err := getConfigLabels(*projectConfig)
+	configLabels, err := getConfigLabels(*projectConfig, ".appsody-config.yaml")
 	if err != nil {
 		return labels, err
 	}
