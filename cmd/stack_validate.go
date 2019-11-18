@@ -201,7 +201,7 @@ Runs the following validation tests against the stack:
 
 	stackValidateCmd.PersistentFlags().BoolVar(&noPackage, "no-package", false, "Skips running appsody stack package")
 	stackValidateCmd.PersistentFlags().BoolVar(&noLint, "no-lint", false, "Skips running appsody stack lint")
-	stackValidateCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using")
+	stackValidateCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
 
 	return stackValidateCmd
 }
