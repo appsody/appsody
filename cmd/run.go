@@ -58,7 +58,7 @@ You must be in the base directory of your Appsody project when running this comm
   Runs the local Appsody environment using the "my-volume" docker volume to cache your project dependencies.
   
   appsody run --interactive
-  Runs the local Appsody environment with STDIN attached to the container, making the container start look like a terminal connection session.`
+  Runs the local Appsody environment with STDIN attached to the container, making the container start look like a terminal connection session.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.log("Running development environment...")
