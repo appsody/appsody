@@ -85,7 +85,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			}
 
 			// Check for the Appsody Operator
-			operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(namespace, config.Dryrun)
+			operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(config.LoggingConfig, namespace, config.Dryrun)
 			if operatorExistsErr != nil {
 				return operatorExistsErr
 			}
@@ -94,7 +94,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			//_, err := KubeGet(kargs)
 			// Performing the kubectl apply
 			if !operatorExists {
-				Debug.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
+				config.Debug.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
 				operatorConfig := &operatorCommandConfig{config.RootCommandConfig, namespace}
 				operatorInstallConfig := &operatorInstallCommandConfig{operatorCommandConfig: operatorConfig}
 				//	operatorInstallConfig.RootCommandConfig = operatorConfig.RootCommandConfig
@@ -103,12 +103,12 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 					return errors.Errorf("Failed to install an Appsody operator in namespace %s watching namespace %s. Error was: %v", namespace, namespace, err)
 				}
 			} else {
-				Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
+				config.Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
 
 			}
 
 			// Performing the kubectl apply
-			err = KubeApply(configFile, namespace, dryrun)
+			err = KubeApply(config.LoggingConfig, configFile, namespace, dryrun)
 			if err != nil {
 				return errors.Errorf("Failed to deploy to your Kubernetes cluster: %v", err)
 			}
@@ -120,16 +120,16 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
-			Info.log("Appsody Deployment name is: ", appsodyApplication.Name)
-			out, err := KubeGetDeploymentURL(appsodyApplication.Name, namespace, dryrun)
+			config.Info.log("Appsody Deployment name is: ", appsodyApplication.Name)
+			out, err := KubeGetDeploymentURL(config.LoggingConfig, appsodyApplication.Name, namespace, dryrun)
 			// Performing the kubectl apply
 			if err != nil {
 				return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
 			}
 			if !dryrun {
-				Info.log("Deployed project running at ", out)
+				rootConfig.Info.log("Deployed project running at ", out)
 			} else {
-				Info.log("Dry run complete")
+				rootConfig.Info.log("Dry run complete")
 			}
 
 			return nil
