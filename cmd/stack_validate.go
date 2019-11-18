@@ -39,18 +39,20 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// vars for --no-package and --no-lint parms
 	var noPackage bool
 	var noLint bool
+	var imageNamespace string
 
 	var stackValidateCmd = &cobra.Command{
 		Use:   "validate",
-		Short: "Run validation tests against a stack in the local Appsody environment",
-		Long: `This command is a tool for stack developers to validate a stack from their local Appsody development environment. It performs the following against the stack:
-- Runs the stack lint test. This can be turned off with the --no-lint flag
-- Runs the stack package command. This can be turned off with the --no-package flag
-- Runs the appsody init command
-- Runs the appsody run command
-- Runs the appsody test command
-- Runs the appsody build command
-- Provides a Passed/Failed status and summary of the above operations`,
+		Short: "Run validation tests against your stack.",
+		Long: `Run validation tests against your stack, in your local Appsody development environment. 
+		
+Runs the following validation tests against the stack:
+  * appsody stack lint
+  * appsody stack package
+  * appsody init 
+  * appsody run 
+  * appsody test 
+  * appsody build`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			// vars to store test results
@@ -88,6 +90,12 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			Info.Log("Created project dir: " + projectDir)
 
+			Debug.Log("Setting environment variable APPSODY_PULL_POLICY=IFNOTPRESENT")
+			err = os.Setenv("APPSODY_PULL_POLICY", "IFNOTPRESENT")
+			if err != nil {
+				return errors.Errorf("Could not set environment variable APPSODY_PULL_POLICY. %v", err)
+			}
+
 			// call tests...
 
 			// lint
@@ -106,7 +114,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			// package
 			if !noPackage {
-				_, err = RunAppsodyCmdExec([]string{"stack", "package"}, stackPath)
+				_, err = RunAppsodyCmdExec([]string{"stack", "package", "--image-namespace", imageNamespace}, stackPath)
 				if err != nil {
 					//logs error but keeps going
 					Error.Log(err)
@@ -185,7 +193,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			}
 			Info.Log("Total PASSED: ", passCount)
 			Info.Log("Total FAILED: ", failCount)
-			Info.Log("@@@@@@@@@ Validate Summary End @@@@@@@@@@")
+			Info.Log("@@@@@@@@@  Validate Summary End  @@@@@@@@@@")
 
 			return nil
 		},
@@ -193,6 +201,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	stackValidateCmd.PersistentFlags().BoolVar(&noPackage, "no-package", false, "Skips running appsody stack package")
 	stackValidateCmd.PersistentFlags().BoolVar(&noLint, "no-lint", false, "Skips running appsody stack lint")
+	stackValidateCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
 
 	return stackValidateCmd
 }
@@ -286,7 +295,7 @@ func TestTest(projectDir string) error {
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
 func TestBuild(stack string, projectDir string) error {
 
-	imageName := "dev.local/" + stack
+	imageName := "dev.local/" + filepath.Base(projectDir)
 
 	Info.Log("******************************************")
 	Info.Log("Running appsody build")

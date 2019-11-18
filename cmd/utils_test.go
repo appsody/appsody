@@ -16,105 +16,12 @@ package cmd_test
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
 )
-
-var yamlGenTests = []struct {
-	yamlTemplateGetter func() string // input
-	testImageName      string
-	testPortNum        int
-	testServiceName    string
-	testPullPolicy     bool
-}{
-	{getKNativeTemplate1, "TESTIMAGE", 9091, "TESTSERVICE", false},
-	{getKNativeTemplate2, "TESTIMAGE", 9091, "TESTSERVICE", true},
-	{getKNativeTemplateNoports, "TESTIMAGE", 9091, "TESTSERVICE", true},
-}
-
-// requires clean dir
-func TestGenYAML(t *testing.T) {
-
-	for numTest, test := range yamlGenTests {
-		t.Run(fmt.Sprintf("Test YAML template %d", numTest), func(t *testing.T) {
-			testServiceName := test.testServiceName
-			testImageName := test.testImageName
-			testPortNum := test.testPortNum
-			testGetter := test.yamlTemplateGetter
-			testPullPolicy := test.testPullPolicy
-			yamlFileName, err := cmd.GenKnativeYaml(testGetter(), testPortNum, testServiceName, testImageName, testPullPolicy, "app-deploy.yaml", false)
-			if err != nil {
-				t.Fatal("Can't generate the YAML for KNative serving deploy. Error: ", err)
-			}
-			if _, err := os.Stat(yamlFileName); os.IsNotExist(err) {
-				t.Fatal("Didn't find the file ", yamlFileName)
-			} else { //clean up
-				os.RemoveAll(yamlFileName)
-			}
-		})
-	}
-}
-func getKNativeTemplate1() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Always
-            ports:
-            - containerPort: 8080
-`
-	return yamltempl
-}
-
-func getKNativeTemplate2() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Never
-            ports:
-            - containerPort: 8080
-`
-	return yamltempl
-}
-
-func getKNativeTemplateNoports() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Always
-`
-	return yamltempl
-}
 
 var validProjectNameTests = []string{
 	"my-project",
@@ -199,6 +106,19 @@ func TestInvalidProjectNames(t *testing.T) {
 	}
 }
 
+//Passes in impossibly high minimum versions of Docker and Appsody
+func TestInvalidVersionAgainstStack(t *testing.T) {
+	reqsMap := map[string]string{
+		"Docker":  "402.05.6",
+		"Appsody": "402.05.6",
+	}
+	err := cmd.CheckStackRequirements(reqsMap, false)
+
+	if err == nil {
+		t.Fatal(err)
+	}
+}
+
 var invalidCmdsTest = []struct {
 	cmd      string
 	args     []string
@@ -215,7 +135,7 @@ func TestInvalidCmdOutput(t *testing.T) {
 		invalidCmd := exec.Command(test.cmd, test.args...)
 
 		t.Run(fmt.Sprintf("Test Invalid "+test.cmd+" Command"), func(t *testing.T) {
-			out, err := cmd.SeperateOutput(invalidCmd)
+			out, err := cmd.SeparateOutput(invalidCmd)
 			if err == nil {
 				t.Error("Expected an error from '", test.cmd, strings.Join(test.args, " "), "' but it did not return one.")
 			} else if !strings.Contains(out, test.expected) {
@@ -225,4 +145,78 @@ func TestInvalidCmdOutput(t *testing.T) {
 
 	}
 
+}
+
+var convertLabelTests = []struct {
+	input          string
+	expectedOutput string
+}{
+	{"org.opencontainers.image.created", "image.opencontainers.org/created"},
+	{"dev.appsody.stack.id", "stack.appsody.dev/id"},
+	{"dev.appsody.app.name", "app.appsody.dev/name"},
+	{"dev.appsody.app-name", "appsody.dev/app-name"},
+	{"dev.app-sody.app.name", "dev/app-sody.app.name"},
+	{"d.name", "d/name"},
+	{"app.name", "app/name"},
+	{"app-name", "app-name"},
+	{"Description", "Description"},
+	{"maintainer", "maintainer"},
+	{"dev.appsody.app.a23456789012345678901234567890123456789012345678901234567890123",
+		"app.appsody.dev/a23456789012345678901234567890123456789012345678901234567890123"}, // exact length limit on name
+}
+
+func TestConvertLabelToKubeFormat(t *testing.T) {
+	for _, test := range convertLabelTests {
+		t.Run(test.input, func(t *testing.T) {
+			output, err := cmd.ConvertLabelToKubeFormat(test.input)
+			if err != nil {
+				t.Error(err)
+			} else if output != test.expectedOutput {
+				t.Errorf("Expected %s to convert to %s but got %s", test.input, test.expectedOutput, output)
+			}
+		})
+
+	}
+}
+
+var invalidConvertLabelTests = []string{
+	"inva$lid",
+	".name",
+	"dev.appsody.",
+	"dev.appsody.app.a234567890123456789012345678901234567890123456789012345678901234", // one over length limit
+}
+
+func TestInvalidConvertLabelToKubeFormat(t *testing.T) {
+	for _, test := range invalidConvertLabelTests {
+		t.Run(test, func(t *testing.T) {
+			_, err := cmd.ConvertLabelToKubeFormat(test)
+			if err == nil {
+				t.Errorf("Expected error but got none converting %s", test)
+			}
+		})
+	}
+}
+
+var getUpdateStringTests = []struct {
+	input        string
+	version      string
+	latest       string
+	updateString string
+}{
+	{"darwin", "1", "2", "Please run `brew upgrade appsody` to upgrade"},
+	{"anythingelse", "1", "2", "Please go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade"},
+	{"", "1", "2", "Please go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade"},
+}
+
+func TestGetUpdateString(t *testing.T) {
+	for _, test := range getUpdateStringTests {
+		t.Run(test.input, func(t *testing.T) {
+			output := cmd.GetUpdateString(test.input, test.version, test.latest)
+			expectedOutput := fmt.Sprintf("\n*\n*\n*\n\nA new CLI update is available.\n%s from %s --> %s.\n\n*\n*\n*\n", test.updateString, test.version, test.latest)
+			if output != expectedOutput {
+				t.Errorf("Expected %s to convert to %s but got %s", test.input, expectedOutput, output)
+			}
+		})
+
+	}
 }

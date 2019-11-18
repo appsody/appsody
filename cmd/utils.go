@@ -18,10 +18,12 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
-	"crypto/sha256"
+
+	//"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"hash"
+
+	//"hash"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -35,6 +37,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/go-spdx"
+	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
@@ -49,6 +52,14 @@ type ProjectConfig struct {
 	Description     string
 	License         string
 	Maintainers     []Maintainer
+}
+type OwnerReference struct {
+	APIVersion         string `yaml:"apiVersion"`
+	Kind               string `yaml:"kind"`
+	BlockOwnerDeletion bool   `yaml:"blockOwnerDeletion"`
+	Controller         bool   `yaml:"controller"`
+	Name               string `yaml:"name"`
+	UID                string `yaml:"uid"`
 }
 
 type NotAnAppsodyProject string
@@ -111,7 +122,7 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := SeperateOutput(inspectCmd)
+	inspectOut, inspectErr := SeparateOutput(inspectCmd)
 	if inspectErr != nil {
 		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
 	}
@@ -313,8 +324,8 @@ func IsValidKubernetesLabelValue(value string) (bool, error) {
 	if value == "" {
 		return true, nil
 	}
-	if len(value) > 68 {
-		return false, errors.New("The label must be 68 characters or less")
+	if len(value) > 63 {
+		return false, errors.New("The label must be 63 characters or less")
 	}
 
 	match, err := regexp.MatchString("^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z])?$", value)
@@ -528,7 +539,7 @@ func MoveDir(fromDir string, toDir string) error {
 	}
 	// If we are here, we need to use copy
 	Debug.log("os.Rename did not work to move directories... attempting copy. From dir:", fromDir, " target dir: ", toDir)
-	err = copyDir(fromDir, toDir)
+	err = CopyDir(fromDir, toDir)
 	if err != nil {
 		Error.log("Could not move ", fromDir, " to ", toDir)
 		return err
@@ -536,7 +547,8 @@ func MoveDir(fromDir string, toDir string) error {
 	return nil
 }
 
-func copyDir(fromDir string, toDir string) error {
+// CopyDir Copies folder from source destination to target destination
+func CopyDir(fromDir string, toDir string) error {
 	_, err := os.Stat(fromDir)
 	if err != nil {
 		Error.logf("Cannot find source directory %s to copy", fromDir)
@@ -659,7 +671,7 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		labels[ociKeyPrefix+"url"] = gitInfo.RemoteURL
 		labels[ociKeyPrefix+"documentation"] = gitInfo.RemoteURL
 		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + gitInfo.Branch
-		upstreamSplit := strings.Split(strings.Split(gitInfo.Upstream, " ")[0], "/")
+		upstreamSplit := strings.Split(gitInfo.Upstream, "/")
 		if len(upstreamSplit) > 1 {
 			labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + upstreamSplit[1]
 		}
@@ -816,103 +828,16 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 
 }
 
-//GenKnativeYaml generates a simple yaml for KNative serving
-func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, deployImage string, pullImage bool, configFile string, dryrun bool) (fileName string, yamlErr error) {
-	// KNative serving YAML representation in a struct
-	type Y struct {
-		APIVersion string `yaml:"apiVersion"`
-		Kind       string `yaml:"kind"`
-		Metadata   struct {
-			Name      string `yaml:"name"`
-			Namespace string `yaml:"namespace,omitempty"`
-		} `yaml:"metadata"`
-		Spec struct {
-			RunLatest struct {
-				Configuration struct {
-					RevisionTemplate struct {
-						Spec struct {
-							Container struct {
-								Image           string           `yaml:"image"`
-								ImagePullPolicy string           `yaml:"imagePullPolicy"`
-								Ports           []map[string]int `yaml:"ports"`
-							} `yaml:"container"`
-						} `yaml:"spec"`
-					} `yaml:"revisionTemplate"`
-				} `yaml:"configuration"`
-			} `yaml:"runLatest"`
-		} `yaml:"spec"`
-	}
-	yamlMap := Y{}
-	err := yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
-	//Set the name
-	yamlMap.Metadata.Name = serviceName
-	//Set the image
-	yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Image = deployImage
-	//Set the image pull policy to Never if we're not pushing an image to a registry
-	if !pullImage {
-		yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.ImagePullPolicy = "Never"
-	}
-	//Set the containerPort
-	ports := yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Ports
-	if len(ports) > 1 {
-		//KNative only allows a single port entry
-		Warning.log("KNative yaml template defines more than one port. This is invalid.")
-	}
-
-	if len(ports) >= 1 {
-		found := false
-		for _, thePort := range ports {
-			Debug.log("Detected KNative template port: ", thePort)
-			_, found = thePort["containerPort"]
-			if found {
-				Debug.log("YAML template defined a single port - setting it to: ", deployPort)
-				thePort["containerPort"] = deployPort
-				break
-			}
-		}
-		if !found {
-			//This template is invalid because the only value that's allowed is containerPort
-			Warning.log("The Knative template defines a port with a key other than containerPort. This is invalid.")
-			Warning.log("Adding containerPort - you will have to edit the yaml file manually.")
-			newPort := map[string]int{"containerPort": deployPort}
-			ports = append(ports, newPort)
-			yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Ports = ports
-		}
-	} else { //no ports defined
-		var newPorts [1]map[string]int
-		newPorts[0] = map[string]int{"containerPort": deployPort}
-		yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Ports = newPorts[:]
-	}
-	if err != nil {
-		Error.log("Could not create the YAML structure from template. Exiting.")
-		return "", err
-	}
-	Debug.logf("YAML map: \n%v\n", yamlMap)
-	yamlStr, err := yaml.Marshal(&yamlMap)
-	if err != nil {
-		Error.log("Could not create the YAML string from Map. Exiting.")
-		return "", err
-	}
-	Debug.logf("Generated YAML: \n%s\n", yamlStr)
-	// Generate file based on supplied config, defaulting to app-deploy.yaml
-	yamlFile := configFile
-	if dryrun {
-		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
-		return yamlFile, nil
-	}
-	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
-	if err != nil {
-		return "", fmt.Errorf("Could not create the yaml file for KNative deployment %v", err)
-	}
-	return yamlFile, nil
-}
-
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
-
+	// Codewind project ID if provided
+	codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
+	// Codewind onwner ref name and uid
+	codeWindOwnerRefName := os.Getenv("CODEWIND_OWNER_NAME")
+	codeWindOwnerRefUID := os.Getenv("CODEWIND_OWNER_UID")
 	// Deployment YAML structs
 	type Port struct {
 		Name          string `yaml:"name,omitempty"`
@@ -941,6 +866,20 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		VolumeMounts []VolumeMount `yaml:"volumeMounts"`
 		WorkingDir   string        `yaml:"workingDir,omitempty"`
 	}
+	type InitContainer struct {
+		Args            []string  `yaml:"args,omitempty"`
+		Command         []string  `yaml:"command,omitempty"`
+		Env             []*EnvVar `yaml:"env,omitempty"`
+		Image           string    `yaml:"image"`
+		ImagePullPolicy string    `yaml:"imagePullPolicy,omitempty"`
+		Name            string    `yaml:"name,omitempty"`
+		Ports           []*Port   `yaml:"ports,omitempty"`
+		SecurityContext struct {
+			Privileged bool `yaml:"privileged"`
+		} `yaml:"securityContext,omitempty"`
+		VolumeMounts []VolumeMount `yaml:"volumeMounts"`
+		WorkingDir   string        `yaml:"workingDir,omitempty"`
+	}
 	type Volume struct {
 		Name                  string `yaml:"name"`
 		PersistentVolumeClaim struct {
@@ -955,8 +894,10 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
-			Name      string `yaml:"name"`
-			Namespace string `yaml:"namespace,omitempty"`
+			Name            string            `yaml:"name"`
+			Namespace       string            `yaml:"namespace,omitempty"`
+			Labels          map[string]string `yaml:"labels,omitempty"`
+			OwnerReferences []OwnerReference  `yaml:"ownerReferences,omitempty"`
 		} `yaml:"metadata"`
 		Spec struct {
 			Selector struct {
@@ -968,9 +909,10 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 					Labels map[string]string `yaml:"labels"`
 				} `yaml:"metadata"`
 				Spec struct {
-					ServiceAccountName string       `yaml:"serviceAccountName,omitempty"`
-					Containers         []*Container `yaml:"containers"`
-					Volumes            []*Volume    `yaml:"volumes"`
+					ServiceAccountName string           `yaml:"serviceAccountName,omitempty"`
+					InitContainers     []*InitContainer `yaml:"initContainers"`
+					Containers         []*Container     `yaml:"containers"`
+					Volumes            []*Volume        `yaml:"volumes"`
 				} `yaml:"spec"`
 			} `yaml:"template"`
 		} `yaml:"spec"`
@@ -985,6 +927,24 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	}
 	//Set the name
 	yamlMap.Metadata.Name = appName
+
+	//Set the codewind label if present
+	if codeWindProjectID != "" {
+		yamlMap.Metadata.Labels = make(map[string]string)
+		yamlMap.Metadata.Labels["projectID"] = codeWindProjectID
+	}
+	//Set the owner ref if present
+	if codeWindOwnerRefName != "" && codeWindOwnerRefUID != "" {
+		yamlMap.Metadata.OwnerReferences = []OwnerReference{
+			{
+				APIVersion:         "apps/v1",
+				BlockOwnerDeletion: true,
+				Controller:         true,
+				Kind:               "ReplicaSet",
+				Name:               codeWindOwnerRefName,
+				UID:                codeWindOwnerRefUID},
+		}
+	}
 	//Set the service account if provided by an env var
 	serviceAccount := os.Getenv("SERVICE_ACCOUNT_NAME")
 	if serviceAccount != "" {
@@ -993,6 +953,8 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	} else {
 		Debug.log("No service account name env var, leaving the appsody-sa default")
 	}
+	//Set the controller image
+	yamlMap.Spec.PodTemplate.Spec.InitContainers[0].Image = controllerImageName
 	//Set the image
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].Name = appName
 	yamlMap.Spec.PodTemplate.Spec.Containers[0].Image = imageName
@@ -1030,36 +992,9 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 	} else {
 		yamlMap.Spec.PodTemplate.Spec.Volumes = append(yamlMap.Spec.PodTemplate.Spec.Volumes, &workspaceVolume)
 	}
-	//Set the volume mounts
-	//Start with the Controller
-	appsodyMountController := os.Getenv("APPSODY_MOUNT_CONTROLLER")
-	var controllerSubpath string
-	if appsodyMountController != "" {
-		appsodyMountControllerDir, err := filepath.Rel(codeWindWorkspace, filepath.Dir(appsodyMountController))
-		if err != nil {
-			Debug.Log("Problems with APPSODY_MOUNT_CONTROLLER: ", appsodyMountController)
-			return "", err
-		}
-		controllerSubpath = filepath.Join(".", appsodyMountControllerDir)
-		Debug.Log("APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
-	} else {
-		controllerSubpath = "./.extensions/codewind-appsody-extension/bin/"
-		Debug.Log("No APPSODY_MOUNT_CONTROLLER found - setting subpath to: ", controllerSubpath)
-
-	}
-	controllerVolumeMount := VolumeMount{"appsody-workspace", "/.appsody", controllerSubpath}
-	volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
-	volMountIdx := len(*volumeMounts)
-	if volMountIdx == 0 {
-		*volumeMounts = make([]VolumeMount, 1)
-		(*volumeMounts)[0] = controllerVolumeMount
-	} else {
-		*volumeMounts = append(*volumeMounts, controllerVolumeMount)
-	}
-
-	//Now the code mounts
+	//Set the code mounts
 	//We need to iterate through the docker mounts
-
+	volumeMounts := &yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts
 	for _, appsodyMount := range dockerMounts {
 		if appsodyMount == "-v" {
 			continue
@@ -1077,17 +1012,6 @@ func GenDeploymentYaml(appName string, imageName string, ports []string, pdir st
 		Debug.Log("Appending volume mount: ", newVolumeMount)
 		*volumeMounts = append(*volumeMounts, newVolumeMount)
 	}
-	// Dependencies mount
-
-	if depsMount != "" {
-		// Now the volume mount
-		depVolumeMount := VolumeMount{Name: "dependencies", MountPath: depsMount}
-		*volumeMounts = append(*volumeMounts, depVolumeMount)
-	}
-
-	//subPath := filepath.Base(pdir)
-	//workspaceMount := VolumeMount{"appsody-workspace", "/project/user-app", subPath}
-	//yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, workspaceMount)
 
 	//Set the deployment selector and pod label
 	projectLabel := appName
@@ -1130,13 +1054,24 @@ spec:
         app: appsody
     spec:
       serviceAccountName: appsody-sa
+      initContainers:
+      - name: init-appsody-controller
+        image: appsody/appsody-controller
+        resources: {}
+        volumeMounts:
+        - name: appsody-controller
+          mountPath: /.appsody
+        imagePullPolicy: IfNotPresent 
       containers:
       - name: APPSODY_APP_NAME
         image: APPSODY_STACK
         imagePullPolicy: Always
         command: ["/.appsody/appsody-controller"]
+        volumeMounts:
+        - name: appsody-controller
+          mountPath: /.appsody
       volumes:
-      - name: dependencies
+      - name: appsody-controller
         emptyDir: {}
 `
 	return yamltempl
@@ -1144,6 +1079,7 @@ spec:
 
 //GenServiceYaml returns the file name of a generated K8S Service yaml
 func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (fileName string, err error) {
+
 	type Port struct {
 		Name       string `yaml:"name,omitempty"`
 		Port       int    `yaml:"port"`
@@ -1153,8 +1089,9 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 		APIVersion string `yaml:"apiVersion"`
 		Kind       string `yaml:"kind"`
 		Metadata   struct {
-			Name   string            `yaml:"name"`
-			Labels map[string]string `yaml:"labels"`
+			Name            string            `yaml:"name"`
+			Labels          map[string]string `yaml:"labels,omitempty"`
+			OwnerReferences []OwnerReference  `yaml:"ownerReferences,omitempty"`
 		} `yaml:"metadata"`
 		Spec struct {
 			Selector    map[string]string `yaml:"selector"`
@@ -1163,14 +1100,37 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 		} `yaml:"spec"`
 	}
 
+	// Codewind project ID if provided
+	codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
+	// Codewind onwner ref name and uid
+	codeWindOwnerRefName := os.Getenv("CODEWIND_OWNER_NAME")
+	codeWindOwnerRefUID := os.Getenv("CODEWIND_OWNER_UID")
+
 	var service Service
+
 	service.APIVersion = "v1"
 	service.Kind = "Service"
 	service.Metadata.Name = fmt.Sprintf("%s-%s", appName, "service")
 
-	//Set the release label to the container name
-	service.Metadata.Labels = make(map[string]string, 1)
+	//Set the release and projectID labels
+	service.Metadata.Labels = make(map[string]string)
 	service.Metadata.Labels["release"] = appName
+	if codeWindProjectID != "" {
+		service.Metadata.Labels["projectID"] = codeWindProjectID
+	}
+
+	//Set the owner ref if present
+	if codeWindOwnerRefName != "" && codeWindOwnerRefUID != "" {
+		service.Metadata.OwnerReferences = []OwnerReference{
+			{
+				APIVersion:         "apps/v1",
+				BlockOwnerDeletion: true,
+				Controller:         true,
+				Kind:               "ReplicaSet",
+				Name:               codeWindOwnerRefName,
+				UID:                codeWindOwnerRefUID},
+		}
+	}
 
 	service.Spec.Selector = make(map[string]string, 1)
 	service.Spec.Selector["app"] = appName
@@ -1316,26 +1276,6 @@ func getIngressPort(config *RootCommandConfig) int {
 	return 0
 }
 
-func getKNativeTemplate() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Always
-            ports:
-            - containerPort: 8080
-`
-	return yamltempl
-}
-
 // DockerTag tags a docker image
 func DockerTag(imageToTag string, tag string, dryrun bool) error {
 	Info.log("Tagging Docker image as ", tag)
@@ -1346,7 +1286,7 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 		return nil
 	}
 	tagCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := SeperateOutput(tagCmd)
+	kout, kerr := SeparateOutput(tagCmd)
 	if kerr != nil {
 		return errors.Errorf("docker image tag failed: %s", kout)
 	}
@@ -1354,10 +1294,14 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 	return kerr
 }
 
-//DockerPush pushes a docker image to a docker registry (assumes that the user has done docker login)
-func DockerPush(imageToPush string, dryrun bool) error {
-	Info.log("Pushing docker image ", imageToPush)
+//ImagePush pushes a docker image to a docker registry (assumes that the user has done docker login)
+func ImagePush(imageToPush string, buildah bool, dryrun bool) error {
+	Info.log("Pushing image ", imageToPush)
 	cmdName := "docker"
+	if buildah {
+		cmdName = "buildah"
+	}
+
 	cmdArgs := []string{"push", imageToPush}
 	if dryrun {
 		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
@@ -1394,7 +1338,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 	Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
 
-	kout, kerr := SeperateOutput(dockerCmd)
+	kout, kerr := SeparateOutput(dockerCmd)
 	if kerr != nil {
 		return kout, kerr
 	}
@@ -1417,7 +1361,7 @@ func KubeGet(args []string, namespace string, dryrun bool) (string, error) {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
@@ -1439,7 +1383,7 @@ func KubeApply(fileToApply string, namespace string, dryrun bool) error {
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return errors.Errorf("kubectl apply failed: %s", kout)
 	}
@@ -1463,7 +1407,7 @@ func KubeDelete(fileToApply string, namespace string, dryrun bool) error {
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return errors.Errorf("kubectl delete failed: %s", kout)
 	}
@@ -1510,7 +1454,7 @@ func KubeGetKnativeURL(service string, namespace string, dryrun bool) (url strin
 	}
 	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := SeperateOutput(execCmd)
+	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return "", errors.Errorf("kubectl get failed: %s", kout)
 	}
@@ -1561,7 +1505,7 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 	cmdName := "docker"
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
-	imagelsOut, imagelsErr := SeperateOutput(imagelsCmd)
+	imagelsOut, imagelsErr := SeparateOutput(imagelsCmd)
 	Debug.log("Docker image ls command output: ", imagelsOut)
 
 	if imagelsErr != nil {
@@ -1694,42 +1638,6 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 	return err
 }
 
-func createChecksumHash(fileName string) (hash.Hash, error) {
-	Debug.log("Checksum oldFile", fileName)
-	newFile, err := os.Open(fileName)
-	if err != nil {
-		return nil, errors.Errorf("File open failed for %s controller binary: %v", fileName, err)
-
-	}
-	defer newFile.Close()
-
-	computedSha256 := sha256.New()
-	if _, err := io.Copy(computedSha256, newFile); err != nil {
-		return nil, errors.Errorf("sha256 copy failed for %s controller binary %v", fileName, err)
-	}
-	return computedSha256, nil
-}
-
-func checksum256TestFile(newFileName string, oldFileName string) (bool, error) {
-	var checkValue bool
-
-	oldSha256, errOld := createChecksumHash(oldFileName)
-	if errOld != nil {
-		return false, errOld
-	}
-	newSha256, errNew := createChecksumHash(newFileName)
-	if errNew != nil {
-		return false, errNew
-	}
-	Debug.logf("%x\n", oldSha256.Sum(nil))
-	Debug.logf("%x\n", newSha256.Sum(nil))
-	checkValue = bytes.Equal(oldSha256.Sum(nil), newSha256.Sum(nil))
-
-	Debug.log("Checksum returned: ", checkValue)
-
-	return checkValue, nil
-}
-
 func getLatestVersion() string {
 	var version string
 	Debug.log("Getting latest version ", LatestVersionURL)
@@ -1749,14 +1657,9 @@ func getLatestVersion() string {
 func doVersionCheck(config *RootCommandConfig) {
 	var latest = getLatestVersion()
 	var currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
-
 	if latest != "" && VERSION != "vlatest" && VERSION != latest {
-		switch os := runtime.GOOS; os {
-		case "darwin":
-			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease run `brew upgrade appsody` to upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
-		default:
-			Info.logf("\n*\n*\n*\n\nA new CLI update is available.\nPlease go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade from %s --> %s.\n\n*\n*\n*", VERSION, latest)
-		}
+		updateString := GetUpdateString(runtime.GOOS, VERSION, latest)
+		Warning.logf(updateString)
 	}
 
 	config.CliConfig.Set("lastversioncheck", currentTime)
@@ -1764,6 +1667,18 @@ func doVersionCheck(config *RootCommandConfig) {
 		Error.logf("Writing default config file %s", err)
 
 	}
+}
+
+// GetUpdateString Returns a format string to advise the user how to upgrade
+func GetUpdateString(osName string, version string, latest string) string {
+	var updateString string
+	switch osName {
+	case "darwin":
+		updateString = "Please run `brew upgrade appsody` to upgrade"
+	default:
+		updateString = "Please go to https://appsody.dev/docs/getting-started/installation#upgrading-appsody and upgrade"
+	}
+	return fmt.Sprintf("\n*\n*\n*\n\nA new CLI update is available.\n%s from %s --> %s.\n\n*\n*\n*\n", updateString, version, latest)
 }
 
 func getLastCheckTime(config *RootCommandConfig) string {
@@ -1962,7 +1877,58 @@ func Targz(source, target string) error {
 		})
 }
 
-func SeperateOutput(cmd *exec.Cmd) (string, error) {
+//Compares the minimum requirements of a stack against the user to determine whether they can use the stack or not.
+func CheckStackRequirements(requirementArray map[string]string, buildah bool) error {
+	versionRegex := regexp.MustCompile(`(\d)+\.(\d)+\.(\d)+`)
+	upgradesRequired := 0
+
+	Info.log("Checking stack requirements...")
+
+	for technology, minVersion := range requirementArray {
+		if minVersion == "" {
+			Info.log("Skipping ", technology, " - No requirements set.")
+		} else if technology == "Docker" && buildah {
+			Info.log("Skipping Docker requirement - Buildah is being used.")
+		} else if technology == "Buildah" && !buildah {
+			Info.log("Skipping Buildah requirement - Docker is being used.")
+		} else {
+			Info.log("Checking stack requirements for ", technology)
+
+			setConstraint, err := semver.NewConstraint(minVersion)
+			if err != nil {
+				Error.log(err)
+			}
+
+			runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
+			if appErr != nil {
+				Error.log(appErr, " - Are you sure ", technology, " is installed?")
+				upgradesRequired++
+			} else {
+				cutCmdOutput := versionRegex.FindString(string(runVersionCmd))
+				parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
+				if parseErr != nil || cutCmdOutput == "0.0.0" {
+					Error.log(parseErr)
+					Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
+					return nil
+				}
+				compareVersion := setConstraint.Check(parseUserVersion)
+
+				if compareVersion {
+					Info.log(technology + " requirements met")
+				} else {
+					Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
+					upgradesRequired++
+				}
+			}
+		}
+	}
+	if upgradesRequired > 0 {
+		return errors.Errorf("One or more technologies need upgrading to use this stack. Upgrades required: %v", upgradesRequired)
+	}
+	return nil
+}
+
+func SeparateOutput(cmd *exec.Cmd) (string, error) {
 	var stdErr, stdOut bytes.Buffer
 	cmd.Stderr = &stdErr
 	cmd.Stdout = &stdOut
