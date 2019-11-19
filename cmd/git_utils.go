@@ -88,7 +88,7 @@ func stringBetween(value string, pre string, post string) string {
 //RunGitFindBranc issues git status
 func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	var gitInfo GitInfo
-	version, vErr := RunGitVersion(false)
+	version, vErr := RunGitVersion(config.LoggingConfig, false)
 	if vErr != nil {
 		return gitInfo, vErr
 	}
@@ -96,11 +96,11 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 		return gitInfo, errors.Errorf("git does not appear to be available")
 	}
 
-	Debug.log("git version: ", version)
+	config.Debug.log("git version: ", version)
 
 	kargs := []string{"status", "-sb"}
 
-	output, gitErr := RunGit(kargs, config.Dryrun)
+	output, gitErr := RunGit(config.LoggingConfig, kargs, config.Dryrun)
 	if gitErr != nil {
 		return gitInfo, gitErr
 	}
@@ -141,31 +141,30 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	gitInfo.ChangesMade = changesMade
 
 	if gitInfo.Upstream != "" {
-		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(gitInfo.Upstream, config.Dryrun)
+		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(config.LoggingConfig, gitInfo.Upstream, config.Dryrun)
 		if gitErr != nil {
-			Info.Logf("Could not construct repository URL %v", gitErr)
+			config.Info.Logf("Could not construct repository URL %v", gitErr)
 		}
 
 	} else {
-		Info.log("Unable to determine origin to compute repository URL")
+		config.Info.log("Unable to determine origin to compute repository URL")
 	}
 
 	gitInfo.Commit, gitErr = RunGitGetLastCommit(gitInfo.RemoteURL, config)
 	if gitErr != nil {
-		Info.log("Received error getting current commit: ", gitErr)
-
+		config.Info.log("Received error getting current commit: ", gitErr)
 	}
 
 	return gitInfo, nil
 }
 
 //RunGitConfigLocalRemoteOriginURL
-func RunGitConfigLocalRemoteOriginURL(upstream string, dryrun bool) (string, error) {
-	Info.log("Attempting to perform git config --local remote.<origin>.url  ...")
+func RunGitConfigLocalRemoteOriginURL(log *LoggingConfig, upstream string, dryrun bool) (string, error) {
+	log.Info.log("Attempting to perform git config --local remote.<origin>.url  ...")
 
 	upstreamStart := strings.Split(upstream, "/")[0]
 	kargs := []string{"config", "--local", "remote." + upstreamStart + ".url"}
-	remote, err := RunGit(kargs, dryrun)
+	remote, err := RunGit(log, kargs, dryrun)
 	if err != nil {
 		return remote, err
 	}
@@ -186,7 +185,7 @@ func RunGitGetLastCommit(URL string, config *RootCommandConfig) (CommitInfo, err
 	//git log -n 1 --pretty=format:"{"author":"%cn","sha":"%h","date":"%cd”,}”
 	kargs := []string{"log", "-n", "1", "--pretty=format:'{\"author\":\"%an\", \"authoremail\":\"%ae\", \"sha\":\"%H\", \"date\":\"%cd\", \"committer\":\"%cn\", \"committeremail\":\"%ce\", \"message\":\"%s\"}'"}
 	var commitInfo CommitInfo
-	commitStringInfo, gitErr := RunGit(kargs, config.Dryrun)
+	commitStringInfo, gitErr := RunGit(config.LoggingConfig, kargs, config.Dryrun)
 	if gitErr != nil {
 		return commitInfo, gitErr
 	}
@@ -219,9 +218,9 @@ func RunGitGetLastCommit(URL string, config *RootCommandConfig) (CommitInfo, err
 }
 
 //RunGitVersion
-func RunGitVersion(dryrun bool) (string, error) {
+func RunGitVersion(log *LoggingConfig, dryrun bool) (string, error) {
 	kargs := []string{"version"}
-	versionInfo, gitErr := RunGit(kargs, dryrun)
+	versionInfo, gitErr := RunGit(log, kargs, dryrun)
 	if gitErr != nil {
 		return "", gitErr
 	}
@@ -229,20 +228,20 @@ func RunGitVersion(dryrun bool) (string, error) {
 }
 
 //RunGit runs a generic git
-func RunGit(kargs []string, dryrun bool) (string, error) {
+func RunGit(log *LoggingConfig, kargs []string, dryrun bool) (string, error) {
 	kcmd := "git"
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return "", nil
 	}
-	Info.log("Running git command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Info.log("Running git command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 
 	if kerr != nil {
 		return "", errors.Errorf("git command failed: %s", string(kout[:]))
 	}
-	Debug.log("Command successful...")
+	log.Debug.log("Command successful...")
 	result := string(kout[:])
 	result = strings.TrimRight(result, "\n")
 	return result, nil

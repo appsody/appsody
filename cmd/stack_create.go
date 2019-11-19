@@ -83,7 +83,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				}
 			}
 
-			err = downloadFileToDisk("https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
+			err = downloadFileToDisk(rootConfig.LoggingConfig, "https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
 			if err != nil {
 				return err
 			}
@@ -92,7 +92,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return err
 			}
 
-			valid, unzipErr := unzip(filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy, config.Dryrun)
+			valid, unzipErr := unzip(rootConfig.LoggingConfig, filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy, config.Dryrun)
 			if unzipErr != nil {
 				return unzipErr
 			}
@@ -106,7 +106,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			//moving out the stack which we need
 			if config.Dryrun {
-				Info.logf("Dry Run -Skipping moving out of stack: %s from %s", stackTempDir, filepath.Join(stack, "stacks-master", config.copy))
+				config.Info.logf("Dry Run -Skipping moving out of stack: %s from %s", stackTempDir, filepath.Join(stack, "stacks-master", config.copy))
 
 			} else {
 				stackTempDir = ".temp-" + stackTempDir + "-" + currentTime
@@ -122,7 +122,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			// rename the stack to the name which user want
 			if config.Dryrun {
-				Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", stackTempDir, stack)
+				config.Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", stackTempDir, stack)
 
 			} else {
 				err = os.Rename(stackTempDir, stack)
@@ -132,9 +132,9 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			if !config.Dryrun {
-				Info.log("Stack created: ", stack)
+				rootConfig.Info.log("Stack created: ", stack)
 			} else {
-				Info.log("Dry run complete")
+				rootConfig.Info.log("Dry run complete")
 			}
 
 			return nil
@@ -146,9 +146,9 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 // Unzip will decompress a zip archive
 // within the zip file (parameter 1) to an output directory (parameter 2).
-func unzip(src string, dest string, copy string, dryrun bool) (bool, error) {
+func unzip(log *LoggingConfig, src string, dest string, copy string, dryrun bool) (bool, error) {
 	if dryrun {
-		Info.logf("Dry Run -Skipping unzip of file: %s from %s", copy, src)
+		log.Info.logf("Dry Run -Skipping unzip of file: %s from %s", copy, src)
 
 	} else {
 		valid := false
