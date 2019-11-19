@@ -72,9 +72,9 @@ type ProjectVersion struct {
 }
 
 type StackRequirement struct {
-	Docker  string `yaml:"docker-version"`
-	Appsody string `yaml:"appsody-version"`
-	Buildah string `yaml:"buildah-version"`
+	Docker  string `yaml:"docker-version,omitempty"`
+	Appsody string `yaml:"appsody-version,omitempty"`
+	Buildah string `yaml:"buildah-version,omitempty"`
 }
 
 type RepositoryFile struct {
