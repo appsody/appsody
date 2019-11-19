@@ -66,7 +66,7 @@ func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig)
 		if _, ok := perr.(*NotAnAppsodyProject); ok {
 			//Debug.log("Cannot retrieve the project name - continuing: ", perr)
 		} else {
-			Error.logf("Error occurred retrieving project name... exiting: %s", perr)
+			config.Error.logf("Error occurred retrieving project name... exiting: %s", perr)
 			os.Exit(1)
 		}
 	}
@@ -76,13 +76,12 @@ func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig)
 }
 
 func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
-
 	projectName, perr := getProjectName(config.RootCommandConfig)
 	if perr != nil {
 		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			// Debug.log("Cannot retrieve the project name - continuing: ", perr)
+			// rootConfig.Debug.log("Cannot retrieve the project name - continuing: ", perr)
 		} else {
-			Error.logf("Error occurred retrieving project name... exiting: %s", perr)
+			config.Error.logf("Error occurred retrieving project name... exiting: %s", perr)
 			os.Exit(1)
 		}
 	}
@@ -106,10 +105,10 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		overrideVersion := os.Getenv("APPSODY_CONTROLLER_VERSION")
 		if overrideVersion != "" {
 			CONTROLLERVERSION = overrideVersion
-			Warning.Log("You have overridden the Appsody controller version and set it to: ", CONTROLLERVERSION)
+			config.Warning.Log("You have overridden the Appsody controller version and set it to: ", CONTROLLERVERSION)
 		}
 	} else {
-		Warning.Log("The Appsody CLI detected the APPSODY_CONTROLLER_IMAGE env var. The controller image that will be used is: ", overrideControllerImage)
+		config.Warning.Log("The Appsody CLI detected the APPSODY_CONTROLLER_IMAGE env var. The controller image that will be used is: ", overrideControllerImage)
 		imageSplit := strings.Split(overrideControllerImage, ":")
 		if len(imageSplit) == 1 {
 			// this is an implicit reference to latest
@@ -120,7 +119,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		}
 	}
 	if CONTROLLERVERSION == "latest" {
-		Warning.Log("The Appsody CLI will use the latest version of the controller image. This may result in a mismatch or malfunction.")
+		config.Warning.Log("The Appsody CLI will use the latest version of the controller image. This may result in a mismatch or malfunction.")
 	}
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
@@ -133,12 +132,12 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 	err := CheckPrereqs()
 	if err != nil {
-		Warning.logf("Failed to check prerequisites: %v\n", err)
+		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
 
 	platformDefinition := projectConfig.Stack
-	Debug.log("Stack image: ", platformDefinition)
-	Debug.log("Project directory: ", projectDir)
+	config.Debug.log("Stack image: ", platformDefinition)
+	config.Debug.log("Project directory: ", projectDir)
 
 	var cmdArgs []string
 	pullErr := pullImage(platformDefinition, config.RootCommandConfig)
@@ -157,7 +156,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 	if depsEnvVar != "" {
 		depsMount := config.depsVolumeName + ":" + depsEnvVar
-		Debug.log("Adding dependency cache to volume mounts: ", depsMount)
+		config.Debug.log("Adding dependency cache to volume mounts: ", depsMount)
 		volumeMaps = append(volumeMaps, "-v", depsMount)
 	}
 
@@ -176,12 +175,12 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if CONTROLLERVERSION == "latest" {
 			updateController = true
 		} else {
-			volNames, err := RunDockerVolumeList(controllerVolumeName)
+			volNames, err := RunDockerVolumeList(config.LoggingConfig, controllerVolumeName)
 			if err != nil {
-				Debug.Log("Error attempting to query volumes for ", controllerVolumeName, " :", err)
+				config.Debug.Log("Error attempting to query volumes for ", controllerVolumeName, " :", err)
 				return err
 			}
-			Debug.Log("Retrieved volume name(s): [", volNames, "]")
+			config.Debug.Log("Retrieved volume name(s): [", volNames, "]")
 			volNamesSlice := strings.Split(volNames, "\n")
 			foundVolName := ""
 			for _, volName := range volNamesSlice {
@@ -196,25 +195,25 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		}
 		// We run the image if there no volume that matches the controller version or if the controller version is "latest"
 		if updateController {
-			Debug.Logf("Controller volume not found or version is latest - launching the %s image to populate it", controllerImageName)
+			config.Debug.Logf("Controller volume not found or version is latest - launching the %s image to populate it", controllerImageName)
 			downloaderArgs := []string{"--rm", "-v", controllerVolumeMount, controllerImageName}
-			controllerDownloader, err := DockerRunAndListen(downloaderArgs, Info, false, config.RootCommandConfig.Verbose, config.RootCommandConfig.Dryrun)
+			controllerDownloader, err := DockerRunAndListen(config.RootCommandConfig, downloaderArgs, config.Info, false)
 			if config.Dryrun {
-				Info.log("Dry Run - Skipping execCmd.Wait")
+				config.Info.log("Dry Run - Skipping execCmd.Wait")
 			} else {
 				if err == nil {
 					err = controllerDownloader.Wait()
 				}
 			}
 			if err != nil {
-				Debug.Log("Error populating the controller volume: ", err)
+				config.Debug.Log("Error populating the controller volume: ", err)
 				return err
 			}
 		}
 	}
 
 	//controllerMount := controllerVolumeName + ":/appsody"
-	Debug.log("Adding controller to volume mounts: ", controllerVolumeMount)
+	config.Debug.log("Adding controller to volume mounts: ", controllerVolumeMount)
 	volumeMaps = append(volumeMaps, "-v", controllerVolumeMount)
 	if !config.Buildah {
 		c := make(chan os.Signal, 1)
@@ -253,7 +252,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		cmdArgs = append(cmdArgs, volumeMaps...)
 	}
 	if config.dockerOptions != "" {
-		Debug.logf("User provided Docker options: \"%s\"", config.dockerOptions)
+		config.Debug.logf("User provided Docker options: \"%s\"", config.dockerOptions)
 		dockerOptions := config.dockerOptions
 		dockerOptions = strings.TrimPrefix(dockerOptions, " ")
 		dockerOptions = strings.TrimSuffix(dockerOptions, " ")
@@ -275,10 +274,10 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		cmdArgs = append(cmdArgs, "--no-watcher")
 	}
 	if !config.Buildah {
-		Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
-		execCmd, err := DockerRunAndListen(cmdArgs, Container, config.interactive, config.Verbose, config.Dryrun)
+		config.Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
+		execCmd, err := DockerRunAndListen(config.RootCommandConfig, cmdArgs, config.Container, config.interactive)
 		if config.Dryrun {
-			Info.log("Dry Run - Skipping execCmd.Wait")
+			config.Info.log("Dry Run - Skipping execCmd.Wait")
 		} else {
 			if err == nil {
 				err = execCmd.Wait()
@@ -288,21 +287,20 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			// 'signal: interrupt'
 			// TODO presumably you can query the error itself
 			error := fmt.Sprintf("%s", err)
-			Debug.log("CLI exit error is:  ", error)
+			config.Debug.log("CLI exit error is:  ", error)
 			//Linux and Windows return a different error on Ctrl-C
 			if error == "signal: interrupt" || error == "signal: terminated" || error == "exit status 2" {
-				Info.log("Closing down, development environment was interrupted.")
-				err := dockerStop(config.containerName, config.Dryrun)
+				config.Info.log("Closing down, development environment was interrupted.")
+				err := dockerStop(config.RootCommandConfig, config.containerName, config.Dryrun)
 				if err != nil {
-					Error.log(err)
+					config.Error.log(err)
 				}
 			} else {
 				return errors.Errorf("Error in 'appsody %s': %s", mode, error)
-
 			}
 
 		} else {
-			Info.log("Closing down development environment.")
+			config.Info.log("Closing down development environment.")
 		}
 
 	} else {
@@ -326,23 +324,23 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		deploymentYaml, err := GenDeploymentYaml(config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, depsMount, dryrun)
+		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, depsMount, dryrun)
 		if err != nil {
 			return err
 		}
 		//hack
 		namespace := ""
 		//endhack
-		err = KubeApply(deploymentYaml, namespace, dryrun)
+		err = KubeApply(config.LoggingConfig, deploymentYaml, namespace, dryrun)
 		if err != nil {
 			return err
 		}
-		serviceYaml, err := GenServiceYaml(config.containerName, portList, projectDir, dryrun)
+		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portList, projectDir, dryrun)
 		if err != nil {
 			return err
 		}
 
-		err = KubeApply(serviceYaml, namespace, dryrun)
+		err = KubeApply(config.LoggingConfig, serviceYaml, namespace, dryrun)
 		if err != nil {
 			return err
 		}
@@ -351,12 +349,12 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			port := getIngressPort(config.RootCommandConfig)
 			// Generate the Ingress only if it makes sense - i.e. there's a port to expose
 			if port > 0 {
-				routeYaml, err := GenRouteYaml(config.containerName, projectDir, port, dryrun)
+				routeYaml, err := GenRouteYaml(config.LoggingConfig, config.containerName, projectDir, port, dryrun)
 				if err != nil {
 					return err
 				}
 
-				err = KubeApply(routeYaml, namespace, dryrun)
+				err = KubeApply(config.LoggingConfig, routeYaml, namespace, dryrun)
 				if err != nil {
 					return err
 				}
@@ -371,19 +369,19 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			var waitErr, kubeErr error
 			var execCmd *exec.Cmd
 			if config.Dryrun {
-				Info.log("Dry Run - Skipping kubectl logs")
+				config.Info.log("Dry Run - Skipping kubectl logs")
 				break
 			} else {
-				Info.Log("Getting the logs ...")
-				execCmd, kubeErr = RunKubeCommandAndListen(kubeArgs, Container, config.interactive, config.Verbose, config.Dryrun)
+				config.Info.Log("Getting the logs ...")
+				execCmd, kubeErr = RunKubeCommandAndListen(config.RootCommandConfig, kubeArgs, config.Container, config.interactive)
 				if kubeErr != nil {
-					Debug.Log("kubectl log error: ", kubeErr.Error())
+					config.Debug.Log("kubectl log error: ", kubeErr.Error())
 					time.Sleep(5 * time.Second)
 
 				} else {
 					waitErr = execCmd.Wait()
 					if waitErr != nil {
-						Debug.Log("kubectl log wait error: ", waitErr.Error())
+						config.Debug.Log("kubectl log wait error: ", waitErr.Error())
 						time.Sleep(5 * time.Second)
 
 					}
@@ -402,14 +400,13 @@ func commonCmd(config *devCommonConfig, mode string) error {
 }
 
 func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {
-
 	var exposedPortsMapping []string
 
 	dockerExposedPorts, portsErr := getExposedPorts(config.RootCommandConfig)
 	if portsErr != nil {
 		return cmdArgs, portsErr
 	}
-	Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
+	config.Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
 	// if the container port is not in the lised of exposed ports add it to the list
 
 	containerPort, envErr := GetEnvVar("PORT", config.RootCommandConfig)
@@ -418,7 +415,7 @@ func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {
 	}
 	containerPortIsExposed := false
 
-	Debug.log("Container port set to: ", containerPort)
+	config.Debug.log("Container port set to: ", containerPort)
 	if containerPort != "" {
 		for i := 0; i < len(dockerExposedPorts); i++ {
 
@@ -441,7 +438,7 @@ func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {
 		}
 	}
 
-	Debug.log("Published ports provided as inputs: ", config.ports)
+	config.Debug.log("Published ports provided as inputs: ", config.ports)
 	for i := 0; i < len(config.ports); i++ { // this is the list of input -p's
 
 		exposedPortsMapping = append(exposedPortsMapping, config.ports[i])

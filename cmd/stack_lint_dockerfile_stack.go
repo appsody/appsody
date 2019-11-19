@@ -22,13 +22,13 @@ import (
 	"strings"
 )
 
-func getENVDockerfile(stackPath string) (dockerfileStack map[string]string) {
+func getENVDockerfile(log *LoggingConfig, stackPath string) (dockerfileStack map[string]string) {
 	arg := filepath.Join(stackPath, "image/Dockerfile-stack")
 
 	file, err := os.Open(arg)
 
 	if err != nil {
-		Error.log("failed opening file: ", err)
+		log.Error.log("failed opening file: ", err)
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -56,7 +56,7 @@ func getENVDockerfile(stackPath string) (dockerfileStack map[string]string) {
 	return dockerfileMap
 }
 
-func lintDockerFileStack(stackPath string) (int, int) {
+func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
 	mendatoryEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN"}
 	optionalEnvironmentVariables := [...]string{"APPSODY_DEBUG", "APPSODY_TEST", "APPSODY_DEPS", "APPSODY_PROJECT_DIR"}
 
@@ -64,9 +64,9 @@ func lintDockerFileStack(stackPath string) (int, int) {
 	stackLintWarningCount := 0
 	arg := filepath.Join(stackPath, "image/Dockerfile-stack")
 
-	Info.log("Linting Dockerfile-stack: ", arg)
+	log.Info.log("Linting Dockerfile-stack: ", arg)
 
-	dockerfileStack := getENVDockerfile(stackPath)
+	dockerfileStack := getENVDockerfile(log, stackPath)
 
 	variableFound := false
 	variable := ""
@@ -79,7 +79,7 @@ func lintDockerFileStack(stackPath string) (int, int) {
 			}
 		}
 		if !variableFound {
-			Error.log("Missing ", variable)
+			log.Error.log("Missing ", variable)
 			stackLintErrorCount++
 		}
 		variableFound = false
@@ -95,7 +95,7 @@ func lintDockerFileStack(stackPath string) (int, int) {
 			}
 		}
 		if !variableFound {
-			Warning.log("Missing ", variable)
+			log.Warning.log("Missing ", variable)
 			stackLintWarningCount++
 		}
 		variableFound = false
@@ -118,19 +118,19 @@ func lintDockerFileStack(stackPath string) (int, int) {
 	}
 
 	if count == len(dockerfileStack) && !onChangeFound {
-		Error.log("APPSODY_WATCH_DIR is defined, but no ON_CHANGE variable is defined")
+		log.Error.log("APPSODY_WATCH_DIR is defined, but no ON_CHANGE variable is defined")
 		stackLintErrorCount++
 	}
 
 	for k, v := range dockerfileStack {
 		if strings.Contains(k, "APPSODY_INSTALL") {
-			Warning.log("APPSODY_INSTALL should be deprecated and APPSODY_PREP should be used instead")
+			log.Warning.log("APPSODY_INSTALL should be deprecated and APPSODY_PREP should be used instead")
 			stackLintWarningCount++
 		}
 
 		if strings.Contains(k, "_KILL") {
 			if !(v == "true" || v == "false") {
-				Error.log(k, " can only have value true/false")
+				log.Error.log(k, " can only have value true/false")
 				stackLintErrorCount++
 			}
 		}
@@ -139,7 +139,7 @@ func lintDockerFileStack(stackPath string) (int, int) {
 			_, err := regexp.Compile(v)
 
 			if err != nil {
-				Error.log(err)
+				log.Error.log(err)
 				stackLintErrorCount++
 			}
 		}
