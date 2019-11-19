@@ -219,9 +219,9 @@ Runs the following validation tests against the stack and its templates:
 
 			if failCount > 0 {
 				return errors.Errorf("%d validation check(s) failed.", failCount)
-			} else {
-				return nil
 			}
+
+			return nil
 
 		},
 	}
