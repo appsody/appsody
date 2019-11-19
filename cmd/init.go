@@ -234,7 +234,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		// Check to see if any requirements have actually been set
 		mapEmpty := true
 		for _, v := range reqsMap {
-			if v == "" {
+			if v != "" {
 				mapEmpty = false
 			}
 		}
@@ -247,7 +247,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 				os.Exit(1)
 			}
 		} else {
-			config.Info.log("No custom stack requirements set. Skipping")
+			config.Info.log("No stack requirements set. Skipping...")
 		}
 
 		config.Info.log("Running appsody init...")
