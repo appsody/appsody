@@ -42,7 +42,7 @@ func TestDebugSimple(t *testing.T) {
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -54,7 +54,7 @@ func TestDebugSimple(t *testing.T) {
 
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -63,7 +63,7 @@ func TestDebugSimple(t *testing.T) {
 		runChannel := make(chan error)
 		containerName := "testDebugSimpleContainer" + strings.ReplaceAll(stackRaw[i], "/", "_")
 		go func() {
-			_, err := cmdtest.RunAppsodyCmd([]string{"debug", "--name", containerName}, projectDir)
+			_, err := cmdtest.RunAppsodyCmd([]string{"debug", "--name", containerName}, projectDir, t)
 			runChannel <- err
 		}()
 		// It will take a while for the container to spin up, so let's use docker ps to wait for it
@@ -71,7 +71,7 @@ func TestDebugSimple(t *testing.T) {
 		containerRunning := false
 		count := 100
 		for {
-			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName})
+			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName}, t)
 			if dockerErr != nil {
 				t.Log("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
 			}
@@ -92,7 +92,7 @@ func TestDebugSimple(t *testing.T) {
 		}
 
 		// stop and cleanup
-		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", containerName}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", containerName}, projectDir, t)
 		if err != nil {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
