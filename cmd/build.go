@@ -508,8 +508,14 @@ func updateDeploymentConfig(config *buildCommandConfig) error {
 		}
 	}
 
-	appsodyApplication.Labels = selectedLabels
-	appsodyApplication.Annotations = labels
+	for key, value := range selectedLabels {
+		appsodyApplication.Labels[key] = value
+	}
+
+	for key, value := range labels {
+		appsodyApplication.Annotations[key] = value
+	}
+
 	appsodyApplication.Spec.CreateKnativeService = &config.knative
 
 	imageName := appsodyApplication.Spec.ApplicationImage
