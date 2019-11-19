@@ -22,8 +22,8 @@ func newVersionCmd(rootCmd *cobra.Command) *cobra.Command {
 	// versionCmd represents the version command
 	var versionCmd = &cobra.Command{
 		Use:   "version",
-		Short: "Show Appsody CLI version.",
-		Long:  `Show the Appsody CLI version that is currently installed on your local system.`,
+		Short: "Output Appsody CLI version.",
+		Long:  `Output the Appsody CLI version that is currently installed on your local system.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			Info.log(rootCmd.Use, " ", VERSION)
 		},
