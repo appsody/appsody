@@ -1700,7 +1700,7 @@ func checkTime(config *RootCommandConfig) {
 // this code should be removed when we think everyone is using the latest index.
 func setNewIndexURL(config *RootCommandConfig) {
 
-	var repoFile = getRepoFileLocation(config)
+	var repoFile = getRepoFileLocation(config.CliConfig)
 	var oldIndexURL = "https://raw.githubusercontent.com/appsody/stacks/master/index.yaml"
 	var newIndexURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
 
@@ -1728,7 +1728,7 @@ func setNewRepoName(config *RootCommandConfig) {
 	if appsodyhubRepo != nil && appsodyhubRepo.URL == incubatorRepositoryURL {
 		config.Info.log("Migrating your repo name from 'appsodyhub' to 'incubator'")
 		appsodyhubRepo.Name = "incubator"
-		err := repoFile.WriteFile(getRepoFileLocation(config))
+		err := repoFile.WriteFile(getRepoFileLocation(config.CliConfig))
 		if err != nil {
 			config.Warning.logf("Failed to write file to repository location: %v", err)
 		}

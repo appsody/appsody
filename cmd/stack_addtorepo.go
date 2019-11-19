@@ -83,7 +83,7 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 				return errors.New("Unable to reach templates directory. Current directory must be the root of the stack")
 			}
 
-			appsodyHome := getHome(rootConfig)
+			appsodyHome := getHome(rootConfig.CliConfig)
 			log.Debug.Log("appsodyHome is:", appsodyHome)
 
 			devLocal := filepath.Join(appsodyHome, "stacks", "dev.local")

@@ -59,7 +59,7 @@ You cannot remove the default repository, but you can make a different repositor
 				} else {
 					config.Error.log("Repository is not in configured list of repositories")
 				}
-				err := repoFile.WriteFile(getRepoFileLocation(config))
+				err := repoFile.WriteFile(getRepoFileLocation(config.CliConfig))
 				if err != nil {
 					log.Fatalf("Failed to write file repository location: %v", err)
 				}

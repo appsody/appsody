@@ -62,7 +62,7 @@ The default repository is used when you run the "appsody init" command without s
 				} else {
 					config.Error.log("Repository is not in configured list of repositories")
 				}
-				err := repoFile.WriteFile(getRepoFileLocation(config))
+				err := repoFile.WriteFile(getRepoFileLocation(config.CliConfig))
 				if err != nil {
 					log.Fatalf("Failed to write file repository location: %v", err)
 				}

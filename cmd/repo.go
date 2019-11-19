@@ -30,6 +30,7 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
 
@@ -150,32 +151,32 @@ func newRepoCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	return repoCmd
 }
 
-func getHome(rootConfig *RootCommandConfig) string {
-	return rootConfig.CliConfig.GetString("home")
+func getHome(cliConfig *viper.Viper) string {
+	return cliConfig.GetString("home")
 }
 
-func getRepoDir(rootConfig *RootCommandConfig) string {
-	return filepath.Join(getHome(rootConfig), "repository")
+func getRepoDir(cliConfig *viper.Viper) string {
+	return filepath.Join(getHome(cliConfig), "repository")
 }
 
-func getRepoFileLocation(rootConfig *RootCommandConfig) string {
-	return filepath.Join(getRepoDir(rootConfig), "repository.yaml")
+func getRepoFileLocation(cliConfig *viper.Viper) string {
+	return filepath.Join(getRepoDir(cliConfig), "repository.yaml")
 }
 
-// Locate or create config structure in $APPSODY_HOME
-func ensureConfig(rootConfig *RootCommandConfig) error {
+// EnsureConfig locates or creates the config structure in $APPSODY_HOME
+func EnsureConfig(log *LoggingConfig, cliConfig *viper.Viper, dryrun bool) error {
 	directories := []string{
-		getHome(rootConfig),
-		getRepoDir(rootConfig),
+		getHome(cliConfig),
+		getRepoDir(cliConfig),
 	}
 
 	for _, p := range directories {
 		if fi, err := os.Stat(p); err != nil {
 
-			if rootConfig.Dryrun {
-				rootConfig.Info.log("Dry Run - Skipping create of directory ", p)
+			if dryrun {
+				log.Info.log("Dry Run - Skipping create of directory ", p)
 			} else {
-				rootConfig.Debug.log("Creating ", p)
+				log.Debug.log("Creating ", p)
 				if err := os.MkdirAll(p, 0755); err != nil {
 					return errors.Errorf("Could not create %s: %s", p, err)
 
@@ -189,11 +190,11 @@ func ensureConfig(rootConfig *RootCommandConfig) error {
 	}
 
 	// Repositories file
-	var repoFileLocation = getRepoFileLocation(rootConfig)
+	var repoFileLocation = getRepoFileLocation(cliConfig)
 	if file, err := os.Stat(repoFileLocation); err != nil {
 
-		if rootConfig.Dryrun {
-			rootConfig.Info.log("Dry Run - Skipping creation of incubator repo: ", incubatorRepositoryURL)
+		if dryrun {
+			log.Info.log("Dry Run - Skipping creation of incubator repo: ", incubatorRepositoryURL)
 		} else {
 
 			repo := NewRepoFile()
@@ -206,7 +207,7 @@ func ensureConfig(rootConfig *RootCommandConfig) error {
 				Name: "experimental",
 				URL:  experimentalRepositoryURL,
 			})
-			rootConfig.Debug.log("Creating ", repoFileLocation)
+			log.Debug.log("Creating ", repoFileLocation)
 			if err := repo.WriteFile(repoFileLocation); err != nil {
 				return errors.Errorf("Error writing %s file: %s ", repoFileLocation, err)
 			}
@@ -215,12 +216,12 @@ func ensureConfig(rootConfig *RootCommandConfig) error {
 		return errors.Errorf("%s must be a file, not a directory ", repoFileLocation)
 	}
 
-	defaultConfigFile := getDefaultConfigFile(rootConfig)
+	defaultConfigFile := getDefaultConfigFile(cliConfig)
 	if _, err := os.Stat(defaultConfigFile); err != nil {
-		if rootConfig.Dryrun {
-			rootConfig.Info.log("Dry Run - Skip creation of default config file ", defaultConfigFile)
+		if dryrun {
+			log.Info.log("Dry Run - Skip creation of default config file ", defaultConfigFile)
 		} else {
-			rootConfig.Debug.log("Creating ", defaultConfigFile)
+			log.Debug.log("Creating ", defaultConfigFile)
 			if err := ioutil.WriteFile(defaultConfigFile, []byte{}, 0644); err != nil {
 				return errors.Errorf("Error creating default config file %s", err)
 
@@ -228,11 +229,11 @@ func ensureConfig(rootConfig *RootCommandConfig) error {
 		}
 	}
 
-	if rootConfig.Dryrun {
-		rootConfig.Info.log("Dry Run - Skip writing config file ", defaultConfigFile)
+	if dryrun {
+		log.Info.log("Dry Run - Skip writing config file ", defaultConfigFile)
 	} else {
-		rootConfig.Debug.log("Writing config file ", defaultConfigFile)
-		if err := rootConfig.CliConfig.WriteConfig(); err != nil {
+		log.Debug.log("Writing config file ", defaultConfigFile)
+		if err := cliConfig.WriteConfig(); err != nil {
 			return errors.Errorf("Writing default config file %s", err)
 
 		}
@@ -298,7 +299,7 @@ func (r *RepositoryFile) listRepoProjects(repoName string, config *RootCommandCo
 }
 
 func (r *RepositoryFile) getRepos(rootConfig *RootCommandConfig) (*RepositoryFile, error) {
-	var repoFileLocation = getRepoFileLocation(rootConfig)
+	var repoFileLocation = getRepoFileLocation(rootConfig.CliConfig)
 	repoReader, err := ioutil.ReadFile(repoFileLocation)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -402,7 +403,7 @@ func (r *RepositoryFile) GetDefaultRepoName(rootConfig *RootCommandConfig) (stri
 		repo.IsDefault = true
 		repoName = repo.Name
 	}
-	if err := r.WriteFile(getRepoFileLocation(rootConfig)); err != nil {
+	if err := r.WriteFile(getRepoFileLocation(rootConfig.CliConfig)); err != nil {
 		return "", err
 	}
 	rootConfig.Info.log("Your default repository is now set to ", repoName)
@@ -432,7 +433,7 @@ func (r *RepositoryFile) SetDefaultRepoName(name string, defaultRepoName string,
 			repoName = rf.Name
 		}
 	}
-	if err := r.WriteFile(getRepoFileLocation(rootConfig)); err != nil {
+	if err := r.WriteFile(getRepoFileLocation(rootConfig.CliConfig)); err != nil {
 		return "", err
 	}
 	rootConfig.Info.log("Your default repository is now set to ", repoName)

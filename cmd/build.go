@@ -136,7 +136,7 @@ func build(config *buildCommandConfig) error {
 		return perr
 	}
 
-	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
+	extractDir := filepath.Join(getHome(config.CliConfig), "extract", projectName)
 	dockerfile := filepath.Join(extractDir, "Dockerfile")
 	buildImage := projectName //Lowercased
 

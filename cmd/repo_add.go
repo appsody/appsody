@@ -82,7 +82,7 @@ func newRepoAddCmd(config *RootCommandConfig) *cobra.Command {
 				}
 
 				repoFile.Add(&newEntry)
-				err = repoFile.WriteFile(getRepoFileLocation(config))
+				err = repoFile.WriteFile(getRepoFileLocation(config.CliConfig))
 				if err != nil {
 					return errors.Errorf("Failed to write file to repository location: %v", err)
 				}

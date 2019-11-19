@@ -102,10 +102,11 @@ func TestExtract(t *testing.T) {
 		loggingConfig := &cmd.LoggingConfig{}
 		loggingConfig.InitLogging(&outBuffer, &outBuffer)
 		config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
-		err = cmd.InitConfig(config)
+		defaults, err := cmd.ConfigDefaults()
 		if err != nil {
-			t.Fatal("Could not init appsody config", err)
+			t.Fatal("Could not determine default home directory", err)
 		}
+		config.CliConfig = cmd.InitConfig("", defaults)
 		mounts, _ := cmd.GetEnvVar("APPSODY_MOUNTS", config)
 		pDir, _ := cmd.GetEnvVar("APPSODY_PROJECT_DIR", config)
 		t.Log(outBuffer.String())

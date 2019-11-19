@@ -91,7 +91,7 @@ func extract(config *extractCommandConfig) error {
 		}
 	}
 
-	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract")
+	extractDir := filepath.Join(getHome(config.CliConfig), "extract")
 	extractDirExists, err := Exists(extractDir)
 	if err != nil {
 		return errors.Errorf("Error checking directory: %v", err)

@@ -70,6 +70,14 @@ type RootCommandConfig struct {
 	cachedStackLabels map[string]string
 }
 
+type ConfigValues struct {
+	Home             string
+	Images           string
+	Operator         string
+	Tektonserver     string
+	Lastversioncheck string
+}
+
 // Regular expression to match ANSI terminal commands so that we can remove them from the log
 const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[-a-zA-Z\\d\\/#&.:=?%@~_\\s]*)*)?(\u0007|^G))|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))"
 
@@ -134,15 +142,30 @@ Complete documentation is available at https://appsody.dev`,
 	return rootCmd, rootConfig, nil
 }
 
+// ConfigDefaults creates and returns a ConfigValues initialized with the default
+// values found in an appsody configuration file, or an error if the user's home
+// directory cannot be determined.
+func ConfigDefaults() (*ConfigValues, error) {
+	homeDirectory, dirErr := homedir.Dir()
+	if dirErr != nil {
+		return nil, dirErr
+	}
+	home := filepath.Join(homeDirectory, ".appsody")
+	return &ConfigValues{Home: home, Images: "index.docker.io", Operator: operatorHome, Tektonserver: "", Lastversioncheck: "none"}, nil
+}
+
 func setupConfig(args []string, config *RootCommandConfig) error {
 	if config.setupConfigRun {
 		return nil
 	}
-	err := InitConfig(config)
+
+	defaults, err := ConfigDefaults()
 	if err != nil {
 		return err
 	}
-	err = ensureConfig(config)
+	config.CliConfig = InitConfig(config.CfgFile, defaults)
+
+	err = EnsureConfig(config.LoggingConfig, config.CliConfig, config.Dryrun)
 	if err != nil {
 		return err
 	}
@@ -154,23 +177,20 @@ func setupConfig(args []string, config *RootCommandConfig) error {
 	return nil
 }
 
-func InitConfig(config *RootCommandConfig) error {
-
+// InitConfig creates and returns a Viper configuration with the values from a configuration
+// file, if one is specified, combined with a set of default values.
+func InitConfig(configFile string, defaults *ConfigValues) *viper.Viper {
 	cliConfig := viper.New()
-	homeDirectory, dirErr := homedir.Dir()
-	if dirErr != nil {
-		return dirErr
-	}
-	cliConfig.SetDefault("home", filepath.Join(homeDirectory, ".appsody"))
-	cliConfig.SetDefault("images", "index.docker.io")
-	cliConfig.SetDefault("operator", operatorHome)
-	cliConfig.SetDefault("tektonserver", "")
-	cliConfig.SetDefault("lastversioncheck", "none")
-	if config.CfgFile != "" {
+	cliConfig.SetDefault("home", defaults.Home)
+	cliConfig.SetDefault("images", defaults.Images)
+	cliConfig.SetDefault("operator", defaults.Operator)
+	cliConfig.SetDefault("tektonserver", defaults.Tektonserver)
+	cliConfig.SetDefault("lastversioncheck", defaults.Lastversioncheck)
+	if configFile != "" {
 		// Use config file from the flag.
-		cliConfig.SetConfigFile(config.CfgFile)
+		cliConfig.SetConfigFile(configFile)
 	} else {
-		// Search config in home directory with name ".hello-cobra" (without extension).
+		// Search config in home directory with name ".appsody" (without extension).
 		cliConfig.AddConfigPath(cliConfig.GetString("home"))
 		cliConfig.SetConfigName(".appsody")
 	}
@@ -181,12 +201,11 @@ func InitConfig(config *RootCommandConfig) error {
 	// If a config file is found, read it in.
 	// Ignore errors, if the config isn't found, we will create a default later
 	_ = cliConfig.ReadInConfig()
-	config.CliConfig = cliConfig
-	return nil
+	return cliConfig
 }
 
-func getDefaultConfigFile(config *RootCommandConfig) string {
-	return filepath.Join(config.CliConfig.GetString("home"), ".appsody.yaml")
+func getDefaultConfigFile(cliConfig *viper.Viper) string {
+	return filepath.Join(cliConfig.GetString("home"), ".appsody.yaml")
 }
 
 func Execute(version string, controllerVersion string) {

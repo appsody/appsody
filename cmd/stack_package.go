@@ -104,7 +104,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			log.Debug.Log("stackID is: ", stackID)
 
 			// sets stack path to be the copied folder
-			stackPath := filepath.Join(getHome(rootConfig), "stacks", "packaging-"+stackID)
+			stackPath := filepath.Join(getHome(rootConfig.CliConfig), "stacks", "packaging-"+stackID)
 			log.Debug.Log("stackPath is: ", stackPath)
 
 			// creates stackPath dir if it doesn't exist
@@ -148,7 +148,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				return errors.New("Unable to reach templates directory. Current directory must be the root of the stack")
 			}
 
-			appsodyHome := getHome(rootConfig)
+			appsodyHome := getHome(rootConfig.CliConfig)
 			log.Debug.Log("appsodyHome is:", appsodyHome)
 
 			devLocal := filepath.Join(appsodyHome, "stacks", "dev.local")
@@ -364,9 +364,9 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					log.Info.logf("Appsody repo %s is configured with %s's URL. Deleting it to setup %s.", repoNameToDelete, repoName, repoName)
 					repos.Remove(repoNameToDelete)
 				}
-				err = repos.WriteFile(getRepoFileLocation(rootConfig))
+				err = repos.WriteFile(getRepoFileLocation(rootConfig.CliConfig))
 				if err != nil {
-					return errors.Errorf("Error writing to repo file %s. %v", getRepoFileLocation(rootConfig), err)
+					return errors.Errorf("Error writing to repo file %s. %v", getRepoFileLocation(rootConfig.CliConfig), err)
 				}
 				log.Info.Logf("Creating %s repository", repoName)
 				_, err = AddLocalFileRepo(repoName, indexFileLocal)
