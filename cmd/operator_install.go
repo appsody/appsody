@@ -63,15 +63,15 @@ func operatorInstall(config *operatorInstallCommandConfig) error {
 	if config.all {
 		watchNamespace = ""
 	}
-	Debug.log("watchNamespace is:  ", watchNamespace)
-	operatorExists, existsErr := operatorExistsInNamespace(operatorNamespace, config.Dryrun)
+	config.Debug.log("watchNamespace is:  ", watchNamespace)
+	operatorExists, existsErr := operatorExistsInNamespace(config.LoggingConfig, operatorNamespace, config.Dryrun)
 	if existsErr != nil {
 		return existsErr
 	}
 	if operatorExists {
-		existingOperatorWatchspace, err := getOperatorWatchspace(operatorNamespace, config.Dryrun)
+		existingOperatorWatchspace, err := getOperatorWatchspace(config.LoggingConfig, operatorNamespace, config.Dryrun)
 		if err != nil {
-			Debug.log("Could not retrieve the watchspace of this operator - this should never happen...")
+			config.Debug.log("Could not retrieve the watchspace of this operator - this should never happen...")
 		}
 		if existingOperatorWatchspace == "" {
 			existingOperatorWatchspace = "all namespaces"
@@ -79,7 +79,7 @@ func operatorInstall(config *operatorInstallCommandConfig) error {
 		return errors.Errorf("An operator already exists in namespace %s and it is watching the %s namespace.", operatorNamespace, existingOperatorWatchspace)
 	}
 
-	watchExists, existingNamespace, watchExistsErr := operatorExistsWithWatchspace(watchNamespace, config.Dryrun)
+	watchExists, existingNamespace, watchExistsErr := operatorExistsWithWatchspace(config.LoggingConfig, watchNamespace, config.Dryrun)
 	if watchExistsErr != nil {
 
 		return watchExistsErr
@@ -97,25 +97,25 @@ func operatorInstall(config *operatorInstallCommandConfig) error {
 	appsodyCRD := filepath.Join(deployConfigDir, appsodyCRDName)
 	var file string
 
-	file, err = downloadCRDYaml(crdURL, appsodyCRD)
+	file, err = downloadCRDYaml(config.LoggingConfig, crdURL, appsodyCRD)
 	if err != nil {
 		return err
 	}
 
-	err = KubeApply(file, config.namespace, config.Dryrun)
+	err = KubeApply(config.LoggingConfig, file, config.namespace, config.Dryrun)
 	if err != nil {
 		return err
 	}
 	rbacYaml := filepath.Join(deployConfigDir, operatorRBACName)
 	var rbacURL = getOperatorHome(config.RootCommandConfig) + "/" + operatorRBACName
 	if (operatorNamespace != watchNamespace) || config.all {
-		Debug.log("Downloading: ", rbacURL)
-		file, err = downloadRBACYaml(rbacURL, operatorNamespace, rbacYaml, config.Dryrun)
+		config.Debug.log("Downloading: ", rbacURL)
+		file, err = downloadRBACYaml(config.LoggingConfig, rbacURL, operatorNamespace, rbacYaml, config.Dryrun)
 		if err != nil {
 			return err
 		}
 
-		err = KubeApply(file, config.namespace, config.Dryrun)
+		err = KubeApply(config.LoggingConfig, file, config.namespace, config.Dryrun)
 		if err != nil {
 			return err
 		}
@@ -123,16 +123,16 @@ func operatorInstall(config *operatorInstallCommandConfig) error {
 
 	operatorYaml := filepath.Join(deployConfigDir, operatorYamlName)
 	var operatorURL = getOperatorHome(config.RootCommandConfig) + "/" + operatorYamlName
-	file, err = downloadOperatorYaml(operatorURL, operatorNamespace, watchNamespace, operatorYaml)
+	file, err = downloadOperatorYaml(config.LoggingConfig, operatorURL, operatorNamespace, watchNamespace, operatorYaml)
 	if err != nil {
 		return err
 	}
 
-	err = KubeApply(file, config.namespace, config.Dryrun)
+	err = KubeApply(config.LoggingConfig, file, config.namespace, config.Dryrun)
 	if err != nil {
 		return err
 	}
 
-	Info.log("Appsody operator deployed to Kubernetes")
+	config.Info.log("Appsody operator deployed to Kubernetes")
 	return nil
 }

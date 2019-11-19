@@ -51,96 +51,96 @@ Run this command from the base directory of your stack, or specify the path to y
 			projectPath := filepath.Join(imagePath, "/project")
 
 			stackID := filepath.Base(stackPath)
-			Info.log("LINTING ", stackID)
+			rootConfig.Info.log("LINTING ", stackID)
 
 			validStackID, err := IsValidProjectName(stackID)
 			if !validStackID {
-				Error.log("Stack directory name is invalid. ", err)
+				rootConfig.Error.log("Stack directory name is invalid. ", err)
 				stackLintErrorCount++
 			}
 
 			fileCheck, err := Exists(filepath.Join(stackPath, "/README.md"))
 			if err != nil {
-				Error.log("Error attempting to determine file: ", err)
+				rootConfig.Error.log("Error attempting to determine file: ", err)
 				stackLintErrorCount++
 			} else if !fileCheck {
-				Error.log("Missing README.md in: ", stackPath)
+				rootConfig.Error.log("Missing README.md in: ", stackPath)
 				stackLintErrorCount++
 			}
 			fileCheck, err = Exists(filepath.Join(stackPath, "/stack.yaml"))
 			if err != nil {
-				Error.log("Error attempting to determine file: ", err)
+				rootConfig.Error.log("Error attempting to determine file: ", err)
 				stackLintErrorCount++
 			} else if !fileCheck {
-				Error.log("Missing stack.yaml in: ", stackPath)
+				rootConfig.Error.log("Missing stack.yaml in: ", stackPath)
 				stackLintErrorCount++
 			}
 
 			fileCheck, err = Exists(imagePath)
 			if err != nil {
-				Error.log("Error attempting to determine file: ", err)
+				rootConfig.Error.log("Error attempting to determine file: ", err)
 				stackLintErrorCount++
 			} else if !fileCheck {
-				Error.log("Missing image directory in ", stackPath)
+				rootConfig.Error.log("Missing image directory in ", stackPath)
 				stackLintErrorCount++
 			}
 
 			fileCheck, err = Exists(filepath.Join(imagePath, "/Dockerfile-stack"))
 			if err != nil {
-				Error.log("Error attempting to determine file: ", err)
+				rootConfig.Error.log("Error attempting to determine file: ", err)
 				stackLintErrorCount++
 			} else if !fileCheck {
-				Error.log("Missing Dockerfile-stack in ", imagePath)
+				rootConfig.Error.log("Missing Dockerfile-stack in ", imagePath)
 				stackLintErrorCount++
 			}
 
 			fileCheck, err = Exists(filepath.Join(imagePath, "/LICENSE"))
 			if err != nil {
-				Error.log("Error attempting to determine file: ", err)
+				rootConfig.Error.log("Error attempting to determine file: ", err)
 				stackLintErrorCount++
 			} else if !fileCheck {
-				Error.log("Missing LICENSE in ", imagePath)
+				rootConfig.Error.log("Missing LICENSE in ", imagePath)
 				stackLintErrorCount++
 			}
 
 			fileCheck, err = Exists(configPath)
 			if err != nil {
-				Error.log("Error attempting to determine file: ", err)
+				rootConfig.Error.log("Error attempting to determine file: ", err)
 				stackLintErrorCount++
 			} else if !fileCheck {
-				Warning.log("Missing config directory in ", imagePath, " (Knative deployment will be used over Kubernetes)")
+				rootConfig.Warning.log("Missing config directory in ", imagePath, " (Knative deployment will be used over Kubernetes)")
 				stackLintWarningCount++
 			}
 
 			fileCheck, err = Exists(filepath.Join(configPath, "/app-deploy.yaml"))
 			if err != nil {
-				Error.log("Error attempting to determine file: ", err)
+				rootConfig.Error.log("Error attempting to determine file: ", err)
 				stackLintErrorCount++
 			} else if !fileCheck {
-				Warning.log("Missing app-deploy.yaml in ", configPath, " (Knative deployment will be used over Kubernetes)")
+				rootConfig.Warning.log("Missing app-deploy.yaml in ", configPath, " (Knative deployment will be used over Kubernetes)")
 				stackLintWarningCount++
 			}
 
 			fileCheck, err = Exists(filepath.Join(projectPath, "/Dockerfile"))
 			if err != nil {
-				Error.log("Error attempting to determine file: ", err)
+				rootConfig.Error.log("Error attempting to determine file: ", err)
 				stackLintErrorCount++
 			} else if !fileCheck {
-				Warning.log("Missing Dockerfile in ", projectPath)
+				rootConfig.Warning.log("Missing Dockerfile in ", projectPath)
 				stackLintWarningCount++
 			}
 
 			fileCheck, err = Exists(templatePath)
 			if err != nil {
-				Error.log("Error attempting to determine file: ", err)
+				rootConfig.Error.log("Error attempting to determine file: ", err)
 				stackLintErrorCount++
 			} else if !fileCheck {
-				Error.log("Missing template directory in: ", stackPath)
+				rootConfig.Error.log("Missing template directory in: ", stackPath)
 				stackLintErrorCount++
 			}
 
 			if IsEmptyDir(templatePath) {
-				Error.log("No templates found in: ", templatePath)
+				rootConfig.Error.log("No templates found in: ", templatePath)
 				stackLintErrorCount++
 			}
 
@@ -148,29 +148,29 @@ Run this command from the base directory of your stack, or specify the path to y
 			for _, f := range templates {
 				fileCheck, err = Exists(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml"))
 				if (err != nil) && f.Name() != ".DS_Store" {
-					Error.log("Error attempting to determine file: ", err)
+					rootConfig.Error.log("Error attempting to determine file: ", err)
 					stackLintErrorCount++
 				} else if fileCheck && f.Name() != ".DS_Store" {
-					Error.log("Unexpected .appsody-config.yaml in ", filepath.Join(templatePath, f.Name()))
+					rootConfig.Error.log("Unexpected .appsody-config.yaml in ", filepath.Join(templatePath, f.Name()))
 					stackLintErrorCount++
 				}
 			}
 
-			dockerFileErrorCount, dockerFileWarningCount := lintDockerFileStack(stackPath)
+			dockerFileErrorCount, dockerFileWarningCount := lintDockerFileStack(rootConfig.LoggingConfig, stackPath)
 			stackLintErrorCount += dockerFileErrorCount
 			stackLintWarningCount += dockerFileWarningCount
 
 			var s StackDetails
-			stackLintErrorCount += s.validateYaml(stackPath)
+			stackLintErrorCount += s.validateYaml(rootConfig, stackPath)
 
-			Info.log("TOTAL ERRORS: ", stackLintErrorCount)
-			Info.log("TOTAL WARNINGS: ", stackLintWarningCount)
+			rootConfig.Info.log("TOTAL ERRORS: ", stackLintErrorCount)
+			rootConfig.Info.log("TOTAL WARNINGS: ", stackLintWarningCount)
 
 			if stackLintErrorCount > 0 {
 				return errors.Errorf("LINT TEST FAILED")
 			}
 
-			Info.log("LINT TEST PASSED")
+			rootConfig.Info.log("LINT TEST PASSED")
 			return nil
 		},
 	}
