@@ -40,6 +40,7 @@ func TestDockerInspect(t *testing.T) {
 			config.InitLogging(&outBuffer, &outBuffer)
 
 			out, err := cmd.RunDockerInspect(config, test.file)
+			t.Log(outBuffer.String())
 
 			if err == nil {
 				t.Error("Expected an error from '", test.file, "' name but it did not return one.")

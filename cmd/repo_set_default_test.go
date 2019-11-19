@@ -23,7 +23,7 @@ import (
 func TestRepoSetDefaultErrors(t *testing.T) {
 
 	args := []string{"repo", "set-default"}
-	output, _ := cmdtest.RunAppsodyCmd(args, ".")
+	output, _ := cmdtest.RunAppsodyCmd(args, ".", t)
 
 	if !strings.Contains(output, "Error, you must specify desired default repository") {
 		t.Error("String \"Error, you must specify desired default repository\" not found in output")
