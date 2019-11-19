@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newCompletionCmd(rootCmd *cobra.Command) *cobra.Command {
+func newCompletionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command {
 	// bash completions
 	var bashCompletionCmd = &cobra.Command{
 		Use:   "completion",
@@ -49,7 +49,6 @@ func newCompletionCmd(rootCmd *cobra.Command) *cobra.Command {
 
 	1. run appsody completion zsh > _appsody
 	2. copy _appsody to a directory in your fpath`,
-
 		RunE: func(cmd *cobra.Command, args []string) error {
 			buf := new(bytes.Buffer)
 			completionType := "bash"
@@ -67,7 +66,8 @@ func newCompletionCmd(rootCmd *cobra.Command) *cobra.Command {
 
 			}
 
-			Debug.log("Running bash completion script")
+			log.Debug.log("Running bash completion script")
+
 			if completionType == "bash" {
 				bashHeader := "# Outputs a bash completion script for appsody to stdout. " +
 					"Bash completion is optionally available for your convenience. It helps you fill out appsody commands when you type the [TAB] key.\n" +
@@ -94,21 +94,14 @@ func newCompletionCmd(rootCmd *cobra.Command) *cobra.Command {
 
 				fmt.Println(bashHeader + afterAppsodyDevInit[0] + "_appsody_init()\n" + strings.Replace(afterAppsodyDevInit[1], "flags=()", extra, 1))
 			} else {
-				compDef := "#compdef _appsody appsody\n"
+
 				_ = rootCmd.GenZshCompletion(buf)
 				output := buf.String()
-				afterAppsodyCompdef := strings.Split(output, compDef)
-				zshHeader := "# For zsh: \n" +
-					"# The zsh shell must be enabled and .zshrc configured to run zsh completion.\n" +
-					"# To install: \n" +
-					"# 1. run appsody completion zsh > _appsody\n" +
-					"# 2. Copy _appsody to a directory in fpath"
 
-				fmt.Println(compDef + zshHeader + afterAppsodyCompdef[1])
+				fmt.Println(output)
 			}
 			return nil
 		},
 	}
-
 	return bashCompletionCmd
 }
