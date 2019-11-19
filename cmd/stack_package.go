@@ -38,6 +38,7 @@ type StackYaml struct {
 	Maintainers     []Maintainer
 	DefaultTemplate string            `yaml:"default-template"`
 	TemplatingData  map[string]string `yaml:"templating-data"`
+	Requirements    StackRequirement  `yaml:"requirements,omitempty"`
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -59,6 +60,7 @@ type IndexYamlStack struct {
 	Maintainers     []Maintainer
 	DefaultTemplate string `yaml:"default-template"`
 	Templates       []IndexYamlStackTemplate
+	Requirements    StackRequirement `yaml:"requirements,omitempty"`
 }
 type IndexYamlStackTemplate struct {
 	ID  string `yaml:"id"`
@@ -393,9 +395,10 @@ func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
 	newStackStruct.Version = stackYaml.Version
 	newStackStruct.Description = stackYaml.Description
 	newStackStruct.License = stackYaml.License
-	newStackStruct.Language = stackYaml.License
+	newStackStruct.Language = stackYaml.Language
 	newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
 	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
+	newStackStruct.Requirements = stackYaml.Requirements
 
 	return newStackStruct
 }
