@@ -137,7 +137,7 @@ func RunAppsodyCmd(args []string, workingDir string) (string, error) {
 		wg.Done()
 	}()
 
-	err := cmd.ExecuteE("vlatest", "latest", workingDir, args)
+	err := cmd.ExecuteE("vlatest", "latest", workingDir, os.Stdout, os.Stderr, args)
 	// set back the os output right away so output gets displayed
 	os.Stdout = realStdout
 	os.Stderr = realStderr
