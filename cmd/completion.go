@@ -40,9 +40,6 @@ func newCompletionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command
 	3. Make sure to copy the appsody completion file generated above into the appropriate directory for your Linux distribution e.g.
 	appsody completion >  /etc/bash_completion.d/appsody
 	
-	Usage:
-	appsody completion [bash] > appsody
-
 	For zsh,
 	The zsh shell must be enabled and .zshrc configured to run zsh completion.
 	To install Appsody zsh completion: 
