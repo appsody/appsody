@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// stack validate is a suite of validation tests for a local stack
+// stack validate is a suite of validation tests for a local stack and its templates
 // stack validate does the following...
 // 1. stack lint test, can be turned off with --no-lint
 // 2. stack package, can be turned off with --no-package
@@ -43,10 +43,10 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	var stackValidateCmd = &cobra.Command{
 		Use:   "validate",
-		Short: "Run validation tests against your stack.",
-		Long: `Run validation tests against your stack, in your local Appsody development environment. 
+		Short: "Run validation tests against your stack and its templates.",
+		Long: `Run validation tests against your stack and its templates, in your local Appsody development environment. 
 		
-Runs the following validation tests against the stack:
+Runs the following validation tests against the stack and its templates:
   * appsody stack lint
   * appsody stack package
   * appsody init 
@@ -79,16 +79,8 @@ Runs the following validation tests against the stack:
 			rootConfig.Info.Log("stackName is: ", stackName)
 
 			rootConfig.Info.Log("#################################################")
-			rootConfig.Info.Log("Validating stack: ", stackName)
+			rootConfig.Info.Log("Validating stack:", stackName)
 			rootConfig.Info.Log("#################################################")
-
-			// create a temporary dir to create the project and run the test
-			projectDir, err := ioutil.TempDir("", "appsody-build-simple-test")
-			if err != nil {
-				return err
-			}
-
-			rootConfig.Info.Log("Created project dir: " + projectDir)
 
 			rootConfig.Debug.Log("Setting environment variable APPSODY_PULL_POLICY=IFNOTPRESENT")
 			err = os.Setenv("APPSODY_PULL_POLICY", "IFNOTPRESENT")
@@ -104,10 +96,10 @@ Runs the following validation tests against the stack:
 				if err != nil {
 					//logs error but keeps going
 					rootConfig.Error.Log(err)
-					testResults = append(testResults, ("FAILED: Lint for stack: " + stackName))
+					testResults = append(testResults, ("FAILED: Lint for stack:" + stackName))
 					failCount++
 				} else {
-					testResults = append(testResults, ("PASSED: Lint for stack: " + stackName))
+					testResults = append(testResults, ("PASSED: Lint for stack:" + stackName))
 					passCount++
 				}
 			}
@@ -118,84 +110,119 @@ Runs the following validation tests against the stack:
 				if err != nil {
 					//logs error but keeps going
 					rootConfig.Error.Log(err)
-					testResults = append(testResults, ("FAILED: Package for stack: " + stackName))
+					testResults = append(testResults, ("FAILED: Package for stack:" + stackName))
 					failCount++
 				} else {
-					testResults = append(testResults, ("PASSED: Package for stack: " + stackName))
+					testResults = append(testResults, ("PASSED: Package for stack:" + stackName))
 					passCount++
 				}
 			}
 
-			// init
-			err = TestInit(rootConfig.LoggingConfig, "dev.local/"+stackName, projectDir)
+			// find and open the template path so we can loop through the templates
+			templatePath := filepath.Join(stackPath, "templates")
+
+			t, err := os.Open(templatePath)
 			if err != nil {
-				rootConfig.Error.Log(err)
-				testResults = append(testResults, ("FAILED: Init for stack: " + stackName))
-				failCount++
-				initFail = true
-			} else {
-				testResults = append(testResults, ("PASSED: Init for stack: " + stackName))
-				passCount++
-				initFail = false
+				return errors.Errorf("Error opening directory: %v", err)
 			}
 
-			// run
-			if !initFail {
-				err = TestRun(rootConfig.LoggingConfig, projectDir)
-				if err != nil {
-					//logs error but keeps going
-					rootConfig.Error.Log(err)
-					testResults = append(testResults, ("FAILED: Run for stack: " + stackName))
-					failCount++
-				} else {
-					testResults = append(testResults, ("PASSED: Run for stack: " + stackName))
-					passCount++
+			templates, err := t.Readdirnames(0)
+			if err != nil {
+				return errors.Errorf("Error reading directories: %v", err)
+			}
+
+			// loop through the template directories and create the id and url
+			for i := range templates {
+				rootConfig.Debug.Log("template is: ", templates[i])
+				if strings.Contains(templates[i], ".DS_Store") {
+					rootConfig.Debug.Log("Ignoring .DS_Store")
+					continue
 				}
-			}
 
-			// test
-			if !initFail {
-				err = TestTest(rootConfig.LoggingConfig, projectDir)
+				// create a temporary dir to create the project and run the test
+				projectDir, err := ioutil.TempDir("", "appsody-build-simple-test")
 				if err != nil {
-					//logs error but keeps going
-					rootConfig.Error.Log(err)
-					testResults = append(testResults, ("FAILED: Test for stack: " + stackName))
-					failCount++
-				} else {
-					testResults = append(testResults, ("PASSED: Test for stack: " + stackName))
-					passCount++
+					return err
 				}
-			}
 
-			// build
-			if !initFail {
-				err = TestBuild(rootConfig.LoggingConfig, stackName, projectDir)
+				rootConfig.Info.Log("Created project dir: " + projectDir)
+
+				// init
+				err = TestInit(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
 				if err != nil {
-					//logs error but keeps going
 					rootConfig.Error.Log(err)
-					testResults = append(testResults, ("FAILED: Build for stack: " + stackName))
+					testResults = append(testResults, ("FAILED: Init for stack:" + stackName + " template:" + templates[i]))
 					failCount++
+					initFail = true
 				} else {
-					testResults = append(testResults, ("PASSED: Build for stack: " + stackName))
+					testResults = append(testResults, ("PASSED: Init for stack:" + stackName + " template:" + templates[i]))
 					passCount++
+					initFail = false
 				}
+
+				// run
+				if !initFail {
+					err = TestRun(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+					if err != nil {
+						//logs error but keeps going
+						rootConfig.Error.Log(err)
+						testResults = append(testResults, ("FAILED: Run for stack:" + stackName + " template:" + templates[i]))
+						failCount++
+					} else {
+						testResults = append(testResults, ("PASSED: Run for stack:" + stackName + " template:" + templates[i]))
+						passCount++
+					}
+				}
+
+				// test
+				if !initFail {
+					err = TestTest(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+					if err != nil {
+						//logs error but keeps going
+						rootConfig.Error.Log(err)
+						testResults = append(testResults, ("FAILED: Test for stack:" + stackName + " template:" + templates[i]))
+						failCount++
+					} else {
+						testResults = append(testResults, ("PASSED: Test for stack:" + stackName + " template:" + templates[i]))
+						passCount++
+					}
+				}
+
+				// build
+				if !initFail {
+					err = TestBuild(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+					if err != nil {
+						//logs error but keeps going
+						rootConfig.Error.Log(err)
+						testResults = append(testResults, ("FAILED: Build for stack:" + stackName + " template:" + templates[i]))
+						failCount++
+					} else {
+						testResults = append(testResults, ("PASSED: Build for stack:" + stackName + " template:" + templates[i]))
+						passCount++
+					}
+				}
+
+				//cleanup
+				rootConfig.Info.Log("Removing project dir: " + projectDir)
+				os.RemoveAll(projectDir)
+
+				//}
 			}
 
-			//cleanup
-			rootConfig.Info.Log("Removing project dir: " + projectDir)
-			os.RemoveAll(projectDir)
-
-			//}
-
-			rootConfig.Info.Log("@@@@@@@@@ Validate Summary Start @@@@@@@@@@")
+			rootConfig.Info.Log("@@@@@@@@@@@@@@@ Validate Summary Start @@@@@@@@@@@@@@@@")
 			for i := range testResults {
 				rootConfig.Info.Log(testResults[i])
 			}
 			rootConfig.Info.Log("Total PASSED: ", passCount)
 			rootConfig.Info.Log("Total FAILED: ", failCount)
-			rootConfig.Info.Log("@@@@@@@@@  Validate Summary End  @@@@@@@@@@")
+			rootConfig.Info.Log("@@@@@@@@@@@@@@@  Validate Summary End  @@@@@@@@@@@@@@@@")
 
-			return nil
+			if failCount > 0 {
+				return errors.Errorf("%d validation check(s) failed.", failCount)
+			} else {
+				return nil
+			}
+
 		},
 	}
 
@@ -207,24 +234,24 @@ Runs the following validation tests against the stack:
 }
 
 // Simple test for appsody init command
-func TestInit(log *LoggingConfig, stack string, projectDir string) error {
+func TestInit(log *LoggingConfig, stack string, template string, projectDir string) error {
 
-	log.Info.Log("******************************************")
-	log.Info.Log("Running appsody init")
-	log.Info.Log("******************************************")
-	_, err := RunAppsodyCmdExec([]string{"init", stack}, projectDir)
+	log.Info.Log("**************************************************************************")
+	log.Info.Log("Running appsody init against stack:" + stack + " template:" + template)
+	log.Info.Log("**************************************************************************")
+	_, err := RunAppsodyCmdExec([]string{"init", stack, template}, projectDir)
 	return err
 }
 
 // Simple test for appsody run command. A future enhancement would be to verify the image that gets built.
-func TestRun(log *LoggingConfig, projectDir string) error {
+func TestRun(log *LoggingConfig, stack string, template string, projectDir string) error {
 
 	runChannel := make(chan error)
 	containerName := "testRunContainer"
 	go func() {
-		log.Info.Log("******************************************")
-		log.Info.Log("Running appsody run")
-		log.Info.Log("******************************************")
+		log.Info.Log("**************************************************************************")
+		log.Info.Log("Running appsody run against stack:" + stack + "template: " + template)
+		log.Info.Log("**************************************************************************")
 		_, err := RunAppsodyCmdExec([]string{"run", "--name", containerName}, projectDir)
 		runChannel <- err
 	}()
@@ -283,22 +310,23 @@ func TestRun(log *LoggingConfig, projectDir string) error {
 }
 
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
-func TestTest(log *LoggingConfig, projectDir string) error {
+func TestTest(log *LoggingConfig, stack string, template string, projectDir string) error {
 
-	log.Info.Log("******************************************")
-	log.Info.Log("Running appsody test")
+	log.Info.Log("**************************************************************************")
+	log.Info.Log("Running appsody test against stack:" + stack + " template:" + template)
+	log.Info.Log("**************************************************************************")
 	_, err := RunAppsodyCmdExec([]string{"test", "--no-watcher"}, projectDir)
 	return err
 }
 
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
-func TestBuild(log *LoggingConfig, stack string, projectDir string) error {
+func TestBuild(log *LoggingConfig, stack string, template string, projectDir string) error {
 
 	imageName := "dev.local/" + filepath.Base(projectDir)
 
-	log.Info.Log("******************************************")
-	log.Info.Log("Running appsody build")
-	log.Info.Log("******************************************")
+	log.Info.Log("**************************************************************************")
+	log.Info.Log("Running appsody build against stack:" + stack + " template:" + template)
+	log.Info.Log("**************************************************************************")
 	_, err := RunAppsodyCmdExec([]string{"build", "--tag", imageName}, projectDir)
 	if err != nil {
 		log.Error.Log(err)
