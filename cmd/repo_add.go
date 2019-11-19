@@ -27,8 +27,10 @@ func newRepoAddCmd(config *RootCommandConfig) *cobra.Command {
 	// initCmd represents the init command
 	var addCmd = &cobra.Command{
 		Use:   "add <name> <url>",
-		Short: "Add an Appsody repository",
-		Long:  ``,
+		Short: "Add an Appsody repository.",
+		Long:  `Add an Appsody repository to your list of configured Appsody repositories.`,
+		Example: `  appsody repo add my-local-repo file://path/to/my-local-repo.yaml
+  Adds the "my-local-repo" repository, specified by the "file://path/to/my-local-repo.yaml" file to your list of repositories.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
 
@@ -62,17 +64,17 @@ func newRepoAddCmd(config *RootCommandConfig) *cobra.Command {
 				return errors.Errorf("A repository with the URL '%s' already exists.", repoURL)
 
 			}
-			index, err := downloadIndex(repoURL)
+			index, err := downloadIndex(config.LoggingConfig, repoURL)
 			if err != nil {
 
 				return err
 			}
 			if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
-				Warning.log("The repository " + repoName + " contains an APIVersion in its .yaml file more recent than the current Appsody CLI supports(" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
+				config.Warning.log("The repository " + repoName + " contains an APIVersion in its .yaml file more recent than the current Appsody CLI supports(" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
 			}
 
 			if config.Dryrun {
-				Info.logf("Dry Run - Skipping appsody repo add repository Name: %s, URL: %s", repoName, repoURL)
+				config.Info.logf("Dry Run - Skipping appsody repo add repository Name: %s, URL: %s", repoName, repoURL)
 			} else {
 				var newEntry = RepositoryEntry{
 					Name: repoName,

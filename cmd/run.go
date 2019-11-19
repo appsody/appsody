@@ -18,17 +18,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func dockerStop(imageName string, dryrun bool) error {
+func dockerStop(rootConfig *RootCommandConfig, imageName string, dryrun bool) error {
 	cmdName := "docker"
-	cmdArgs := []string{"stop", imageName}
-	err := execAndWait(cmdName, cmdArgs, Debug, dryrun)
+	signalInterval := "10" // numnrt of seconds to wait prior to sending SIGKILL
+	cmdArgs := []string{"stop", imageName, "-t", signalInterval}
+	err := execAndWait(rootConfig.LoggingConfig, cmdName, cmdArgs, rootConfig.Debug, dryrun)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func containerRemove(imageName string, buildah bool, dryrun bool) error {
+func containerRemove(log *LoggingConfig, imageName string, buildah bool, dryrun bool) error {
 	cmdName := "docker"
 	//Added "-f" to force removal if container is still running or image has containers
 	cmdArgs := []string{"rm", imageName, "-f"}
@@ -36,7 +37,7 @@ func containerRemove(imageName string, buildah bool, dryrun bool) error {
 		cmdName = "buildah"
 		cmdArgs = []string{"rm", imageName}
 	}
-	err := execAndWait(cmdName, cmdArgs, Debug, dryrun)
+	err := execAndWait(log, cmdName, cmdArgs, log.Debug, dryrun)
 	if err != nil {
 		return err
 	}
@@ -53,7 +54,7 @@ func newRunCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Long:  `This starts a docker based continuous build environment for your project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			Info.log("Running development environment...")
+			rootConfig.Info.log("Running development environment...")
 			return commonCmd(config, "run")
 
 		},

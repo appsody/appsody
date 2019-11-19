@@ -15,106 +15,14 @@
 package cmd_test
 
 import (
+	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
 )
-
-var yamlGenTests = []struct {
-	yamlTemplateGetter func() string // input
-	testImageName      string
-	testPortNum        int
-	testServiceName    string
-	testPullPolicy     bool
-}{
-	{getKNativeTemplate1, "TESTIMAGE", 9091, "TESTSERVICE", false},
-	{getKNativeTemplate2, "TESTIMAGE", 9091, "TESTSERVICE", true},
-	{getKNativeTemplateNoports, "TESTIMAGE", 9091, "TESTSERVICE", true},
-}
-
-// requires clean dir
-func TestGenYAML(t *testing.T) {
-
-	for numTest, test := range yamlGenTests {
-		t.Run(fmt.Sprintf("Test YAML template %d", numTest), func(t *testing.T) {
-			testServiceName := test.testServiceName
-			testImageName := test.testImageName
-			testPortNum := test.testPortNum
-			testGetter := test.yamlTemplateGetter
-			testPullPolicy := test.testPullPolicy
-			yamlFileName, err := cmd.GenKnativeYaml(testGetter(), testPortNum, testServiceName, testImageName, testPullPolicy, "app-deploy.yaml", false)
-			if err != nil {
-				t.Fatal("Can't generate the YAML for KNative serving deploy. Error: ", err)
-			}
-			if _, err := os.Stat(yamlFileName); os.IsNotExist(err) {
-				t.Fatal("Didn't find the file ", yamlFileName)
-			} else { //clean up
-				os.RemoveAll(yamlFileName)
-			}
-		})
-	}
-}
-func getKNativeTemplate1() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Always
-            ports:
-            - containerPort: 8080
-`
-	return yamltempl
-}
-
-func getKNativeTemplate2() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Never
-            ports:
-            - containerPort: 8080
-`
-	return yamltempl
-}
-
-func getKNativeTemplateNoports() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Always
-`
-	return yamltempl
-}
 
 var validProjectNameTests = []string{
 	"my-project",
@@ -199,6 +107,24 @@ func TestInvalidProjectNames(t *testing.T) {
 	}
 }
 
+//Passes in impossibly high minimum versions of Docker and Appsody
+func TestInvalidVersionAgainstStack(t *testing.T) {
+	reqsMap := map[string]string{
+		"Docker":  "402.05.6",
+		"Appsody": "402.05.6",
+	}
+	log := &cmd.LoggingConfig{}
+	var outBuffer bytes.Buffer
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	err := cmd.CheckStackRequirements(log, reqsMap, false)
+
+	if err == nil {
+		t.Log(outBuffer)
+		t.Fatal(err)
+	}
+}
+
 var invalidCmdsTest = []struct {
 	cmd      string
 	args     []string
@@ -215,7 +141,7 @@ func TestInvalidCmdOutput(t *testing.T) {
 		invalidCmd := exec.Command(test.cmd, test.args...)
 
 		t.Run(fmt.Sprintf("Test Invalid "+test.cmd+" Command"), func(t *testing.T) {
-			out, err := cmd.SeperateOutput(invalidCmd)
+			out, err := cmd.SeparateOutput(invalidCmd)
 			if err == nil {
 				t.Error("Expected an error from '", test.cmd, strings.Join(test.args, " "), "' but it did not return one.")
 			} else if !strings.Contains(out, test.expected) {

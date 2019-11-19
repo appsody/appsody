@@ -2,65 +2,95 @@ package cmd
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 )
 
-func DockerRunAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
+func DockerRunAndListen(config *RootCommandConfig, args []string, logger appsodylogger, interactive bool) (*exec.Cmd, error) {
 	var runArgs = []string{"run"}
 	runArgs = append(runArgs, args...)
-	return RunDockerCommandAndListen(runArgs, logger, interactive, verbose, dryrun)
+	return RunDockerCommandAndListen(config, runArgs, logger, interactive)
 }
 
-func DockerBuild(args []string, logger appsodylogger, verbose bool, dryrun bool) error {
+func DockerBuild(config *RootCommandConfig, args []string, logger appsodylogger) error {
 	var buildArgs = []string{"build"}
 	buildArgs = append(buildArgs, args...)
-	return RunDockerCommandAndWait(buildArgs, logger, verbose, dryrun)
+	return RunDockerCommandAndWait(config, buildArgs, logger)
 }
-
-func RunDockerCommandAndWait(args []string, logger appsodylogger, verbose bool, dryrun bool) error {
-
-	cmd, err := RunDockerCommandAndListen(args, logger, false, verbose, dryrun)
+func BuildahBuild(config *RootCommandConfig, args []string, logger appsodylogger) error {
+	var buildArgs = []string{"bud"}
+	buildArgs = append(buildArgs, args...)
+	cmd, err := RunBuildahCommandAndListen(config, buildArgs, logger, false)
 	if err != nil {
 		return err
 	}
-	if dryrun {
-		Info.log("Dry Run - Skipping : cmd.Wait")
+	if config.Dryrun {
+		config.Info.log("Dry Run - Skipping : cmd.Wait")
+		return nil
+	}
+	return cmd.Wait()
+}
 
+func RunDockerCommandAndWait(config *RootCommandConfig, args []string, logger appsodylogger) error {
+
+	cmd, err := RunDockerCommandAndListen(config, args, logger, false)
+	if err != nil {
+		return err
+	}
+	if config.Dryrun {
+		config.Info.log("Dry Run - Skipping : cmd.Wait")
 		return nil
 	}
 	return cmd.Wait()
 
 }
 
-func RunDockerInspect(imageName string) (string, error) {
+func RunDockerInspect(log *LoggingConfig, imageName string) (string, error) {
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
-	Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
+	log.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	output, err := SeperateOutput(inspectCmd)
+	output, err := SeparateOutput(inspectCmd)
 	return output, err
 }
 
-func RunKubeCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
-	command := "kubectl"
-	return RunCommandAndListen(command, args, logger, interactive, verbose, dryrun)
+// RunDockerVolumeList lists all the volumes containing a certain string
+func RunDockerVolumeList(log *LoggingConfig, volName string) (string, error) {
+	cmdName := "docker"
+	cmdArgs := []string{"volume", "ls", "--format", "{{.Name}}"}
+	if volName != "" {
+		volNameArg := fmt.Sprintf("name=%s", volName)
+		cmdArgs = append(cmdArgs, "-f", volNameArg)
+	}
+	log.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
+	inspectCmd := exec.Command(cmdName, cmdArgs...)
+	output, err := SeparateOutput(inspectCmd)
+	return output, err
 }
-func RunDockerCommandAndListen(args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
+func RunKubeCommandAndListen(config *RootCommandConfig, args []string, logger appsodylogger, interactive bool) (*exec.Cmd, error) {
+	command := "kubectl"
+	return RunCommandAndListen(config, command, args, logger, interactive)
+}
+func RunDockerCommandAndListen(config *RootCommandConfig, args []string, logger appsodylogger, interactive bool) (*exec.Cmd, error) {
 	command := "docker"
-	return RunCommandAndListen(command, args, logger, interactive, verbose, dryrun)
+	return RunCommandAndListen(config, command, args, logger, interactive)
+}
+func RunBuildahCommandAndListen(config *RootCommandConfig, args []string, logger appsodylogger, interactive bool) (*exec.Cmd, error) {
+	command := "buildah"
+	return RunCommandAndListen(config, command, args, logger, interactive)
 }
 
-func RunCommandAndListen(commandValue string, args []string, logger appsodylogger, interactive bool, verbose bool, dryrun bool) (*exec.Cmd, error) {
+func RunCommandAndListen(config *RootCommandConfig, commandValue string, args []string, logger appsodylogger, interactive bool) (*exec.Cmd, error) {
 	var execCmd *exec.Cmd
 	var command = commandValue
 	var err error
-	if dryrun {
-		Info.log("Dry Run - Skipping docker command: ", command, " ", strings.Join(args, " "))
+	if config.Dryrun {
+		config.Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
 	} else {
-		Info.log("Running docker command: ", command, " ", strings.Join(args, " "))
+		config.Info.log("Running command: ", command, " ", strings.Join(args, " "))
 		execCmd = exec.Command(command, args...)
 
 		// Create io pipes for the command
@@ -90,7 +120,7 @@ func RunCommandAndListen(commandValue string, args []string, logger appsodylogge
 			lastByteNewline := true
 			for consoleScanner.Scan() {
 				text := consoleScanner.Text()
-				if lastByteNewline && (verbose || logger != Info) {
+				if lastByteNewline && (config.Verbose || logger != config.Info) {
 					os.Stdout.WriteString("[" + logger.name + "] ")
 				}
 				os.Stdout.WriteString(text)
@@ -100,7 +130,7 @@ func RunCommandAndListen(commandValue string, args []string, logger appsodylogge
 
 		err = execCmd.Start()
 		if err != nil {
-			Debug.log("Error running ", command, " command: ", logScanner.Text(), err)
+			config.Debug.log("Error running ", command, " command: ", logScanner.Text(), err)
 			return nil, err
 		}
 
