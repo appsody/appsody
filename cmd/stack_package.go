@@ -395,7 +395,7 @@ func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
 	newStackStruct.Version = stackYaml.Version
 	newStackStruct.Description = stackYaml.Description
 	newStackStruct.License = stackYaml.License
-	newStackStruct.Language = stackYaml.License
+	newStackStruct.Language = stackYaml.Language
 	newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
 	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
 	newStackStruct.Requirements = stackYaml.Requirements
