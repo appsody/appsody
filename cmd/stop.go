@@ -27,7 +27,7 @@ func newStopCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Long: `Stop the local running Appsody container for your project.
 
 By default, the command stops the Appsody container that was launched from the project in your current working directory. 
-To see a list of all your running Appsody containers, run the command "appsody ps". The names of you running Appsody projects are in the second column.`,
+To see a list of all your running Appsody containers, run the command "appsody ps". The names of your running Appsody projects are in the second column.`,
 		Example: `  appsody stop
   Stops the running Appsody container launched by the project in your current working directory.
   
