@@ -140,7 +140,7 @@ func TestTemplatingWrongVariables(t *testing.T) {
 	s := string(b)
 	t.Log(s)
 	if !strings.Contains(s, "id: <no value>") {
-		t.Fatalf("Templating text did not match expected values")
+		t.Fatal("Templating text did not match expected values")
 	}
 
 }
@@ -209,13 +209,13 @@ func TestTemplatingFilePermissions(t *testing.T) {
 	s := string(b)
 	t.Log(s)
 	if !strings.Contains(s, "id: starter") {
-		t.Fatalf("Templating text did not match expected values")
+		t.Fatal("Templating text did not match expected values")
 	}
 
 	writable, err := canWrite(templatingPath)
 
 	if writable && err == nil {
-		t.Fatalf("Opened read only file")
+		t.Fatal("Opened read only file")
 	}
 
 }
