@@ -28,7 +28,7 @@ func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Check your stack structure.",
 		Long: `Check that the structure of your stack is valid. Error messages indicate critical issues in your stack structure, such as missing files, directories, or stack variables. Warning messages suggest optional stack enhancements.
 
-Run this command from the base directory of your stack, or specify the path to your stack.`,
+Run this command from the root directory of your stack, or specify the path to your stack.`,
 		Example: `  appsody stack lint
   Checks the structure of the stack in the current directory"
 		
