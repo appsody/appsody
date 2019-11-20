@@ -570,7 +570,7 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			}
 
 			// set file permission to writable to apply templating
-			err = os.Chmod(path, 0600)
+			err = os.Chmod(path, 0666)
 			if err != nil {
 				return errors.Errorf("Error changing file permision: %v", err)
 			}
