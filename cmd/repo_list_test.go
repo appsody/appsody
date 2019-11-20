@@ -37,7 +37,7 @@ func TestRepoList(t *testing.T) {
 			if tt.configFile != "" {
 				args = append(args, "--config", tt.configFile)
 			}
-			output, err := cmdtest.RunAppsodyCmd(args, ".")
+			output, err := cmdtest.RunAppsodyCmd(args, ".", t)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,7 +54,7 @@ func TestRepoList(t *testing.T) {
 
 func TestRepoListJson(t *testing.T) {
 	args := []string{"repo", "list", "--config", "testdata/multiple_repository_config/config.yaml", "-o", "json"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".")
+	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestRepoListJson(t *testing.T) {
 
 func TestRepoListYaml(t *testing.T) {
 	args := []string{"repo", "list", "--config", "testdata/multiple_repository_config/config.yaml", "-o", "yaml"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".")
+	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
 	if err != nil {
 		t.Fatal(err)
 	}
