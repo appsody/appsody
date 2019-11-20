@@ -31,7 +31,7 @@ import (
 func TestTemplatingAllVariables(t *testing.T) {
 
 	// gets all the necessary data from a setup function
-	imageNamespace, projectPath, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, stackYaml, labels, err := setupStackPackageTests()
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestTemplatingAllVariables(t *testing.T) {
 	}
 
 	// apply templating to stack
-	err = cmd.ApplyTemplating(projectPath, templateMetadata)
+	err = cmd.ApplyTemplating(templatingPath, templateMetadata)
 	if err != nil {
 		t.Fatalf("Error applying template: %v", err)
 	}
@@ -87,16 +87,20 @@ func TestTemplatingAllVariables(t *testing.T) {
 func TestTemplatingWrongVariables(t *testing.T) {
 
 	// gets all the necessary data from a setup function
-	imageNamespace, projectPath, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, stackYaml, labels, err := setupStackPackageTests()
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
 
 	// creates templating.txt file where templating variables will appear
-	file, err := os.Create("./testdata/starter/templating.txt")
+	templatingPath := filepath.Join(".", "testdata", "templating", "templating.txt")
+	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
+	file, err := os.Create(templatingPath)
 	if err != nil {
 		t.Fatalf("Error creating templating file: %v", err)
 	}
+
+	defer os.RemoveAll(templatingPath)
 
 	// write some text to file
 	_, err = file.WriteString("id: {{.stack.iad}}")
@@ -117,13 +121,13 @@ func TestTemplatingWrongVariables(t *testing.T) {
 	}
 
 	// apply templating to stack
-	err = cmd.ApplyTemplating(projectPath, templateMetadata)
+	err = cmd.ApplyTemplating(templatingPath, templateMetadata)
 	if err != nil {
 		t.Fatalf("Error applying template: %v", err)
 	}
 
 	// read the whole file at once
-	b, err := ioutil.ReadFile("wrong")
+	b, err := ioutil.ReadFile(templatingPath)
 	if err != nil {
 		t.Fatalf("Error reading templating file: %v", err)
 	}
@@ -144,16 +148,20 @@ func TestTemplatingFilePermissions(t *testing.T) {
 	}
 
 	// gets all the necessary data from a setup function
-	imageNamespace, projectPath, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, stackYaml, labels, err := setupStackPackageTests()
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
 
 	// creates templating.txt file where templating variables will appear
-	file, err := os.Create("./testdata/starter/templating.txt")
+	templatingPath := filepath.Join(".", "testdata", "templating", "templating.txt")
+	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
+	file, err := os.Create(templatingPath)
 	if err != nil {
 		t.Fatalf("Error creating templating file: %v", err)
 	}
+
+	defer os.RemoveAll(templatingPath)
 
 	// write some text to file
 	_, err = file.WriteString("id: {{.stack.id}}")
@@ -179,13 +187,13 @@ func TestTemplatingFilePermissions(t *testing.T) {
 	}
 
 	// apply templating to stack
-	err = cmd.ApplyTemplating(projectPath, templateMetadata)
+	err = cmd.ApplyTemplating(templatingPath, templateMetadata)
 	if err != nil {
 		t.Fatalf("Error applying template: %v", err)
 	}
 
 	// read the whole file at once
-	b, err := ioutil.ReadFile("wrong")
+	b, err := ioutil.ReadFile(templatingPath)
 	if err != nil {
 		t.Fatalf("Error reading templating file: %v", err)
 	}
@@ -195,7 +203,7 @@ func TestTemplatingFilePermissions(t *testing.T) {
 		t.Fatalf("Templating text did not match expected values")
 	}
 
-	writable, err := canWrite("wrong")
+	writable, err := canWrite(templatingPath)
 
 	if writable && err == nil {
 		t.Fatalf("Opened read only file")
@@ -216,44 +224,40 @@ func canWrite(filepath string) (bool, error) {
 
 }
 
-func setupStackPackageTests() (string, string, cmd.StackYaml, map[string]string, error) {
-
-	var rootConfig = &cmd.RootCommandConfig{}
+func setupStackPackageTests() (string, cmd.StackYaml, map[string]string, error) {
+	var loggingConfig = &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(os.Stdout, os.Stderr)
+	var rootConfig = &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
 	var labels = map[string]string{}
 	var stackYaml cmd.StackYaml
 	stackID := "starter"
 	imageNamespace := "dev.local"
 	buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
-	// sets stack path to be the copied folder
-	projectPath, err := filepath.Abs("./testdata/starter")
-
-	if err != nil {
-		return imageNamespace, projectPath, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
-	}
+	projectPath := filepath.Join(".", "testdata", "starter")
 
 	rootConfig.ProjectDir = projectPath
 	rootConfig.Dryrun = false
-	err = cmd.InitConfig(rootConfig)
 
+	err := cmd.InitConfig(rootConfig)
 	if err != nil {
-		return imageNamespace, projectPath, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
+		return imageNamespace, stackYaml, labels, errors.Errorf("Error getting config: %v", err)
 	}
 
 	source, err := ioutil.ReadFile(filepath.Join(projectPath, "stack.yaml"))
 	if err != nil {
-		return imageNamespace, projectPath, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
+		return imageNamespace, stackYaml, labels, errors.Errorf("Error reading stackyaml: %v", err)
 	}
 
 	err = yaml.Unmarshal(source, &stackYaml)
 	if err != nil {
-		return imageNamespace, projectPath, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
+		return imageNamespace, stackYaml, labels, errors.Errorf("Error parsing stackyaml: %v", err)
 	}
 
 	labels, err = cmd.GetLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
 	if err != nil {
-		return imageNamespace, projectPath, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
+		return imageNamespace, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
 	}
 
-	return imageNamespace, projectPath, stackYaml, labels, err
+	return imageNamespace, stackYaml, labels, err
 
 }

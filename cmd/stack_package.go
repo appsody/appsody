@@ -22,6 +22,7 @@ import (
 	"text/template"
 	"unicode"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -548,6 +549,7 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
+		//Skip .git folder and .DS_Store files
 		if info.Name() == ".git" || info.Name() == ".DS_Store" {
 			return filepath.SkipDir
 		} else if !info.IsDir() {
@@ -556,21 +558,19 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			file := filepath.Base(path)
 
 			// get permission of file
-			fileStat, err := os.Stat(path)
+			permission := info.Mode()
+
+			fileType, _, err := mimetype.DetectFile(path)
 			if err != nil {
-				return errors.Errorf("Error checking permission of file: %v", err)
+				return errors.Errorf("Error getting file type: %v", err)
 			}
 
-			// get permission of file
-			permission := fileStat.Mode()
-
-			// skip templating if file is an exectuable
-			if permission.Perm() == 0755 {
+			if strings.Contains(fileType, "application") {
 				return filepath.SkipDir
 			}
 
 			// set file permission to writable to apply templating
-			err = os.Chmod(path, 0700)
+			err = os.Chmod(path, 0600)
 			if err != nil {
 				return errors.Errorf("Error changing file permision: %v", err)
 			}
