@@ -213,7 +213,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// apply templating to stack
-			err = ApplyTemplating(projectPath, stackPath, templateMetadata)
+			err = ApplyTemplating(stackPath, templateMetadata)
 			if err != nil {
 				return errors.Errorf("Error applying templating: %v", err)
 			}
@@ -541,11 +541,11 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 
 // ApplyTemplating -  walks through the copied folder directory and applies a template using the
 // previously created templateMetada to all files in the target directory
-func ApplyTemplating(projectPath string, stackPath string, templateMetadata interface{}) error {
+func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
-		if info.IsDir() && info.Name() == ".git" {
+		if info.Name() == ".git" || info.Name() == ".DS_Store" {
 			return filepath.SkipDir
 		} else if !info.IsDir() {
 
@@ -557,12 +557,19 @@ func ApplyTemplating(projectPath string, stackPath string, templateMetadata inte
 			if err != nil {
 				return errors.Errorf("Error checking permission of file: %v", err)
 			}
+
+			// get permission of file
 			permission := fileStat.Mode()
+
+			// skip templating if file is an exectuable
+			if permission.Perm() == 0755 {
+				return filepath.SkipDir
+			}
 
 			// set file permission to writable to apply templating
 			err = os.Chmod(path, 0700)
 			if err != nil {
-				return errors.Errorf("Error reverting file permision: %v", err)
+				return errors.Errorf("Error changing file permision: %v", err)
 			}
 
 			// create new template from parsing file
