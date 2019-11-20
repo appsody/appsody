@@ -26,7 +26,7 @@ import (
 
 //generate Doc file (.md) for cmds in package
 
-func generateDoc(commandDocFile string, rootCmd *cobra.Command) error {
+func generateDoc(log *LoggingConfig, commandDocFile string, rootCmd *cobra.Command) error {
 
 	if commandDocFile == "" {
 		return errors.New("no docFile specified")
@@ -36,13 +36,13 @@ func generateDoc(commandDocFile string, rootCmd *cobra.Command) error {
 	if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
 		mkdirErr := os.MkdirAll(dir, 0755)
 		if mkdirErr != nil {
-			Error.log("Could not create doc file directory: ", mkdirErr)
+			log.Error.log("Could not create doc file directory: ", mkdirErr)
 			return mkdirErr
 		}
 	}
 	docFile, createErr := os.Create(commandDocFile)
 	if createErr != nil {
-		Error.log("Could not create doc file (.md): ", createErr)
+		log.Error.log("Could not create doc file (.md): ", createErr)
 		return createErr
 	}
 
@@ -51,7 +51,7 @@ func generateDoc(commandDocFile string, rootCmd *cobra.Command) error {
 	preAmbleBytes := []byte(preAmble)
 	_, preambleErr := docFile.Write(preAmbleBytes)
 	if preambleErr != nil {
-		Error.log("Could not write to markdown file:", preambleErr)
+		log.Error.log("Could not write to markdown file:", preambleErr)
 		return preambleErr
 	}
 
@@ -68,7 +68,7 @@ func generateDoc(commandDocFile string, rootCmd *cobra.Command) error {
 		markdownGenErr := doc.GenMarkdownCustom(cmd, docFile, linkHandler)
 
 		if markdownGenErr != nil {
-			Error.log("Doc file generation failed: ", markdownGenErr)
+			log.Error.log("Doc file generation failed: ", markdownGenErr)
 			return markdownGenErr
 		}
 	}
@@ -76,7 +76,7 @@ func generateDoc(commandDocFile string, rootCmd *cobra.Command) error {
 
 }
 
-func newDocsCmd(rootConfig *RootCommandConfig, rootCmd *cobra.Command) *cobra.Command {
+func newDocsCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command {
 
 	var docFile string
 	// docs command is used to generate markdown file for all the appsody commands
@@ -85,13 +85,13 @@ func newDocsCmd(rootConfig *RootCommandConfig, rootCmd *cobra.Command) *cobra.Co
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			Debug.log("Running appsody docs command.")
-			err := generateDoc(docFile, rootCmd)
+			log.Debug.log("Running appsody docs command.")
+			err := generateDoc(log, docFile, rootCmd)
 			if err != nil {
 				return errors.Errorf("appsody docs command failed with error: %v", err)
 
 			}
-			Debug.log("appsody docs command completed successfully.")
+			log.Debug.log("appsody docs command completed successfully.")
 			return nil
 		},
 	}
