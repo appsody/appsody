@@ -231,14 +231,19 @@ func TestNormalizeImageName(t *testing.T) {
 	testImageNames := []string{"ubuntu", "ubuntu:latest", "ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "index.docker.io/appsody/nodejs-express:0.2", "yada/yada/yada/yada"}
 	normalizedTestImageNames := []string{"docker.io/ubuntu", "docker.io/ubuntu:latest", "docker.io/ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2"}
 	for idx, imageName := range testImageNames {
+
 		t.Run(imageName, func(t *testing.T) {
 			output, err := cmd.NormalizeImageName(imageName)
-			if err != nil && idx < len(testImageNames)-1 {
-				t.Errorf("Unexpected error: %v", err)
-			}
-			expectedOutput := normalizedTestImageNames[idx]
-			if output != expectedOutput {
-				t.Errorf("Expected %s to convert to %s but got %s", imageName, expectedOutput, output)
+
+			if err != nil {
+				if idx < len(testImageNames)-1 {
+					t.Errorf("Unexpected error: %v", err)
+				}
+			} else {
+				expectedOutput := normalizedTestImageNames[idx]
+				if output != expectedOutput {
+					t.Errorf("Expected %s to convert to %s but got %s", imageName, expectedOutput, output)
+				}
 			}
 		})
 
