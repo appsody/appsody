@@ -50,15 +50,18 @@ func newRunCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// runCmd represents the run command
 	var runCmd = &cobra.Command{
 		Use:   "run",
-		Short: "Run your project in the local Appsody environment.",
+		Short: "Run your Appsody project in a containerized development environment.",
 		Long: `Run the local Appsody environment, starting a container based continuous build environment for your project.
 		
-You must be in the base directory of your Appsody project when running this command.`,
-		Example: `  appsody run --docker-volume my-volume
-  Runs the local Appsody environment using the "my-volume" docker volume to cache your project dependencies.
-  
+Run this command from the root directory of your Appsody project`,
+		Example: `  appsody run
+  Runs your project in a containerized development environment.
+
   appsody run --interactive
-  Runs the local Appsody environment with STDIN attached to the container, making the container start look like a terminal connection session.`,
+  Runs your project in a containerized development environment, and attaches the standard input stream to the container. This allows you to interact with the processes within the container.
+
+  appsody run --docker-volume my-volume
+  Runs your project in a containerized development environment, and uses the "my-volume" docker volume for caching dependencies. By default, Appsody uses the volume name based on your project name.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.log("Running development environment...")
