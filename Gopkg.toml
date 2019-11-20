@@ -50,6 +50,6 @@
   name = "k8s.io/apimachinery"
   revision = "27d36303b6556f377b4f34e64705fa9024a12b0c"
 
-[[override]]
+[[constraint]]
   name = "github.com/gabriel-vasile/mimetype"
   version = "0.3.22"
