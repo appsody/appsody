@@ -39,6 +39,9 @@ func TestTemplatingAllVariables(t *testing.T) {
 	// creates templating.txt file where templating variables will appear
 	templatingPath := filepath.Join(".", "testdata", "templating", "templating.txt")
 	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
+	if err != nil {
+		t.Fatalf("Error creating templating dir: %v", err)
+	}
 	file, err := os.Create(templatingPath)
 	if err != nil {
 		t.Fatalf("Error creating templating file: %v", err)
@@ -95,6 +98,9 @@ func TestTemplatingWrongVariables(t *testing.T) {
 	// creates templating.txt file where templating variables will appear
 	templatingPath := filepath.Join(".", "testdata", "templating", "templating.txt")
 	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
+	if err != nil {
+		t.Fatalf("Error creating templating dir: %v", err)
+	}
 	file, err := os.Create(templatingPath)
 	if err != nil {
 		t.Fatalf("Error creating templating file: %v", err)
@@ -156,6 +162,9 @@ func TestTemplatingFilePermissions(t *testing.T) {
 	// creates templating.txt file where templating variables will appear
 	templatingPath := filepath.Join(".", "testdata", "templating", "templating.txt")
 	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
+	if err != nil {
+		t.Fatalf("Error creating templating dir: %v", err)
+	}
 	file, err := os.Create(templatingPath)
 	if err != nil {
 		t.Fatalf("Error creating templating file: %v", err)
