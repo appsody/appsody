@@ -62,7 +62,7 @@ Runs the following validation tests against the stack:
 			passCount := 0
 
 			stackPath := rootConfig.ProjectDir
-			Info.Log("stackPath is: ", stackPath)
+			rootConfig.Info.Log("stackPath is: ", stackPath)
 
 			// check for templates dir, error out if its not there
 			check, err := Exists("templates")
@@ -76,11 +76,11 @@ Runs the following validation tests against the stack:
 
 			// get the stack name from the stack path
 			stackName := filepath.Base(stackPath)
-			Info.Log("stackName is: ", stackName)
+			rootConfig.Info.Log("stackName is: ", stackName)
 
-			Info.Log("#################################################")
-			Info.Log("Validating stack: ", stackName)
-			Info.Log("#################################################")
+			rootConfig.Info.Log("#################################################")
+			rootConfig.Info.Log("Validating stack: ", stackName)
+			rootConfig.Info.Log("#################################################")
 
 			// create a temporary dir to create the project and run the test
 			projectDir, err := ioutil.TempDir("", "appsody-build-simple-test")
@@ -88,9 +88,9 @@ Runs the following validation tests against the stack:
 				return err
 			}
 
-			Info.Log("Created project dir: " + projectDir)
+			rootConfig.Info.Log("Created project dir: " + projectDir)
 
-			Debug.Log("Setting environment variable APPSODY_PULL_POLICY=IFNOTPRESENT")
+			rootConfig.Debug.Log("Setting environment variable APPSODY_PULL_POLICY=IFNOTPRESENT")
 			err = os.Setenv("APPSODY_PULL_POLICY", "IFNOTPRESENT")
 			if err != nil {
 				return errors.Errorf("Could not set environment variable APPSODY_PULL_POLICY. %v", err)
@@ -103,7 +103,7 @@ Runs the following validation tests against the stack:
 				_, err = RunAppsodyCmdExec([]string{"stack", "lint"}, stackPath)
 				if err != nil {
 					//logs error but keeps going
-					Error.Log(err)
+					rootConfig.Error.Log(err)
 					testResults = append(testResults, ("FAILED: Lint for stack: " + stackName))
 					failCount++
 				} else {
@@ -117,7 +117,7 @@ Runs the following validation tests against the stack:
 				_, err = RunAppsodyCmdExec([]string{"stack", "package", "--image-namespace", imageNamespace}, stackPath)
 				if err != nil {
 					//logs error but keeps going
-					Error.Log(err)
+					rootConfig.Error.Log(err)
 					testResults = append(testResults, ("FAILED: Package for stack: " + stackName))
 					failCount++
 				} else {
@@ -127,9 +127,9 @@ Runs the following validation tests against the stack:
 			}
 
 			// init
-			err = TestInit("dev.local/"+stackName, projectDir)
+			err = TestInit(rootConfig.LoggingConfig, "dev.local/"+stackName, projectDir)
 			if err != nil {
-				Error.Log(err)
+				rootConfig.Error.Log(err)
 				testResults = append(testResults, ("FAILED: Init for stack: " + stackName))
 				failCount++
 				initFail = true
@@ -141,10 +141,10 @@ Runs the following validation tests against the stack:
 
 			// run
 			if !initFail {
-				err = TestRun(projectDir)
+				err = TestRun(rootConfig.LoggingConfig, projectDir)
 				if err != nil {
 					//logs error but keeps going
-					Error.Log(err)
+					rootConfig.Error.Log(err)
 					testResults = append(testResults, ("FAILED: Run for stack: " + stackName))
 					failCount++
 				} else {
@@ -155,10 +155,10 @@ Runs the following validation tests against the stack:
 
 			// test
 			if !initFail {
-				err = TestTest(projectDir)
+				err = TestTest(rootConfig.LoggingConfig, projectDir)
 				if err != nil {
 					//logs error but keeps going
-					Error.Log(err)
+					rootConfig.Error.Log(err)
 					testResults = append(testResults, ("FAILED: Test for stack: " + stackName))
 					failCount++
 				} else {
@@ -169,10 +169,10 @@ Runs the following validation tests against the stack:
 
 			// build
 			if !initFail {
-				err = TestBuild(stackName, projectDir)
+				err = TestBuild(rootConfig.LoggingConfig, stackName, projectDir)
 				if err != nil {
 					//logs error but keeps going
-					Error.Log(err)
+					rootConfig.Error.Log(err)
 					testResults = append(testResults, ("FAILED: Build for stack: " + stackName))
 					failCount++
 				} else {
@@ -182,18 +182,18 @@ Runs the following validation tests against the stack:
 			}
 
 			//cleanup
-			Info.Log("Removing project dir: " + projectDir)
+			rootConfig.Info.Log("Removing project dir: " + projectDir)
 			os.RemoveAll(projectDir)
 
 			//}
 
-			Info.Log("@@@@@@@@@ Validate Summary Start @@@@@@@@@@")
+			rootConfig.Info.Log("@@@@@@@@@ Validate Summary Start @@@@@@@@@@")
 			for i := range testResults {
-				Info.Log(testResults[i])
+				rootConfig.Info.Log(testResults[i])
 			}
-			Info.Log("Total PASSED: ", passCount)
-			Info.Log("Total FAILED: ", failCount)
-			Info.Log("@@@@@@@@@  Validate Summary End  @@@@@@@@@@")
+			rootConfig.Info.Log("Total PASSED: ", passCount)
+			rootConfig.Info.Log("Total FAILED: ", failCount)
+			rootConfig.Info.Log("@@@@@@@@@  Validate Summary End  @@@@@@@@@@")
 
 			return nil
 		},
@@ -207,24 +207,24 @@ Runs the following validation tests against the stack:
 }
 
 // Simple test for appsody init command
-func TestInit(stack string, projectDir string) error {
+func TestInit(log *LoggingConfig, stack string, projectDir string) error {
 
-	Info.Log("******************************************")
-	Info.Log("Running appsody init")
-	Info.Log("******************************************")
+	log.Info.Log("******************************************")
+	log.Info.Log("Running appsody init")
+	log.Info.Log("******************************************")
 	_, err := RunAppsodyCmdExec([]string{"init", stack}, projectDir)
 	return err
 }
 
 // Simple test for appsody run command. A future enhancement would be to verify the image that gets built.
-func TestRun(projectDir string) error {
+func TestRun(log *LoggingConfig, projectDir string) error {
 
 	runChannel := make(chan error)
 	containerName := "testRunContainer"
 	go func() {
-		Info.Log("******************************************")
-		Info.Log("Running appsody run")
-		Info.Log("******************************************")
+		log.Info.Log("******************************************")
+		log.Info.Log("Running appsody run")
+		log.Info.Log("******************************************")
 		_, err := RunAppsodyCmdExec([]string{"run", "--name", containerName}, projectDir)
 		runChannel <- err
 	}()
@@ -242,67 +242,66 @@ func TestRun(projectDir string) error {
 		select {
 		case err := <-runChannel:
 			// appsody run exited, probably with an error
-			Error.Log("Appsody run failed")
+			log.Error.Log("Appsody run failed")
 			return err
 		case <-time.After(time.Duration(healthCheckFrequency) * time.Second):
 			// see if appsody ps has a container
 			healthCheckWait += healthCheckFrequency
 
-			Info.Log("about to run appsody ps")
+			log.Info.Log("about to run appsody ps")
 			stopOutput, errStop := RunAppsodyCmdExec([]string{"ps"}, projectDir)
 			if !strings.Contains(stopOutput, "CONTAINER") {
-				Info.Log("appsody ps output doesn't contain header line")
+				log.Info.Log("appsody ps output doesn't contain header line")
 			}
 			if !strings.Contains(stopOutput, containerName) {
-				Info.Log("appsody ps output doesn't contain correct container name")
+				log.Info.Log("appsody ps output doesn't contain correct container name")
 			} else {
-				Info.Log("appsody ps contains correct container name")
+				log.Info.Log("appsody ps contains correct container name")
 				isHealthy = true
 			}
 			if errStop != nil {
-				Error.Log(errStop)
+				log.Error.Log(errStop)
 				return errStop
 			}
 		}
 	}
 
 	if !isHealthy {
-		Error.Log("appsody ps never found the correct container")
+		log.Error.Log("appsody ps never found the correct container")
 		return errors.New("appsody ps never found the correct container")
 	}
 
-	Info.Log("Appsody run did not fail")
+	log.Info.Log("Appsody run did not fail")
 
 	// stop and clean up after the run
 	_, err := RunAppsodyCmdExec([]string{"stop", "--name", "testRunContainer"}, projectDir)
 	if err != nil {
-		Error.Log("appsody stop failed")
+		log.Error.Log("appsody stop failed")
 	}
 
 	return nil
 }
 
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
-func TestTest(projectDir string) error {
+func TestTest(log *LoggingConfig, projectDir string) error {
 
-	Info.Log("******************************************")
-	Info.Log("Running appsody test")
-	Info.Log("******************************************")
+	log.Info.Log("******************************************")
+	log.Info.Log("Running appsody test")
 	_, err := RunAppsodyCmdExec([]string{"test", "--no-watcher"}, projectDir)
 	return err
 }
 
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
-func TestBuild(stack string, projectDir string) error {
+func TestBuild(log *LoggingConfig, stack string, projectDir string) error {
 
 	imageName := "dev.local/" + filepath.Base(projectDir)
 
-	Info.Log("******************************************")
-	Info.Log("Running appsody build")
-	Info.Log("******************************************")
+	log.Info.Log("******************************************")
+	log.Info.Log("Running appsody build")
+	log.Info.Log("******************************************")
 	_, err := RunAppsodyCmdExec([]string{"build", "--tag", imageName}, projectDir)
 	if err != nil {
-		Error.Log(err)
+		log.Error.Log(err)
 		return err
 	}
 
@@ -311,24 +310,24 @@ func TestBuild(stack string, projectDir string) error {
 	imageBuilt := false
 	dockerOutput, dockerErr := RunDockerCmdExec([]string{"image", "ls", imageName})
 	if dockerErr != nil {
-		Error.Log("Error running docker image ls "+imageName, dockerErr)
+		log.Error.Log("Error running docker image ls "+imageName, dockerErr)
 		return dockerErr
 
 	}
 	if strings.Contains(dockerOutput, imageName) {
-		Info.Log("docker image " + imageName + " was found")
+		log.Info.Log("docker image " + imageName + " was found")
 		imageBuilt = true
 	}
 
 	if !imageBuilt {
-		Error.Log("image was never built")
+		log.Error.Log("image was never built")
 		return err
 	}
 
 	//delete the image
 	_, err = RunDockerCmdExec([]string{"image", "rm", imageName})
 	if err != nil {
-		Error.Log(err)
+		log.Error.Log(err)
 		return err
 	}
 
