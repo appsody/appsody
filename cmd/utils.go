@@ -1587,9 +1587,8 @@ func NormalizeImageName(imageName string) (string, error) {
 		if imageNameComponents[0] == "index.docker.io" {
 			imageNameComponents[0] = "docker.io"
 			return strings.Join(imageNameComponents, "/"), nil
-		} else {
-			return imageName, nil
 		}
+		return imageName, nil
 	}
 	return imageName, errors.Errorf("Image name is invalid: %s", imageName)
 
