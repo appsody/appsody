@@ -157,36 +157,10 @@ func TestBuildLabels(t *testing.T) {
 	}
 
 	// appsody build
-	runChannel := make(chan error)
 	imageName := "testbuildimage"
-	go func() {
-		_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName}, projectDir, t)
-		runChannel <- err
-	}()
-
-	// It will take a while for the image to build, so lets use docker image ls to wait for it
-	t.Log("calling docker image ls to wait for the image")
-	imageBuilt := false
-	count := 900
-	for {
-		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"image", "ls", imageName}, t)
-		if dockerErr != nil {
-			t.Log("Ignoring error running docker image ls "+imageName, dockerErr)
-		}
-		if strings.Contains(dockerOutput, imageName) {
-			t.Log("docker image " + imageName + " was found")
-			imageBuilt = true
-		} else {
-			time.Sleep(2 * time.Second)
-			count = count - 1
-		}
-		if count == 0 || imageBuilt {
-			break
-		}
-	}
-
-	if !imageBuilt {
-		t.Fatal("image was never built")
+	_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName}, projectDir, t)
+	if err != nil {
+		t.Fatalf("Error on appsody build: %v", err)
 	}
 
 	inspectOutput, inspectErr := cmdtest.RunDockerCmdExec([]string{"inspect", imageName}, t)
