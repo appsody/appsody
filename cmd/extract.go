@@ -66,13 +66,13 @@ func extract(config *extractCommandConfig) error {
 	if projectErr != nil {
 		return projectErr
 	}
-	Info.log("Extracting project from development environment")
+	config.Info.log("Extracting project from development environment")
 
 	targetDir := config.targetDir
 	if targetDir != "" {
 		// the user specified a target dir, quit if it already exists
 		targetDir, _ = filepath.Abs(targetDir)
-		Debug.log("Checking if target-dir exists: ", targetDir)
+		config.Debug.log("Checking if target-dir exists: ", targetDir)
 		targetExists, err := Exists(targetDir)
 		if err != nil {
 			return errors.Errorf("Error checking target directory: %v", err)
@@ -98,9 +98,9 @@ func extract(config *extractCommandConfig) error {
 	}
 	if !extractDirExists {
 		if config.Dryrun {
-			Info.log("Dry Run - Skip creating extract dir: ", extractDir)
+			config.Info.log("Dry Run - Skip creating extract dir: ", extractDir)
 		} else {
-			Debug.log("Creating extract dir: ", extractDir)
+			config.Debug.log("Creating extract dir: ", extractDir)
 			err = os.MkdirAll(extractDir, os.ModePerm)
 			if err != nil {
 				return errors.Errorf("Error creating directories %s %v", extractDir, err)
@@ -114,16 +114,16 @@ func extract(config *extractCommandConfig) error {
 	}
 	if extractDirExists {
 		if config.Dryrun {
-			Info.log("Dry Run - Skip deleting extract dir: ", extractDir)
+			config.Info.log("Dry Run - Skip deleting extract dir: ", extractDir)
 		} else {
-			Debug.log("Deleting extract dir: ", extractDir)
+			config.Debug.log("Deleting extract dir: ", extractDir)
 			os.RemoveAll(extractDir)
 		}
 	}
 
 	if config.Buildah {
 		// Buildah fails if the destination does not exist.
-		Debug.log("Creating extract dir: ", extractDir)
+		config.Debug.log("Creating extract dir: ", extractDir)
 		err = os.MkdirAll(extractDir, os.ModePerm)
 		if err != nil {
 			return errors.Errorf("Error creating directories %s %v", extractDir, err)
@@ -141,7 +141,7 @@ func extract(config *extractCommandConfig) error {
 	if containerProjectDirErr != nil {
 		return containerProjectDirErr
 	}
-	Debug.log("Container project dir: ", containerProjectDir)
+	config.Debug.log("Container project dir: ", containerProjectDir)
 
 	volumeMaps, volumeErr := getVolumeArgs(config.RootCommandConfig)
 	if volumeErr != nil {
@@ -165,16 +165,16 @@ func extract(config *extractCommandConfig) error {
 			cmdArgs = append([]string{"create"}, cmdArgs...)
 		}
 		cmdArgs = append(cmdArgs, stackImage)
-		err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
+		err = execAndWaitReturnErr(config.LoggingConfig, cmdName, cmdArgs, config.Debug, config.Dryrun)
 		if err != nil {
 
 			if config.Buildah {
-				Error.log("buildah from command failed: ", err)
+				config.Error.log("buildah from command failed: ", err)
 			} else {
-				Error.log("docker create command failed: ", err)
+				config.Error.log("docker create command failed: ", err)
 			}
-			removeErr := containerRemove(extractContainerName, config.Buildah, config.Dryrun)
-			Error.log("Error in containerRemove", removeErr)
+			removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
+			config.Error.log("Error in containerRemove", removeErr)
 			return err
 
 		}
@@ -187,14 +187,14 @@ func extract(config *extractCommandConfig) error {
 
 		bashCmd := "cp -rfL " + filepath.ToSlash(containerProjectDir) + " " + filepath.ToSlash(filepath.Join("/tmp", containerProjectDir))
 
-		Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
+		config.Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
 		_, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd, config.RootCommandConfig)
 		if err != nil {
-			Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage, ": ", err)
+			config.Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage, ": ", err)
 
-			removeErr := containerRemove(extractContainerName, config.Buildah, config.Dryrun)
+			removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
 			if removeErr != nil {
-				Error.log("containerRemove error ", removeErr)
+				config.Error.log("containerRemove error ", removeErr)
 			}
 
 			return errors.Errorf("Error attempting to run copy command %s on image %s: %v", bashCmd, stackImage, err)
@@ -210,17 +210,17 @@ func extract(config *extractCommandConfig) error {
 		script := fmt.Sprintf("x=`buildah mount %s`; cp -rf $x/%s/* %s", extractContainerName, appDir, extractDir)
 		cmdArgs = []string{"-c", script}
 	}
-	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
+	err = execAndWaitReturnErr(config.LoggingConfig, cmdName, cmdArgs, config.Debug, config.Dryrun)
 	if err != nil {
 		if config.Buildah {
-			Error.log("buildah mount / copy command failed: ", err)
+			config.Error.log("buildah mount / copy command failed: ", err)
 		} else {
-			Error.log("docker cp command failed: ", err)
+			config.Error.log("docker cp command failed: ", err)
 		}
 
-		removeErr := containerRemove(extractContainerName, config.Buildah, config.Dryrun)
+		removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
 		if removeErr != nil {
-			Error.log("containerRemove error ", removeErr)
+			config.Error.log("containerRemove error ", removeErr)
 		}
 		if config.Buildah {
 			return errors.Errorf("buildah mount / copy command failed: %v", err)
@@ -236,7 +236,7 @@ func extract(config *extractCommandConfig) error {
 	if config.Buildah {
 		for _, item := range volumeMaps {
 			if strings.Contains(item, ":") {
-				Debug.log("Appsody mount: ", item)
+				config.Debug.log("Appsody mount: ", item)
 				var src = strings.Split(item, ":")[0]
 				var dest = strings.Split(item, ":")[1]
 				if strings.EqualFold(src, ".") {
@@ -247,7 +247,7 @@ func extract(config *extractCommandConfig) error {
 					}
 				}
 				dest = strings.Replace(dest, appDir, extractDir, -1)
-				Debug.log("Local-adjusted mount destination: ", dest)
+				config.Debug.log("Local-adjusted mount destination: ", dest)
 				fileInfo, err := os.Lstat(src)
 				if err != nil {
 					return errors.Errorf("Error lstat: %v", err)
@@ -267,42 +267,42 @@ func extract(config *extractCommandConfig) error {
 				if err != nil {
 					return errors.Errorf("project file check error %v", err)
 				}
-				Debug.log("Copy source: ", src)
-				Debug.log("Copy destination: ", dest)
+				config.Debug.log("Copy source: ", src)
+				config.Debug.log("Copy destination: ", dest)
 				if fileInfo.IsDir() {
-					err = CopyDir(src+"/.", dest)
+					err = CopyDir(config.LoggingConfig, src+"/.", dest)
 					if err != nil {
 						return errors.Errorf("folder copy error %v", err)
 					}
 				} else {
-					err = CopyFile(src, dest)
+					err = CopyFile(config.LoggingConfig, src, dest)
 					if err != nil {
 						return errors.Errorf("file copy error %v", err)
 					}
 				}
-				Debug.log("Copied ", src, " to ", dest)
+				config.Debug.log("Copied ", src, " to ", dest)
 			}
 		}
 	}
 
-	removeErr := containerRemove(extractContainerName, config.Buildah, config.Dryrun)
+	removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
 	if removeErr != nil {
-		Error.log("containerRemove error ", removeErr)
+		config.Error.log("containerRemove error ", removeErr)
 	}
 	if targetDir == "" {
 		if !config.Dryrun {
-			Info.log("Project extracted to ", extractDir)
+			config.Info.log("Project extracted to ", extractDir)
 		}
 	} else {
 		if config.Dryrun {
-			Info.log("Dry Run - Skip moving ", extractDir, " to ", targetDir)
+			config.Info.log("Dry Run - Skip moving ", extractDir, " to ", targetDir)
 		} else {
-			err = MoveDir(extractDir, targetDir)
+			err = MoveDir(config.LoggingConfig, extractDir, targetDir)
 			if err != nil {
 				return errors.Errorf("Extract failed when moving %s to %s %v", extractDir, targetDir, err)
 
 			}
-			Info.log("Project extracted to ", targetDir)
+			config.Info.log("Project extracted to ", targetDir)
 		}
 	}
 	return nil
@@ -315,7 +315,7 @@ func defaultExtractContainerName(config *RootCommandConfig) string {
 		if _, ok := perr.(*NotAnAppsodyProject); ok {
 			//Debug.log("Cannot retrieve the project name - continuing: ", perr)
 		} else {
-			Error.log("Error occurred retrieving project name... exiting: ", perr)
+			config.Error.log("Error occurred retrieving project name... exiting: ", perr)
 			os.Exit(1)
 		}
 	}

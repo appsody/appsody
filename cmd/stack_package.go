@@ -22,6 +22,7 @@ import (
 	"text/template"
 	"unicode"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -38,6 +39,7 @@ type StackYaml struct {
 	Maintainers     []Maintainer
 	DefaultTemplate string            `yaml:"default-template"`
 	TemplatingData  map[string]string `yaml:"templating-data"`
+	Requirements    StackRequirement  `yaml:"requirements,omitempty"`
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -59,6 +61,7 @@ type IndexYamlStack struct {
 	Maintainers     []Maintainer
 	DefaultTemplate string `yaml:"default-template"`
 	Templates       []IndexYamlStackTemplate
+	Requirements    StackRequirement `yaml:"requirements,omitempty"`
 }
 type IndexYamlStackTemplate struct {
 	ID  string `yaml:"id"`
@@ -76,6 +79,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	var imageNamespace string
 
+	log := rootConfig.LoggingConfig
+
 	var stackPackageCmd = &cobra.Command{
 		Use:   "package",
 		Short: "Package your stack.",
@@ -89,19 +94,19 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
   Packages the stack in the current directory, tags the built image with the "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			Info.Log("******************************************")
-			Info.Log("Running appsody stack package")
-			Info.Log("******************************************")
+			log.Info.Log("******************************************")
+			log.Info.Log("Running appsody stack package")
+			log.Info.Log("******************************************")
 
 			projectPath := rootConfig.ProjectDir
 
 			// get the stack name from the stack path
 			stackID := filepath.Base(projectPath)
-			Debug.Log("stackID is: ", stackID)
+			log.Debug.Log("stackID is: ", stackID)
 
 			// sets stack path to be the copied folder
 			stackPath := filepath.Join(getHome(rootConfig), "stacks", "packaging-"+stackID)
-			Debug.Log("stackPath is: ", stackPath)
+			log.Debug.Log("stackPath is: ", stackPath)
 
 			// creates stackPath dir if it doesn't exist
 			err := os.MkdirAll(filepath.Dir(stackPath), 0777)
@@ -111,7 +116,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// make a copy of the folder to apply template to
-			err = CopyDir(projectPath, stackPath)
+			err = CopyDir(log, projectPath, stackPath)
 			if err != nil {
 				os.RemoveAll(stackPath)
 				return errors.Errorf("Error trying to copy directory: %v", err)
@@ -135,7 +140,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// check for templates dir, error out if its not there
-			check, err := Exists("templates")
+			check, err := Exists(filepath.Join(projectPath, "templates"))
 			if err != nil {
 				return errors.New("Error checking stack root directory: " + err.Error())
 			}
@@ -145,10 +150,10 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			appsodyHome := getHome(rootConfig)
-			Debug.Log("appsodyHome is:", appsodyHome)
+			log.Debug.Log("appsodyHome is:", appsodyHome)
 
 			devLocal := filepath.Join(appsodyHome, "stacks", "dev.local")
-			Debug.Log("devLocal is: ", devLocal)
+			log.Debug.Log("devLocal is: ", devLocal)
 
 			// create the devLocal directory in appsody home
 			err = os.MkdirAll(devLocal, os.FileMode(0755))
@@ -157,7 +162,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			indexFileLocal := filepath.Join(devLocal, "dev.local-index.yaml")
-			Debug.Log("indexFileLocal is: ", indexFileLocal)
+			log.Debug.Log("indexFileLocal is: ", indexFileLocal)
 
 			// create IndexYaml struct and populate the APIVersion and Stacks header
 			var indexYaml IndexYaml
@@ -169,7 +174,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 			if check {
 				// index file exists already so see if it contains the stack data and remove it if found
-				Debug.Log("Index file exists already")
+				log.Debug.Log("Index file exists already")
 
 				source, err := ioutil.ReadFile(indexFileLocal)
 				if err != nil {
@@ -180,7 +185,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				if err != nil {
 					return errors.Errorf("Error trying to unmarshall: %v", err)
 				}
-				indexYaml = findStackAndRemove(stackID, indexYaml)
+				indexYaml = findStackAndRemove(log, stackID, indexYaml)
 			} else {
 				// create the beginning of the index yaml
 				indexYaml = IndexYaml{}
@@ -194,10 +199,10 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			buildImage := namespaceAndRepo + ":" + stackYaml.Version
 
 			imageDir := filepath.Join(stackPath, "image")
-			Debug.Log("imageDir is: ", imageDir)
+			log.Debug.Log("imageDir is: ", imageDir)
 
 			dockerFile := filepath.Join(imageDir, "Dockerfile-stack")
-			Debug.Log("dockerFile is: ", dockerFile)
+			log.Debug.Log("dockerFile is: ", dockerFile)
 
 			labels, err := GetLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
 			if err != nil {
@@ -211,7 +216,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// apply templating to stack
-			err = ApplyTemplating(projectPath, stackPath, templateMetadata)
+			err = ApplyTemplating(stackPath, templateMetadata)
 			if err != nil {
 				return errors.Errorf("Error applying templating: %v", err)
 			}
@@ -229,11 +234,11 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
-			Debug.Log("cmdArgs is: ", cmdArgs)
+			log.Debug.Log("cmdArgs is: ", cmdArgs)
 
-			Info.Log("Running docker build")
+			log.Info.Log("Running docker build")
 
-			err = DockerBuild(cmdArgs, DockerLog, rootConfig.Verbose, rootConfig.Dryrun)
+			err = DockerBuild(rootConfig, cmdArgs, rootConfig.DockerLog)
 			if err != nil {
 				return errors.Errorf("Error during docker build: %v", err)
 			}
@@ -256,21 +261,21 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// loop through the template directories and create the id and url
 			for i := range templates {
-				Debug.Log("template is: ", templates[i])
+				log.Debug.Log("template is: ", templates[i])
 				if strings.Contains(templates[i], ".DS_Store") {
-					Debug.Log("Ignoring .DS_Store")
+					log.Debug.Log("Ignoring .DS_Store")
 					continue
 				}
 
 				sourceDir := filepath.Join(stackPath, "templates", templates[i])
-				Debug.Log("sourceDir is: ", sourceDir)
+				log.Debug.Log("sourceDir is: ", sourceDir)
 
 				// create name for the tar files
 				versionedArchive := filepath.Join(devLocal, stackID+".v"+stackYaml.Version+".templates.")
-				Debug.Log("versionedArchive is: ", versionedArchive)
+				log.Debug.Log("versionedArchive is: ", versionedArchive)
 
 				versionArchiveTar := versionedArchive + templates[i] + ".tar.gz"
-				Debug.Log("versionedArdhiveTar is: ", versionArchiveTar)
+				log.Debug.Log("versionedArdhiveTar is: ", versionArchiveTar)
 
 				if runtime.GOOS == "windows" {
 					// for windows, add a leading slash and convert to unix style slashes
@@ -287,7 +292,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 				// create a config yaml file for the tarball
 				configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
-				Debug.Log("configYaml is: ", configYaml)
+				log.Debug.Log("configYaml is: ", configYaml)
 
 				g, err := os.Create(configYaml)
 				if err != nil {
@@ -302,8 +307,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				g.Close()
 
 				// tar the files
-				Info.Log("Creating tar for: " + templates[i])
-				err = Targz(sourceDir, versionedArchive)
+				log.Info.Log("Creating tar for: " + templates[i])
+				err = Targz(log, sourceDir, versionedArchive)
 				if err != nil {
 					return errors.Errorf("Error trying to tar: %v", err)
 				}
@@ -326,7 +331,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				return errors.Errorf("Error trying to marshall: %v", err)
 			}
 
-			Info.Log("Writing: " + indexFileLocal)
+			log.Info.Log("Writing: " + indexFileLocal)
 			err = ioutil.WriteFile(indexFileLocal, source, 0644)
 			if err != nil {
 				return errors.Errorf("Error trying to read: %v", err)
@@ -345,7 +350,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			if repo == nil || !strings.Contains(repo.URL, indexFileLocal) {
 				// the repo is setup wrong, delete and recreate it
 				if repo != nil {
-					Info.logf("Appsody repo %s is configured with the wrong URL. Deleting and recreating it.", repoName)
+					log.Info.logf("Appsody repo %s is configured with the wrong URL. Deleting and recreating it.", repoName)
 					repos.Remove(repoName)
 				}
 				// check for a different repo with the same file url
@@ -357,21 +362,22 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					}
 				}
 				if repoNameToDelete != "" {
-					Info.logf("Appsody repo %s is configured with %s's URL. Deleting it to setup %s.", repoNameToDelete, repoName, repoName)
+					log.Info.logf("Appsody repo %s is configured with %s's URL. Deleting it to setup %s.", repoNameToDelete, repoName, repoName)
 					repos.Remove(repoNameToDelete)
 				}
 				err = repos.WriteFile(getRepoFileLocation(rootConfig))
 				if err != nil {
 					return errors.Errorf("Error writing to repo file %s. %v", getRepoFileLocation(rootConfig), err)
 				}
-				Info.Logf("Creating %s repository", repoName)
-				_, err = AddLocalFileRepo(repoName, indexFileLocal)
+				log.Info.Logf("Creating %s repository", repoName)
+
+				_, err = AddLocalFileRepo(repoName, indexFileLocal, rootConfig)
 				if err != nil {
 					return errors.Errorf("Error adding local repository. Your stack may not be available to appsody commands. %v", err)
 				}
 			}
 
-			Info.log("Your local stack is available as part of repo ", repoName)
+			log.Info.log("Your local stack is available as part of repo ", repoName)
 
 			return nil
 		},
@@ -391,9 +397,10 @@ func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
 	newStackStruct.Version = stackYaml.Version
 	newStackStruct.Description = stackYaml.Description
 	newStackStruct.License = stackYaml.License
-	newStackStruct.Language = stackYaml.License
+	newStackStruct.Language = stackYaml.Language
 	newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
 	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
+	newStackStruct.Requirements = stackYaml.Requirements
 
 	return newStackStruct
 }
@@ -415,12 +422,12 @@ func getStackData(stackPath string) (StackYaml, error) {
 	return stackYaml, nil
 }
 
-func findStackAndRemove(stackID string, indexYaml IndexYaml) IndexYaml {
+func findStackAndRemove(log *LoggingConfig, stackID string, indexYaml IndexYaml) IndexYaml {
 	// find the index of the stack
 	foundStack := -1
 	for i, stack := range indexYaml.Stacks {
 		if stack.ID == stackID {
-			Debug.Log("Existing stack: '" + stackID + "' found")
+			log.Debug.Log("Existing stack: '" + stackID + "' found")
 			foundStack = i
 			break
 		}
@@ -440,7 +447,7 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
-		Info.log(err)
+		config.Info.log(err)
 	} else {
 		if branchURL, ok := gitLabels[ociKeyPrefix+"source"]; ok {
 			if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {
@@ -529,7 +536,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 		if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
 			stack[key] = value
 		} else {
-			err = errors.Errorf("Variable name didn't start with alphanumeric character")
+			return templateMetadata, errors.Errorf("Variable name didn't start with alphanumeric character")
 		}
 	}
 	templateMetadata["stack"] = stack
@@ -539,11 +546,12 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 
 // ApplyTemplating -  walks through the copied folder directory and applies a template using the
 // previously created templateMetada to all files in the target directory
-func ApplyTemplating(projectPath string, stackPath string, templateMetadata interface{}) error {
+func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
-		if info.IsDir() && info.Name() == ".git" {
+		//Skip .git folder and .DS_Store files
+		if info.Name() == ".git" || info.Name() == ".DS_Store" {
 			return filepath.SkipDir
 		} else if !info.IsDir() {
 
@@ -551,11 +559,22 @@ func ApplyTemplating(projectPath string, stackPath string, templateMetadata inte
 			file := filepath.Base(path)
 
 			// get permission of file
-			fileStat, err := os.Stat(projectPath)
+			permission := info.Mode()
+
+			fileType, _, err := mimetype.DetectFile(path)
 			if err != nil {
-				return errors.Errorf("Error checking permission of file: %v", err)
+				return errors.Errorf("Error getting file type: %v", err)
 			}
-			permission := fileStat.Mode()
+
+			if strings.Contains(fileType, "application") {
+				return filepath.SkipDir
+			}
+
+			// set file permission to writable to apply templating
+			err = os.Chmod(path, 0666)
+			if err != nil {
+				return errors.Errorf("Error changing file permision: %v", err)
+			}
 
 			// create new template from parsing file
 			tmpl, err := template.New(file).ParseFiles(path)
@@ -563,7 +582,7 @@ func ApplyTemplating(projectPath string, stackPath string, templateMetadata inte
 				return errors.Errorf("Error creating new template from file: %v", err)
 			}
 
-			// open file at path§
+			// open file at path
 			f, err := os.Create(path)
 			if err != nil {
 				return errors.Errorf("Error opening file: %v", err)
@@ -575,13 +594,12 @@ func ApplyTemplating(projectPath string, stackPath string, templateMetadata inte
 				return errors.Errorf("Error executing template: %v", err)
 			}
 
-			f.Close()
-
-			// set file permission to new file
+			// set old file permission to new file
 			err = os.Chmod(path, permission)
 			if err != nil {
 				return errors.Errorf("Error reverting file permision: %v", err)
 			}
+			f.Close()
 		}
 		return nil
 	})
