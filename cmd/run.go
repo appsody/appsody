@@ -60,8 +60,8 @@ Run this command from the root directory of your Appsody project`,
   appsody run --interactive
   Runs your project in a containerized development environment, and attaches the standard input stream to the container. This allows you to interact with the processes within the container.
 
-  appsody run --docker-volume my-volume
-  Runs your project in a containerized development environment, and uses the "my-volume" docker volume for caching dependencies. By default, Appsody uses the volume name based on your project name.`,
+  appsody run -p 3001:3000 --docker-options "--privileged" 
+  Runs your project in a containerized development environment, binds the container port 3000 to the host port 3001, and passes the "--privileged" option to the "docker run" command as a flag.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			Info.log("Running development environment...")
