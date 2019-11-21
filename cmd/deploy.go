@@ -26,7 +26,7 @@ import (
 type deployCommandConfig struct {
 	*RootCommandConfig
 	appDeployFile, namespace, tag, pushURL, pullURL string
-	knative, generate, force, push                  bool
+	knative, generate, force, push, nobuild         bool
 	dockerBuildOptions                              string
 	buildahBuildOptions                             string
 }
@@ -63,25 +63,27 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			namespace := config.namespace
 			configFile := filepath.Join(projectDir, config.appDeployFile)
 
-			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
-			buildConfig.Verbose = config.Verbose
-			buildConfig.pushURL = config.pushURL
-			buildConfig.push = config.push
-			buildConfig.dockerBuildOptions = config.dockerBuildOptions
-			buildConfig.buildahBuildOptions = config.buildahBuildOptions
+			if !config.nobuild {
+				buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
+				buildConfig.Verbose = config.Verbose
+				buildConfig.pushURL = config.pushURL
+				buildConfig.push = config.push
+				buildConfig.dockerBuildOptions = config.dockerBuildOptions
+				buildConfig.buildahBuildOptions = config.buildahBuildOptions
 
-			buildConfig.tag = config.tag
-			buildConfig.pullURL = config.pullURL
-			buildConfig.knative = config.knative
-			buildConfig.appDeployFile = configFile
+				buildConfig.tag = config.tag
+				buildConfig.pullURL = config.pullURL
+				buildConfig.knative = config.knative
+				buildConfig.appDeployFile = configFile
 
-			if config.generate {
-				return generateDeploymentConfig(buildConfig)
+				buildErr := build(buildConfig)
+				if buildErr != nil {
+					return buildErr
+				}
 			}
 
-			buildErr := build(buildConfig)
-			if buildErr != nil {
-				return buildErr
+			if config.generate {
+				return nil
 			}
 
 			// Check for the Appsody Operator
@@ -137,6 +139,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 	}
 
 	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment configuration file. Do not deploy the project.")
+	deployCmd.PersistentFlags().BoolVar(&config.nobuild, "no-build", false, "Deploys the application without building a new image or modifying the deployment configuration file.")
 	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
 	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment configuration file if one exists.")
 	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "default", "Target namespace in your Kubernetes cluster")
