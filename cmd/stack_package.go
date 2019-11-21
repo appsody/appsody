@@ -22,6 +22,7 @@ import (
 	"text/template"
 	"unicode"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -38,6 +39,7 @@ type StackYaml struct {
 	Maintainers     []Maintainer
 	DefaultTemplate string            `yaml:"default-template"`
 	TemplatingData  map[string]string `yaml:"templating-data"`
+	Requirements    StackRequirement  `yaml:"requirements,omitempty"`
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -59,6 +61,7 @@ type IndexYamlStack struct {
 	Maintainers     []Maintainer
 	DefaultTemplate string `yaml:"default-template"`
 	Templates       []IndexYamlStackTemplate
+	Requirements    StackRequirement `yaml:"requirements,omitempty"`
 }
 type IndexYamlStackTemplate struct {
 	ID  string `yaml:"id"`
@@ -137,7 +140,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// check for templates dir, error out if its not there
-			check, err := Exists("templates")
+			check, err := Exists(filepath.Join(projectPath, "templates"))
 			if err != nil {
 				return errors.New("Error checking stack root directory: " + err.Error())
 			}
@@ -213,7 +216,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// apply templating to stack
-			err = ApplyTemplating(projectPath, stackPath, templateMetadata)
+			err = ApplyTemplating(stackPath, templateMetadata)
 			if err != nil {
 				return errors.Errorf("Error applying templating: %v", err)
 			}
@@ -367,7 +370,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					return errors.Errorf("Error writing to repo file %s. %v", getRepoFileLocation(rootConfig), err)
 				}
 				log.Info.Logf("Creating %s repository", repoName)
-				_, err = AddLocalFileRepo(repoName, indexFileLocal)
+
+				_, err = AddLocalFileRepo(repoName, indexFileLocal, rootConfig)
 				if err != nil {
 					return errors.Errorf("Error adding local repository. Your stack may not be available to appsody commands. %v", err)
 				}
@@ -393,9 +397,10 @@ func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
 	newStackStruct.Version = stackYaml.Version
 	newStackStruct.Description = stackYaml.Description
 	newStackStruct.License = stackYaml.License
-	newStackStruct.Language = stackYaml.License
+	newStackStruct.Language = stackYaml.Language
 	newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
 	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
+	newStackStruct.Requirements = stackYaml.Requirements
 
 	return newStackStruct
 }
@@ -531,7 +536,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 		if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
 			stack[key] = value
 		} else {
-			err = errors.Errorf("Variable name didn't start with alphanumeric character")
+			return templateMetadata, errors.Errorf("Variable name didn't start with alphanumeric character")
 		}
 	}
 	templateMetadata["stack"] = stack
@@ -541,11 +546,12 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 
 // ApplyTemplating -  walks through the copied folder directory and applies a template using the
 // previously created templateMetada to all files in the target directory
-func ApplyTemplating(projectPath string, stackPath string, templateMetadata interface{}) error {
+func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
-		if info.IsDir() && info.Name() == ".git" {
+		//Skip .git folder and .DS_Store files
+		if info.Name() == ".git" || info.Name() == ".DS_Store" {
 			return filepath.SkipDir
 		} else if !info.IsDir() {
 
@@ -553,11 +559,22 @@ func ApplyTemplating(projectPath string, stackPath string, templateMetadata inte
 			file := filepath.Base(path)
 
 			// get permission of file
-			fileStat, err := os.Stat(projectPath)
+			permission := info.Mode()
+
+			fileType, _, err := mimetype.DetectFile(path)
 			if err != nil {
-				return errors.Errorf("Error checking permission of file: %v", err)
+				return errors.Errorf("Error getting file type: %v", err)
 			}
-			permission := fileStat.Mode()
+
+			if strings.Contains(fileType, "application") {
+				return filepath.SkipDir
+			}
+
+			// set file permission to writable to apply templating
+			err = os.Chmod(path, 0666)
+			if err != nil {
+				return errors.Errorf("Error changing file permision: %v", err)
+			}
 
 			// create new template from parsing file
 			tmpl, err := template.New(file).ParseFiles(path)
@@ -565,7 +582,7 @@ func ApplyTemplating(projectPath string, stackPath string, templateMetadata inte
 				return errors.Errorf("Error creating new template from file: %v", err)
 			}
 
-			// open file at path§
+			// open file at path
 			f, err := os.Create(path)
 			if err != nil {
 				return errors.Errorf("Error opening file: %v", err)
@@ -577,13 +594,12 @@ func ApplyTemplating(projectPath string, stackPath string, templateMetadata inte
 				return errors.Errorf("Error executing template: %v", err)
 			}
 
-			f.Close()
-
-			// set file permission to new file
+			// set old file permission to new file
 			err = os.Chmod(path, permission)
 			if err != nil {
 				return errors.Errorf("Error reverting file permision: %v", err)
 			}
+			f.Close()
 		}
 		return nil
 	})

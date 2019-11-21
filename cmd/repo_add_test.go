@@ -22,21 +22,21 @@ import (
 
 func TestRepoAdd(t *testing.T) {
 	// see how many repos we currently have
-	output, err := cmdtest.RunAppsodyCmd([]string{"repo", "list"}, ".")
+	output, err := cmdtest.RunAppsodyCmd([]string{"repo", "list"}, ".", t)
 	if err != nil {
 		t.Fatal(err)
 	}
 	startRepos := cmdtest.ParseRepoList(output)
 
 	addRepoName := "LocalTestRepo"
-	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", addRepoName}, ".")
-	addRepoURL, cleanup, err := cmdtest.AddLocalFileRepo(addRepoName, "testdata/index.yaml")
+	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", addRepoName}, ".", t)
+	addRepoURL, cleanup, err := cmdtest.AddLocalFileRepo(addRepoName, "testdata/index.yaml", t)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cleanup()
 
-	output, err = cmdtest.RunAppsodyCmd([]string{"repo", "list"}, ".")
+	output, err = cmdtest.RunAppsodyCmd([]string{"repo", "list"}, ".", t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestRepoAddErrors(t *testing.T) {
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.testName, func(t *testing.T) {
 			args := append([]string{"repo", "add"}, tt.args...)
-			output, err := cmdtest.RunAppsodyCmd(args, ".")
+			output, err := cmdtest.RunAppsodyCmd(args, ".", t)
 
 			if err == nil {
 				t.Error("Expected non-zero exit code")
