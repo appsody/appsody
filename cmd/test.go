@@ -24,7 +24,7 @@ func newTestCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Long:  `This starts a docker container for your project and runs your test in it.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			Info.log("Running test environment")
+			rootConfig.Info.log("Running test environment")
 			return commonCmd(config, "test")
 		},
 	}

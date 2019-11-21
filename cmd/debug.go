@@ -29,7 +29,7 @@ func newDebugCmd(rootConfig *RootCommandConfig) *cobra.Command {
   Starts the debugging environment, names the development container "my-project-dev2", and binds the container port 3000 to the host port 3001.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			Info.log("Running debug environment")
+			config.Info.log("Running debug environment")
 			return commonCmd(config, "debug")
 		},
 	}

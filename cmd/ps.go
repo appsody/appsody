@@ -32,7 +32,7 @@ type StackContainer struct {
 	containerName string
 }
 
-func newPsCmd(rootConfig *RootCommandConfig) *cobra.Command {
+func newPsCmd(log *LoggingConfig) *cobra.Command {
 	// psCmd represents the ps command
 	var psCmd = &cobra.Command{
 		Use:   "ps",
@@ -40,17 +40,17 @@ func newPsCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Long:  `This command lists all stack-based containers, that are currently running in the local docker envionment.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			containers, err := listContainers()
+			containers, err := listContainers(log)
 			if err != nil {
 				return err
 			}
 
-			table, err := formatTable(containers)
+			table, err := formatTable(log, containers)
 			if err != nil {
 				return errors.Errorf("%v", err)
 			}
 			if table != "" {
-				Info.log(table)
+				log.Info.log(table)
 			}
 			return nil
 		},
@@ -58,7 +58,7 @@ func newPsCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	return psCmd
 }
 
-func listContainers() ([]StackContainer, error) {
+func listContainers(log *LoggingConfig) ([]StackContainer, error) {
 	var containers = []StackContainer{}
 
 	// We are going to do a 'docker ps' and parse the output into fields. At least one of these
@@ -77,7 +77,7 @@ func listContainers() ([]StackContainer, error) {
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
-		Error.log("Error creating StdoutPipe for Cmd", err)
+		log.Error.log("Error creating StdoutPipe for Cmd", err)
 		return nil, err
 	}
 
@@ -94,19 +94,19 @@ func listContainers() ([]StackContainer, error) {
 
 	err = cmd.Start()
 	if err != nil {
-		Error.log("Error running command", err)
+		log.Error.log("Error running command", err)
 		return nil, err
 	}
 	err = cmd.Wait()
 	if err != nil {
-		Error.log("Error waiting for command", err)
+		log.Error.log("Error waiting for command", err)
 		return nil, err
 	}
 
 	return containers, nil
 }
 
-func formatTable(containers []StackContainer) (string, error) {
+func formatTable(log *LoggingConfig, containers []StackContainer) (string, error) {
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.Wrap = true
@@ -118,7 +118,7 @@ func formatTable(containers []StackContainer) (string, error) {
 			table.AddRow(value.ID, value.containerName, value.stackName, value.status)
 		}
 	} else {
-		Info.log("There are no stack-based containers running in your docker environment")
+		log.Info.log("There are no stack-based containers running in your docker environment")
 		return "", nil
 	}
 
