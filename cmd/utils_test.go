@@ -249,3 +249,26 @@ func TestNormalizeImageName(t *testing.T) {
 
 	}
 }
+func TestOverrideStackRegistry(t *testing.T) {
+	testImageNames := []string{"ubuntu", "ubuntu:latest", "ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "index.docker.io/appsody/nodejs-express:0.2", "another-registry.com:8080/appsody/nodejs-express:0.2", "yada/yada/yada/yada"}
+	override := "my-registry.com:8080"
+	normalizedTestImageNames := []string{"my-registry.com:8080/ubuntu", "my-registry.com:8080/ubuntu:latest", "my-registry.com:8080/ubuntu:17.1", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2"}
+	for idx, imageName := range testImageNames {
+
+		t.Run(imageName, func(t *testing.T) {
+			output, err := cmd.OverrideStackRegistry(override, imageName)
+
+			if err != nil {
+				if idx < len(testImageNames)-1 {
+					t.Errorf("Unexpected error: %v", err)
+				}
+			} else {
+				expectedOutput := normalizedTestImageNames[idx]
+				if output != expectedOutput {
+					t.Errorf("Expected %s to convert to %s but got %s", imageName, expectedOutput, output)
+				}
+			}
+		})
+
+	}
+}

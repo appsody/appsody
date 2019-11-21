@@ -1546,6 +1546,12 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	if config.imagePulled == nil {
 		config.imagePulled = make(map[string]bool)
 	}
+	//Check if the stack image registry URL was overridden via the CLI flag
+	stackRegistryOverride := config.StackRegistry
+	if stackRegistryOverride != "" {
+		config.Debug.Log("Stack registry URL was overridden: ", stackRegistryOverride)
+	}
+
 	//Temporary fix - buildah cannot pull from index.docker.io - only pulls from docker.io
 	imageToPull, imageNameErr := NormalizeImageName(imageToPull)
 	if imageNameErr != nil {
@@ -1593,6 +1599,28 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	if localImageFound {
 		config.Info.log("Using local cache for image ", imageToPull)
 	}
+	return nil
+}
+func OverrideStackRegistry(override string, imageName string) (string, error) {
+	err := ValidateHostNameAndPort(override)
+	if err != nil {
+		return "", err
+	}
+	imageNameComponents := strings.Split(imageName, "/")
+	if len(imageNameComponents) == 3 {
+		imageNameComponents[0] = override
+	}
+	if len(imageNameComponents) == 2 || len(imageNameComponents) == 1 {
+		newComponent := []string{override}
+		imageNameComponents = append(newComponent, imageNameComponents...)
+	}
+	if len(imageNameComponents) > 3 {
+		return "", errors.Errorf("Image name is invalid: %s", imageName)
+	}
+	return strings.Join(imageNameComponents, "/"), nil
+}
+
+func ValidateHostNameAndPort(hostNameAndPort string) error {
 	return nil
 }
 
