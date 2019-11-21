@@ -113,6 +113,7 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	if pullErrs != nil {
 		return "", pullErrs
 	}
+	// TODO - this needs fixing (imageName override)
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}
 	if config.Buildah {
@@ -125,7 +126,7 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	if inspectErr != nil {
 		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
 	}
-
+	// END TODO
 	var err error
 	var envVars []interface{}
 	if config.Buildah {
@@ -754,7 +755,7 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 		if pullErrs != nil {
 			return nil, pullErrs
 		}
-
+		// TODO this needs to be fixed for imageName override
 		if config.Buildah {
 			cmdName := "buildah"
 			cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
@@ -781,7 +782,7 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 			}
 			containerConfig = data[0]["Config"].(map[string]interface{})
 		}
-
+		// END TODO
 		if containerConfig["Labels"] != nil {
 			labelsMap := containerConfig["Labels"].(map[string]interface{})
 
@@ -808,7 +809,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	if pullErrs != nil {
 		return nil, pullErrs
 	}
-
+	// TODO this needs to be fixed for image override
 	if config.Buildah {
 		cmdName := "buildah"
 		cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
@@ -835,7 +836,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 		}
 		containerConfig = data[0]["Config"].(map[string]interface{})
 	}
-
+	// End TODO
 	if containerConfig["ExposedPorts"] != nil {
 		exposedPorts := containerConfig["ExposedPorts"].(map[string]interface{})
 
@@ -1623,7 +1624,7 @@ func OverrideStackRegistry(override string, imageName string) (string, error) {
 		imageNameComponents = append(newComponent, imageNameComponents...)
 	}
 	if len(imageNameComponents) > 3 {
-		return "", errors.Errorf("Image name is invalid: %s", imageName)
+		return "", errors.Errorf("Image name is invalid and needs to be changed in the project config file (.appsody-config.yaml): %s. Too many slashes (/) - the override cannot take place.", imageName)
 	}
 	return strings.Join(imageNameComponents, "/"), nil
 }
