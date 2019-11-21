@@ -229,7 +229,7 @@ func getLabels(config *RootCommandConfig) (map[string]string, error) {
 
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
-		config.Info.log(err)
+		config.Warning.log("Not all labels will be set. ", err.Error())
 	}
 
 	for key, value := range stackLabels {
