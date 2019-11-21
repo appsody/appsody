@@ -26,7 +26,7 @@ import (
 type deployCommandConfig struct {
 	*RootCommandConfig
 	appDeployFile, namespace, tag, pushURL, pullURL string
-	knative, generate, force, push, nobuild         bool
+	knative, generate, force, push, build           bool
 	dockerBuildOptions                              string
 	buildahBuildOptions                             string
 }
@@ -63,7 +63,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			namespace := config.namespace
 			configFile := filepath.Join(projectDir, config.appDeployFile)
 
-			if !config.nobuild {
+			if config.build {
 				buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
 				buildConfig.Verbose = config.Verbose
 				buildConfig.pushURL = config.pushURL
@@ -139,7 +139,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 	}
 
 	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment configuration file. Do not deploy the project.")
-	deployCmd.PersistentFlags().BoolVar(&config.nobuild, "no-build", false, "Deploys the application without building a new image or modifying the deployment configuration file.")
+	deployCmd.PersistentFlags().BoolVar(&config.build, "no-build", true, "Deploys the application without building a new image or modifying the deployment configuration file.")
 	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
 	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment configuration file if one exists.")
 	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "default", "Target namespace in your Kubernetes cluster")
