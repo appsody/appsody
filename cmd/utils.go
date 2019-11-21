@@ -679,10 +679,15 @@ func getConfigLabels(projectConfig ProjectConfig, filename string) (map[string]s
 		labels["dev.appsody.app.name"] = projectConfig.ApplicationName
 	}
 
+	config.cachedConfigLabels = labels
 	return labels, nil
 }
 
 func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
+	if config.cachedGitLabels != nil {
+		return config.cachedGitLabels, nil
+	}
+
 	gitInfo, err := GetGitInfo(config)
 	if err != nil {
 		return nil, err
@@ -738,6 +743,7 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		labels[appsodyImageCommitKeyPrefix+"contextDir"] = commitInfo.contextDir
 	}
 
+	config.cachedGitLabels = labels
 	return labels, nil
 }
 
