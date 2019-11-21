@@ -31,7 +31,7 @@ func TestRunWithDockerOptionsRegex(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,13 +51,13 @@ func TestRunWithDockerOptionsRegex(t *testing.T) {
 
 	for _, value := range testOptions {
 		t.Log("Option is", value)
-		runOutput, err = cmdtest.RunAppsodyCmd([]string{"run", "--docker-options", value, "--dryrun"}, projectDir)
+		runOutput, err = cmdtest.RunAppsodyCmd([]string{"run", "--docker-options", value, "--dryrun"}, projectDir, t)
 		t.Log("err ", err)
 		if !strings.Contains(runOutput, value+" is not allowed in --docker-options") {
 			t.Fatal("Error message not found:" + value + " is not allowed in --docker-options")
 
 		}
-		runOutput, err = cmdtest.RunAppsodyCmd([]string{"run", "--docker-options", value + "=", "--dryrun"}, projectDir)
+		runOutput, err = cmdtest.RunAppsodyCmd([]string{"run", "--docker-options", value + "=", "--dryrun"}, projectDir, t)
 		t.Log("err ", err)
 		if !strings.Contains(runOutput, value+"="+" is not allowed in --docker-options") {
 			t.Fatal("Error message not found:" + value + "=" + " is not allowed in --docker-options")

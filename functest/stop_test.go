@@ -26,7 +26,7 @@ import (
 
 func TestStopWithoutName(t *testing.T) {
 	// first add the test repo index
-	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestStopWithoutName(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
+	_, err = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,14 +45,14 @@ func TestStopWithoutName(t *testing.T) {
 	// appsody run
 	runChannel := make(chan error)
 	go func() {
-		_, err = cmdtest.RunAppsodyCmd([]string{"run"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"run"}, projectDir, t)
 		runChannel <- err
 	}()
 
 	// defer the appsody stop to close the docker container
 	defer func() {
 		t.Log("calling docker stop")
-		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"stop"}, projectDir)
+		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"stop"}, projectDir, t)
 
 		//docker stop appsody-stop-test
 		if !strings.Contains(stopOutput, "docker stop appsody-test") {
@@ -65,7 +65,7 @@ func TestStopWithoutName(t *testing.T) {
 		t.Log("calling docker ps")
 		pathElements := strings.Split(projectDir, "/")
 		containerName := pathElements[len(pathElements)-1]
-		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName + "-dev"})
+		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName + "-dev"}, t)
 		t.Log("docker output", dockerOutput)
 		if dockerErr != nil {
 			t.Log("Ignoring error running docker ps -q -f name=appsody-stop-test-dev", dockerErr)
@@ -119,7 +119,7 @@ func TestStopWithName(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestStopWithName(t *testing.T) {
 	// appsody run
 	runChannel := make(chan error)
 	go func() {
-		_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", "testStopContainer"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", "testStopContainer"}, projectDir, t)
 		runChannel <- err
 	}()
 
@@ -135,7 +135,7 @@ func TestStopWithName(t *testing.T) {
 
 	defer func() {
 		t.Log("about to run stop for with name")
-		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"stop", "--name", "testStopContainer"}, projectDir)
+		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"stop", "--name", "testStopContainer"}, projectDir, t)
 		if !strings.Contains(stopOutput, "docker stop testStopContainer") {
 			t.Fatal("docker stop command not present for container testStopContainer")
 		}
@@ -144,7 +144,7 @@ func TestStopWithName(t *testing.T) {
 
 		}
 		t.Log("about to do docker ps")
-		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=testStopContainer"})
+		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=testStopContainer"}, t)
 		if dockerErr != nil {
 			t.Log("Ignoring error running docker ps -q -f name=testStopContainer", dockerErr)
 
