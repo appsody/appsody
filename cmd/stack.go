@@ -28,5 +28,6 @@ func newStackCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	stackCmd.AddCommand(newStackCreateCmd(rootConfig))
 	stackCmd.AddCommand(newStackValidateCmd(rootConfig))
 	stackCmd.AddCommand(newStackPackageCmd(rootConfig))
+	stackCmd.AddCommand(newStackAddToRepoCmd(rootConfig))
 	return stackCmd
 }

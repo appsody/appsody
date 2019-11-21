@@ -15,23 +15,12 @@
 package cmd
 
 import (
-	"bufio"
-	"bytes"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"os/signal"
-	"strconv"
+	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-
-	//"gopkg.in/yaml.v2"
-	"sigs.k8s.io/yaml"
 )
 
 type deployCommandConfig struct {
@@ -42,56 +31,17 @@ type deployCommandConfig struct {
 	buildahBuildOptions                             string
 }
 
-type AppsodyApplication struct {
-	APIVersion string                         `yaml:"apiVersion" json:"apiVersion"`
-	Kind       string                         `yaml:"kind" json:"kind"`
-	Metadata   Metadata                       `yaml:"metadata" json:"metadata"`
-	Spec       v1beta1.AppsodyApplicationSpec `yaml:"spec" json:"spec"`
-}
-type Metadata struct {
-	Name        string            `yaml:"name" json:"name"`
-	Labels      map[string]string `yaml:"labels" json:"labels"`
-	Annotations map[string]string `yaml:"annotations" json:"annotations"`
-}
-
-//These are the current supported labels for Kubernetes,
-//the rest of the labels provided will be annotations.
-var supportedKubeLabels = []string{
-	"image.opencontainers.org/title",
-	"image.opencontainers.org/version",
-	"image.opencontainers.org/licenses",
-	"stack.appsody.dev/id",
-	"stack.appsody.dev/version",
-	"app.appsody.dev/name",
-}
-
 func findNamespaceRepositoryAndTag(image string) string {
 	nameSpaceRepositoryAndTag := firstAfter(image, "/")
 	return nameSpaceRepositoryAndTag
 }
-func firstAfter(value string, a string) string {
 
+func firstAfter(value string, a string) string {
 	values := strings.Split(value, a)
 	if len(values) == 3 {
 		return values[1] + a + values[2]
 	}
 	return value
-
-}
-func getAppsodyApplication(configFile string) (AppsodyApplication, error) {
-	var appsodyApplication AppsodyApplication
-	yamlFileBytes, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return appsodyApplication, errors.Errorf("Could not read app-deploy.yaml file: %s", err)
-
-	}
-
-	err = yaml.Unmarshal(yamlFileBytes, &appsodyApplication)
-	if err != nil {
-
-		return appsodyApplication, errors.Errorf("app-deploy.yaml formatting error: %s", err)
-	}
-	return appsodyApplication, err
 }
 
 func newDeployCmd(rootConfig *RootCommandConfig) *cobra.Command {
@@ -110,13 +60,37 @@ A deployment manifest file, "app-deploy.yaml", is generated if one is not presen
   appsody deploy -t my-repo/nodejs-express --push-url external-registry-url --pull-url internal-registry-url
   Builds and tags the image as "my-repo/nodejs-express", pushes image to "external-registry-url/my-repo/nodejs-express", and creates a deployment manifest that tells the Kubernetes cluster to pull the image from "internal-registry-url/my-repo/nodejs-express".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if config.generate {
-				return generateDeploymentConfig(config)
+
+			projectDir, err := getProjectDir(config.RootCommandConfig)
+			if err != nil {
+				return err
 			}
+
 			dryrun := config.Dryrun
 			namespace := config.namespace
-			knative := config.knative
-			configFile := config.appDeployFile
+			configFile := filepath.Join(projectDir, config.appDeployFile)
+
+			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
+			buildConfig.Verbose = config.Verbose
+			buildConfig.pushURL = config.pushURL
+			buildConfig.push = config.push
+			buildConfig.dockerBuildOptions = config.dockerBuildOptions
+			buildConfig.buildahBuildOptions = config.buildahBuildOptions
+
+			buildConfig.tag = config.tag
+			buildConfig.pullURL = config.pullURL
+			buildConfig.knative = config.knative
+			buildConfig.appDeployFile = configFile
+
+			if config.generate {
+				return generateDeploymentConfig(buildConfig)
+			}
+
+			buildErr := build(buildConfig)
+			if buildErr != nil {
+				return buildErr
+			}
+
 			// Check for the Appsody Operator
 			operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(namespace, config.Dryrun)
 			if operatorExistsErr != nil {
@@ -140,157 +114,21 @@ A deployment manifest file, "app-deploy.yaml", is generated if one is not presen
 
 			}
 
-			exists, err := Exists(configFile)
-			if err != nil {
-				return errors.Errorf("Error checking status of %s", configFile)
-			}
-			if !exists || (exists && config.force) {
-				err = generateDeploymentConfig(config)
-				if err != nil {
-					if err.Error() == "docker cp command failed: exit status 1" {
-						Warning.log("No deployment config is present in the stack. Falling back to default deploy config using Knative.")
-						return deployWithKnative(config)
-					}
-					return err
-				}
-			}
-
-			Info.log("Found existing deployment manifest ", configFile)
-			//Retrieve the project name and lowercase it
-			var deployImage string
-			var appsodyApplication AppsodyApplication
-			var appErr error
-			var nameSpaceRepositoryAndTag string
-			var finalDeployImage string
-			if !dryrun {
-
-				appsodyApplication, appErr = getAppsodyApplication(configFile)
-				if appErr != nil {
-					return appErr
-				}
-				var applicationImage = appsodyApplication.Spec.ApplicationImage
-				Debug.log("Application Image:  ", applicationImage)
-				if applicationImage == "" {
-					return deployWithKnative(config)
-				}
-				deployImage = applicationImage
-				if config.tag != "" {
-					deployImage = config.tag
-				}
-
-				finalDeployImage = deployImage
-				nameSpaceRepositoryAndTag = findNamespaceRepositoryAndTag(deployImage)
-
-				if config.pullURL != "" {
-					finalDeployImage = config.pullURL + "/" + nameSpaceRepositoryAndTag
-				}
-			}
-			buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
-			buildConfig.Verbose = config.Verbose
-			buildConfig.dockerBuildOptions = config.dockerBuildOptions
-			buildConfig.buildahBuildOptions = config.buildahBuildOptions
-			if config.pushURL != "" || config.push {
-				pushPath := deployImage
-				if config.pushURL != "" {
-
-					// Extract code and build the image - and tags it if -t is specified
-
-					if config.pushURL != "" {
-						pushPath = config.pushURL + "/" + nameSpaceRepositoryAndTag
-
-					}
-
-				}
-				if strings.HasPrefix(deployImage, "dev.local") {
-					Warning.log("The push URL begins with dev.local.  Your push operation may fail if you are targeting a remote repository.  Make sure the --tag (-t) option is specified.  ", pushPath)
-				}
-				buildConfig.pushURL = config.pushURL
-
-				buildConfig.push = true
-			}
-			buildConfig.tag = deployImage
-			if config.pushURL != "" {
-				buildConfig.tag = nameSpaceRepositoryAndTag
-			}
-
-			buildErr := build(buildConfig)
-			if buildErr != nil {
-				return buildErr
-			}
-
-			// Edit the deployment manifest to reflect the new tag
-			yamlFile, err := os.Open(configFile)
-			if !dryrun && err != nil {
-				if os.IsNotExist(err) {
-					return errors.Errorf("Config file does not exist %s. ", configFile)
-				}
-				return errors.Errorf("Failed reading file %s", configFile)
-			}
-			defer yamlFile.Close()
-			var foundCreateKnativeTag, isKnativeService bool
-
-			scanner := bufio.NewScanner(yamlFile)
-			scanner.Split(bufio.ScanLines)
-			var txtlines []string
-			for scanner.Scan() {
-
-				line := scanner.Text()
-				if strings.Contains(line, "applicationImage:") {
-					index := strings.Index(line, ": ")
-					start := line[0:(index + 2)]
-					imagePath := finalDeployImage
-					line = start + finalDeployImage
-					Info.log("Using applicationImage of: ", imagePath)
-				}
-				if strings.Contains(line, "createKnativeService") {
-					foundCreateKnativeTag = true
-					if strings.Contains(line, "true") && !knative {
-						line = strings.Replace(line, "true", "false", 1)
-					}
-					if strings.Contains(line, "false") && knative {
-						line = strings.Replace(line, "false", "true", 1)
-					}
-
-				}
-
-				if strings.Contains(line, "kind:") && strings.Contains(line, "Service") {
-					isKnativeService = true
-				}
-
-				txtlines = append(txtlines, line)
-
-			}
-			if !foundCreateKnativeTag && knative && !isKnativeService {
-				txtlines = append(txtlines, "  createKnativeService: true")
-			}
-
-			//yamlFile.Close() // need to think about defer
-			if !dryrun {
-				targetConfigFile := configFile
-				file, err := os.Create(targetConfigFile)
-				if err != nil {
-					return err
-				}
-
-				defer file.Close()
-				w := bufio.NewWriter(file)
-				for _, line := range txtlines {
-					fmt.Fprintln(w, line)
-				}
-				w.Flush()
-			}
-			err = KubeApply(configFile, namespace, dryrun)
 			// Performing the kubectl apply
+			err = KubeApply(configFile, namespace, dryrun)
 			if err != nil {
 				return errors.Errorf("Failed to deploy to your Kubernetes cluster: %v", err)
 			}
-			if !dryrun {
-				Info.log("Deployment succeeded.")
+
+			appsodyApplication, err := getAppsodyApplication(configFile)
+			if err != nil {
+				return err
 			}
+
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
-			Info.log("Appsody Deployment name is: ", appsodyApplication.Metadata.Name)
-			out, err := KubeGetDeploymentURL(appsodyApplication.Metadata.Name, namespace, dryrun)
+			Info.log("Appsody Deployment name is: ", appsodyApplication.Name)
+			out, err := KubeGetDeploymentURL(appsodyApplication.Name, namespace, dryrun)
 			// Performing the kubectl apply
 			if err != nil {
 				return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
@@ -305,9 +143,9 @@ A deployment manifest file, "app-deploy.yaml", is generated if one is not presen
 		},
 	}
 
-	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "Only generate the deployment configuration file. Do not deploy the project.")
+	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment configuration file. Do not deploy the project.")
 	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
-	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "Force the reuse of the deployment configuration file if one exists.")
+	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment configuration file if one exists.")
 	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "default", "Target namespace in your Kubernetes cluster")
 	deployCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of docker.")
@@ -318,268 +156,6 @@ A deployment manifest file, "app-deploy.yaml", is generated if one is not presen
 	deployCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "Remote repository to push image to.  This will also trigger a push if the --push flag is not specified.")
 	deployCmd.PersistentFlags().StringVar(&config.pullURL, "pull-url", "", "Remote repository to pull image from.")
 	deployCmd.AddCommand(newDeleteDeploymentCmd(config))
+
 	return deployCmd
-}
-
-func deployWithKnative(config *deployCommandConfig) error {
-	var err error
-	//Retrieve the project name and lowercase it
-	projectName, perr := getProjectName(config.RootCommandConfig)
-	if perr != nil {
-		return errors.Errorf("%v", perr)
-	}
-	//Get the project name and make it the KNative service name
-	serviceName := projectName
-	deployImage := projectName // if not tagged, this is the deploy image name
-	if config.tag != "" {
-		deployImage = config.tag //Otherwise, it's the tag
-	}
-	// We're not pushing to a repository, so we need to use dev.local for Knative to be able to find it
-	if !config.push {
-		localtag := "dev.local/" + projectName
-		// Tagging the image using the tag as the deployImage for KNative
-		/*	err = DockerTag(deployImage, localtag, config.Dryrun)
-			if err != nil {
-				return errors.Errorf("Tagging the image failed - exiting. Error: %v", err)
-			}*/
-		deployImage = localtag // And forcing deployimage to be localtag
-	}
-	buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
-	buildConfig.Verbose = config.Verbose
-	buildConfig.dockerBuildOptions = config.dockerBuildOptions
-	buildConfig.buildahBuildOptions = config.buildahBuildOptions
-	buildConfig.tag = deployImage
-	if config.push {
-		buildConfig.tag = findNamespaceRepositoryAndTag(deployImage)
-		buildConfig.pushURL = config.pushURL
-		buildConfig.push = true
-	}
-	buildErr := build(buildConfig)
-	if buildErr != nil {
-		return buildErr
-	}
-	//Generate the KNative yaml
-	//Get the container port first
-	port, err := getEnvVarInt("PORT", config.RootCommandConfig)
-	if err != nil {
-		//try and get the exposed ports and use the first one
-		Warning.log("Could not detect a container port (PORT env var).")
-		portsStr, portsErr := getExposedPorts(config.RootCommandConfig)
-		if portsErr != nil {
-			return portsErr
-		}
-		if len(portsStr) == 0 {
-			//No ports exposed
-			Warning.log("This container exposes no ports. The service will not be accessible.")
-			port = 0 //setting this to 0
-		} else {
-			portStr := portsStr[0]
-			Warning.log("Picking the first exposed port as the KNative service port. This may not be the correct port.")
-			port, err = strconv.Atoi(portStr)
-			if err != nil {
-				Warning.log("The exposed port is not a valid integer. The service will not be accessible.")
-				port = 0
-			}
-		}
-	}
-	//Get the KNative template file
-	knativeTempl := getKNativeTemplate()
-	if config.pullURL != "" {
-		deployImage = config.pullURL + "/" + findNamespaceRepositoryAndTag(deployImage)
-	}
-	//Generating the KNative yaml file
-	Debug.logf("Calling GenKnativeYaml with parms: %s %d %s %s \n", knativeTempl, port, serviceName, deployImage)
-	yamlFileName, err := GenKnativeYaml(knativeTempl, port, serviceName, deployImage, config.push, config.appDeployFile, config.Dryrun)
-	if err != nil {
-		return errors.Errorf("Could not generate the KNative YAML file: %v", err)
-	}
-	Info.log("Generated KNative serving deploy file: ", yamlFileName)
-	err = KubeApply(yamlFileName, config.namespace, config.Dryrun)
-	// Performing the kubectl apply
-	if err != nil {
-		return errors.Errorf("Failed to deploy to your Kubernetes cluster: %v", err)
-	}
-	Info.log("Deployment succeeded.")
-	url, err := KubeGetKnativeURL(serviceName, config.namespace, config.Dryrun)
-	if err != nil {
-		return errors.Errorf("Failed to find deployed service in your Kubernetes cluster: %v", err)
-	}
-	Info.log("Your deployed service is available at the following URL: ", url)
-
-	return nil
-}
-
-func generateDeploymentConfig(config *deployCommandConfig) error {
-	containerConfigDir := "/config/app-deploy.yaml"
-	configFile := config.appDeployFile
-
-	exists, err := Exists(configFile)
-	if err != nil {
-		return errors.Errorf("Error checking status of %s", configFile)
-	}
-	if exists && !config.force {
-		return errors.Errorf("Error, deploy config file %s already exists. Specify an alternative file using --file or using --force to overwrite.", configFile)
-	}
-
-	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
-	if configErr != nil {
-		return configErr
-	}
-	err = CheckPrereqs()
-	if err != nil {
-		Warning.logf("Failed to check prerequisites: %v\n", err)
-	}
-	stackImage := projectConfig.Stack
-	Debug.log("Stack image: ", stackImage)
-	Debug.log("Config directory: ", containerConfigDir)
-
-	var cmdName string
-	var cmdArgs []string
-	pullErr := pullImage(stackImage, config.RootCommandConfig)
-	if pullErr != nil {
-		return pullErr
-	}
-	extractContainerName := defaultExtractContainerName(config.RootCommandConfig)
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		err := dockerStop(extractContainerName, config.Dryrun)
-		if err != nil {
-			Error.log(err)
-		}
-		os.Exit(1)
-	}()
-	cmdName = "docker"
-	var configDir string
-	cmdArgs = []string{"--name", extractContainerName}
-
-	cmdArgs = append([]string{"create"}, cmdArgs...)
-	cmdArgs = append(cmdArgs, stackImage)
-	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
-	if err != nil {
-
-		Error.log("docker create command failed: ", err)
-		removeErr := containerRemove(extractContainerName, false, config.Dryrun)
-		Error.log("Error in containerRemove", removeErr)
-		return err
-	}
-	configDir = extractContainerName + ":" + containerConfigDir
-
-	cmdArgs = []string{"cp", configDir, "./" + configFile}
-	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
-	if err != nil {
-		Error.log("docker cp command failed: ", err)
-
-		removeErr := containerRemove(extractContainerName, false, config.Dryrun)
-		if removeErr != nil {
-			Error.log("containerRemove error ", removeErr)
-		}
-		return errors.Errorf("docker cp command failed: %v", err)
-	}
-
-	removeErr := containerRemove(extractContainerName, false, config.Dryrun)
-	if removeErr != nil {
-		Error.log("containerRemove error ", removeErr)
-	}
-
-	yamlReader, err := ioutil.ReadFile(configFile)
-
-	if !config.Dryrun && err != nil {
-		if os.IsNotExist(err) {
-			return errors.Errorf("Config file does not exist %s. ", configFile)
-
-		}
-		return errors.Errorf("Failed reading file %s", configFile)
-
-	}
-
-	projectName, perr := getProjectName(config.RootCommandConfig)
-	if perr != nil {
-		return errors.Errorf("%v", perr)
-	}
-
-	port, err := getEnvVarInt("PORT", config.RootCommandConfig)
-	if err != nil {
-		//try and get the exposed ports and use the first one
-		Warning.log("Could not detect a container port (PORT env var).")
-		portsStr, portsErr := getExposedPorts(config.RootCommandConfig)
-		if portsErr != nil {
-			return portsErr
-		}
-		if len(portsStr) == 0 {
-			//No ports exposed
-			Warning.log("This container exposes no ports. The service will not be accessible.")
-			port = 0 //setting this to 0
-		} else {
-			portStr := portsStr[0]
-			Warning.log("Picking the first exposed port as the KNative service port. This may not be the correct port.")
-			port, err = strconv.Atoi(portStr)
-			if err != nil {
-				Warning.log("The exposed port is not a valid integer. The service will not be accessible.")
-				port = 0
-			}
-		}
-	}
-	portStr := strconv.Itoa(port)
-
-	split := strings.Split(stackImage, ":")
-	stack := split[len(split)-2]
-	split = strings.Split(stack, "/")
-	stack = split[len(split)-1]
-
-	imageName := "dev.local/" + projectName
-	if config.tag != "" {
-		imageName = config.tag
-	}
-
-	if config.pullURL != "" {
-		imageName = config.pullURL + "/" + findNamespaceRepositoryAndTag(imageName)
-	}
-
-	if !config.Dryrun {
-		output := bytes.Replace(yamlReader, []byte("APPSODY_PROJECT_NAME"), []byte(projectName), -1)
-		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(imageName), -1)
-		output = bytes.Replace(output, []byte("APPSODY_STACK"), []byte(stack), -1)
-		output = bytes.Replace(output, []byte("APPSODY_PORT"), []byte(portStr), -1)
-
-		var appsodyApplication AppsodyApplication
-		err = yaml.Unmarshal(output, &appsodyApplication)
-		if err != nil {
-			return err
-		}
-
-		labels, err := getLabels(config.RootCommandConfig)
-		if err != nil {
-			return errors.Errorf("Could not get labels: %s", err)
-		}
-
-		labels = convertLabelsToKubeFormat(labels)
-
-		var selectedLabels = make(map[string]string)
-		for _, label := range supportedKubeLabels {
-			if labels[label] != "" {
-				selectedLabels[label] = labels[label]
-				delete(labels, label)
-			}
-		}
-
-		appsodyApplication.Metadata.Labels = selectedLabels
-		appsodyApplication.Metadata.Annotations = labels
-		appsodyApplication.Spec.CreateKnativeService = &config.knative
-
-		output, err = yaml.Marshal(appsodyApplication)
-		if err != nil {
-			return errors.Errorf("Could not marshall AppsodyApplication to YAML when generating the app-deploy.yaml: %s", err)
-		}
-
-		err = ioutil.WriteFile(configFile, output, 0666)
-		if err != nil {
-			return errors.Errorf("Failed to write local application configuration file: %s", err)
-		}
-	} else {
-		Info.logf("Dry run skipped construction of file %s", configFile)
-	}
-	Info.log("Created deployment manifest: ", configFile)
-	return nil
 }
