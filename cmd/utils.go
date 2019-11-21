@@ -1550,6 +1550,11 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	stackRegistryOverride := config.StackRegistry
 	if stackRegistryOverride != "" {
 		config.Debug.Log("Stack registry URL was overridden: ", stackRegistryOverride)
+		var imgOverrideErr error
+		imageToPull, imgOverrideErr = OverrideStackRegistry(stackRegistryOverride, imageToPull)
+		if imgOverrideErr != nil {
+			return imgOverrideErr
+		}
 	}
 
 	//Temporary fix - buildah cannot pull from index.docker.io - only pulls from docker.io
@@ -1602,9 +1607,12 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	return nil
 }
 func OverrideStackRegistry(override string, imageName string) (string, error) {
-	err := ValidateHostNameAndPort(override)
+	match, err := ValidateHostNameAndPort(override)
 	if err != nil {
 		return "", err
+	}
+	if !match {
+		return "", errors.Errorf("This is an invalid host name: %s", override)
 	}
 	imageNameComponents := strings.Split(imageName, "/")
 	if len(imageNameComponents) == 3 {
@@ -1620,8 +1628,10 @@ func OverrideStackRegistry(override string, imageName string) (string, error) {
 	return strings.Join(imageNameComponents, "/"), nil
 }
 
-func ValidateHostNameAndPort(hostNameAndPort string) error {
-	return nil
+//ValidateHostNameAndPort validates that hostNameAndPort conform to the DNS naming conventions
+func ValidateHostNameAndPort(hostNameAndPort string) (bool, error) {
+	match, err := regexp.MatchString(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])($|:[0-9]{1,5}$)`, hostNameAndPort)
+	return match, err
 }
 
 //NormalizeImageName is a temporary fix for buildah workaround #676

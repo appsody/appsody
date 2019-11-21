@@ -272,3 +272,31 @@ func TestOverrideStackRegistry(t *testing.T) {
 
 	}
 }
+func TestValidateHostName(t *testing.T) {
+	testHostNames := make(map[string]bool)
+	testHostNames["hostname"] = true
+	testHostNames["hostname:80"] = true
+	testHostNames["hostname.com"] = true
+	testHostNames["hostname.company.com"] = true
+	testHostNames["hostname:8080"] = true
+	testHostNames["hostname:30080"] = true
+	testHostNames["hostname.company.com:30080"] = true
+	testHostNames["hostname.company.com:443"] = true
+	testHostNames["host-name"] = true
+	testHostNames["host/name"] = false
+	testHostNames["host-name-"] = false
+	testHostNames["host-name.my-company-"] = false
+	testHostNames["host-name.-my-company"] = false
+	testHostNames["-host-name.-my-company"] = false
+	for hostName, val := range testHostNames {
+
+		t.Run(hostName, func(t *testing.T) {
+			match, err := cmd.ValidateHostNameAndPort(hostName)
+
+			if err != nil || match != val {
+				t.Errorf("Unexpected result for %s - valid should be %v, but it was not detected as such", hostName, val)
+			}
+		})
+
+	}
+}
