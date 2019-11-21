@@ -82,6 +82,8 @@ Use 'appsody list' to see the available stacks and templates.`,
 		},
 	}
 
+	addStackRegistryFlag(initCmd, &rootConfig.StackRegistry, rootConfig)
+
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
 	defaultName := defaultProjectName(rootConfig)

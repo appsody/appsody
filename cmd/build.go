@@ -95,6 +95,7 @@ If you want to push the built image to an image repository using the [--push] op
 			return build(config)
 		},
 	}
+	addStackRegistryFlag(buildCmd, &rootConfig.StackRegistry, rootConfig)
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Container image name and optionally, a tag in the 'name:tag' format.")
 	buildCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of Docker.")

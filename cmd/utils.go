@@ -405,6 +405,30 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 
 	return projectName, nil
 }
+func getStackRegistry(config *RootCommandConfig) (string, error) {
+	defaultStackRegistry := "docker.io"
+	_, err := getProjectDir(config)
+	if err != nil {
+		return defaultStackRegistry, err
+	}
+	// check to see if project-name is set in .appsody-config.yaml
+	projectConfig, err := getProjectConfig(config)
+	if err != nil {
+		return defaultStackRegistry, err
+	}
+	if stack := projectConfig.Stack; stack != "" {
+		// stack is in .appsody-config.yaml
+		stackElements := strings.Split(stack, "/")
+		if len(stackElements) == 3 {
+			return stackElements[0], nil
+		}
+		if len(stackElements) < 3 {
+			return defaultStackRegistry, nil
+		}
+		return "", errors.Errorf("Invalid stack image name detected in project config file: %s", stack)
+	}
+	return defaultStackRegistry, nil
+}
 
 func saveProjectNameToConfig(projectName string, config *RootCommandConfig) error {
 	valid, err := IsValidProjectName(projectName)

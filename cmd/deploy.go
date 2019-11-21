@@ -135,7 +135,7 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			return nil
 		},
 	}
-
+	addStackRegistryFlag(deployCmd, &config.RootCommandConfig.StackRegistry, config.RootCommandConfig)
 	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment configuration file. Do not deploy the project.")
 	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
 	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment configuration file if one exists.")

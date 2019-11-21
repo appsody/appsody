@@ -75,6 +75,14 @@ func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig)
 	cmd.PersistentFlags().StringVar(flagVar, "name", defaultName, "Assign a name to your development container.")
 }
 
+func addStackRegistryFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
+	defaultRegistry, err := getStackRegistry(config)
+	if err != nil && defaultRegistry == "" {
+		config.Warning.Logf("%v - make sure you correct the project config file, or override the registry with the --stack-registry flag", err)
+	}
+	cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images.")
+}
+
 func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 	projectName, perr := getProjectName(config.RootCommandConfig)
 	if perr != nil {
@@ -88,6 +96,7 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 	defaultDepsVolume := projectName + "-deps"
 
 	addNameFlag(cmd, &config.containerName, config.RootCommandConfig)
+	addStackRegistryFlag(cmd, &config.StackRegistry, config.RootCommandConfig)
 	cmd.PersistentFlags().StringVar(&config.dockerNetwork, "network", "", "Specify the network for docker to use.")
 	cmd.PersistentFlags().StringVar(&config.depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 	cmd.PersistentFlags().StringArrayVarP(&config.ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
@@ -486,5 +495,4 @@ func checkPortInput(publishedPorts []string) (bool, error) {
 		}
 	}
 	return validPorts, portError
-
 }

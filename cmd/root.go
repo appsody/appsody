@@ -62,6 +62,7 @@ type RootCommandConfig struct {
 	ProjectConfig    *ProjectConfig
 	ProjectDir       string
 	UnsupportedRepos []string
+	StackRegistry    string
 
 	// package scoped, these are mostly for caching
 	setupConfigRun    bool
