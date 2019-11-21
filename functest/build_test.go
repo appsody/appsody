@@ -138,9 +138,6 @@ func TestBuildLabels(t *testing.T) {
 	defer os.RemoveAll(projectDir)
 	t.Log("Created project dir: " + projectDir)
 
-	defer os.RemoveAll(projectDir)
-	t.Log("Created project dir: " + projectDir)
-
 	// appsody init
 	_, err = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
 	t.Log("Running appsody init...")
