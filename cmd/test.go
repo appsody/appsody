@@ -21,7 +21,7 @@ func newTestCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var testCmd = &cobra.Command{
 		Use:   "test",
 		Short: "Test your project in the local Appsody environment.",
-		Long: `Test your project in the local Appsody environment by running tests for the stack and your application.
+		Long: `Run the local Appsody environment, starting a container based continuous build environment for your project, and running the test suite each time a file changes.
 		
 Run this command from the root directory of your Appsody project.`,
 		Example: `  appsody test
