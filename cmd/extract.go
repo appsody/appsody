@@ -41,11 +41,8 @@ func newExtractCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Long: `Extract the full application (the stack and your Appsody project), into a local directory, in preparation to build the final container image.
 		
 By default, your project gets extracted into your local '$HOME/.appsody/extract' directory, unless specified otherwise.`,
-		Example: `  appsody extract --target-dir $HOME/extract/directory
-  Extracts your project from the container to the local '$HOME/extract/directory' on your local system.
-  
-  appsody extract --name my-container
-  Extracts your project from the "my-container" container to the local '$HOME/.appsody/extract' directory on your local system.`,
+		Example: `  appsody extract --target-dir $HOME/my-extract/directory
+  Extracts your project from the container to the local '$HOME/my-extract/directory' on your local system.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return extract(config)
 		},
