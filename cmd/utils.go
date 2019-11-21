@@ -1546,6 +1546,12 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	if config.imagePulled == nil {
 		config.imagePulled = make(map[string]bool)
 	}
+	//Temporary fix - buildah cannot pull from index.docker.io - only pulls from docker.io
+	imageToPull, imageNameErr := NormalizeImageName(imageToPull)
+	if imageNameErr != nil {
+		return imageNameErr
+	}
+
 	config.Debug.logf("%s image pulled status: %t", imageToPull, config.imagePulled[imageToPull])
 	if config.imagePulled[imageToPull] {
 		config.Debug.log("Image has been pulled already: ", imageToPull)
@@ -1588,6 +1594,28 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 		config.Info.log("Using local cache for image ", imageToPull)
 	}
 	return nil
+}
+
+//NormalizeImageName is a temporary fix for buildah workaround #676
+func NormalizeImageName(imageName string) (string, error) {
+	imageNameComponents := strings.Split(imageName, "/")
+	if len(imageNameComponents) == 2 {
+		return imageName, nil
+	}
+
+	if len(imageNameComponents) == 1 {
+		return fmt.Sprintf("docker.io/%s", imageName), nil
+	}
+
+	if len(imageNameComponents) == 3 {
+		if imageNameComponents[0] == "index.docker.io" {
+			imageNameComponents[0] = "docker.io"
+			return strings.Join(imageNameComponents, "/"), nil
+		}
+		return imageName, nil
+	}
+	return imageName, errors.Errorf("Image name is invalid: %s", imageName)
+
 }
 
 func execAndListenWithWorkDirReturnErr(log *LoggingConfig, command string, args []string, logger appsodylogger, workdir string, dryrun bool) (*exec.Cmd, error) {
