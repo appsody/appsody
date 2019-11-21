@@ -53,7 +53,10 @@ func newDeployCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Long: `Build and deploy a local container image of your Appsody project to your Kubernetes cluster. 
 		
 The command extracts the stack, along with your Appsody project to a local directory. The extracted project is used to build the container image for deployment using 'appsody build'.
-A deployment manifest file, "app-deploy.yaml", is generated if one is not present, and applied to the cluster. The CLI uses this file to deploy your image to your Kubernetes cluster via the Appsody Operator, and optionally as a Knative service if you specify the "--knative" flag.`,
+A deployment manifest file, "app-deploy.yaml", is generated if one is not present, and applied to the cluster. The CLI uses this file to deploy your image to your Kubernetes cluster via the Appsody Operator, and optionally as a Knative service if you specify the "--knative" flag.
+
+
+If the Appsody Operator cannot be found, it will be installed on your cluster.`,
 		Example: `  appsody deploy --namespace my-namespace
   Builds and deploys your project to the "my-namespace" namespace in your local Kubernetes cluster.
   
