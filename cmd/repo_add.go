@@ -29,8 +29,8 @@ func newRepoAddCmd(config *RootCommandConfig) *cobra.Command {
 		Use:   "add <name> <url>",
 		Short: "Add an Appsody repository.",
 		Long:  `Add an Appsody repository to your list of configured Appsody repositories.`,
-		Example: `  appsody repo add my-local-repo file://path/to/my-local-repo.yaml
-  Adds the "my-local-repo" repository, specified by the "file://path/to/my-local-repo.yaml" file to your list of repositories.`,
+		Example: `  appsody repo add my-local-repo file:///absolute/path/to/my-local-repo.yaml
+  Adds the "my-local-repo" repository, specified by the "file:///absolute/path/to/my-local-repo.yaml" file to your list of repositories.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
 
