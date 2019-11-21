@@ -102,13 +102,13 @@ func newDeployCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Build and deploy your Appsody project to Kubernetes.",
 		Long: `Build and deploy a local container image of your Appsody project to your Kubernetes cluster. 
 		
-The stack, along with your Appsody project, is extracted to a local directory before the container image of your Appsody project is built for deployment.
-The command generates a deployment manifest file, "app-deploy.yaml", if one is not present. The CLI uses this file to deploy your image to your Kubernetes cluster via the Appsody operator, and optionally as a Knative service if you specify the "--knative" flag.`,
+The command extracts the stack, along with your Appsody project to a local directory. The extracted project is used to build the container image for deployment using 'appsody build'.
+A deployment manifest file, "app-deploy.yaml", is generated if one is not present, and applied to the cluster. The CLI uses this file to deploy your image to your Kubernetes cluster via the Appsody Operator, and optionally as a Knative service if you specify the "--knative" flag.`,
 		Example: `  appsody deploy --namespace my-namespace
   Builds and deploys your project to the "my-namespace" namespace in your local Kubernetes cluster.
   
   appsody deploy -t my-repo/nodejs-express --push-url external-registry-url --pull-url internal-registry-url
-  Builds the container image, sets the namespace to "my-repo", sets the name to "nodejs-express", pushes image to "external-registry-url/my-repo/nodejs-express", and creates a deployment manifest that tells the K8S cluster to pull the image from "internal-registry-url/my-repo/nodejs-express".`,
+  Builds and tags the image as "my-repo/nodejs-express", pushes image to "external-registry-url/my-repo/nodejs-express", and creates a deployment manifest that tells the Kubernetes cluster to pull the image from "internal-registry-url/my-repo/nodejs-express".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if config.generate {
 				return generateDeploymentConfig(config)
