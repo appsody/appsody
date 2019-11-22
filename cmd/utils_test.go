@@ -269,6 +269,12 @@ func TestOverrideStackRegistry(t *testing.T) {
 				}
 			}
 		})
+		t.Run("No override", func(t *testing.T) {
+			output, err := cmd.OverrideStackRegistry("", "test")
+			if err != nil || output != "test" {
+				t.Errorf("Test with empty image override failed. Error: %v, output: %s", err, output)
+			}
+		})
 
 	}
 }

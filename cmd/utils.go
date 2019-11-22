@@ -1522,15 +1522,12 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 		config.imagePulled = make(map[string]bool)
 	}
 	//Check if the stack image registry URL was overridden via the CLI flag
+	var imgOverrideErr error
 
-	stackRegistryOverride := config.StackRegistry
-	if stackRegistryOverride != "" {
-		config.Debug.Log("Stack registry URL was overridden: ", stackRegistryOverride)
-		var imgOverrideErr error
-		imageToPull, imgOverrideErr = OverrideStackRegistry(stackRegistryOverride, imageToPull)
-		if imgOverrideErr != nil {
-			return imgOverrideErr
-		}
+	imageToPull, imgOverrideErr = OverrideStackRegistry(config.StackRegistry, imageToPull)
+
+	if imgOverrideErr != nil {
+		return imgOverrideErr
 	}
 
 	//Temporary fix - buildah cannot pull from index.docker.io - only pulls from docker.io
@@ -1583,11 +1580,15 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	return nil
 }
 func inspectImage(imageToInspect string, config *RootCommandConfig) (string, error) {
+	imageToInspect, err := OverrideStackRegistry(config.StackRegistry, imageToInspect)
+	if err != nil {
+		return "", err
+	}
 	cmdName := "docker"
-	cmdArgs := []string{"image", "inspect", imageName}
+	cmdArgs := []string{"image", "inspect", imageToInspect}
 	if config.Buildah {
 		cmdName = "buildah"
-		cmdArgs = []string{"inspect", "--format={{.Config}}", imageName}
+		cmdArgs = []string{"inspect", "--format={{.Config}}", imageToInspect}
 	}
 
 	inspectCmd := exec.Command(cmdName, cmdArgs...)
@@ -1598,7 +1599,11 @@ func inspectImage(imageToInspect string, config *RootCommandConfig) (string, err
 	return inspectOut, nil
 }
 
+//OverrideStackRegistry allows you to change the image registry URL
 func OverrideStackRegistry(override string, imageName string) (string, error) {
+	if override == "" {
+		return imageName, nil
+	}
 	match, err := ValidateHostNameAndPort(override)
 	if err != nil {
 		return "", err
