@@ -1317,6 +1317,7 @@ func ImagePush(log *LoggingConfig, imageToPush string, buildah bool, dryrun bool
 }
 
 // DockerRunBashCmd issues a shell command in a docker image, overriding its entrypoint
+// Assume this is only used for Stack images
 func DockerRunBashCmd(options []string, image string, bashCmd string, config *RootCommandConfig) (string, error) {
 	cmdName := "docker"
 	var cmdArgs []string
@@ -1328,6 +1329,11 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 		cmdArgs = append([]string{"run"}, options...)
 	} else {
 		cmdArgs = []string{"run"}
+	}
+	// Override stack image registry
+	image, overrideErr := OverrideStackRegistry(config.StackRegistry, image)
+	if overrideErr != nil {
+		return "", overrideErr
 	}
 	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/bash", image, "-c", bashCmd)
 	config.Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
@@ -1516,6 +1522,7 @@ func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool 
 //pullImage
 // pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
+//Assume this only works with stack images
 // TO DO - should this be renamed pullStackImage?
 func pullImage(imageToPull string, config *RootCommandConfig) error {
 	if config.imagePulled == nil {
@@ -1579,6 +1586,8 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	}
 	return nil
 }
+
+// Assume this function only works for Stack images - it overrides the stack registry
 func inspectImage(imageToInspect string, config *RootCommandConfig) (string, error) {
 	imageToInspect, err := OverrideStackRegistry(config.StackRegistry, imageToInspect)
 	if err != nil {

@@ -277,6 +277,11 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.interactive {
 		cmdArgs = append(cmdArgs, "-i")
 	}
+	// Override the stack image registry URL
+	platformDefinition, overrideErr := OverrideStackRegistry(config.StackRegistry, platformDefinition)
+	if overrideErr != nil {
+		return overrideErr
+	}
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode)
 	if config.Verbose {
 		cmdArgs = append(cmdArgs, "-v")
