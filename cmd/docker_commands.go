@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+//DockerRunAndListen runs a Docker command with arguments in args
+//This function does NOT override the image registry (uses args as is)
 func DockerRunAndListen(config *RootCommandConfig, args []string, logger appsodylogger, interactive bool) (*exec.Cmd, error) {
 	var runArgs = []string{"run"}
 	runArgs = append(runArgs, args...)
@@ -48,6 +50,8 @@ func RunDockerCommandAndWait(config *RootCommandConfig, args []string, logger ap
 
 }
 
+// RunDockerInspect -TODO - this function should be removed. No one uses it, except the test.
+// We are using inspectImage
 func RunDockerInspect(log *LoggingConfig, imageName string) (string, error) {
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageName}

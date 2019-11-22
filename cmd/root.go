@@ -62,6 +62,7 @@ type RootCommandConfig struct {
 	ProjectConfig    *ProjectConfig
 	ProjectDir       string
 	UnsupportedRepos []string
+	StackRegistry    string
 
 	// package scoped, these are mostly for caching
 	setupConfigRun    bool
@@ -131,6 +132,8 @@ Complete documentation is available at https://appsody.dev`,
 	if appsodyOnK8S == "TRUE" {
 		rootConfig.Buildah = true
 	}
+	//Invalidate the cache
+	rootConfig.ProjectConfig = nil
 	return rootCmd, rootConfig, nil
 }
 
