@@ -340,6 +340,11 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
+		//Override the stack image
+		platformDefinition, overrideErr := OverrideStackRegistry(config.StackRegistry, platformDefinition)
+		if overrideErr != nil {
+			return overrideErr
+		}
 		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, depsMount, dryrun)
 		if err != nil {
 			return err
