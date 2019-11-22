@@ -447,7 +447,7 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
-		config.Info.log(err)
+		config.Warning.log("Not all labels will be set. ", err.Error())
 	} else {
 		if branchURL, ok := gitLabels[ociKeyPrefix+"source"]; ok {
 			if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {
