@@ -165,7 +165,7 @@ func InitConfig(config *RootCommandConfig) error {
 		return dirErr
 	}
 	cliConfig.SetDefault("home", filepath.Join(homeDirectory, ".appsody"))
-	cliConfig.SetDefault("images", "index.docker.io")
+	cliConfig.SetDefault("images", "docker.io")
 	cliConfig.SetDefault("operator", operatorHome)
 	cliConfig.SetDefault("tektonserver", "")
 	cliConfig.SetDefault("lastversioncheck", "none")
