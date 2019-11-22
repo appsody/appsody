@@ -113,20 +113,11 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	if pullErrs != nil {
 		return "", pullErrs
 	}
-	// TODO - this needs fixing (imageName override)
-	cmdName := "docker"
-	cmdArgs := []string{"image", "inspect", imageName}
-	if config.Buildah {
-		cmdName = "buildah"
-		cmdArgs = []string{"inspect", "--format={{.Config}}", imageName}
-	}
 
-	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := SeparateOutput(inspectCmd)
+	inspectOut, inspectErr := inspectImage(imageName, config)
 	if inspectErr != nil {
-		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
+		return "", inspectErr
 	}
-	// END TODO
 	var err error
 	var envVars []interface{}
 	if config.Buildah {
@@ -755,34 +746,24 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 		if pullErrs != nil {
 			return nil, pullErrs
 		}
-		// TODO this needs to be fixed for imageName override
+		inspectOut, err := inspectImage(imageName, config)
+		if err != nil {
+			return config.cachedStackLabels, err
+		}
 		if config.Buildah {
-			cmdName := "buildah"
-			cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
-			config.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
-			inspectCmd := exec.Command(cmdName, cmdArgs...)
-			inspectOut, inspectErr := inspectCmd.Output()
-			if inspectErr != nil {
-				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
-			}
-			err := json.Unmarshal([]byte(inspectOut), &buildahData)
+			err = json.Unmarshal([]byte(inspectOut), &buildahData)
 			if err != nil {
 				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 			}
 			containerConfig = buildahData["config"].(map[string]interface{})
 			config.Debug.Log("Config inspected by buildah: ", config)
 		} else {
-			inspectOut, inspectErr := RunDockerInspect(config.LoggingConfig, imageName)
-			if inspectErr != nil {
-				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %s", inspectOut)
-			}
 			err := json.Unmarshal([]byte(inspectOut), &data)
 			if err != nil {
 				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 			}
 			containerConfig = data[0]["Config"].(map[string]interface{})
 		}
-		// END TODO
 		if containerConfig["Labels"] != nil {
 			labelsMap := containerConfig["Labels"].(map[string]interface{})
 
@@ -809,16 +790,12 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 	if pullErrs != nil {
 		return nil, pullErrs
 	}
-	// TODO this needs to be fixed for image override
+
+	inspectOut, inspectErr := inspectImage(imageName, config)
+	if inspectErr != nil {
+		return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
+	}
 	if config.Buildah {
-		cmdName := "buildah"
-		cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
-		config.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
-		inspectCmd := exec.Command(cmdName, cmdArgs...)
-		inspectOut, inspectErr := inspectCmd.Output()
-		if inspectErr != nil {
-			return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
-		}
 		err := json.Unmarshal([]byte(inspectOut), &buildahData)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
@@ -826,17 +803,13 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 		containerConfig = buildahData["config"].(map[string]interface{})
 		config.Debug.Log("Config inspected by buildah: ", config)
 	} else {
-		inspectOut, inspectErr := RunDockerInspect(config.LoggingConfig, imageName)
-		if inspectErr != nil {
-			return portValues, errors.Errorf("Could not inspect the image: %s", inspectOut)
-		}
 		err := json.Unmarshal([]byte(inspectOut), &data)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
 		containerConfig = data[0]["Config"].(map[string]interface{})
 	}
-	// End TODO
+
 	if containerConfig["ExposedPorts"] != nil {
 		exposedPorts := containerConfig["ExposedPorts"].(map[string]interface{})
 
@@ -1543,11 +1516,13 @@ func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool 
 //pullImage
 // pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
+// TO DO - should this be renamed pullStackImage?
 func pullImage(imageToPull string, config *RootCommandConfig) error {
 	if config.imagePulled == nil {
 		config.imagePulled = make(map[string]bool)
 	}
 	//Check if the stack image registry URL was overridden via the CLI flag
+
 	stackRegistryOverride := config.StackRegistry
 	if stackRegistryOverride != "" {
 		config.Debug.Log("Stack registry URL was overridden: ", stackRegistryOverride)
@@ -1607,6 +1582,22 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	}
 	return nil
 }
+func inspectImage(imageToInspect string, config *RootCommandConfig) (string, error) {
+	cmdName := "docker"
+	cmdArgs := []string{"image", "inspect", imageName}
+	if config.Buildah {
+		cmdName = "buildah"
+		cmdArgs = []string{"inspect", "--format={{.Config}}", imageName}
+	}
+
+	inspectCmd := exec.Command(cmdName, cmdArgs...)
+	inspectOut, inspectErr := SeparateOutput(inspectCmd)
+	if inspectErr != nil {
+		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
+	}
+	return inspectOut, nil
+}
+
 func OverrideStackRegistry(override string, imageName string) (string, error) {
 	match, err := ValidateHostNameAndPort(override)
 	if err != nil {
