@@ -453,6 +453,7 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 }
 
 func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
+
 	if config.ProjectConfig == nil {
 		dir, perr := getProjectDir(config)
 		if perr != nil {
@@ -485,7 +486,13 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		if imageRepo != "index.docker.io" {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
+		//Override the stack registry URL
+		projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
 
+		if err != nil {
+			return &projectConfig, err
+		}
+		config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
 		config.ProjectConfig = &projectConfig
 	}
 	return config.ProjectConfig, nil
@@ -1330,11 +1337,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 	} else {
 		cmdArgs = []string{"run"}
 	}
-	// Override stack image registry
-	image, overrideErr := OverrideStackRegistry(config.StackRegistry, image)
-	if overrideErr != nil {
-		return "", overrideErr
-	}
+
 	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/bash", image, "-c", bashCmd)
 	config.Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
@@ -1522,22 +1525,13 @@ func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool 
 //pullImage
 // pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
-//Assume this only works with stack images
-// TO DO - should this be renamed pullStackImage?
+
 func pullImage(imageToPull string, config *RootCommandConfig) error {
 	if config.imagePulled == nil {
 		config.imagePulled = make(map[string]bool)
 	}
-	//Check if the stack image registry URL was overridden via the CLI flag
-	var imgOverrideErr error
 
-	imageToPull, imgOverrideErr = OverrideStackRegistry(config.StackRegistry, imageToPull)
-
-	if imgOverrideErr != nil {
-		return imgOverrideErr
-	}
-
-	//Temporary fix - buildah cannot pull from index.docker.io - only pulls from docker.io
+	//Buildah cannot pull from index.docker.io - only pulls from docker.io
 	imageToPull, imageNameErr := NormalizeImageName(imageToPull)
 	if imageNameErr != nil {
 		return imageNameErr
@@ -1587,12 +1581,8 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	return nil
 }
 
-// Assume this function only works for Stack images - it overrides the stack registry
 func inspectImage(imageToInspect string, config *RootCommandConfig) (string, error) {
-	imageToInspect, err := OverrideStackRegistry(config.StackRegistry, imageToInspect)
-	if err != nil {
-		return "", err
-	}
+
 	cmdName := "docker"
 	cmdArgs := []string{"image", "inspect", imageToInspect}
 	if config.Buildah {

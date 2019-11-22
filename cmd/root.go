@@ -132,6 +132,8 @@ Complete documentation is available at https://appsody.dev`,
 	if appsodyOnK8S == "TRUE" {
 		rootConfig.Buildah = true
 	}
+	//Invalidate the cache
+	rootConfig.ProjectConfig = nil
 	return rootCmd, rootConfig, nil
 }
 

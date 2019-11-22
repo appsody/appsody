@@ -137,10 +137,12 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		return perr
 
 	}
+
 	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
 	if configErr != nil {
 		return configErr
 	}
+
 	err := CheckPrereqs()
 	if err != nil {
 		config.Warning.logf("Failed to check prerequisites: %v\n", err)
@@ -277,11 +279,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.interactive {
 		cmdArgs = append(cmdArgs, "-i")
 	}
-	// Override the stack image registry URL
-	platformDefinition, overrideErr := OverrideStackRegistry(config.StackRegistry, platformDefinition)
-	if overrideErr != nil {
-		return overrideErr
-	}
+
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode)
 	if config.Verbose {
 		cmdArgs = append(cmdArgs, "-v")
@@ -340,11 +338,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		//Override the stack image
-		platformDefinition, overrideErr := OverrideStackRegistry(config.StackRegistry, platformDefinition)
-		if overrideErr != nil {
-			return overrideErr
-		}
+
 		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, depsMount, dryrun)
 		if err != nil {
 			return err

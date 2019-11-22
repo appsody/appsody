@@ -164,11 +164,7 @@ func extract(config *extractCommandConfig) error {
 		} else {
 			cmdArgs = append([]string{"create"}, cmdArgs...)
 		}
-		//Override the stack image registry
-		stackImage, overrideErr := OverrideStackRegistry(config.StackRegistry, stackImage)
-		if overrideErr != nil {
-			return overrideErr
-		}
+
 		cmdArgs = append(cmdArgs, stackImage)
 		err = execAndWaitReturnErr(config.LoggingConfig, cmdName, cmdArgs, config.Debug, config.Dryrun)
 		if err != nil {
