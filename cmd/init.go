@@ -49,18 +49,18 @@ func newInitCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var initCmd = &cobra.Command{
 		Use:   "init [stack] or [repository]/[stack] [template]",
 		Short: "Initialize an Appsody project.",
-		Long: `Set up the local Appsody development environment. You can do this for an existing project or use the template application provided by the stack. 
+		Long: `Set up the local Appsody development environment. You can do this for an existing project or use the template application provided by the stack.
 
-By default, the command creates an Appsody stack configuration file and provides a simple default application. You can also initialize a project with a different template application, or no template. 
+By default, the command creates an Appsody stack configuration file and provides a simple default application. You can also initialize a project with a different template application, or no template.
 
 To initialize a project with a template application, in a directory that is not empty, you need to specify the "overwrite" option [--overwrite].
 Use 'appsody list' to see the available stacks and templates.`,
 		Example: `  appsody init nodejs-express
   Initializes a project with the default template from the "nodejs-express" stack in the default repository.
-  
+
   appsody init experimental/nodejs-functions
   Initializes a project with the default template from the "nodejs-functions" stack in the "experimental" repository.
-  
+
   appsody init nodejs-express scaffold
   Initializes a project with the "scaffold" template from "nodejs-express" stack in the default repository.
 
@@ -517,8 +517,8 @@ func extractAndInitialize(config *initCommandConfig) error {
 		bashCmd := "find " + containerProjectDir + " -type f -name " + scriptFileName
 		cmdOptions := []string{"--rm"}
 		config.Debug.log("Attempting to run ", bashCmd, " on image ", stackImage, " with options: ", cmdOptions)
-		//DockerRunBashCmd has a pullImage call
-		scriptFindOut, err := DockerRunBashCmd(cmdOptions, stackImage, bashCmd, config.RootCommandConfig)
+		//DockerRunShCmd has a pullImage call
+		scriptFindOut, err := DockerRunShCmd(cmdOptions, stackImage, bashCmd, config.RootCommandConfig)
 		if err != nil {
 			config.Debug.log("Failed to run the find command for the ", scriptFileName, " on the stack image: ", stackImage)
 			return fmt.Errorf("Failed to run the docker find command: %s", scriptFindOut)

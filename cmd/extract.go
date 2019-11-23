@@ -186,19 +186,19 @@ func extract(config *extractCommandConfig) error {
 		// and navigate all the symlinks using cp -rL
 		// then extract /tmp/project and remove the container
 
-		bashCmd := "cp -rfL " + filepath.ToSlash(containerProjectDir) + " " + filepath.ToSlash(filepath.Join("/tmp", containerProjectDir))
+		shCmd := "cp -rfL " + filepath.ToSlash(containerProjectDir) + " " + filepath.ToSlash(filepath.Join("/tmp", containerProjectDir))
 
-		config.Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
-		_, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd, config.RootCommandConfig)
+		config.Debug.log("Attempting to run ", shCmd, " on image: ", stackImage, " with args: ", cmdArgs)
+		_, err = DockerRunShCmd(cmdArgs, stackImage, shCmd, config.RootCommandConfig)
 		if err != nil {
-			config.Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage, ": ", err)
+			config.Debug.log("Error attempting to run copy command ", shCmd, " on image ", stackImage, ": ", err)
 
 			removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
 			if removeErr != nil {
 				config.Error.log("containerRemove error ", removeErr)
 			}
 
-			return errors.Errorf("Error attempting to run copy command %s on image %s: %v", bashCmd, stackImage, err)
+			return errors.Errorf("Error attempting to run copy command %s on image %s: %v", shCmd, stackImage, err)
 
 		}
 		//If everything went fine, we need to set the source project directory to /tmp/...

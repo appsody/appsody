@@ -587,8 +587,8 @@ func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
 
 	} else {
 		execCmd = "cp"
-		bashArgs := []string{"-rf"}
-		execArgs = append(bashArgs[0:], execArgs...)
+		shArgs := []string{"-rf"}
+		execArgs = append(shArgs[0:], execArgs...)
 	}
 	log.Debug.log("About to run: ", execCmd, execArgs)
 	copyCmd := exec.Command(execCmd, execArgs...)
@@ -1063,7 +1063,7 @@ spec:
         volumeMounts:
         - name: appsody-controller
           mountPath: /.appsody
-        imagePullPolicy: IfNotPresent 
+        imagePullPolicy: IfNotPresent
       containers:
       - name: APPSODY_APP_NAME
         image: APPSODY_STACK
@@ -1323,9 +1323,9 @@ func ImagePush(log *LoggingConfig, imageToPush string, buildah bool, dryrun bool
 	return pushErr
 }
 
-// DockerRunBashCmd issues a shell command in a docker image, overriding its entrypoint
+// DockerRunShCmd issues a shell command in a docker image, overriding its entrypoint
 // Assume this is only used for Stack images
-func DockerRunBashCmd(options []string, image string, bashCmd string, config *RootCommandConfig) (string, error) {
+func DockerRunShCmd(options []string, image string, shCmd string, config *RootCommandConfig) (string, error) {
 	cmdName := "docker"
 	var cmdArgs []string
 	pullErrs := pullImage(image, config)
@@ -1338,7 +1338,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 		cmdArgs = []string{"run"}
 	}
 
-	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/bash", image, "-c", bashCmd)
+	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/sh", image, "-c", shCmd)
 	config.Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
 
