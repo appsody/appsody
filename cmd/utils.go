@@ -453,7 +453,6 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 }
 
 func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
-
 	if config.ProjectConfig == nil {
 		dir, perr := getProjectDir(config)
 		if perr != nil {
@@ -1559,15 +1558,18 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 		config.Debug.log("Pull policy IfNotPresent, checking for local image")
 		pullPolicyAlways = false
 	}
+	// docker removes the docker.io and index.docker.io prefix from local tags
+	imageToPullLocal := strings.Replace(imageToPull, "docker.io/", "", 1)
+	imageToPullLocal = strings.Replace(imageToPullLocal, "index.docker.io/", "", 1)
 	if !pullPolicyAlways {
-		localImageFound = checkDockerImageExistsLocally(config.LoggingConfig, imageToPull)
+		localImageFound = checkDockerImageExistsLocally(config.LoggingConfig, imageToPullLocal)
 	}
 
 	if pullPolicyAlways || (!pullPolicyAlways && !localImageFound) {
 		err := pullCmd(config.LoggingConfig, imageToPull, config.Buildah, config.Dryrun)
 		if err != nil {
 			if pullPolicyAlways {
-				localImageFound = checkDockerImageExistsLocally(config.LoggingConfig, imageToPull)
+				localImageFound = checkDockerImageExistsLocally(config.LoggingConfig, imageToPullLocal)
 			}
 			if !localImageFound {
 				return errors.Errorf("Could not find the image either in docker hub or locally: %s", imageToPull)
@@ -1576,7 +1578,8 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 		}
 	}
 	if localImageFound {
-		config.Info.log("Using local cache for image ", imageToPull)
+		config.ProjectConfig.Stack = imageToPullLocal
+		config.Info.log("Using local cache for image ", imageToPullLocal)
 	}
 	return nil
 }
