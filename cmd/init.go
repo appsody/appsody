@@ -233,10 +233,23 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			"Buildah": stackReqs.Buildah,
 		}
 
-		checkErr := CheckStackRequirements(config.LoggingConfig, reqsMap, config.Buildah)
-		if checkErr != nil {
-			config.Error.log(checkErr)
-			os.Exit(1)
+		// Check to see if any requirements have actually been set
+		mapEmpty := true
+		for _, v := range reqsMap {
+			if v != "" {
+				mapEmpty = false
+			}
+		}
+
+		// If no requirements have been set, this function doesn't need to be called
+		if !mapEmpty {
+			checkErr := CheckStackRequirements(config.LoggingConfig, reqsMap, config.Buildah)
+			if checkErr != nil {
+				config.Error.log(checkErr)
+				os.Exit(1)
+			}
+		} else {
+			config.Info.log("No stack requirements set. Skipping...")
 		}
 
 		config.Info.log("Running appsody init...")

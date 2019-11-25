@@ -1969,14 +1969,12 @@ func CheckStackRequirements(log *LoggingConfig, requirementArray map[string]stri
 	log.Info.log("Checking stack requirements...")
 
 	for technology, minVersion := range requirementArray {
-		if minVersion == "" {
-			log.Info.log("Skipping ", technology, " - No requirements set.")
-		} else if technology == "Docker" && buildah {
-			log.Info.log("Skipping Docker requirement - Buildah is being used.")
+		if technology == "Docker" && buildah {
+			log.Debug.log("Skipping Docker requirement - Buildah is being used.")
 		} else if technology == "Buildah" && !buildah {
-			log.Info.log("Skipping Buildah requirement - Docker is being used.")
-		} else {
-			log.Info.log("Checking stack requirements for ", technology)
+			log.Debug.log("Skipping Buildah requirement - Docker is being used.")
+		} else if minVersion != "" {
+			log.Debug.log("Checking stack requirements for ", technology)
 
 			setConstraint, err := semver.NewConstraint(minVersion)
 			if err != nil {
