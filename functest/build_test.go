@@ -96,6 +96,7 @@ var appsodyStackLabels = []string{
 }
 
 func TestBuildLabels(t *testing.T) {
+	stacksList = "incubator/nodejs"
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
@@ -257,6 +258,9 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.Ap
 		t.Errorf("Error inspecting docker image: %s", err)
 	}
 
+	output = strings.ReplaceAll(output, "\n", "")
+	output = strings.ReplaceAll(output, "'", "")
+
 	var imageLabels map[string]string
 	err = json.Unmarshal([]byte(output), &imageLabels)
 	if err != nil {
@@ -269,11 +273,17 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.Ap
 			t.Errorf("Could not convert label to Kubernetes format: %s", err)
 		}
 
-		if appsodyApplication.Labels[key] == "" {
+		label := appsodyApplication.Labels[key]
+		annotation := appsodyApplication.Annotations[key]
+		if label == "" && annotation == "" {
 			t.Errorf("Could not find label %s in deployment config", key)
 		}
 
-		if appsodyApplication.Labels[key] != value {
+		if label != "" && label != value {
+			t.Errorf("Mismatch of %s label between built image and deployment config", key)
+		}
+
+		if annotation != "" && annotation != value {
 			t.Errorf("Mismatch of %s label between built image and deployment config", key)
 		}
 	}
