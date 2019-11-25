@@ -140,7 +140,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// check for templates dir, error out if its not there
-			check, err := Exists("templates")
+			check, err := Exists(filepath.Join(projectPath, "templates"))
 			if err != nil {
 				return errors.New("Error checking stack root directory: " + err.Error())
 			}
@@ -370,7 +370,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					return errors.Errorf("Error writing to repo file %s. %v", getRepoFileLocation(rootConfig), err)
 				}
 				log.Info.Logf("Creating %s repository", repoName)
-				_, err = AddLocalFileRepo(repoName, indexFileLocal)
+
+				_, err = AddLocalFileRepo(repoName, indexFileLocal, rootConfig)
 				if err != nil {
 					return errors.Errorf("Error adding local repository. Your stack may not be available to appsody commands. %v", err)
 				}
@@ -446,7 +447,7 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
-		config.Info.log(err)
+		config.Warning.log("Not all labels will be set. ", err.Error())
 	} else {
 		if branchURL, ok := gitLabels[ociKeyPrefix+"source"]; ok {
 			if contextDir, ok := gitLabels[appsodyImageCommitKeyPrefix+"contextDir"]; ok {

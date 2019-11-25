@@ -75,6 +75,16 @@ func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig)
 	cmd.PersistentFlags().StringVar(flagVar, "name", defaultName, "Assign a name to your development container.")
 }
 
+func addStackRegistryFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
+	defaultRegistry, err := getStackRegistry(config)
+	if err != nil && defaultRegistry == "" {
+		config.Debug.Logf("Error retrieving the configured registry name: %v", err)
+		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", "", "Specify the URL of the registry that hosts your stack images. [WARNING] Your current settings are incorrect - change your project config or use this flag to override the image registry.")
+	} else {
+		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images.")
+	}
+}
+
 func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 	projectName, perr := getProjectName(config.RootCommandConfig)
 	if perr != nil {
@@ -88,6 +98,7 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 	defaultDepsVolume := projectName + "-deps"
 
 	addNameFlag(cmd, &config.containerName, config.RootCommandConfig)
+	addStackRegistryFlag(cmd, &config.StackRegistry, config.RootCommandConfig)
 	cmd.PersistentFlags().StringVar(&config.dockerNetwork, "network", "", "Specify the network for docker to use.")
 	cmd.PersistentFlags().StringVar(&config.depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 	cmd.PersistentFlags().StringArrayVarP(&config.ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
@@ -126,10 +137,12 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		return perr
 
 	}
+
 	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
 	if configErr != nil {
 		return configErr
 	}
+
 	err := CheckPrereqs()
 	if err != nil {
 		config.Warning.logf("Failed to check prerequisites: %v\n", err)
@@ -266,6 +279,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.interactive {
 		cmdArgs = append(cmdArgs, "-i")
 	}
+
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode)
 	if config.Verbose {
 		cmdArgs = append(cmdArgs, "-v")
@@ -324,6 +338,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
+
 		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, depsMount, dryrun)
 		if err != nil {
 			return err
@@ -486,5 +501,4 @@ func checkPortInput(publishedPorts []string) (bool, error) {
 		}
 	}
 	return validPorts, portError
-
 }

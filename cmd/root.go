@@ -62,6 +62,7 @@ type RootCommandConfig struct {
 	ProjectConfig    *ProjectConfig
 	ProjectDir       string
 	UnsupportedRepos []string
+	StackRegistry    string
 
 	// package scoped, these are mostly for caching
 	setupConfigRun    bool
@@ -131,6 +132,8 @@ Complete documentation is available at https://appsody.dev`,
 	if appsodyOnK8S == "TRUE" {
 		rootConfig.Buildah = true
 	}
+	//Invalidate the cache
+	rootConfig.ProjectConfig = nil
 	return rootCmd, rootConfig, nil
 }
 
@@ -162,7 +165,7 @@ func InitConfig(config *RootCommandConfig) error {
 		return dirErr
 	}
 	cliConfig.SetDefault("home", filepath.Join(homeDirectory, ".appsody"))
-	cliConfig.SetDefault("images", "index.docker.io")
+	cliConfig.SetDefault("images", "docker.io")
 	cliConfig.SetDefault("operator", operatorHome)
 	cliConfig.SetDefault("tektonserver", "")
 	cliConfig.SetDefault("lastversioncheck", "none")
