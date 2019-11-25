@@ -361,4 +361,5 @@ func (config *RootCommandConfig) initLogging() error {
 		klogInitialized = true
 		config.Debug.log("Logging to file ", pathString)
 	}
+	return nil
 }
