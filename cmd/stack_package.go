@@ -21,6 +21,7 @@ import (
 	"strings"
 	"text/template"
 	"unicode"
+	"strconv"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/pkg/errors"
@@ -221,7 +222,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				return errors.Errorf("Error applying templating: %v", err)
 			}
 
-			// tag with the full version then mojorminor, major, and latest
+			// tag with the full version then majorminor, major, and latest
 			cmdArgs := []string{"-t", buildImage}
 			semver := templateMetadata["stack"].(map[string]interface{})["semver"].(map[string]string)
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["majorminor"])
@@ -500,7 +501,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	versionFull := strings.Split(versionLabel, ".")
 
 	if len(versionFull) != 3 {
-		err = errors.Errorf("Verison format incorrect")
+		err = errors.Errorf("Version format incorrect")
 		return templateMetadata, err
 	}
 
@@ -514,12 +515,26 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	stack["tag"] = labels[appsodyStackKeyPrefix+"tag"]
 	stack["maintainers"] = labels[ociKeyPrefix+"authors"]
 
+	var versionNextFull []string
+
+	for _, value := range versionFull {
+		versionPart, err := strconv.Atoi(value)
+		if err != nil {
+			return templateMetadata, errors.Errorf("Error converting string %s to an integer: %v", value, err)
+		}
+		versionNext := strconv.Itoa(versionPart + 1)
+		versionNextFull = append(versionNextFull, versionNext)
+	}
+
 	// create version map and add to templateMetadata map
 	var semver = make(map[string]string)
 	semver["major"] = versionFull[0]
 	semver["minor"] = versionFull[1]
 	semver["patch"] = versionFull[2]
 	semver["majorminor"] = strings.Join(versionFull[0:2], ".")
+	semver["majornext"] = versionNextFull[0]
+	semver["minornext"] = versionNextFull[1]
+	semver["patchnext"] = versionNextFull[2]
 	stack["semver"] = semver
 
 	// create image map add to templateMetadata map
