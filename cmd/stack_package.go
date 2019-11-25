@@ -548,6 +548,13 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 // previously created templateMetada to all files in the target directory
 func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
+	// current method means we allow certain application file types through
+	allowedApplicationFiles := []string{
+		"application/json",
+		"application/javascript",
+		"application/x-python",
+	}
+
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
 		//Skip .git folder and .DS_Store files
@@ -566,7 +573,7 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 				return errors.Errorf("Error getting file type: %v", err)
 			}
 
-			if strings.Contains(fileType, "application") {
+			if strings.Contains(fileType, "application") && !stringInSlice(fileType, allowedApplicationFiles) {
 				return filepath.SkipDir
 			}
 
@@ -610,4 +617,14 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	return nil
 
+}
+
+// stringInSlice is used to check for allowed application files
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
