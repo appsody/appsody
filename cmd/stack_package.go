@@ -18,10 +18,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"text/template"
 	"unicode"
-	"strconv"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/pkg/errors"
