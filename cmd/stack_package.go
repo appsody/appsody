@@ -573,7 +573,8 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 				return errors.Errorf("Error getting file type: %v", err)
 			}
 
-			if strings.Contains(fileType, "application") && !stringInSlice(fileType, allowedApplicationFiles) {
+			// skip files with application other than peviously stated allowed types
+			if strings.Contains(fileType, "application") && !contains(fileType, allowedApplicationFiles) {
 				return filepath.SkipDir
 			}
 
@@ -619,8 +620,8 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 }
 
-// stringInSlice is used to check for allowed application files
-func stringInSlice(a string, list []string) bool {
+// contains checks if a string is in a list
+func contains(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
 			return true
