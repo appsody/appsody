@@ -38,7 +38,7 @@ func newOperatorInstallCmd(operatorConfig *operatorCommandConfig) *cobra.Command
 		
 The Appsody Operator listens for incoming AppsodyApplication resources on your cluster. For more information, see https://operatorhub.io/operator/appsody-operator. 
 
-By default, the operator only watches one namespace. You can specify the '--watch-all' flag is used to tell the Appsody Operator to watch all namspaces. If you want to match multiple namespaces, but not all namespaces, additional operators must be installed to watch additional namespaces.`,
+By default, the operator watches a single namespace. You can specify the ‘--watch-all’ flag to tell the operator to watch all namespaces in the cluster. If you want to watch multiple, but not all, namespaces within your cluster, install an additional operator to watch each additional namespace.`,
 		Example: `  appsody operator install --namespace my-namespace --watchspace my-watchspace
   Installs the Appsody Operator into your Kubernetes cluster in the "my-namespace" namespace, and sets it to watch for AppsodyApplication resources in the "my-watchspace" namespace.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
