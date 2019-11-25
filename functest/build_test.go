@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 	"sigs.k8s.io/yaml"
 )
@@ -245,4 +246,36 @@ func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imag
 	if *appsodyApplication.Spec.CreateKnativeService != true {
 		t.Error("CreateKnativeService not set to true in the app-deploy.yaml when using --knative flag")
 	}
+
+	verifyImageAndConfigLabelsMatch(t, appsodyApplication, imageTag)
+}
+
+func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.AppsodyApplication, imageTag string) {
+	args := []string{"inspect", "--format='{{json .Config.Labels }}'", imageTag}
+	output, err := cmdtest.RunDockerCmdExec(args, t)
+	if err != nil {
+		t.Errorf("Error inspecting docker image: %s", err)
+	}
+
+	var imageLabels map[string]string
+	err = json.Unmarshal([]byte(output), &imageLabels)
+	if err != nil {
+		t.Errorf("Could not unmarshall docker labels: %s", err)
+	}
+
+	for key, value := range imageLabels {
+		key, err = cmd.ConvertLabelToKubeFormat(key)
+		if err != nil {
+			t.Errorf("Could not convert label to Kubernetes format: %s", err)
+		}
+
+		if appsodyApplication.Labels[key] == "" {
+			t.Errorf("Could not find label %s in deployment config", key)
+		}
+
+		if appsodyApplication.Labels[key] != value {
+			t.Errorf("Mismatch of %s label between built image and deployment config", key)
+		}
+	}
+
 }

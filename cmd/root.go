@@ -65,12 +65,9 @@ type RootCommandConfig struct {
 	StackRegistry    string
 
 	// package scoped, these are mostly for caching
-	setupConfigRun     bool
-	imagePulled        map[string]bool
-	cachedEnvVars      map[string]string
-	cachedStackLabels  map[string]string
-	cachedConfigLabels map[string]string
-	cachedGitLabels    map[string]string
+	setupConfigRun bool
+	imagePulled    map[string]bool
+	cachedEnvVars  map[string]string
 }
 
 // Regular expression to match ANSI terminal commands so that we can remove them from the log

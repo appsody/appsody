@@ -202,7 +202,7 @@ func build(config *buildCommandConfig) error {
 	}
 
 	// Generate app-deploy
-	err = generateDeploymentConfig(config)
+	err = generateDeploymentConfig(config, labels)
 	if err != nil {
 		return err
 	}
@@ -328,7 +328,7 @@ func CreateLabelPairs(labels map[string]string) []string {
 	return labelsArr
 }
 
-func generateDeploymentConfig(config *buildCommandConfig) error {
+func generateDeploymentConfig(config *buildCommandConfig, labels map[string]string) error {
 	containerConfigDir := "/config/app-deploy.yaml"
 	configFile := config.appDeployFile
 
@@ -353,7 +353,7 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 
 	if exists {
 		config.Info.log("Found existing deployment manifest ", configFile)
-		err := updateDeploymentConfig(config)
+		err := updateDeploymentConfig(config, labels)
 		if err != nil {
 			return err
 		}
@@ -475,7 +475,7 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 			return errors.Errorf("Failed to write local application configuration file: %s", err)
 		}
 
-		err = updateDeploymentConfig(config)
+		err = updateDeploymentConfig(config, labels)
 		if err != nil {
 			return errors.Errorf("Failed to update deployment config file: %s", err)
 		}
@@ -486,17 +486,12 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	return nil
 }
 
-func updateDeploymentConfig(config *buildCommandConfig) error {
+func updateDeploymentConfig(config *buildCommandConfig, labels map[string]string) error {
 	configFile := config.appDeployFile
 
 	appsodyApplication, err := getAppsodyApplication(configFile)
 	if err != nil {
 		return err
-	}
-
-	labels, err := getLabels(config.RootCommandConfig)
-	if err != nil {
-		return errors.Errorf("Could not get labels: %s", err)
 	}
 
 	labels = convertLabelsToKubeFormat(config.LoggingConfig, labels)
