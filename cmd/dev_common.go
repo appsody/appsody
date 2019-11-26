@@ -421,6 +421,7 @@ func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {
 	if portsErr != nil {
 		return cmdArgs, portsErr
 	}
+
 	config.Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
 	// if the container port is not in the lised of exposed ports add it to the list
 
@@ -490,7 +491,6 @@ func checkPortInput(publishedPorts []string) (bool, error) {
 		} else {
 			// check the numbers
 			portValues := strings.Split(publishedPorts[i], ":")
-			fmt.Println(portValues)
 			if !validPortNumber.MatchString(portValues[0]) || !validPortNumber.MatchString(portValues[1]) {
 				portError = errors.New("The numeric port input: " + publishedPorts[i] + " is not valid.")
 				validPorts = false
