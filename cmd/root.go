@@ -107,7 +107,10 @@ Complete documentation is available at https://appsody.dev`,
 	if setupErr != nil {
 		return rootCmd, rootConfig, setupErr
 	}
-	rootConfig.initLogging()
+	err := rootConfig.initLogging()
+	if err != nil {
+		return rootCmd, rootConfig, err
+	}
 
 	rootCmd.AddCommand(
 		newInitCmd(rootConfig),
@@ -321,7 +324,7 @@ func (config *LoggingConfig) InitLogging(outWriter, errWriter io.Writer) {
 	}
 }
 
-func (config *RootCommandConfig) initLogging() {
+func (config *RootCommandConfig) initLogging() error {
 	var allLoggers = []*appsodylogger{&config.Info, &config.Warning, &config.Error, &config.Debug, &config.Container, &config.InitScript, &config.DockerLog}
 	if config.Verbose {
 		for _, l := range allLoggers {
@@ -330,7 +333,7 @@ func (config *RootCommandConfig) initLogging() {
 
 		homeDirectory, dirErr := homedir.Dir()
 		if dirErr != nil {
-			os.Exit(1)
+			return errors.Errorf("Error getting home directory: %v", dirErr)
 		}
 
 		logDir := filepath.Join(homeDirectory, ".appsody", "logs")
@@ -358,4 +361,5 @@ func (config *RootCommandConfig) initLogging() {
 		klogInitialized = true
 		config.Debug.log("Logging to file ", pathString)
 	}
+	return nil
 }
