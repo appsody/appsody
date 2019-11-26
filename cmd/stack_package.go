@@ -570,7 +570,7 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			// read the file for a binay test
 			fileTest, err := ioutil.ReadFile(path)
 			if err != nil {
-				errors.Errorf("Error reading file: %v", err)
+				return errors.Errorf("Error reading file: %v", err)
 			}
 
 			// tests if file is binary
