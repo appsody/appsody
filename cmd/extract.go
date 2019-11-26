@@ -38,18 +38,18 @@ func newExtractCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var extractCmd = &cobra.Command{
 		Use:   "extract",
 		Short: "Extract your Appsody project to a local directory.",
-		Long: `Extract the full application (the stack and your Appsody project), into a local directory, in preparation to build the final container image.
+		Long: `Extract the full application (the stack and your Appsody project) into a local directory.
 		
-By default, your project gets extracted into your local '$HOME/.appsody/extract' directory, unless specified otherwise.`,
+Your project is extracted into your local '$HOME/.appsody/extract' directory, unless you use the --target-dir flag to specify a different location`,
 		Example: `  appsody extract --target-dir $HOME/my-extract/directory
-  Extracts your project from the container to the local '$HOME/my-extract/directory' on your local system.`,
+  Extracts your project from the container to the local '$HOME/my-extract/directory' on your system.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return extract(config)
 		},
 	}
 
-	extractCmd.PersistentFlags().StringVar(&config.targetDir, "target-dir", "", "Directory path to place the extracted files. This dir must not exist, it will be created.")
-	extractCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Extract project using buildah primitives instead of docker.")
+	extractCmd.PersistentFlags().StringVar(&config.targetDir, "target-dir", "", "Directory path to place the extracted files. This directory must not exist, it will be created.")
+	extractCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Extract project using buildah primitives instead of Docker.")
 	defaultName := defaultExtractContainerName(rootConfig)
 	extractCmd.PersistentFlags().StringVar(&config.extractContainerName, "name", defaultName, "Assign a name to your development container.")
 	return extractCmd
