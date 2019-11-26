@@ -51,14 +51,14 @@ func newRunCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var runCmd = &cobra.Command{
 		Use:   "run",
 		Short: "Run your Appsody project in a containerized development environment.",
-		Long: `Run the local Appsody environment, starting a container based continuous build environment for your project.
+		Long: `Run the local Appsody environment, starting a container-based, continuous build environment for your project.
 		
 Run this command from the root directory of your Appsody project`,
 		Example: `  appsody run
   Runs your project in a containerized development environment.
 
   appsody run --interactive
-  Runs your project in a containerized development environment, and attaches the standard input stream to the container. This allows you to interact with the processes within the container.
+  Runs your project in a containerized development environment, and attaches the standard input stream to the container. You can use the standard input stream to interact with processes inside the container.
 
   appsody run -p 3001:3000 --docker-options "--privileged" 
   Runs your project in a containerized development environment, binds the container port 3000 to the host port 3001, and passes the "--privileged" option to the "docker run" command as a flag.`,
