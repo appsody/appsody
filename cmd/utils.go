@@ -96,7 +96,7 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	}
 
 	if value, present := config.cachedEnvVars[searchEnvVar]; present {
-		Debug.logf("Environment variable found cached: %s Value: %s", searchEnvVar, value)
+		config.Debug.logf("Environment variable found cached: %s Value: %s", searchEnvVar, value)
 		return value, nil
 	}
 
@@ -113,19 +113,11 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	if pullErrs != nil {
 		return "", pullErrs
 	}
-	cmdName := "docker"
-	cmdArgs := []string{"image", "inspect", imageName}
-	if config.Buildah {
-		cmdName = "buildah"
-		cmdArgs = []string{"inspect", "--format={{.Config}}", imageName}
-	}
 
-	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := SeparateOutput(inspectCmd)
+	inspectOut, inspectErr := inspectImage(imageName, config)
 	if inspectErr != nil {
-		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
+		return "", inspectErr
 	}
-
 	var err error
 	var envVars []interface{}
 	if config.Buildah {
@@ -147,8 +139,8 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 		envVars = dockerConfig["Env"].([]interface{})
 	}
 
-	Debug.log("Number of environment variables in stack image: ", len(envVars))
-	Debug.log("All environment variables in stack image: ", envVars)
+	config.Debug.log("Number of environment variables in stack image: ", len(envVars))
+	config.Debug.log("All environment variables in stack image: ", envVars)
 	var varFound = false
 	for _, envVar := range envVars {
 		nameValuePair := strings.SplitN(envVar.(string), "=", 2)
@@ -159,10 +151,10 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 		}
 	}
 	if varFound {
-		Debug.logf("Environment variable found: %s Value: %s", searchEnvVar, config.cachedEnvVars[searchEnvVar])
+		config.Debug.logf("Environment variable found: %s Value: %s", searchEnvVar, config.cachedEnvVars[searchEnvVar])
 		return config.cachedEnvVars[searchEnvVar], nil
 	}
-	Debug.log("Could not find env var: ", searchEnvVar)
+	config.Debug.log("Could not find env var: ", searchEnvVar)
 	return "", nil
 }
 
@@ -194,7 +186,7 @@ func getExtractDir(config *RootCommandConfig) (string, error) {
 		return "", envErr
 	}
 	if extractDir == "" {
-		Warning.log("The stack image does not contain APPSODY_PROJECT_DIR. Using /project")
+		config.Warning.log("The stack image does not contain APPSODY_PROJECT_DIR. Using /project")
 		return "/project", nil
 	}
 	return extractDir, nil
@@ -207,15 +199,15 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 		return nil, envErr
 	}
 	if stackMounts == "" {
-		Warning.log("The stack image does not contain APPSODY_MOUNTS")
+		config.Warning.log("The stack image does not contain APPSODY_MOUNTS")
 		return volumeArgs, nil
 	}
 	stackMountList := strings.Split(stackMounts, ";")
-	homeDir := UserHomeDir()
+	homeDir := UserHomeDir(config.LoggingConfig)
 	homeDirOverride := os.Getenv("APPSODY_MOUNT_HOME")
 	homeDirOverridden := false
 	if homeDirOverride != "" {
-		Debug.logf("Overriding home mount dir from '%s' to APPSODY_MOUNT_HOME value '%s' ", homeDir, homeDirOverride)
+		config.Debug.logf("Overriding home mount dir from '%s' to APPSODY_MOUNT_HOME value '%s' ", homeDir, homeDirOverride)
 		homeDir = homeDirOverride
 		homeDirOverridden = true
 	}
@@ -227,7 +219,7 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 	projectDirOverride := os.Getenv("APPSODY_MOUNT_PROJECT")
 	projectDirOverridden := false
 	if projectDirOverride != "" {
-		Debug.logf("Overriding project mount dir from '%s' to APPSODY_MOUNT_PROJECT value '%s' ", projectDir, projectDirOverride)
+		config.Debug.logf("Overriding project mount dir from '%s' to APPSODY_MOUNT_PROJECT value '%s' ", projectDir, projectDirOverride)
 		projectDir = projectDirOverride
 		projectDirOverridden = true
 	}
@@ -249,17 +241,17 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 		// breaks the linux paths. This method is to always use '/' because windows docker tolerates this.
 		mappedMount = filepath.ToSlash(mappedMount)
 
-		if !overridden && !mountExistsLocally(mappedMount) {
-			Warning.log("Could not mount ", mappedMount, " because the local file was not found.")
+		if !overridden && !mountExistsLocally(config.LoggingConfig, mappedMount) {
+			config.Warning.log("Could not mount ", mappedMount, " because the local file was not found.")
 			continue
 		}
 		volumeArgs = append(volumeArgs, "-v", mappedMount)
 	}
-	Debug.log("Mapped mount args: ", volumeArgs)
+	config.Debug.log("Mapped mount args: ", volumeArgs)
 	return volumeArgs, nil
 }
 
-func mountExistsLocally(mount string) bool {
+func mountExistsLocally(log *LoggingConfig, mount string) bool {
 	localFile := strings.Split(mount, ":")
 	if runtime.GOOS == "windows" {
 		//Windows may prepend the drive ID to the path
@@ -273,7 +265,7 @@ func mountExistsLocally(mount string) bool {
 			//thus reconstituting the entire local path
 		}
 	}
-	Debug.log("Checking for existence of local file or directory to mount: ", localFile[0])
+	log.Debug.log("Checking for existence of local file or directory to mount: ", localFile[0])
 	fileExists, _ := Exists(localFile[0])
 	return fileExists
 }
@@ -282,7 +274,7 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
 	projectDir, err := Exists(appsodyConfig)
 	if err != nil {
-		Error.log(err)
+		config.Error.log(err)
 		return config.ProjectDir, err
 	}
 	if !projectDir {
@@ -400,10 +392,34 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 
 	err = saveProjectNameToConfig(projectName, config)
 	if err != nil {
-		Warning.Log("Unable to save project name to ", ConfigFile)
+		config.Warning.Log("Unable to save project name to ", ConfigFile)
 	}
 
 	return projectName, nil
+}
+func getStackRegistry(config *RootCommandConfig) (string, error) {
+	defaultStackRegistry := "docker.io"
+	_, err := getProjectDir(config)
+	if err != nil {
+		return defaultStackRegistry, err
+	}
+	// check to see if project-name is set in .appsody-config.yaml
+	projectConfig, err := getProjectConfig(config)
+	if err != nil {
+		return defaultStackRegistry, err
+	}
+	if stack := projectConfig.Stack; stack != "" {
+		// stack is in .appsody-config.yaml
+		stackElements := strings.Split(stack, "/")
+		if len(stackElements) == 3 {
+			return stackElements[0], nil
+		}
+		if len(stackElements) < 3 {
+			return defaultStackRegistry, nil
+		}
+		return "", errors.Errorf("Invalid stack image name detected in project config file: %s", stack)
+	}
+	return defaultStackRegistry, nil
 }
 
 func saveProjectNameToConfig(projectName string, config *RootCommandConfig) error {
@@ -432,11 +448,12 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 	if err != nil {
 		return err
 	}
-	Info.log("Your Appsody project name has been set to ", projectName)
+	config.Info.log("Your Appsody project name has been set to ", projectName)
 	return nil
 }
 
 func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
+
 	if config.ProjectConfig == nil {
 		dir, perr := getProjectDir(config)
 		if perr != nil {
@@ -446,7 +463,7 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 
 		v := viper.New()
 		v.SetConfigFile(appsodyConfig)
-		Debug.log("Project config file set to: ", appsodyConfig)
+		config.Debug.log("Project config file set to: ", appsodyConfig)
 
 		err := v.ReadInConfig()
 
@@ -462,14 +479,20 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		}
 
 		stack := v.GetString("stack")
-		Debug.log("Project stack from config file: ", projectConfig.Stack)
+		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
-		Debug.log("Image repository set to: ", imageRepo)
+		config.Debug.log("Image repository set to: ", imageRepo)
 		projectConfig.Stack = stack
-		if imageRepo != "index.docker.io" {
+		if imageRepo != "docker.io" {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
+		//Override the stack registry URL
+		projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
 
+		if err != nil {
+			return &projectConfig, err
+		}
+		config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
 		config.ProjectConfig = &projectConfig
 	}
 	return config.ProjectConfig, nil
@@ -477,17 +500,17 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 
 func getOperatorHome(config *RootCommandConfig) string {
 	operatorHome := config.CliConfig.GetString("operator")
-	Debug.log("Operator home set to: ", operatorHome)
+	config.Debug.log("Operator home set to: ", operatorHome)
 	return operatorHome
 }
 
-func execAndWait(command string, args []string, logger appsodylogger, dryrun bool) error {
+func execAndWait(log *LoggingConfig, command string, args []string, logger appsodylogger, dryrun bool) error {
 
-	return execAndWaitWithWorkDir(command, args, logger, workDirNotSet, dryrun)
+	return execAndWaitWithWorkDir(log, command, args, logger, workDirNotSet, dryrun)
 }
-func execAndWaitWithWorkDir(command string, args []string, logger appsodylogger, workdir string, dryrun bool) error {
+func execAndWaitWithWorkDir(log *LoggingConfig, command string, args []string, logger appsodylogger, workdir string, dryrun bool) error {
 
-	err := execAndWaitWithWorkDirReturnErr(command, args, logger, workdir, dryrun)
+	err := execAndWaitWithWorkDirReturnErr(log, command, args, logger, workdir, dryrun)
 	if err != nil {
 		return errors.Errorf("Error running %s command: %v", command, err)
 
@@ -497,10 +520,10 @@ func execAndWaitWithWorkDir(command string, args []string, logger appsodylogger,
 }
 
 // CopyFile uses OS commands to copy a file from a source to a destination
-func CopyFile(source string, dest string) error {
+func CopyFile(log *LoggingConfig, source string, dest string) error {
 	_, err := os.Stat(source)
 	if err != nil {
-		Error.logf("Cannot find source file %s to copy", source)
+		log.Error.logf("Cannot find source file %s to copy", source)
 		return err
 	}
 
@@ -519,16 +542,16 @@ func CopyFile(source string, dest string) error {
 	cmdOutput, cmdErr := copyCmd.Output()
 	_, err = os.Stat(dest)
 	if err != nil {
-		Error.logf("Could not copy %s to %s - output of copy command %s %s\n", source, dest, cmdOutput, cmdErr)
+		log.Error.logf("Could not copy %s to %s - output of copy command %s %s\n", source, dest, cmdOutput, cmdErr)
 		return errors.New("Error in copy: " + cmdErr.Error())
 	}
-	Debug.logf("Copy of %s to %s was successful \n", source, dest)
+	log.Debug.logf("Copy of %s to %s was successful \n", source, dest)
 	return nil
 }
 
 // MoveDir moves a directory to another directory, even if they are on different partitions
-func MoveDir(fromDir string, toDir string) error {
-	Debug.log("Moving ", fromDir, " to ", toDir)
+func MoveDir(log *LoggingConfig, fromDir string, toDir string) error {
+	log.Debug.log("Moving ", fromDir, " to ", toDir)
 	// Let's try os.Rename first
 	err := os.Rename(fromDir, toDir)
 	if err == nil {
@@ -537,20 +560,20 @@ func MoveDir(fromDir string, toDir string) error {
 		return nil
 	}
 	// If we are here, we need to use copy
-	Debug.log("os.Rename did not work to move directories... attempting copy. From dir:", fromDir, " target dir: ", toDir)
-	err = CopyDir(fromDir, toDir)
+	log.Debug.log("os.Rename did not work to move directories... attempting copy. From dir:", fromDir, " target dir: ", toDir)
+	err = CopyDir(log, fromDir, toDir)
 	if err != nil {
-		Error.log("Could not move ", fromDir, " to ", toDir)
+		log.Error.log("Could not move ", fromDir, " to ", toDir)
 		return err
 	}
 	return nil
 }
 
 // CopyDir Copies folder from source destination to target destination
-func CopyDir(fromDir string, toDir string) error {
+func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
 	_, err := os.Stat(fromDir)
 	if err != nil {
-		Error.logf("Cannot find source directory %s to copy", fromDir)
+		log.Error.logf("Cannot find source directory %s to copy", fromDir)
 		return err
 	}
 
@@ -567,15 +590,15 @@ func CopyDir(fromDir string, toDir string) error {
 		bashArgs := []string{"-rf"}
 		execArgs = append(bashArgs[0:], execArgs...)
 	}
-	Debug.log("About to run: ", execCmd, execArgs)
+	log.Debug.log("About to run: ", execCmd, execArgs)
 	copyCmd := exec.Command(execCmd, execArgs...)
 	cmdOutput, cmdErr := copyCmd.Output()
 	_, err = os.Stat(toDir)
 	if err != nil {
-		Error.logf("Could not copy %s to %s - output of copy command %s %s\n", fromDir, toDir, cmdOutput, cmdErr)
+		log.Error.logf("Could not copy %s to %s - output of copy command %s %s\n", fromDir, toDir, cmdOutput, cmdErr)
 		return errors.New("Error in copy: " + cmdErr.Error())
 	}
-	Debug.logf("Directory copy of %s to %s was successful \n", fromDir, toDir)
+	log.Debug.logf("Directory copy of %s to %s was successful \n", fromDir, toDir)
 	return nil
 }
 
@@ -592,11 +615,11 @@ func CheckPrereqs() error {
 }
 
 // UserHomeDir returns the current user's home directory or '.'
-func UserHomeDir() string {
+func UserHomeDir(log *LoggingConfig) string {
 	homeDir, homeErr := os.UserHomeDir()
 
 	if homeErr != nil {
-		Error.log("Unable to find user's home directory", homeErr)
+		log.Error.log("Unable to find user's home directory", homeErr)
 		return "."
 	}
 	return homeDir
@@ -730,34 +753,24 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 		if pullErrs != nil {
 			return nil, pullErrs
 		}
-
+		inspectOut, err := inspectImage(imageName, config)
+		if err != nil {
+			return config.cachedStackLabels, err
+		}
 		if config.Buildah {
-			cmdName := "buildah"
-			cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
-			Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
-			inspectCmd := exec.Command(cmdName, cmdArgs...)
-			inspectOut, inspectErr := inspectCmd.Output()
-			if inspectErr != nil {
-				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
-			}
-			err := json.Unmarshal([]byte(inspectOut), &buildahData)
+			err = json.Unmarshal([]byte(inspectOut), &buildahData)
 			if err != nil {
 				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 			}
 			containerConfig = buildahData["config"].(map[string]interface{})
-			Debug.Log("Config inspected by buildah: ", config)
+			config.Debug.Log("Config inspected by buildah: ", config)
 		} else {
-			inspectOut, inspectErr := RunDockerInspect(imageName)
-			if inspectErr != nil {
-				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %s", inspectOut)
-			}
 			err := json.Unmarshal([]byte(inspectOut), &data)
 			if err != nil {
 				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 			}
 			containerConfig = data[0]["Config"].(map[string]interface{})
 		}
-
 		if containerConfig["Labels"] != nil {
 			labelsMap := containerConfig["Labels"].(map[string]interface{})
 
@@ -785,26 +798,18 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 		return nil, pullErrs
 	}
 
+	inspectOut, inspectErr := inspectImage(imageName, config)
+	if inspectErr != nil {
+		return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
+	}
 	if config.Buildah {
-		cmdName := "buildah"
-		cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
-		Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
-		inspectCmd := exec.Command(cmdName, cmdArgs...)
-		inspectOut, inspectErr := inspectCmd.Output()
-		if inspectErr != nil {
-			return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
-		}
 		err := json.Unmarshal([]byte(inspectOut), &buildahData)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
 		containerConfig = buildahData["config"].(map[string]interface{})
-		Debug.Log("Config inspected by buildah: ", config)
+		config.Debug.Log("Config inspected by buildah: ", config)
 	} else {
-		inspectOut, inspectErr := RunDockerInspect(imageName)
-		if inspectErr != nil {
-			return portValues, errors.Errorf("Could not inspect the image: %s", inspectOut)
-		}
 		err := json.Unmarshal([]byte(inspectOut), &data)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
@@ -825,99 +830,8 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 
 }
 
-//GenKnativeYaml generates a simple yaml for KNative serving
-func GenKnativeYaml(yamlTemplate string, deployPort int, serviceName string, deployImage string, pullImage bool, configFile string, dryrun bool) (fileName string, yamlErr error) {
-	// KNative serving YAML representation in a struct
-	type Y struct {
-		APIVersion string `yaml:"apiVersion"`
-		Kind       string `yaml:"kind"`
-		Metadata   struct {
-			Name      string `yaml:"name"`
-			Namespace string `yaml:"namespace,omitempty"`
-		} `yaml:"metadata"`
-		Spec struct {
-			RunLatest struct {
-				Configuration struct {
-					RevisionTemplate struct {
-						Spec struct {
-							Container struct {
-								Image           string           `yaml:"image"`
-								ImagePullPolicy string           `yaml:"imagePullPolicy"`
-								Ports           []map[string]int `yaml:"ports"`
-							} `yaml:"container"`
-						} `yaml:"spec"`
-					} `yaml:"revisionTemplate"`
-				} `yaml:"configuration"`
-			} `yaml:"runLatest"`
-		} `yaml:"spec"`
-	}
-	yamlMap := Y{}
-	err := yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
-	//Set the name
-	yamlMap.Metadata.Name = serviceName
-	//Set the image
-	yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Image = deployImage
-	//Set the image pull policy to Never if we're not pushing an image to a registry
-	if !pullImage {
-		yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.ImagePullPolicy = "Never"
-	}
-	//Set the containerPort
-	ports := yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Ports
-	if len(ports) > 1 {
-		//KNative only allows a single port entry
-		Warning.log("KNative yaml template defines more than one port. This is invalid.")
-	}
-
-	if len(ports) >= 1 {
-		found := false
-		for _, thePort := range ports {
-			Debug.log("Detected KNative template port: ", thePort)
-			_, found = thePort["containerPort"]
-			if found {
-				Debug.log("YAML template defined a single port - setting it to: ", deployPort)
-				thePort["containerPort"] = deployPort
-				break
-			}
-		}
-		if !found {
-			//This template is invalid because the only value that's allowed is containerPort
-			Warning.log("The Knative template defines a port with a key other than containerPort. This is invalid.")
-			Warning.log("Adding containerPort - you will have to edit the yaml file manually.")
-			newPort := map[string]int{"containerPort": deployPort}
-			ports = append(ports, newPort)
-			yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Ports = ports
-		}
-	} else { //no ports defined
-		var newPorts [1]map[string]int
-		newPorts[0] = map[string]int{"containerPort": deployPort}
-		yamlMap.Spec.RunLatest.Configuration.RevisionTemplate.Spec.Container.Ports = newPorts[:]
-	}
-	if err != nil {
-		Error.log("Could not create the YAML structure from template. Exiting.")
-		return "", err
-	}
-	Debug.logf("YAML map: \n%v\n", yamlMap)
-	yamlStr, err := yaml.Marshal(&yamlMap)
-	if err != nil {
-		Error.log("Could not create the YAML string from Map. Exiting.")
-		return "", err
-	}
-	Debug.logf("Generated YAML: \n%s\n", yamlStr)
-	// Generate file based on supplied config, defaulting to app-deploy.yaml
-	yamlFile := configFile
-	if dryrun {
-		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
-		return yamlFile, nil
-	}
-	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
-	if err != nil {
-		return "", fmt.Errorf("Could not create the yaml file for KNative deployment %v", err)
-	}
-	return yamlFile, nil
-}
-
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -1010,7 +924,7 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 	yamlTemplate := getDeploymentTemplate()
 	err = yaml.Unmarshal([]byte(yamlTemplate), &yamlMap)
 	if err != nil {
-		Error.log("Could not create the YAML structure from template. Exiting.")
+		log.Error.log("Could not create the YAML structure from template. Exiting.")
 		return "", err
 	}
 	//Set the name
@@ -1036,10 +950,10 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 	//Set the service account if provided by an env var
 	serviceAccount := os.Getenv("SERVICE_ACCOUNT_NAME")
 	if serviceAccount != "" {
-		Debug.Log("Detected service account name env var: ", serviceAccount)
+		log.Debug.Log("Detected service account name env var: ", serviceAccount)
 		yamlMap.Spec.PodTemplate.Spec.ServiceAccountName = serviceAccount
 	} else {
-		Debug.log("No service account name env var, leaving the appsody-sa default")
+		log.Debug.log("No service account name env var, leaving the appsody-sa default")
 	}
 	//Set the controller image
 	yamlMap.Spec.PodTemplate.Spec.InitContainers[0].Image = controllerImageName
@@ -1054,7 +968,7 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 		if i == 0 {
 			yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = containerPorts
 		}
-		Debug.Log("Adding port to yaml: ", port)
+		log.Debug.Log("Adding port to yaml: ", port)
 		newContainerPort := new(Port)
 		newContainerPort.ContainerPort, err = strconv.Atoi(port)
 		if err != nil {
@@ -1091,13 +1005,13 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 		targetMount := appsodyMountComponents[1]
 		sourceMount, err := filepath.Rel(codeWindWorkspace, appsodyMountComponents[0])
 		if err != nil {
-			Debug.Log("Problem with the appsody mount: ", appsodyMountComponents[0])
+			log.Debug.Log("Problem with the appsody mount: ", appsodyMountComponents[0])
 			return "", err
 		}
 
 		sourceSubpath := filepath.Join(".", sourceMount)
 		newVolumeMount := VolumeMount{"appsody-workspace", targetMount, sourceSubpath}
-		Debug.Log("Appending volume mount: ", newVolumeMount)
+		log.Debug.Log("Appending volume mount: ", newVolumeMount)
 		*volumeMounts = append(*volumeMounts, newVolumeMount)
 	}
 
@@ -1106,17 +1020,17 @@ func GenDeploymentYaml(appName string, imageName string, controllerImageName str
 	yamlMap.Spec.Selector.MatchLabels["app"] = projectLabel
 	yamlMap.Spec.PodTemplate.Metadata.Labels["app"] = projectLabel
 
-	Debug.logf("YAML map: \n%v\n", yamlMap)
+	log.Debug.logf("YAML map: \n%v\n", yamlMap)
 	yamlStr, err := yaml.Marshal(&yamlMap)
 	if err != nil {
-		Error.log("Could not create the YAML string from Map. Exiting.")
+		log.Error.log("Could not create the YAML string from Map. Exiting.")
 		return "", err
 	}
-	Debug.logf("Generated YAML: \n%s\n", yamlStr)
+	log.Debug.logf("Generated YAML: \n%s\n", yamlStr)
 	// Generate file based on supplied config, defaulting to app-deploy.yaml
 	yamlFile := filepath.Join(pdir, "app-deploy.yaml")
 	if dryrun {
-		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
+		log.Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
 		return yamlFile, nil
 	}
 	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
@@ -1166,7 +1080,7 @@ spec:
 }
 
 //GenServiceYaml returns the file name of a generated K8S Service yaml
-func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (fileName string, err error) {
+func GenServiceYaml(log *LoggingConfig, appName string, ports []string, pdir string, dryrun bool) (fileName string, err error) {
 
 	type Port struct {
 		Name       string `yaml:"name,omitempty"`
@@ -1236,14 +1150,14 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 
 	yamlStr, err := yaml.Marshal(&service)
 	if err != nil {
-		Error.log("Could not create the YAML string from Map. Exiting.")
+		log.Error.log("Could not create the YAML string from Map. Exiting.")
 		return "", err
 	}
-	Debug.logf("Generated YAML: \n%s\n", yamlStr)
+	log.Debug.logf("Generated YAML: \n%s\n", yamlStr)
 	// Generate file based on supplied config, defaulting to app-deploy.yaml
 	yamlFile := filepath.Join(pdir, "app-service.yaml")
 	if dryrun {
-		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
+		log.Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
 		return yamlFile, nil
 	}
 	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
@@ -1254,7 +1168,7 @@ func GenServiceYaml(appName string, ports []string, pdir string, dryrun bool) (f
 }
 
 //GenRouteYaml returns the file name of a generated K8S Service yaml
-func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName string, err error) {
+func GenRouteYaml(log *LoggingConfig, appName string, pdir string, port int, dryrun bool) (fileName string, err error) {
 	type IngressPath struct {
 		Path    string `yaml:"path"`
 		Backend struct {
@@ -1293,7 +1207,7 @@ func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName 
 		ingress.Spec.Rules[0].Host = ingressHost
 	} else {
 		// We set it to a host name that's resolvable by nip.io
-		ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(dryrun), "nip.io")
+		ingress.Spec.Rules[0].Host = fmt.Sprintf("%s.%s.%s", appName, getK8sMasterIP(log, dryrun), "nip.io")
 	}
 
 	ingress.Spec.Rules[0].HTTP.Paths = make([]IngressPath, 1)
@@ -1303,14 +1217,14 @@ func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName 
 
 	yamlStr, err := yaml.Marshal(&ingress)
 	if err != nil {
-		Error.log("Could not create the YAML string from Map. Exiting.")
+		log.Error.log("Could not create the YAML string from Map. Exiting.")
 		return "", err
 	}
-	Debug.logf("Generated YAML: \n%s\n", yamlStr)
+	log.Debug.logf("Generated YAML: \n%s\n", yamlStr)
 	// Generate file based on supplied config, defaulting to app-deploy.yaml
 	yamlFile := filepath.Join(pdir, "app-ingress.yaml")
 	if dryrun {
-		Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
+		log.Info.log("Skipping creation of yaml file with prefix: ", yamlFile)
 		return yamlFile, nil
 	}
 	err = ioutil.WriteFile(yamlFile, yamlStr, 0666)
@@ -1320,13 +1234,13 @@ func GenRouteYaml(appName string, pdir string, port int, dryrun bool) (fileName 
 	return yamlFile, nil
 }
 
-func getK8sMasterIP(dryrun bool) string {
+func getK8sMasterIP(log *LoggingConfig, dryrun bool) string {
 	cmdParms := []string{"node", "--selector", "node-role.kubernetes.io/master", "-o", "jsonpath={.items[0].status.addresses[?(.type==\"InternalIP\")].address}"}
-	ip, err := KubeGet(cmdParms, "", dryrun)
+	ip, err := KubeGet(log, cmdParms, "", dryrun)
 	if err == nil {
 		return ip
 	}
-	Debug.log("Could not retrieve the master IP address - returning x.x.x.x: ", err)
+	log.Debug.log("Could not retrieve the master IP address - returning x.x.x.x: ", err)
 	return "x.x.x.x"
 }
 
@@ -1335,11 +1249,11 @@ func getIngressPort(config *RootCommandConfig) int {
 
 	knownHTTPPorts := []string{"80", "8080", "8008", "3000", "9080"}
 	if err != nil {
-		Debug.Log("Error trying to obtain the exposed ports: ", err)
+		config.Debug.Log("Error trying to obtain the exposed ports: ", err)
 		return 0
 	}
 	if len(ports) < 1 {
-		Debug.log("Container doesn't expose any port - returning 0")
+		config.Debug.log("Container doesn't expose any port - returning 0")
 		return 0
 	}
 	iPort := 0
@@ -1355,42 +1269,22 @@ func getIngressPort(config *RootCommandConfig) int {
 	}
 	//If we haven't returned yet, there was no match
 	//Pick the first port and return it
-	Debug.Log("No known HTTP port detected, returning the first one on the list.")
+	config.Debug.Log("No known HTTP port detected, returning the first one on the list.")
 	iPort, err = strconv.Atoi(ports[0])
 	if err == nil {
 		return iPort
 	}
-	Debug.Logf("Error converting port %s - returning 0: %v", ports[0], err)
+	config.Debug.Logf("Error converting port %s - returning 0: %v", ports[0], err)
 	return 0
 }
 
-func getKNativeTemplate() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Always
-            ports:
-            - containerPort: 8080
-`
-	return yamltempl
-}
-
 // DockerTag tags a docker image
-func DockerTag(imageToTag string, tag string, dryrun bool) error {
-	Info.log("Tagging Docker image as ", tag)
+func DockerTag(log *LoggingConfig, imageToTag string, tag string, dryrun bool) error {
+	log.Info.log("Tagging Docker image as ", tag)
 	cmdName := "docker"
 	cmdArgs := []string{"image", "tag", imageToTag, tag}
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
+		log.Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
 		return nil
 	}
 	tagCmd := exec.Command(cmdName, cmdArgs...)
@@ -1398,13 +1292,13 @@ func DockerTag(imageToTag string, tag string, dryrun bool) error {
 	if kerr != nil {
 		return errors.Errorf("docker image tag failed: %s", kout)
 	}
-	Debug.log("Docker tag command output: ", kout)
+	log.Debug.log("Docker tag command output: ", kout)
 	return kerr
 }
 
 //ImagePush pushes a docker image to a docker registry (assumes that the user has done docker login)
-func ImagePush(imageToPush string, buildah bool, dryrun bool) error {
-	Info.log("Pushing image ", imageToPush)
+func ImagePush(log *LoggingConfig, imageToPush string, buildah bool, dryrun bool) error {
+	log.Info.log("Pushing image ", imageToPush)
 	cmdName := "docker"
 	if buildah {
 		cmdName = "buildah"
@@ -1412,7 +1306,7 @@ func ImagePush(imageToPush string, buildah bool, dryrun bool) error {
 
 	cmdArgs := []string{"push", imageToPush}
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
+		log.Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
 		return nil
 	}
 
@@ -1421,7 +1315,7 @@ func ImagePush(imageToPush string, buildah bool, dryrun bool) error {
 	pushOut, pushErr := pushCmd.Output()
 	if pushErr != nil {
 		if !(strings.Contains(pushErr.Error(), "[DEPRECATION NOTICE] registry v2") || strings.Contains(string(pushOut[:]), "[DEPRECATION NOTICE] registry v2")) {
-			Error.log("Could not push the image: ", pushErr, " ", string(pushOut[:]))
+			log.Error.log("Could not push the image: ", pushErr, " ", string(pushOut[:]))
 
 			return pushErr
 		}
@@ -1430,6 +1324,7 @@ func ImagePush(imageToPush string, buildah bool, dryrun bool) error {
 }
 
 // DockerRunBashCmd issues a shell command in a docker image, overriding its entrypoint
+// Assume this is only used for Stack images
 func DockerRunBashCmd(options []string, image string, bashCmd string, config *RootCommandConfig) (string, error) {
 	cmdName := "docker"
 	var cmdArgs []string
@@ -1442,8 +1337,9 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 	} else {
 		cmdArgs = []string{"run"}
 	}
+
 	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/bash", image, "-c", bashCmd)
-	Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
+	config.Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
 
 	kout, kerr := SeparateOutput(dockerCmd)
@@ -1454,8 +1350,8 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 }
 
 //KubeGet issues kubectl get <arg>
-func KubeGet(args []string, namespace string, dryrun bool) (string, error) {
-	Info.log("Attempting to get resource from Kubernetes ...")
+func KubeGet(log *LoggingConfig, args []string, namespace string, dryrun bool) (string, error) {
+	log.Info.log("Attempting to get resource from Kubernetes ...")
 	kcmd := "kubectl"
 	kargs := []string{"get"}
 	kargs = append(kargs, args...)
@@ -1464,10 +1360,10 @@ func KubeGet(args []string, namespace string, dryrun bool) (string, error) {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return "", nil
 	}
-	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
@@ -1477,8 +1373,8 @@ func KubeGet(args []string, namespace string, dryrun bool) (string, error) {
 }
 
 //KubeApply issues kubectl apply -f <filename>
-func KubeApply(fileToApply string, namespace string, dryrun bool) error {
-	Info.log("Attempting to apply resource in Kubernetes ...")
+func KubeApply(log *LoggingConfig, fileToApply string, namespace string, dryrun bool) error {
+	log.Info.log("Attempting to apply resource in Kubernetes ...")
 	kcmd := "kubectl"
 	kargs := []string{"apply", "-f", fileToApply}
 	if namespace != "" {
@@ -1486,22 +1382,22 @@ func KubeApply(fileToApply string, namespace string, dryrun bool) error {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return nil
 	}
-	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return errors.Errorf("kubectl apply failed: %s", kout)
 	}
-	Debug.log("kubectl apply success: ", string(kout[:]))
+	log.Debug.log("kubectl apply success: ", string(kout[:]))
 	return kerr
 }
 
 //KubeDelete issues kubectl delete -f <filename>
-func KubeDelete(fileToApply string, namespace string, dryrun bool) error {
-	Info.log("Attempting to delete resource from Kubernetes...")
+func KubeDelete(log *LoggingConfig, fileToApply string, namespace string, dryrun bool) error {
+	log.Info.log("Attempting to delete resource from Kubernetes...")
 	kcmd := "kubectl"
 	kargs := []string{"delete", "-f", fileToApply}
 	if namespace != "" {
@@ -1509,25 +1405,25 @@ func KubeDelete(fileToApply string, namespace string, dryrun bool) error {
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return nil
 	}
-	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 
 	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
 		return errors.Errorf("kubectl delete failed: %s", kout)
 	}
-	Debug.log("kubectl delete success: ", kout)
+	log.Debug.log("kubectl delete success: ", kout)
 	return kerr
 }
 
 //KubeGetNodePortURL kubectl get svc <service> -o jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort} and prints the return URL
-func KubeGetNodePortURL(service string, namespace string, dryrun bool) (url string, err error) {
+func KubeGetNodePortURL(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
 	kargs := append([]string{"svc"}, service)
 	kargs = append(kargs, "-o", "jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort}")
-	out, err := KubeGet(kargs, namespace, dryrun)
+	out, err := KubeGet(log, kargs, namespace, dryrun)
 	// Performing the kubectl apply
 	if err != nil {
 		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
@@ -1536,10 +1432,10 @@ func KubeGetNodePortURL(service string, namespace string, dryrun bool) (url stri
 }
 
 //KubeGetRouteURL issues kubectl get svc <service> -o jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort} and prints the return URL
-func KubeGetRouteURL(service string, namespace string, dryrun bool) (url string, err error) {
+func KubeGetRouteURL(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
 	kargs := append([]string{"route"}, service)
 	kargs = append(kargs, "-o", "jsonpath={.status.ingress[0].host}")
-	out, err := KubeGet(kargs, namespace, dryrun)
+	out, err := KubeGet(log, kargs, namespace, dryrun)
 	// Performing the kubectl apply
 	if err != nil {
 		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
@@ -1548,7 +1444,7 @@ func KubeGetRouteURL(service string, namespace string, dryrun bool) (url string,
 }
 
 //KubeGetKnativeURL issues kubectl get rt <service> -o jsonpath="{.status.url}" and prints the return URL
-func KubeGetKnativeURL(service string, namespace string, dryrun bool) (url string, err error) {
+func KubeGetKnativeURL(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
 	kcmd := "kubectl"
 	kargs := append([]string{"get", "rt"}, service)
 	kargs = append(kargs, "-o", "jsonpath=\"{.status.url}\"")
@@ -1557,10 +1453,10 @@ func KubeGetKnativeURL(service string, namespace string, dryrun bool) (url strin
 	}
 
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return "", nil
 	}
-	Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
@@ -1570,54 +1466,54 @@ func KubeGetKnativeURL(service string, namespace string, dryrun bool) (url strin
 }
 
 //KubeGetDeploymentURL searches for an exposed hostname and port for the deployed service
-func KubeGetDeploymentURL(service string, namespace string, dryrun bool) (url string, err error) {
-	url, err = KubeGetKnativeURL(service, namespace, dryrun)
+func KubeGetDeploymentURL(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
+	url, err = KubeGetKnativeURL(log, service, namespace, dryrun)
 	if err == nil {
 		return url, nil
 	}
-	url, err = KubeGetRouteURL(service, namespace, dryrun)
+	url, err = KubeGetRouteURL(log, service, namespace, dryrun)
 	if err == nil {
 		return url, nil
 	}
-	url, err = KubeGetNodePortURL(service, namespace, dryrun)
+	url, err = KubeGetNodePortURL(log, service, namespace, dryrun)
 	if err == nil {
 		return url, nil
 	}
-	Error.log("Failed to get deployment hostname and port: ", err)
+	log.Error.log("Failed to get deployment hostname and port: ", err)
 	return "", err
 }
 
 //pullCmd
 // enable extract to use `buildah` sequences for image extraction.
 // Pull the given docker image
-func pullCmd(imageToPull string, buildah bool, dryrun bool) error {
+func pullCmd(log *LoggingConfig, imageToPull string, buildah bool, dryrun bool) error {
 	cmdName := "docker"
 	if buildah {
 		cmdName = "buildah"
 	}
 	pullArgs := []string{"pull", imageToPull}
 	if dryrun {
-		Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(pullArgs, " "))
+		log.Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(pullArgs, " "))
 		return nil
 	}
-	Info.log("Pulling docker image ", imageToPull)
-	err := execAndWaitReturnErr(cmdName, pullArgs, Info, dryrun)
+	log.Info.log("Pulling docker image ", imageToPull)
+	err := execAndWaitReturnErr(log, cmdName, pullArgs, log.Info, dryrun)
 	if err != nil {
-		Warning.log("Docker image pull failed: ", err)
+		log.Warning.log("Docker image pull failed: ", err)
 		return err
 	}
 	return nil
 }
 
-func checkDockerImageExistsLocally(imageToPull string) bool {
+func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool {
 	cmdName := "docker"
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
 	imagelsOut, imagelsErr := SeparateOutput(imagelsCmd)
-	Debug.log("Docker image ls command output: ", imagelsOut)
+	log.Debug.log("Docker image ls command output: ", imagelsOut)
 
 	if imagelsErr != nil {
-		Warning.log("Could not run docker image ls -q for the image: ", imageToPull, " error: ", imagelsErr, " Check to make sure docker is available.")
+		log.Warning.log("Could not run docker image ls -q for the image: ", imageToPull, " error: ", imagelsErr, " Check to make sure docker is available.")
 		return false
 	}
 	if imagelsOut != "" {
@@ -1629,13 +1525,21 @@ func checkDockerImageExistsLocally(imageToPull string) bool {
 //pullImage
 // pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
+
 func pullImage(imageToPull string, config *RootCommandConfig) error {
 	if config.imagePulled == nil {
 		config.imagePulled = make(map[string]bool)
 	}
-	Debug.logf("%s image pulled status: %t", imageToPull, config.imagePulled[imageToPull])
+
+	//Buildah cannot pull from index.docker.io - only pulls from docker.io
+	imageToPull, imageNameErr := NormalizeImageName(imageToPull)
+	if imageNameErr != nil {
+		return imageNameErr
+	}
+
+	config.Debug.logf("%s image pulled status: %t", imageToPull, config.imagePulled[imageToPull])
 	if config.imagePulled[imageToPull] {
-		Debug.log("Image has been pulled already: ", imageToPull)
+		config.Debug.log("Image has been pulled already: ", imageToPull)
 		return nil
 	}
 	config.imagePulled[imageToPull] = true
@@ -1650,20 +1554,20 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 	}
 
 	if pullPolicy == "" || strings.ToUpper(pullPolicy) == "ALWAYS" {
-		Debug.log("Pull policy Always")
+		config.Debug.log("Pull policy Always")
 	} else if strings.ToUpper(pullPolicy) == "IFNOTPRESENT" {
-		Debug.log("Pull policy IfNotPresent, checking for local image")
+		config.Debug.log("Pull policy IfNotPresent, checking for local image")
 		pullPolicyAlways = false
 	}
 	if !pullPolicyAlways {
-		localImageFound = checkDockerImageExistsLocally(imageToPull)
+		localImageFound = checkDockerImageExistsLocally(config.LoggingConfig, imageToPull)
 	}
 
 	if pullPolicyAlways || (!pullPolicyAlways && !localImageFound) {
-		err := pullCmd(imageToPull, config.Buildah, config.Dryrun)
+		err := pullCmd(config.LoggingConfig, imageToPull, config.Buildah, config.Dryrun)
 		if err != nil {
 			if pullPolicyAlways {
-				localImageFound = checkDockerImageExistsLocally(imageToPull)
+				localImageFound = checkDockerImageExistsLocally(config.LoggingConfig, imageToPull)
 			}
 			if !localImageFound {
 				return errors.Errorf("Could not find the image either in docker hub or locally: %s", imageToPull)
@@ -1672,31 +1576,102 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 		}
 	}
 	if localImageFound {
-		Info.log("Using local cache for image ", imageToPull)
+		config.Info.log("Using local cache for image ", imageToPull)
 	}
 	return nil
 }
 
-func execAndListenWithWorkDirReturnErr(command string, args []string, logger appsodylogger, workdir string, dryrun bool) (*exec.Cmd, error) {
+func inspectImage(imageToInspect string, config *RootCommandConfig) (string, error) {
+
+	cmdName := "docker"
+	cmdArgs := []string{"image", "inspect", imageToInspect}
+	if config.Buildah {
+		cmdName = "buildah"
+		cmdArgs = []string{"inspect", "--format={{.Config}}", imageToInspect}
+	}
+
+	inspectCmd := exec.Command(cmdName, cmdArgs...)
+	inspectOut, inspectErr := SeparateOutput(inspectCmd)
+	if inspectErr != nil {
+		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
+	}
+	return inspectOut, nil
+}
+
+//OverrideStackRegistry allows you to change the image registry URL
+func OverrideStackRegistry(override string, imageName string) (string, error) {
+	if override == "" {
+		return imageName, nil
+	}
+	match, err := ValidateHostNameAndPort(override)
+	if err != nil {
+		return "", err
+	}
+	if !match {
+		return "", errors.Errorf("This is an invalid host name: %s", override)
+	}
+	imageNameComponents := strings.Split(imageName, "/")
+	if len(imageNameComponents) == 3 {
+		imageNameComponents[0] = override
+	}
+	if len(imageNameComponents) == 2 || len(imageNameComponents) == 1 {
+		newComponent := []string{override}
+		imageNameComponents = append(newComponent, imageNameComponents...)
+	}
+	if len(imageNameComponents) > 3 {
+		return "", errors.Errorf("Image name is invalid and needs to be changed in the project config file (.appsody-config.yaml): %s. Too many slashes (/) - the override cannot take place.", imageName)
+	}
+	return strings.Join(imageNameComponents, "/"), nil
+}
+
+//ValidateHostNameAndPort validates that hostNameAndPort conform to the DNS naming conventions
+func ValidateHostNameAndPort(hostNameAndPort string) (bool, error) {
+	match, err := regexp.MatchString(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])($|:[0-9]{1,5}$)`, hostNameAndPort)
+	return match, err
+}
+
+//NormalizeImageName is a temporary fix for buildah workaround #676
+func NormalizeImageName(imageName string) (string, error) {
+	imageNameComponents := strings.Split(imageName, "/")
+	if len(imageNameComponents) == 2 {
+		return imageName, nil
+	}
+
+	if len(imageNameComponents) == 1 {
+		return fmt.Sprintf("docker.io/%s", imageName), nil
+	}
+
+	if len(imageNameComponents) == 3 {
+		if imageNameComponents[0] == "index.docker.io" {
+			imageNameComponents[0] = "docker.io"
+			return strings.Join(imageNameComponents, "/"), nil
+		}
+		return imageName, nil
+	}
+	return imageName, errors.Errorf("Image name is invalid: %s", imageName)
+
+}
+
+func execAndListenWithWorkDirReturnErr(log *LoggingConfig, command string, args []string, logger appsodylogger, workdir string, dryrun bool) (*exec.Cmd, error) {
 	var execCmd *exec.Cmd
 	var err error
 	if dryrun {
-		Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
+		log.Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
 	} else {
-		Info.log("Running command: ", command, " ", strings.Join(args, " "))
+		log.Info.log("Running command: ", command, " ", strings.Join(args, " "))
 		execCmd = exec.Command(command, args...)
 		if workdir != "" {
 			execCmd.Dir = workdir
 		}
 		cmdReader, err := execCmd.StdoutPipe()
 		if err != nil {
-			Error.log("Error creating StdoutPipe for Cmd ", err)
+			log.Error.log("Error creating StdoutPipe for Cmd ", err)
 			return nil, err
 		}
 
 		errReader, err := execCmd.StderrPipe()
 		if err != nil {
-			Error.log("Error creating StderrPipe for Cmd ", err)
+			log.Error.log("Error creating StderrPipe for Cmd ", err)
 			return nil, err
 		}
 
@@ -1718,23 +1693,24 @@ func execAndListenWithWorkDirReturnErr(command string, args []string, logger app
 
 		err = execCmd.Start()
 		if err != nil {
-			Debug.log("Error running ", command, " command: ", errScanner.Text(), err)
+			log.Debug.log("Error running ", command, " command: ", errScanner.Text(), err)
 			return nil, err
 		}
 	}
 	return execCmd, err
 }
 
-func execAndWaitReturnErr(command string, args []string, logger appsodylogger, dryrun bool) error {
-	return execAndWaitWithWorkDirReturnErr(command, args, logger, "", dryrun)
+func execAndWaitReturnErr(log *LoggingConfig, command string, args []string, logger appsodylogger, dryrun bool) error {
+	return execAndWaitWithWorkDirReturnErr(log, command, args, logger, "", dryrun)
 }
-func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appsodylogger, workdir string, dryrun bool) error {
+
+func execAndWaitWithWorkDirReturnErr(log *LoggingConfig, command string, args []string, logger appsodylogger, workdir string, dryrun bool) error {
 	var err error
 	var execCmd *exec.Cmd
 	if dryrun {
-		Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
+		log.Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
 	} else {
-		execCmd, err = execAndListenWithWorkDirReturnErr(command, args, logger, workdir, dryrun)
+		execCmd, err = execAndListenWithWorkDirReturnErr(log, command, args, logger, workdir, dryrun)
 		if err != nil {
 			return err
 		}
@@ -1746,33 +1722,33 @@ func execAndWaitWithWorkDirReturnErr(command string, args []string, logger appso
 	return err
 }
 
-func getLatestVersion() string {
+func getLatestVersion(log *LoggingConfig) string {
 	var version string
-	Debug.log("Getting latest version ", LatestVersionURL)
+	log.Debug.log("Getting latest version ", LatestVersionURL)
 	resp, err := http.Get(LatestVersionURL)
 	if err != nil {
-		Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
+		log.Warning.log("Unable to check the most recent version of Appsody in GitHub.... continuing.")
 	} else {
 		url := resp.Request.URL.String()
 		r, _ := regexp.Compile(`[\d]+\.[\d]+\.[\d]+$`)
 
 		version = r.FindString(url)
 	}
-	Debug.log("Got version ", version)
+	log.Debug.log("Got version ", version)
 	return version
 }
 
 func doVersionCheck(config *RootCommandConfig) {
-	var latest = getLatestVersion()
+	var latest = getLatestVersion(config.LoggingConfig)
 	var currentTime = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 	if latest != "" && VERSION != "vlatest" && VERSION != latest {
 		updateString := GetUpdateString(runtime.GOOS, VERSION, latest)
-		Warning.logf(updateString)
+		config.Warning.logf(updateString)
 	}
 
 	config.CliConfig.Set("lastversioncheck", currentTime)
 	if err := config.CliConfig.WriteConfig(); err != nil {
-		Error.logf("Writing default config file %s", err)
+		config.Error.logf("Writing default config file %s", err)
 
 	}
 }
@@ -1798,7 +1774,7 @@ func checkTime(config *RootCommandConfig) {
 
 	lastTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", lastCheckTime)
 	if err != nil {
-		Debug.logf("Could not parse the config file's lastversioncheck: %v. Continuing with a new version check...", err)
+		config.Debug.logf("Could not parse the config file's lastversioncheck: %v. Continuing with a new version check...", err)
 		doVersionCheck(config)
 	} else if time.Since(lastTime).Hours() > 24 {
 		doVersionCheck(config)
@@ -1816,13 +1792,13 @@ func setNewIndexURL(config *RootCommandConfig) {
 
 	data, err := ioutil.ReadFile(repoFile)
 	if err != nil {
-		Warning.log("Unable to read repository file")
+		config.Warning.log("Unable to read repository file")
 	}
 
 	replaceURL := bytes.Replace(data, []byte(oldIndexURL), []byte(newIndexURL), -1)
 
 	if err = ioutil.WriteFile(repoFile, replaceURL, 0644); err != nil {
-		Warning.log(err)
+		config.Warning.log(err)
 	}
 }
 
@@ -1832,15 +1808,15 @@ func setNewRepoName(config *RootCommandConfig) {
 	var repoFile RepositoryFile
 	_, repoErr := repoFile.getRepos(config)
 	if repoErr != nil {
-		Warning.log("Unable to read repository file")
+		config.Warning.log("Unable to read repository file")
 	}
 	appsodyhubRepo := repoFile.GetRepo("appsodyhub")
 	if appsodyhubRepo != nil && appsodyhubRepo.URL == incubatorRepositoryURL {
-		Info.log("Migrating your repo name from 'appsodyhub' to 'incubator'")
+		config.Info.log("Migrating your repo name from 'appsodyhub' to 'incubator'")
 		appsodyhubRepo.Name = "incubator"
 		err := repoFile.WriteFile(getRepoFileLocation(config))
 		if err != nil {
-			Warning.logf("Failed to write file to repository location: %v", err)
+			config.Warning.logf("Failed to write file to repository location: %v", err)
 		}
 	}
 }
@@ -1858,13 +1834,13 @@ func IsEmptyDir(name string) bool {
 	return err == io.EOF
 }
 
-func downloadFile(href string, writer io.Writer) error {
+func downloadFile(log *LoggingConfig, href string, writer io.Writer) error {
 
 	// allow file:// scheme
 	t := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 	}
-	Debug.log("Proxy function for HTTP transport set to: ", &t.Proxy)
+	log.Debug.log("Proxy function for HTTP transport set to: ", &t.Proxy)
 	if runtime.GOOS == "windows" {
 		// For Windows, remove the root url. It seems to work fine with an empty string.
 		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("")))
@@ -1888,9 +1864,9 @@ func downloadFile(href string, writer io.Writer) error {
 	if resp.StatusCode != 200 {
 		buf, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			Debug.log("Could not read contents of response body: ", err)
+			log.Debug.log("Could not read contents of response body: ", err)
 		} else {
-			Debug.logf("Contents http response:\n%s", buf)
+			log.Debug.logf("Contents http response:\n%s", buf)
 		}
 		return fmt.Errorf("Could not download %s: %s", href, resp.Status)
 	}
@@ -1902,9 +1878,9 @@ func downloadFile(href string, writer io.Writer) error {
 	return nil
 }
 
-func downloadFileToDisk(url string, destFile string, dryrun bool) error {
+func downloadFileToDisk(log *LoggingConfig, url string, destFile string, dryrun bool) error {
 	if dryrun {
-		Info.logf("Dry Run -Skipping download of url: %s to destination %s", url, destFile)
+		log.Info.logf("Dry Run -Skipping download of url: %s to destination %s", url, destFile)
 
 	} else {
 		outFile, err := os.Create(destFile)
@@ -1913,7 +1889,7 @@ func downloadFileToDisk(url string, destFile string, dryrun bool) error {
 		}
 		defer outFile.Close()
 
-		err = downloadFile(url, outFile)
+		err = downloadFile(log, url, outFile)
 		if err != nil {
 			return err
 		}
@@ -1922,14 +1898,14 @@ func downloadFileToDisk(url string, destFile string, dryrun bool) error {
 }
 
 // tar and zip a directory into .tar.gz
-func Targz(source, target string) error {
+func Targz(log *LoggingConfig, source, target string) error {
 	filename := filepath.Base(source)
-	Info.log("source is: ", source)
-	Info.log("filename is: ", filename)
-	Info.log("target is: ", target)
+	log.Info.log("source is: ", source)
+	log.Info.log("filename is: ", filename)
+	log.Info.log("target is: ", target)
 	target = target + filename + ".tar.gz"
 	//target = filepath.Join(target, fmt.Sprintf("%s.tar.gz", filename))
-	Info.log("new target is: ", target)
+	log.Info.log("new target is: ", target)
 	tarfile, err := os.Create(target)
 	if err != nil {
 		return err
@@ -1986,45 +1962,43 @@ func Targz(source, target string) error {
 }
 
 //Compares the minimum requirements of a stack against the user to determine whether they can use the stack or not.
-func CheckStackRequirements(requirementArray map[string]string, buildah bool) error {
+func CheckStackRequirements(log *LoggingConfig, requirementArray map[string]string, buildah bool) error {
 	versionRegex := regexp.MustCompile(`(\d)+\.(\d)+\.(\d)+`)
 	upgradesRequired := 0
 
-	Info.log("Checking stack requirements...")
+	log.Info.log("Checking stack requirements...")
 
 	for technology, minVersion := range requirementArray {
-		if minVersion == "" {
-			Info.log("Skipping ", technology, " - No requirements set.")
-		} else if technology == "Docker" && buildah {
-			Info.log("Skipping Docker requirement - Buildah is being used.")
+		if technology == "Docker" && buildah {
+			log.Debug.log("Skipping Docker requirement - Buildah is being used.")
 		} else if technology == "Buildah" && !buildah {
-			Info.log("Skipping Buildah requirement - Docker is being used.")
-		} else {
-			Info.log("Checking stack requirements for ", technology)
+			log.Debug.log("Skipping Buildah requirement - Docker is being used.")
+		} else if minVersion != "" {
+			log.Debug.log("Checking stack requirements for ", technology)
 
 			setConstraint, err := semver.NewConstraint(minVersion)
 			if err != nil {
-				Error.log(err)
+				log.Error.log(err)
 			}
 
 			runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
 			if appErr != nil {
-				Error.log(appErr, " - Are you sure ", technology, " is installed?")
+				log.Error.log(appErr, " - Are you sure ", technology, " is installed?")
 				upgradesRequired++
 			} else {
 				cutCmdOutput := versionRegex.FindString(string(runVersionCmd))
 				parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
 				if parseErr != nil || cutCmdOutput == "0.0.0" {
-					Error.log(parseErr)
-					Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
+					log.Error.log(parseErr)
+					log.Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
 					return nil
 				}
 				compareVersion := setConstraint.Check(parseUserVersion)
 
 				if compareVersion {
-					Info.log(technology + " requirements met")
+					log.Info.log(technology + " requirements met")
 				} else {
-					Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
+					log.Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
 					upgradesRequired++
 				}
 			}
