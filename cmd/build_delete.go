@@ -45,13 +45,13 @@ func newBuildDeleteCmd(config *buildCommandConfig) *cobra.Command {
 			}
 			url := fmt.Sprintf("%s/v1/namespaces/default/githubsource/%s", tektonServer, projectName)
 			if config.Dryrun {
-				Info.log("Dry Run appsody build delete")
+				config.Info.log("Dry Run appsody build delete")
 			} else {
 				req, _ := http.NewRequest("DELETE", url, nil)
 				req.Header.Set("Content-Type", "application/json")
 
 				client := &http.Client{}
-				Info.log("Making request to ", url)
+				config.Info.log("Making request to ", url)
 				resp, err := client.Do(req)
 				if err != nil {
 					return errors.Errorf("%v", err)
@@ -65,8 +65,8 @@ func newBuildDeleteCmd(config *buildCommandConfig) *cobra.Command {
 
 					return errors.Errorf("Bad Status Code: %s with message: %s", resp.Status, string(bodyStr))
 				}
-				Info.log(resp.Status)
-				Info.log(string(bodyStr))
+				config.Info.log(resp.Status)
+				config.Info.log(string(bodyStr))
 
 			}
 			return nil
