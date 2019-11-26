@@ -58,13 +58,13 @@ func newSetupCmd(config *buildCommandConfig) *cobra.Command {
 			// Setup JSON payload for use with the Tekton server
 			var jsonStr = fmt.Sprintf(`{"name":"%s", "gitrepositoryurl":"%s","accesstoken":"github-secret","pipeline":"appsody-build-pipeline"}`, projectName, gitProject)
 			if config.Dryrun {
-				Info.logf("Dry Run appsody build setup project URL: %s\n", url)
+				config.Info.logf("Dry Run appsody build setup project URL: %s\n", url)
 			} else {
 				req, _ := http.NewRequest("POST", url, bytes.NewBuffer([]byte(jsonStr)))
 				req.Header.Set("Content-Type", "application/json")
 
 				client := &http.Client{}
-				Info.log("Making request to ", url)
+				config.Info.log("Making request to ", url)
 				resp, err := client.Do(req)
 				if err != nil {
 					return errors.Errorf("%v", perr)
@@ -76,8 +76,8 @@ func newSetupCmd(config *buildCommandConfig) *cobra.Command {
 				if resp.StatusCode >= 300 {
 					return errors.Errorf("Bad Status Code: %s with message: %s", resp.Status, string(bodyStr))
 				}
-				Info.log(resp.Status)
-				Info.log(string(bodyStr))
+				config.Info.log(resp.Status)
+				config.Info.log(string(bodyStr))
 
 			}
 			return nil
