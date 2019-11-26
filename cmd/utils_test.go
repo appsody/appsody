@@ -15,106 +15,14 @@
 package cmd_test
 
 import (
+	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
 )
-
-var yamlGenTests = []struct {
-	yamlTemplateGetter func() string // input
-	testImageName      string
-	testPortNum        int
-	testServiceName    string
-	testPullPolicy     bool
-}{
-	{getKNativeTemplate1, "TESTIMAGE", 9091, "TESTSERVICE", false},
-	{getKNativeTemplate2, "TESTIMAGE", 9091, "TESTSERVICE", true},
-	{getKNativeTemplateNoports, "TESTIMAGE", 9091, "TESTSERVICE", true},
-}
-
-// requires clean dir
-func TestGenYAML(t *testing.T) {
-
-	for numTest, test := range yamlGenTests {
-		t.Run(fmt.Sprintf("Test YAML template %d", numTest), func(t *testing.T) {
-			testServiceName := test.testServiceName
-			testImageName := test.testImageName
-			testPortNum := test.testPortNum
-			testGetter := test.yamlTemplateGetter
-			testPullPolicy := test.testPullPolicy
-			yamlFileName, err := cmd.GenKnativeYaml(testGetter(), testPortNum, testServiceName, testImageName, testPullPolicy, "app-deploy.yaml", false)
-			if err != nil {
-				t.Fatal("Can't generate the YAML for KNative serving deploy. Error: ", err)
-			}
-			if _, err := os.Stat(yamlFileName); os.IsNotExist(err) {
-				t.Fatal("Didn't find the file ", yamlFileName)
-			} else { //clean up
-				os.RemoveAll(yamlFileName)
-			}
-		})
-	}
-}
-func getKNativeTemplate1() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Always
-            ports:
-            - containerPort: 8080
-`
-	return yamltempl
-}
-
-func getKNativeTemplate2() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Never
-            ports:
-            - containerPort: 8080
-`
-	return yamltempl
-}
-
-func getKNativeTemplateNoports() string {
-	yamltempl := `
-apiVersion: serving.knative.dev/v1alpha1
-kind: Service
-metadata:
-  name: test
-spec:
-  runLatest:
-    configuration:
-      revisionTemplate:
-        spec:
-          container:
-            image: myimage
-            imagePullPolicy: Always
-`
-	return yamltempl
-}
 
 var validProjectNameTests = []string{
 	"my-project",
@@ -205,9 +113,14 @@ func TestInvalidVersionAgainstStack(t *testing.T) {
 		"Docker":  "402.05.6",
 		"Appsody": "402.05.6",
 	}
-	err := cmd.CheckStackRequirements(reqsMap, false)
+	log := &cmd.LoggingConfig{}
+	var outBuffer bytes.Buffer
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	err := cmd.CheckStackRequirements(log, reqsMap, false)
 
 	if err == nil {
+		t.Log(outBuffer)
 		t.Fatal(err)
 	}
 }
@@ -308,6 +221,86 @@ func TestGetUpdateString(t *testing.T) {
 			expectedOutput := fmt.Sprintf("\n*\n*\n*\n\nA new CLI update is available.\n%s from %s --> %s.\n\n*\n*\n*\n", test.updateString, test.version, test.latest)
 			if output != expectedOutput {
 				t.Errorf("Expected %s to convert to %s but got %s", test.input, expectedOutput, output)
+			}
+		})
+
+	}
+}
+
+func TestNormalizeImageName(t *testing.T) {
+	testImageNames := []string{"ubuntu", "ubuntu:latest", "ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "index.docker.io/appsody/nodejs-express:0.2", "myregistry.com:8080/appsody/nodejs-express:0.2", "yada/yada/yada/yada"}
+	normalizedTestImageNames := []string{"docker.io/ubuntu", "docker.io/ubuntu:latest", "docker.io/ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "myregistry.com:8080/appsody/nodejs-express:0.2"}
+	for idx, imageName := range testImageNames {
+
+		t.Run(imageName, func(t *testing.T) {
+			output, err := cmd.NormalizeImageName(imageName)
+
+			if err != nil {
+				if idx < len(testImageNames)-1 {
+					t.Errorf("Unexpected error: %v", err)
+				}
+			} else {
+				expectedOutput := normalizedTestImageNames[idx]
+				if output != expectedOutput {
+					t.Errorf("Expected %s to convert to %s but got %s", imageName, expectedOutput, output)
+				}
+			}
+		})
+
+	}
+}
+func TestOverrideStackRegistry(t *testing.T) {
+	testImageNames := []string{"ubuntu", "ubuntu:latest", "ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "index.docker.io/appsody/nodejs-express:0.2", "another-registry.com:8080/appsody/nodejs-express:0.2", "yada/yada/yada/yada"}
+	override := "my-registry.com:8080"
+	normalizedTestImageNames := []string{"my-registry.com:8080/ubuntu", "my-registry.com:8080/ubuntu:latest", "my-registry.com:8080/ubuntu:17.1", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2"}
+	for idx, imageName := range testImageNames {
+
+		t.Run(imageName, func(t *testing.T) {
+			output, err := cmd.OverrideStackRegistry(override, imageName)
+
+			if err != nil {
+				if idx < len(testImageNames)-1 {
+					t.Errorf("Unexpected error: %v", err)
+				}
+			} else {
+				expectedOutput := normalizedTestImageNames[idx]
+				if output != expectedOutput {
+					t.Errorf("Expected %s to convert to %s but got %s", imageName, expectedOutput, output)
+				}
+			}
+		})
+		t.Run("No override", func(t *testing.T) {
+			output, err := cmd.OverrideStackRegistry("", "test")
+			if err != nil || output != "test" {
+				t.Errorf("Test with empty image override failed. Error: %v, output: %s", err, output)
+			}
+		})
+
+	}
+}
+func TestValidateHostName(t *testing.T) {
+	testHostNames := make(map[string]bool)
+	testHostNames["hostname"] = true
+	testHostNames["hostname:80"] = true
+	testHostNames["hostname.com"] = true
+	testHostNames["hostname.company.com"] = true
+	testHostNames["hostname:8080"] = true
+	testHostNames["hostname:30080"] = true
+	testHostNames["hostname.company.com:30080"] = true
+	testHostNames["hostname.company.com:443"] = true
+	testHostNames["host-name"] = true
+	testHostNames["host/name"] = false
+	testHostNames["host-name-"] = false
+	testHostNames["host-name.my-company-"] = false
+	testHostNames["host-name.-my-company"] = false
+	testHostNames["-host-name.-my-company"] = false
+	for hostName, val := range testHostNames {
+
+		t.Run(hostName, func(t *testing.T) {
+			match, err := cmd.ValidateHostNameAndPort(hostName)
+
+			if err != nil || match != val {
+				t.Errorf("Unexpected result for %s - valid should be %v, but it was not detected as such", hostName, val)
 			}
 		})
 

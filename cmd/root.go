@@ -17,6 +17,7 @@ package cmd
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -38,7 +39,21 @@ var CONTROLLERVERSION string
 
 const APIVersionV1 = "v1"
 
+type LoggingConfig struct {
+	// define the logging levels
+	Info       appsodylogger
+	Warning    appsodylogger
+	Error      appsodylogger
+	Debug      appsodylogger
+	Container  appsodylogger
+	InitScript appsodylogger
+	DockerLog  appsodylogger
+	BuildahLog appsodylogger
+}
+
 type RootCommandConfig struct {
+	*LoggingConfig
+
 	CfgFile          string
 	Dryrun           bool
 	Verbose          bool
@@ -47,6 +62,7 @@ type RootCommandConfig struct {
 	ProjectConfig    *ProjectConfig
 	ProjectDir       string
 	UnsupportedRepos []string
+	StackRegistry    string
 
 	// package scoped, these are mostly for caching
 	setupConfigRun    bool
@@ -58,19 +74,12 @@ type RootCommandConfig struct {
 // Regular expression to match ANSI terminal commands so that we can remove them from the log
 const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[-a-zA-Z\\d\\/#&.:=?%@~_\\s]*)*)?(\u0007|^G))|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))"
 
-func homeDir() (string, error) {
-	home, err := homedir.Dir()
-	if err != nil {
-		return "", errors.Errorf("%v", err)
-
-	}
-	return home, nil
-}
-
 const operatorHome = "https://github.com/appsody/appsody-operator/releases/latest/download"
 
-func newRootCmd(projectDir string, args []string) (*cobra.Command, error) {
-	rootConfig := &RootCommandConfig{}
+func newRootCmd(projectDir string, outWriter, errWriter io.Writer, args []string) (*cobra.Command, *RootCommandConfig, error) {
+	loggingConfig := &LoggingConfig{}
+	loggingConfig.InitLogging(outWriter, errWriter)
+	rootConfig := &RootCommandConfig{LoggingConfig: loggingConfig}
 
 	rootConfig.ProjectDir = projectDir
 	rootCmd := &cobra.Command{
@@ -94,36 +103,38 @@ Complete documentation is available at https://appsody.dev`,
 	// later the Execute func will parse the flags again
 	rootCmd.FParseErrWhitelist = cobra.FParseErrWhitelist{UnknownFlags: true}
 	_ = rootCmd.ParseFlags(args) // ignore flag errors here because we haven't added all the commands
-	initLogging(rootConfig)
 	setupErr := setupConfig(args, rootConfig)
 	if setupErr != nil {
-		return rootCmd, setupErr
+		return rootCmd, rootConfig, setupErr
 	}
+	rootConfig.initLogging()
 
 	rootCmd.AddCommand(
 		newInitCmd(rootConfig),
 		newBuildCmd(rootConfig),
 		newExtractCmd(rootConfig),
-		newCompletionCmd(rootCmd),
+		newCompletionCmd(rootConfig.LoggingConfig, rootCmd),
 		newDebugCmd(rootConfig),
 		newDeployCmd(rootConfig),
-		newDocsCmd(rootConfig, rootCmd),
+		newDocsCmd(rootConfig.LoggingConfig, rootCmd),
 		newListCmd(rootConfig),
 		newOperatorCmd(rootConfig),
-		newPsCmd(rootConfig),
+		newPsCmd(rootConfig.LoggingConfig),
 		newRepoCmd(rootConfig),
 		newRunCmd(rootConfig),
 		newStackCmd(rootConfig),
 		newStopCmd(rootConfig),
 		newTestCmd(rootConfig),
-		newVersionCmd(rootCmd),
+		newVersionCmd(rootConfig.LoggingConfig, rootCmd),
 	)
 
 	appsodyOnK8S := os.Getenv("APPSODY_K8S_EXPERIMENTAL")
 	if appsodyOnK8S == "TRUE" {
 		rootConfig.Buildah = true
 	}
-	return rootCmd, nil
+	//Invalidate the cache
+	rootConfig.ProjectConfig = nil
+	return rootCmd, rootConfig, nil
 }
 
 func setupConfig(args []string, config *RootCommandConfig) error {
@@ -149,12 +160,12 @@ func setupConfig(args []string, config *RootCommandConfig) error {
 func InitConfig(config *RootCommandConfig) error {
 
 	cliConfig := viper.New()
-	homeDirectory, dirErr := homeDir()
+	homeDirectory, dirErr := homedir.Dir()
 	if dirErr != nil {
 		return dirErr
 	}
 	cliConfig.SetDefault("home", filepath.Join(homeDirectory, ".appsody"))
-	cliConfig.SetDefault("images", "index.docker.io")
+	cliConfig.SetDefault("images", "docker.io")
 	cliConfig.SetDefault("operator", operatorHome)
 	cliConfig.SetDefault("tektonserver", "")
 	cliConfig.SetDefault("lastversioncheck", "none")
@@ -187,49 +198,38 @@ func Execute(version string, controllerVersion string) {
 		fmt.Println("Error getting current directory: ", err)
 		os.Exit(1)
 	}
-	if err := ExecuteE(version, controllerVersion, dir, os.Args[1:]); err != nil {
+	if err := ExecuteE(version, controllerVersion, dir, os.Stdout, os.Stderr, os.Args[1:]); err != nil {
 		os.Exit(1)
 	}
 }
 
-func ExecuteE(version string, controllerVersion string, projectDir string, args []string) error {
+func ExecuteE(version string, controllerVersion string, projectDir string, outWriter, errWriter io.Writer, args []string) error {
 	VERSION = version
 	CONTROLLERVERSION = controllerVersion
 
-	rootCmd, err := newRootCmd(projectDir, args)
+	rootCmd, rootConfig, err := newRootCmd(projectDir, outWriter, errWriter, args)
 	if err != nil {
-		Error.log(err)
+		rootConfig.Error.log(err)
 	}
-	Debug.log("Running with command line args: appsody ", strings.Join(args, " "))
+	rootConfig.Debug.log("Running with command line args: appsody ", strings.Join(args, " "))
 	err = rootCmd.Execute()
 	if err != nil {
-		Error.log(err)
+		rootConfig.Error.log(err)
 	}
 	return err
 }
 
 type appsodylogger struct {
-	name            string
-	verbose         bool
-	klogInitialized bool
+	name      string
+	verbose   bool
+	outWriter io.Writer
+	errWriter io.Writer
 }
 type stackTracer interface {
 	StackTrace() errors.StackTrace
 }
 
-// define the logging levels
-var (
-	Info       = appsodylogger{name: "Info"}
-	Warning    = appsodylogger{name: "Warning"}
-	Error      = appsodylogger{name: "Error"}
-	Debug      = appsodylogger{name: "Debug"}
-	Container  = appsodylogger{name: "Container"}
-	InitScript = appsodylogger{name: "InitScript"}
-	DockerLog  = appsodylogger{name: "Docker"}
-	BuildahLog = appsodylogger{name: "Buildah"}
-)
-
-var allLoggers = []*appsodylogger{&Info, &Warning, &Error, &Debug, &Container, &InitScript, &DockerLog}
+var klogInitialized = false
 
 func (l appsodylogger) log(args ...interface{}) {
 	msgString := fmt.Sprint(args...)
@@ -262,11 +262,11 @@ func (l appsodylogger) LogfSkipConsole(fmtString string, args ...interface{}) {
 }
 
 func (l appsodylogger) internalLog(msgString string, skipConsole bool, args ...interface{}) {
-	if l == Debug && !l.verbose {
+	if l.name == "Debug" && !l.verbose {
 		return
 	}
 
-	if l.verbose || l != Info {
+	if l.verbose || l.name != "Info" {
 		msgString = "[" + string(l.name) + "] " + msgString
 	}
 
@@ -282,17 +282,17 @@ func (l appsodylogger) internalLog(msgString string, skipConsole bool, args ...i
 
 	if !skipConsole {
 		// Print to console
-		if l == Info {
-			fmt.Fprintln(os.Stdout, msgString)
-		} else if l == Container {
-			fmt.Fprint(os.Stdout, msgString)
+		if l.name == "Info" {
+			fmt.Fprintln(l.outWriter, msgString)
+		} else if l.name == "Container" {
+			fmt.Fprint(l.outWriter, msgString)
 		} else {
-			fmt.Fprintln(os.Stderr, msgString)
+			fmt.Fprintln(l.errWriter, msgString)
 		}
 	}
 
 	// Print to log file
-	if l.verbose && l.klogInitialized {
+	if l.verbose && klogInitialized {
 		// Remove ansi commands
 		ansiRegexp := regexp.MustCompile(ansi)
 		msgString = ansiRegexp.ReplaceAllString(msgString, "")
@@ -301,13 +301,34 @@ func (l appsodylogger) internalLog(msgString string, skipConsole bool, args ...i
 	}
 }
 
-func initLogging(config *RootCommandConfig) {
+// InitLogging initializes the logging configuration for a given RootCommandConfig.
+// The initialization of klog is global and will only be performed once.
+func (config *LoggingConfig) InitLogging(outWriter, errWriter io.Writer) {
+	config.Info = appsodylogger{name: "Info"}
+	config.Warning = appsodylogger{name: "Warning"}
+	config.Error = appsodylogger{name: "Error"}
+	config.Debug = appsodylogger{name: "Debug"}
+	config.Container = appsodylogger{name: "Container"}
+	config.InitScript = appsodylogger{name: "InitScript"}
+	config.DockerLog = appsodylogger{name: "Docker"}
+	config.BuildahLog = appsodylogger{name: "Buildah"}
+
+	var allLoggers = []*appsodylogger{&config.Info, &config.Warning, &config.Error, &config.Debug, &config.Container, &config.InitScript, &config.DockerLog, &config.BuildahLog}
+
+	for _, l := range allLoggers {
+		l.outWriter = outWriter
+		l.errWriter = errWriter
+	}
+}
+
+func (config *RootCommandConfig) initLogging() {
+	var allLoggers = []*appsodylogger{&config.Info, &config.Warning, &config.Error, &config.Debug, &config.Container, &config.InitScript, &config.DockerLog}
 	if config.Verbose {
 		for _, l := range allLoggers {
 			l.verbose = true
 		}
 
-		homeDirectory, dirErr := homeDir()
+		homeDirectory, dirErr := homedir.Dir()
 		if dirErr != nil {
 			os.Exit(1)
 		}
@@ -316,9 +337,9 @@ func initLogging(config *RootCommandConfig) {
 
 		_, errPath := os.Stat(logDir)
 		if errPath != nil {
-			Debug.log("Creating log dir ", logDir)
+			config.Debug.log("Creating log dir ", logDir)
 			if err := os.MkdirAll(logDir, 0755); err != nil {
-				Error.logf("Could not create %s: %s", logDir, err)
+				config.Error.logf("Could not create %s: %s", logDir, err)
 			}
 		}
 
@@ -334,9 +355,7 @@ func initLogging(config *RootCommandConfig) {
 		_ = klogFlags.Set("logtostderr", "false")
 		_ = klogFlags.Set("alsologtostderr", "false")
 
-		for _, l := range allLoggers {
-			l.klogInitialized = true
-		}
-		Debug.log("Logging to file ", pathString)
+		klogInitialized = true
+		config.Debug.log("Logging to file ", pathString)
 	}
 }

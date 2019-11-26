@@ -46,21 +46,21 @@ func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				Info.log("\n", repoList)
+				config.Info.log("\n", repoList)
 			} else if repoListConfig.output == "yaml" {
 				bytes, err := yaml.Marshal(&list)
 				if err != nil {
 					return err
 				}
 				result := string(bytes)
-				Info.log("\n", result)
+				config.Info.log("\n", result)
 			} else if repoListConfig.output == "json" {
 				bytes, err := json.Marshal(&list)
 				if err != nil {
 					return err
 				}
 				result := string(bytes)
-				Info.log("\n", result)
+				config.Info.log("\n", result)
 			}
 
 			return nil
