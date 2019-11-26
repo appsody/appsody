@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -303,45 +302,9 @@ func ParseListYAML(yamlString string) (cmd.IndexOutputFormat, error) {
 	return index, nil
 }
 
-// AddLocalFileRepo calls the repo add command with the repo index located
-// at the local file path. The path may be relative to the current working
-// directory.
+// AddLocalRepo calls the `appsody repo add` command with the repo index located
+// at the local file path. The path may be relative to the current working directory.
 // Returns the URL of the repo added.
-// Returns a function which should be deferred by the caller to cleanup
-// the repo list when finished.
-func AddLocalFileRepo(repoName string, repoFilePath string, t *testing.T) (string, func(), error) {
-	absPath, err := filepath.Abs(repoFilePath)
-	if err != nil {
-		return "", nil, err
-	}
-	var repoURL string
-	if runtime.GOOS == "windows" {
-		// for windows, add a leading slash and convert to unix style slashes
-		absPath = "/" + filepath.ToSlash(absPath)
-	}
-	repoURL = "file://" + absPath
-	// add a new repo
-	_, err = RunAppsodyCmd([]string{"repo", "add", repoName, repoURL}, ".", t)
-	if err != nil {
-		return "", nil, err
-	}
-	// cleanup whe finished
-	cleanupFunc := func() {
-		_, err = RunAppsodyCmd([]string{"repo", "remove", repoName}, ".", t)
-		if err != nil {
-			log.Fatalf("Error cleaning up with repo remove: %s", err)
-		}
-	}
-
-	return repoURL, cleanupFunc, err
-}
-
-// AddLocalFileRepo calls the repo add command with the repo index located
-// at the local file path. The path may be relative to the current working
-// directory.
-// Returns the URL of the repo added.
-// Returns a function which should be deferred by the caller to cleanup
-// the repo list when finished.
 func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string, error) {
 	absPath, err := filepath.Abs(repoFilePath)
 	if err != nil {
