@@ -52,16 +52,17 @@ func newDeployCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Build and deploy your Appsody project to Kubernetes.",
 		Long: `Build and deploy a local container image of your Appsody project to your Kubernetes cluster. 
 		
-The command extracts the stack, along with your Appsody project to a local directory. The extracted project is used to build the container image for deployment using 'appsody build'.
-A deployment manifest file, "app-deploy.yaml", is generated if one is not present, and applied to the cluster. The CLI uses this file to deploy your image to your Kubernetes cluster via the Appsody Operator, and optionally as a Knative service if you specify the "--knative" flag.
+The command performs the following steps:
 
-
-If the Appsody Operator cannot be found, it will be installed on your cluster.`,
+1. Extracts the stack, along with your Appsody project, to a local directory.
+2. Runs the appsody build command to build the container image for deployment.
+3. Generates a deployment manifest file, "app-deploy.yaml", if one is not present, then applies it to your Kubernetes cluster.
+4. Deploys your image to your Kubernetes cluster via the Appsody operator, and optionally as a Knative service if you specify the "--knative" flag. If the Appsody Operator cannot be found, it will be installed on your cluster.`,
 		Example: `  appsody deploy --namespace my-namespace
   Builds and deploys your project to the "my-namespace" namespace in your local Kubernetes cluster.
   
   appsody deploy -t my-repo/nodejs-express --push-url external-registry-url --pull-url internal-registry-url
-  Builds and tags the image as "my-repo/nodejs-express", pushes image to "external-registry-url/my-repo/nodejs-express", and creates a deployment manifest that tells the Kubernetes cluster to pull the image from "internal-registry-url/my-repo/nodejs-express".`,
+  Builds and tags the image as "my-repo/nodejs-express", pushes the image to "external-registry-url/my-repo/nodejs-express", and creates a deployment manifest that tells the Kubernetes cluster to pull the image from "internal-registry-url/my-repo/nodejs-express".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			projectDir, err := getProjectDir(config.RootCommandConfig)
@@ -146,9 +147,9 @@ If the Appsody Operator cannot be found, it will be installed on your cluster.`,
 		},
 	}
 
-	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment configuration file. Do not deploy the project.")
-	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
-	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment configuration file if one exists.")
+	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment manifest file. Do not deploy the project.")
+	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment manifest.")
+	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment manifest file if one exists.")
 	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "default", "Target namespace in your Kubernetes cluster")
 	deployCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of docker.")

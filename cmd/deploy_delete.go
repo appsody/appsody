@@ -24,14 +24,16 @@ func newDeleteDeploymentCmd(deployConfig *deployCommandConfig) *cobra.Command {
 	var deleteDeploymentCmd = &cobra.Command{
 		Use:   "delete",
 		Short: "Delete your deployed Appsody project from a Kubernetes cluster.",
-		Long: `Delete your deployed Appsody project from the configured Kubernetes cluster using your existing deployment manifest.
+		Long: `Delete your deployed Appsody project from the configured Kubernetes cluster, using your existing deployment manifest.
 
-By default, the command looks for the deployed project in the "default" namespace, and uses the generated "app-deploy.yaml" deployment manifest, unless you specify otherwise.`,
+By default, the command looks for the deployed project in the "default" namespace and uses the generated "app-deploy.yaml" deployment manifest, unless you specify otherwise.
+
+Run this command from the root directory of your Appsody project.`,
 		Example: `  appsody deploy delete -f my-deploy.yaml
-  Deletes the AppsodyApplication from the "default" namespace using the name and type specified in the "my-deploy.yaml" deployment manifest.
+  Deletes the AppsodyApplication from the "default" namespace, using the name and type specified in the "my-deploy.yaml" deployment manifest.
   
   appsody deploy delete --namespace my-namespace
-  Deletes the AppsodyApplication from the "my-namespace" namespace using the name and type specified in the "app-deploy.yaml" deployment manifest`,
+  Deletes the AppsodyApplication from the "my-namespace" namespace, using the name and type specified in the "app-deploy.yaml" deployment manifest.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			exists, err := Exists(deployConfigFile)
@@ -52,6 +54,6 @@ By default, the command looks for the deployed project in the "default" namespac
 		},
 	}
 
-	deleteDeploymentCmd.PersistentFlags().StringVarP(&deployConfigFile, "file", "f", "app-deploy.yaml", "Filename of the deployment configuration you want to use.")
+	deleteDeploymentCmd.PersistentFlags().StringVarP(&deployConfigFile, "file", "f", "app-deploy.yaml", "The name of the deployment manifest file for your application.")
 	return deleteDeploymentCmd
 }
