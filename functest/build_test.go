@@ -219,6 +219,7 @@ func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imag
 	_, err := os.Stat(deployFile)
 	if err != nil && os.IsNotExist(err) {
 		t.Errorf("Could not find %s", deployFile)
+		return
 	}
 	yamlFileBytes, err := ioutil.ReadFile(deployFile)
 	if err != nil {
@@ -238,7 +239,7 @@ func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imag
 	}
 
 	if appsodyApplication.Spec.ApplicationImage != expectedApplicationImage {
-		t.Error("Incorrect ApplicationImage in app-deploy.yaml")
+		t.Errorf("Incorrect ApplicationImage in app-deploy.yaml. Expected %s but found %s", expectedApplicationImage, appsodyApplication.Spec.ApplicationImage)
 	}
 
 	if *appsodyApplication.Spec.CreateKnativeService != true {

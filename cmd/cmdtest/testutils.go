@@ -80,7 +80,8 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error evaluating symlinks: ", err)
 	}
-	sandbox.ProjectDir = filepath.Join(testDir, "my-test-project")
+	projectName := strings.ToLower(strings.Replace(filepath.Base(testDir), "appsody-", "", 1))
+	sandbox.ProjectDir = filepath.Join(testDir, projectName)
 	sandbox.ConfigDir = filepath.Join(testDir, "config")
 	err = os.MkdirAll(sandbox.ProjectDir, 0755)
 	if err != nil {
