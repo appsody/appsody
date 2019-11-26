@@ -326,6 +326,32 @@ func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string,
 	return repoURL, nil
 }
 
+// AddLocalFileRepo calls the repo add command with the repo index located
+// at the local file path. The path may be relative to the current working
+// directory.
+// Returns the URL of the repo added.
+// Returns a function which should be deferred by the caller to cleanup
+// the repo list when finished.
+func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string, error) {
+	absPath, err := filepath.Abs(repoFilePath)
+	if err != nil {
+		return "", err
+	}
+	var repoURL string
+	if runtime.GOOS == "windows" {
+		// for windows, add a leading slash and convert to unix style slashes
+		absPath = "/" + filepath.ToSlash(absPath)
+	}
+	repoURL = "file://" + absPath
+	// add a new repo
+	_, err = RunAppsody(t, "repo", "add", repoName, repoURL)
+	if err != nil {
+		return "", err
+	}
+
+	return repoURL, nil
+}
+
 // RunDockerCmdExec runs the docker command with the given args in a new process
 // The stdout and stderr are captured, printed, and returned
 // args will be passed to the docker command
