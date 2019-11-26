@@ -44,7 +44,7 @@ The default repository is used when you run the "appsody init" command without s
 				return repoErr
 			}
 			if config.Dryrun {
-				Info.log("Dry Run - Skipping appsody repo set-default ", repoName)
+				config.Info.log("Dry Run - Skipping appsody repo set-default ", repoName)
 			} else {
 				if repoFile.Has(repoName) {
 					defaultRepoName, err := repoFile.GetDefaultRepoName(config)
@@ -57,10 +57,10 @@ The default repository is used when you run the "appsody init" command without s
 							return repoFileErr
 						}
 					} else {
-						Info.log("Your default repository has already been set to " + repoName)
+						config.Info.log("Your default repository has already been set to " + repoName)
 					}
 				} else {
-					Error.log("Repository is not in configured list of repositories")
+					config.Error.log("Repository is not in configured list of repositories")
 				}
 				err := repoFile.WriteFile(getRepoFileLocation(config))
 				if err != nil {

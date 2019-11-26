@@ -31,7 +31,7 @@ Run this command from the root directory of your Appsody project.`,
   Runs the tests for your Appsody project without monitoring your project files for changes. The command completes after the tests are run once.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			Info.log("Running test environment")
+			rootConfig.Info.log("Running test environment")
 			return commonCmd(config, "test")
 		},
 	}
