@@ -421,7 +421,7 @@ func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {
 	if portsErr != nil {
 		return cmdArgs, portsErr
 	}
-	
+
 	config.Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
 	// if the container port is not in the lised of exposed ports add it to the list
 
