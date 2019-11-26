@@ -46,8 +46,8 @@ By default, the operator watches a single namespace. You can specify the ‘--wa
 		},
 	}
 
-	installCmd.PersistentFlags().StringVarP(&config.watchspace, "watchspace", "w", "", "The namespace which the operator will watch.")
-	installCmd.PersistentFlags().BoolVar(&config.all, "watch-all", false, "The operator will watch all namespaces.")
+	installCmd.PersistentFlags().StringVarP(&config.watchspace, "watchspace", "w", "", "The namespace that the operator watches.")
+	installCmd.PersistentFlags().BoolVar(&config.all, "watch-all", false, "Specifies that the operator watches all namespaces.")
 	return installCmd
 }
 
