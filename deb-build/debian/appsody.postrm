@@ -22,7 +22,7 @@ set -e
 case "$1" in
     purge|remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
         rm /usr/bin/PACKAGE_NAME
-        rm /usr/bin/PACKAGE_NAME-controller
+        #rm /usr/bin/PACKAGE_NAME-controller
     ;;
 
     *)

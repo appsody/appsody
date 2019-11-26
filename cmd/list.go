@@ -32,8 +32,15 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// listCmd represents the list command
 	var listCmd = &cobra.Command{
 		Use:   "list [repository]",
-		Short: "List the Appsody stacks available to init",
-		Long:  `This command lists all the stacks available in your repositories. If you omit the  optional [repository] parameter, the stacks for all the repositories are listed. If you specify the repository name [repository], only the stacks in that repository will be listed.`,
+		Short: "List the available Appsody stacks.",
+		Long: `List all the Appsody stacks available in your repositories. 
+
+An asterisk in the repository column denotes the default repository. An asterisk in the template column denotes the default template that is used when you initialise an Appsody project.`,
+		Example: `  appsody list
+  Lists all available stacks for each of your repositories.
+  
+  appsody list my-repo
+  Lists available stacks only in your "my-repo" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var repos RepositoryFile
 
@@ -47,15 +54,15 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					return errors.Errorf("%v", err)
 				}
 				if len(rootConfig.UnsupportedRepos) > 0 {
-					Warning.log("The following repositories .yaml have an  APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
+					rootConfig.Warning.log("The following repositories .yaml have an  APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
 				}
 
 				if listConfig.output == "" {
-					Info.log("\n", projects)
+					rootConfig.Info.log("\n", projects)
 					return nil
 				}
 
-				list, err := repos.getRepositories()
+				list, err := repos.getRepositories(rootConfig.LoggingConfig)
 				if err != nil {
 					return err
 				}
@@ -66,14 +73,14 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 						return err
 					}
 					result := string(bytes)
-					Info.log("\n", result)
+					rootConfig.Info.log("\n", result)
 				} else if listConfig.output == "json" {
 					bytes, err := json.Marshal(&list)
 					if err != nil {
 						return err
 					}
 					result := string(bytes)
-					Info.log("\n", result)
+					rootConfig.Info.log("\n", result)
 				}
 
 			} else {
@@ -87,15 +94,15 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 					return err
 				}
 				if len(rootConfig.UnsupportedRepos) > 0 {
-					Warning.log("The following repositories are of APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
+					rootConfig.Warning.log("The following repositories are of APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
 				}
 
 				if listConfig.output == "" {
-					Info.log("\n", repoProjects)
+					rootConfig.Info.log("\n", repoProjects)
 					return nil
 				}
 
-				repoList, err := repos.getRepository(repoName)
+				repoList, err := repos.getRepository(rootConfig.LoggingConfig, repoName)
 				if err != nil {
 					return err
 				}
@@ -106,14 +113,14 @@ func newListCmd(rootConfig *RootCommandConfig) *cobra.Command {
 						return err
 					}
 					result := string(bytes)
-					Info.log("\n", result)
+					rootConfig.Info.log("\n", result)
 				} else if listConfig.output == "json" {
 					bytes, err := json.Marshal(&repoList)
 					if err != nil {
 						return err
 					}
 					result := string(bytes)
-					Info.log("\n", result)
+					rootConfig.Info.log("\n", result)
 				}
 			}
 
