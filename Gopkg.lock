@@ -26,14 +26,6 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
-  branch = "master"
-  digest = "1:8e4b497b94ca849d660e8e1ed1b84e3eaa7480b1cba14f2ff283c20d4f839d40"
-  name = "github.com/andrew-d/isbinary"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "e6fe02933397c4c8747f4d6535d07e71ae85182e"
-
-[[projects]]
   digest = "1:4756f15a2e26d1bb39c3e68d312bb07315376d8454a7ed1ef16829d9f009300e"
   name = "github.com/appsody/appsody-operator"
   packages = [
@@ -458,7 +450,6 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Masterminds/semver",
-    "github.com/andrew-d/isbinary",
     "github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1",
     "github.com/gosuri/uitable",
     "github.com/mitchellh/go-homedir",

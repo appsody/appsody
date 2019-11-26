@@ -22,7 +22,6 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/andrew-d/isbinary"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -565,20 +564,6 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			err = os.Chmod(path, 0666)
 			if err != nil {
 				return errors.Errorf("Error changing file permision: %v", err)
-			}
-
-			// read the file for a binay test
-			fileTest, err := ioutil.ReadFile(path)
-			if err != nil {
-				return errors.Errorf("Error reading file: %v", err)
-			}
-
-			// tests if file is binary
-			binaryTest := isbinary.Test(fileTest)
-
-			// skips file if its a binary
-			if binaryTest {
-				return filepath.SkipDir
 			}
 
 			// create new template from parsing file
