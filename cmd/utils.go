@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/mitchellh/go-spdx"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
@@ -625,7 +626,7 @@ func UserHomeDir(log *LoggingConfig) string {
 	return homeDir
 }
 
-func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
+func getConfigLabels(projectConfig ProjectConfig, filename string) (map[string]string, error) {
 	var labels = make(map[string]string)
 
 	t := time.Now()
@@ -654,6 +655,8 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	if projectConfig.License != "" {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
+		} else if err := checkValidLicense(projectConfig.License); err != nil {
+			return labels, errors.Errorf("The %v SPDX license ID is invalid: %v.", filename, err)
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
 	}
@@ -2024,4 +2027,15 @@ func SeparateOutput(cmd *exec.Cmd) (string, error) {
 
 	// If there wasn't an error return the stdOut & (lack of) err
 	return strings.TrimSpace(stdOut.String()), err
+}
+
+func checkValidLicense(license string) error {
+	// Get the list of all known licenses
+	list, _ := spdx.List()
+	for _, spdx := range list.Licenses {
+		if spdx.ID == license {
+			return nil
+		}
+	}
+	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
 }
