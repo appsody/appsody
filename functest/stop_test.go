@@ -53,7 +53,7 @@ func TestStopWithoutName(t *testing.T) {
 		stopOutput, errStop := cmdtest.RunAppsody(sandbox, "stop")
 
 		//docker stop appsody-stop-test
-		if !strings.Contains(stopOutput, "docker stop appsody-test") {
+		if !strings.Contains(stopOutput, "docker stop "+sandbox.ProjectName) {
 			t.Fatal("docker stop command not present for appsody-test...")
 		}
 		if errStop != nil {
