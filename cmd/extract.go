@@ -48,7 +48,7 @@ Your project is extracted into your local '$HOME/.appsody/extract' directory, un
 		},
 	}
 
-	extractCmd.PersistentFlags().StringVar(&config.targetDir, "target-dir", "", "Directory path to place the extracted files. This directory must not exist, it will be created.")
+	extractCmd.PersistentFlags().StringVar(&config.targetDir, "target-dir", "", "The absolute directory path to extract the files into. This directory must not exist, as it will be created.")
 	extractCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Extract project using buildah primitives instead of Docker.")
 	defaultName := defaultExtractContainerName(rootConfig)
 	extractCmd.PersistentFlags().StringVar(&config.extractContainerName, "name", defaultName, "Assign a name to your development container.")
