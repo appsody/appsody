@@ -1994,7 +1994,8 @@ func CheckStackRequirements(log *LoggingConfig, requirementArray map[string]stri
 				if parseErr != nil || cutCmdOutput == "0.0.0" {
 					log.Error.log(parseErr)
 					log.Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
-					return nil
+					// Continue when the version can not be determined or the appsody version is 0.0.0
+					continue
 				}
 				compareVersion := setConstraint.Check(parseUserVersion)
 
