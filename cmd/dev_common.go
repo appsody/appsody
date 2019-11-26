@@ -105,7 +105,7 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 	cmd.PersistentFlags().BoolVarP(&config.publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
 	cmd.PersistentFlags().BoolVar(&config.disableWatcher, "no-watcher", false, "Disable file watching, regardless of container environment variable settings.")
 	cmd.PersistentFlags().BoolVarP(&config.interactive, "interactive", "i", false, "Attach STDIN to the container for interactive TTY mode")
-	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\". The following docker options are not allowed:  '--help','-p','--publish-all','-P','-u','-—user','-—name','-—network','-t','-—tty,'—rm','—entrypoint','-v','—volume'")
+	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\". The following docker options are not allowed:  '--help','-p','--publish-all','-P','-u','-—user','-—name','-—network','-t','-—tty,'—rm','—entrypoint','-v','—volume'.")
 
 }
 
