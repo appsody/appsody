@@ -26,6 +26,14 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
+  branch = "master"
+  digest = "1:8e4b497b94ca849d660e8e1ed1b84e3eaa7480b1cba14f2ff283c20d4f839d40"
+  name = "github.com/andrew-d/isbinary"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e6fe02933397c4c8747f4d6535d07e71ae85182e"
+
+[[projects]]
   digest = "1:4756f15a2e26d1bb39c3e68d312bb07315376d8454a7ed1ef16829d9f009300e"
   name = "github.com/appsody/appsody-operator"
   packages = [
@@ -73,18 +81,6 @@
   pruneopts = "UT"
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
   version = "v1.4.7"
-
-[[projects]]
-  digest = "1:8827313df2cc54e8a746315896ed9fd67e1780ebafa6dac3513c84f25beaa243"
-  name = "github.com/gabriel-vasile/mimetype"
-  packages = [
-    ".",
-    "internal/json",
-    "internal/matchers",
-  ]
-  pruneopts = "UT"
-  revision = "a712f070184acc9dc6aeb3302e72d723d49306a2"
-  version = "v0.3.22"
 
 [[projects]]
   digest = "1:ed15647db08b6d63666bf9755d337725960c302bbfa5e23754b4b915a4797e42"
@@ -462,8 +458,8 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Masterminds/semver",
+    "github.com/andrew-d/isbinary",
     "github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1",
-    "github.com/gabriel-vasile/mimetype",
     "github.com/gosuri/uitable",
     "github.com/mitchellh/go-homedir",
     "github.com/pkg/errors",

@@ -22,7 +22,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/gabriel-vasile/mimetype"
+	"github.com/andrew-d/isbinary"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -548,13 +548,6 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 // previously created templateMetada to all files in the target directory
 func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
-	// current method means we allow certain application file types through
-	allowedApplicationFiles := []string{
-		"application/json",
-		"application/javascript",
-		"application/x-python",
-	}
-
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
 		//Skip .git folder and .DS_Store files
@@ -568,20 +561,24 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			// get permission of file
 			permission := info.Mode()
 
-			fileType, _, err := mimetype.DetectFile(path)
-			if err != nil {
-				return errors.Errorf("Error getting file type: %v", err)
-			}
-
-			// skip files with application other than peviously stated allowed types
-			if strings.Contains(fileType, "application") && !contains(fileType, allowedApplicationFiles) {
-				return filepath.SkipDir
-			}
-
 			// set file permission to writable to apply templating
 			err = os.Chmod(path, 0666)
 			if err != nil {
 				return errors.Errorf("Error changing file permision: %v", err)
+			}
+
+			// read the file for a binay test
+			fileTest, err := ioutil.ReadFile(path)
+			if err != nil {
+				errors.Errorf("Error reading file: %v", err)
+			}
+
+			// tests if file is binary
+			binaryTest := isbinary.Test(fileTest)
+
+			// skips file if its a binary
+			if binaryTest {
+				return filepath.SkipDir
 			}
 
 			// create new template from parsing file
@@ -618,14 +615,4 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	return nil
 
-}
-
-// contains checks if a string is in a list
-func contains(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
 }
