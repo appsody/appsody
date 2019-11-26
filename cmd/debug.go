@@ -20,11 +20,16 @@ func newDebugCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// debug Cmd represents the debug command
 	var debugCmd = &cobra.Command{
 		Use:   "debug",
-		Short: "Run the local Appsody environment in debug mode",
-		Long:  `This starts a docker based continuous build environment for your project with debugging enabled.`,
+		Short: "Debug your Appsody project.",
+		Long:  `Start a container-based continuous build environment for your Appsody project, with debugging enabled.`,
+		Example: `  appsody debug --docker-options "--privileged"
+  Starts the debugging environment, passing the "--privileged" option to the "docker run" command as a flag.
+  
+  appsody debug --name my-project-dev2 -p 3001:3000
+  Starts the debugging environment, names the development container "my-project-dev2", and binds the container port 3000 to the host port 3001.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			Info.log("Running debug environment")
+			config.Info.log("Running debug environment")
 			return commonCmd(config, "debug")
 		},
 	}

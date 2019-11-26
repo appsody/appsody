@@ -25,8 +25,12 @@ func newRepoDefaultCmd(config *RootCommandConfig) *cobra.Command {
 	// initCmd represents the init command
 	var setDefaultCmd = &cobra.Command{
 		Use:   "set-default <name>",
-		Short: "Set desired default repository",
-		Long:  ``,
+		Short: "Set a default repository.",
+		Long: `Set your specified repository to be the default repository.
+
+The default repository is used when you run the "appsody init" command without specifying a repository name. Use "appsody repo list" or "appsody list" to see which repository is currently the default (denoted by an asterisk).`,
+		Example: `  appsody repo set-default my-local-repo
+  Sets your default repository to "my-local-repo".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("Error, you must specify desired default repository")
@@ -40,7 +44,7 @@ func newRepoDefaultCmd(config *RootCommandConfig) *cobra.Command {
 				return repoErr
 			}
 			if config.Dryrun {
-				Info.log("Dry Run - Skipping appsody repo set-default ", repoName)
+				config.Info.log("Dry Run - Skipping appsody repo set-default ", repoName)
 			} else {
 				if repoFile.Has(repoName) {
 					defaultRepoName, err := repoFile.GetDefaultRepoName(config)
@@ -53,10 +57,10 @@ func newRepoDefaultCmd(config *RootCommandConfig) *cobra.Command {
 							return repoFileErr
 						}
 					} else {
-						Info.log("Your default repository has already been set to " + repoName)
+						config.Info.log("Your default repository has already been set to " + repoName)
 					}
 				} else {
-					Error.log("Repository is not in configured list of repositories")
+					config.Error.log("Repository is not in configured list of repositories")
 				}
 				err := repoFile.WriteFile(getRepoFileLocation(config))
 				if err != nil {

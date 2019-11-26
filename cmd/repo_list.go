@@ -31,8 +31,8 @@ func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
 	// repo list represent repo list cmd
 	var repoListCmd = &cobra.Command{
 		Use:   "list",
-		Short: "List configured Appsody repositories",
-		Long:  `List configured Appsody repositories. An asterisk denotes the default repository.`,
+		Short: "List your Appsody repositories.",
+		Long:  `List all your configured Appsody repositories. The "incubator" repository is the initial default repository for Appsody.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var repos RepositoryFile
 
@@ -41,27 +41,26 @@ func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
 				return repoErr
 			}
 
-			repoList, err := repos.listRepos(config)
-			if err != nil {
-				return err
-			}
-
 			if repoListConfig.output == "" {
-				Info.log("\n", repoList)
+				repoList, err := repos.listRepos(config)
+				if err != nil {
+					return err
+				}
+				config.Info.log("\n", repoList)
 			} else if repoListConfig.output == "yaml" {
 				bytes, err := yaml.Marshal(&list)
 				if err != nil {
 					return err
 				}
 				result := string(bytes)
-				Info.log("\n", result)
+				config.Info.log("\n", result)
 			} else if repoListConfig.output == "json" {
 				bytes, err := json.Marshal(&list)
 				if err != nil {
 					return err
 				}
 				result := string(bytes)
-				Info.log("\n", result)
+				config.Info.log("\n", result)
 			}
 
 			return nil

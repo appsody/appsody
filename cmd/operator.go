@@ -53,9 +53,9 @@ func newOperatorCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	return operatorCmd
 }
 
-func downloadOperatorYaml(url string, operatorNamespace string, watchNamespace string, target string) (string, error) {
+func downloadOperatorYaml(log *LoggingConfig, url string, operatorNamespace string, watchNamespace string, target string) (string, error) {
 
-	file, err := downloadYaml(url, target)
+	file, err := downloadYaml(log, url, target)
 	if err != nil {
 		return "", fmt.Errorf("Could not download Operator YAML file %s", url)
 	}
@@ -80,13 +80,13 @@ func downloadOperatorYaml(url string, operatorNamespace string, watchNamespace s
 	return target, nil
 }
 
-func downloadRBACYaml(url string, operatorNamespace string, target string, dryrun bool) (string, error) {
+func downloadRBACYaml(log *LoggingConfig, url string, operatorNamespace string, target string, dryrun bool) (string, error) {
 	if dryrun {
-		Info.log("Skipping download of RBAC yaml: ", url)
+		log.Info.log("Skipping download of RBAC yaml: ", url)
 		return "", nil
 
 	}
-	file, err := downloadYaml(url, target)
+	file, err := downloadYaml(log, url, target)
 	if err != nil {
 		return "", fmt.Errorf("Could not download RBAC YAML file %s", url)
 	}
@@ -110,11 +110,12 @@ func downloadRBACYaml(url string, operatorNamespace string, target string, dryru
 	}
 	return target, nil
 }
-func downloadYaml(url string, target string) (string, error) {
-	Debug.log("Downloading file: ", url)
+
+func downloadYaml(log *LoggingConfig, url string, target string) (string, error) {
+	log.Debug.log("Downloading file: ", url)
 
 	fileBuffer := bytes.NewBuffer(nil)
-	err := downloadFile(url, fileBuffer)
+	err := downloadFile(log, url, fileBuffer)
 	if err != nil {
 		return "", errors.Errorf("Failed to get file: %s", err)
 	}
@@ -131,8 +132,8 @@ func downloadYaml(url string, target string) (string, error) {
 	return target, nil
 }
 
-func downloadCRDYaml(url string, target string) (string, error) {
-	file, err := downloadYaml(url, target)
+func downloadCRDYaml(log *LoggingConfig, url string, target string) (string, error) {
+	file, err := downloadYaml(log, url, target)
 	if err != nil {
 		return "", fmt.Errorf("Could not download AppsodyApplication CRD file %s", url)
 	}
@@ -147,7 +148,7 @@ func getDeployConfigDir(rootConfig *RootCommandConfig) (string, error) {
 	}
 	if !deployConfigDirExists {
 
-		Debug.log("Creating deploy config dir: ", deployConfigDir)
+		rootConfig.Debug.log("Creating deploy config dir: ", deployConfigDir)
 		err = os.MkdirAll(deployConfigDir, os.ModePerm)
 		if err != nil {
 			return "", errors.Errorf("Error creating directories %s %v", deployConfigDir, err)
