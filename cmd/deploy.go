@@ -148,7 +148,7 @@ The command performs the following steps:
 			return nil
 		},
 	}
-	
+
 	addStackRegistryFlag(deployCmd, &config.RootCommandConfig.StackRegistry, config.RootCommandConfig)
 	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment manifest file. Do not deploy the project.")
 	deployCmd.PersistentFlags().BoolVar(&config.nobuild, "no-build", false, "Deploys the application without building a new image or modifying the deployment manifest file.")
