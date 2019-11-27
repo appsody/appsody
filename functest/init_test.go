@@ -33,7 +33,7 @@ func TestInit(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestNoOverwrite(t *testing.T) {
 	}
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
 
 	shouldNotExist(appsodyFile, t)
 
@@ -113,7 +113,7 @@ func TestOverwrite(t *testing.T) {
 	}
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--overwrite"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--overwrite"}, projectDir, t)
 
 	shouldExist(appsodyFile, t)
 
@@ -159,7 +159,7 @@ func TestNoTemplate(t *testing.T) {
 	shouldExist(appjs, t)
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--no-template"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--no-template"}, projectDir, t)
 
 	shouldExist(appsodyFile, t)
 
@@ -221,7 +221,7 @@ func TestWhiteList(t *testing.T) {
 	}
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
 
 	shouldExist(appsodyFile, t)
 
@@ -267,7 +267,7 @@ func TestInitV2WithDefaultRepoSpecified(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "incubator/nodejs"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "incubator/nodejs"}, projectDir, t)
 	if err != nil {
 		t.Error(err)
 	}
@@ -282,7 +282,7 @@ func TestInitV2WithNonDefaultRepoSpecified(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "experimental/nodejs-functions"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "experimental/nodejs-functions"}, projectDir, t)
 	if err != nil {
 		t.Error(err)
 	}
@@ -297,7 +297,7 @@ func TestInitV2WithBadStackSpecified(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	output, _ := cmdtest.RunAppsodyCmd([]string{"init", "badnodejs-express"}, projectDir)
+	output, _ := cmdtest.RunAppsodyCmd([]string{"init", "badnodejs-express"}, projectDir, t)
 	if !(strings.Contains(output, "Could not find a stack with the id")) {
 		t.Error("Should have flagged non existing stack")
 	}
@@ -312,7 +312,7 @@ func TestInitV2WithBadRepoSpecified(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	output, _ := cmdtest.RunAppsodyCmd([]string{"init", "badrepo/nodejs-express"}, projectDir)
+	output, _ := cmdtest.RunAppsodyCmd([]string{"init", "badrepo/nodejs-express"}, projectDir, t)
 
 	if !(strings.Contains(output, "is not in configured list of repositories")) {
 		t.Log("Bad repo not flagged")
@@ -328,7 +328,7 @@ func TestInitV2WithDefaultRepoSpecifiedTemplateNonDefault(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "incubator/nodejs-express", "scaffold"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "incubator/nodejs-express", "scaffold"}, projectDir, t)
 	if err != nil {
 		t.Error(err)
 	}
@@ -343,7 +343,7 @@ func TestInitV2WithDefaultRepoSpecifiedTemplateDefault(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "incubator/nodejs-express", "simple"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "incubator/nodejs-express", "simple"}, projectDir, t)
 	if err != nil {
 		t.Error(err)
 	}
@@ -357,7 +357,7 @@ func TestInitV2WithNoRepoSpecifiedTemplateDefault(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "simple"}, projectDir)
+	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "simple"}, projectDir, t)
 	if err != nil {
 		t.Error(err)
 	}
@@ -375,7 +375,7 @@ func TestNone(t *testing.T) {
 	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "none"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "none"}, projectDir, t)
 
 	shouldNotExist(packagejson, t)
 	shouldNotExist(packagejsonlock, t)
@@ -393,7 +393,7 @@ func TestNoneAndNoTemplate(t *testing.T) {
 	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "none", "--no-template"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "none", "--no-template"}, projectDir, t)
 
 	shouldNotExist(packagejson, t)
 	shouldNotExist(packagejsonlock, t)
@@ -411,7 +411,7 @@ func TestNoTemplateOnly(t *testing.T) {
 	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--no-template"}, projectDir)
+	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--no-template"}, projectDir, t)
 
 	shouldNotExist(packagejson, t)
 	shouldNotExist(packagejsonlock, t)
@@ -427,7 +427,7 @@ func TestNoTemplateAndSimple(t *testing.T) {
 
 	// appsody init nodejs-express
 	var output string
-	output, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "simple", "--no-template"}, projectDir)
+	output, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "simple", "--no-template"}, projectDir, t)
 	if !strings.Contains(output, "with both a template and --no-template") {
 		t.Error("Correct error message not given")
 	}

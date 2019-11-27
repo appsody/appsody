@@ -30,27 +30,30 @@ type StackContainer struct {
 	stackName     string
 	status        string
 	containerName string
+	ports         string
 }
 
-func newPsCmd(rootConfig *RootCommandConfig) *cobra.Command {
+func newPsCmd(log *LoggingConfig) *cobra.Command {
 	// psCmd represents the ps command
 	var psCmd = &cobra.Command{
 		Use:   "ps",
-		Short: "List the appsody containers running in the local docker environment",
-		Long:  `This command lists all stack-based containers, that are currently running in the local docker envionment.`,
+		Short: "List the Appsody containers running in the local Docker environment.",
+		Long: `List all stack-based containers that are currently running in the local Docker environment. 
+		
+Shows the following information about the Appsody containers that are currently running: container ID, container name, image and status.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			containers, err := listContainers()
+			containers, err := listContainers(log)
 			if err != nil {
 				return err
 			}
 
-			table, err := formatTable(containers)
+			table, err := formatTable(log, containers)
 			if err != nil {
 				return errors.Errorf("%v", err)
 			}
 			if table != "" {
-				Info.log(table)
+				log.Info.log(table)
 			}
 			return nil
 		},
@@ -58,7 +61,7 @@ func newPsCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	return psCmd
 }
 
-func listContainers() ([]StackContainer, error) {
+func listContainers(log *LoggingConfig) ([]StackContainer, error) {
 	var containers = []StackContainer{}
 
 	// We are going to do a 'docker ps' and parse the output into fields. At least one of these
@@ -72,12 +75,12 @@ func listContainers() ([]StackContainer, error) {
 		"--no-trunc",
 		"--format",
 		"{{.ID}}" + strSep + "{{.Image}}" + strSep + "{{.Status}}" +
-			strSep + "{{.Names}}" + strSep + "{{.Command}}"}
+			strSep + "{{.Names}}" + strSep + "{{.Command}}" + strSep + "{{.Ports}}"}
 
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
-		Error.log("Error creating StdoutPipe for Cmd", err)
+		log.Error.log("Error creating StdoutPipe for Cmd", err)
 		return nil, err
 	}
 
@@ -87,38 +90,38 @@ func listContainers() ([]StackContainer, error) {
 		for outScanner.Scan() {
 			fields := strings.Split(outScanner.Text(), strSep)
 			if strings.Contains(fields[4], "appsody-controller") {
-				containers = append(containers, StackContainer{fields[0][0:12], fields[1], fields[2], fields[3]})
+				containers = append(containers, StackContainer{fields[0][0:12], fields[1], fields[2], fields[3], fields[5]})
 			}
 		}
 	}()
 
 	err = cmd.Start()
 	if err != nil {
-		Error.log("Error running command", err)
+		log.Error.log("Error running command", err)
 		return nil, err
 	}
 	err = cmd.Wait()
 	if err != nil {
-		Error.log("Error waiting for command", err)
+		log.Error.log("Error waiting for command", err)
 		return nil, err
 	}
 
 	return containers, nil
 }
 
-func formatTable(containers []StackContainer) (string, error) {
+func formatTable(log *LoggingConfig, containers []StackContainer) (string, error) {
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.Wrap = true
 
 	if len(containers) != 0 {
-		table.AddRow("CONTAINER ID", "NAME", "IMAGE", "STATUS")
+		table.AddRow("CONTAINER ID", "NAME", "IMAGE", "PORTS", "STATUS")
 
 		for _, value := range containers {
-			table.AddRow(value.ID, value.containerName, value.stackName, value.status)
+			table.AddRow(value.ID, value.containerName, value.stackName, value.ports, value.status)
 		}
 	} else {
-		Info.log("There are no stack-based containers running in your docker environment")
+		log.Info.log("There are no stack-based containers running in your docker environment")
 		return "", nil
 	}
 
