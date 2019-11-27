@@ -120,8 +120,8 @@ func TestInvalidVersionAgainstStack(t *testing.T) {
 	err := cmd.CheckStackRequirements(log, reqsMap, false)
 
 	if err == nil {
-		t.Log(outBuffer)
-		t.Fatal(err)
+		t.Log(outBuffer.String())
+		t.Fatal("Expected Error NOT thrown", reqsMap)
 	}
 }
 

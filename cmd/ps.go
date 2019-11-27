@@ -30,6 +30,7 @@ type StackContainer struct {
 	stackName     string
 	status        string
 	containerName string
+	ports         string
 }
 
 func newPsCmd(log *LoggingConfig) *cobra.Command {
@@ -74,7 +75,7 @@ func listContainers(log *LoggingConfig) ([]StackContainer, error) {
 		"--no-trunc",
 		"--format",
 		"{{.ID}}" + strSep + "{{.Image}}" + strSep + "{{.Status}}" +
-			strSep + "{{.Names}}" + strSep + "{{.Command}}"}
+			strSep + "{{.Names}}" + strSep + "{{.Command}}" + strSep + "{{.Ports}}"}
 
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmdReader, err := cmd.StdoutPipe()
@@ -89,7 +90,7 @@ func listContainers(log *LoggingConfig) ([]StackContainer, error) {
 		for outScanner.Scan() {
 			fields := strings.Split(outScanner.Text(), strSep)
 			if strings.Contains(fields[4], "appsody-controller") {
-				containers = append(containers, StackContainer{fields[0][0:12], fields[1], fields[2], fields[3]})
+				containers = append(containers, StackContainer{fields[0][0:12], fields[1], fields[2], fields[3], fields[5]})
 			}
 		}
 	}()
@@ -114,10 +115,10 @@ func formatTable(log *LoggingConfig, containers []StackContainer) (string, error
 	table.Wrap = true
 
 	if len(containers) != 0 {
-		table.AddRow("CONTAINER ID", "NAME", "IMAGE", "STATUS")
+		table.AddRow("CONTAINER ID", "NAME", "IMAGE", "PORTS", "STATUS")
 
 		for _, value := range containers {
-			table.AddRow(value.ID, value.containerName, value.stackName, value.status)
+			table.AddRow(value.ID, value.containerName, value.stackName, value.ports, value.status)
 		}
 	} else {
 		log.Info.log("There are no stack-based containers running in your docker environment")
