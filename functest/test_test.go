@@ -44,7 +44,7 @@ func TestTestSimple(t *testing.T) {
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -56,7 +56,7 @@ func TestTestSimple(t *testing.T) {
 
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
 
 		if err != nil {
 			t.Fatal(err)
@@ -66,7 +66,7 @@ func TestTestSimple(t *testing.T) {
 		runChannel := make(chan error)
 		go func() {
 			log.Println("Running appsody test...")
-			_, err = cmdtest.RunAppsodyCmd([]string{"test"}, projectDir)
+			_, err = cmdtest.RunAppsodyCmd([]string{"test"}, projectDir, t)
 			runChannel <- err
 		}()
 
@@ -87,7 +87,7 @@ func TestTestSimple(t *testing.T) {
 				fmt.Printf("appsody test kept running for %d seconds with no error so consider this passed\n", waitForError)
 				stillWaiting = false
 				// stop the container if it is still up
-				_, err = cmdtest.RunAppsodyCmd([]string{"stop"}, projectDir)
+				_, err = cmdtest.RunAppsodyCmd([]string{"stop"}, projectDir, t)
 				if err != nil {
 					t.Logf("Ignoring error running appsody stop: %s", err)
 				}

@@ -49,7 +49,7 @@ func TestBuildSimple(t *testing.T) {
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -61,7 +61,7 @@ func TestBuildSimple(t *testing.T) {
 
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,7 +70,7 @@ func TestBuildSimple(t *testing.T) {
 		runChannel := make(chan error)
 		imageName := "testbuildimage"
 		go func() {
-			_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName}, projectDir)
+			_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName}, projectDir, t)
 			runChannel <- err
 		}()
 
@@ -79,7 +79,7 @@ func TestBuildSimple(t *testing.T) {
 		imageBuilt := false
 		count := 900
 		for {
-			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"image", "ls", imageName})
+			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"image", "ls", imageName}, t)
 			if dockerErr != nil {
 				t.Log("Ignoring error running docker image ls "+imageName, dockerErr)
 			}
@@ -100,7 +100,7 @@ func TestBuildSimple(t *testing.T) {
 		}
 
 		//delete the image
-		deleteImage(imageName)
+		deleteImage(imageName, t)
 
 		// clean up
 		cleanup()
@@ -128,22 +128,18 @@ var appsodyStackLabels = []string{
 
 func TestBuildLabels(t *testing.T) {
 	// first add the test repo index
-	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-build-labels-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	projectDir := cmdtest.GetTempProjectDir(t)
 	defer os.RemoveAll(projectDir)
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init
-	_, err = cmdtest.RunAppsodyCmdExec([]string{"init", "nodejs-express"}, projectDir)
+	_, err = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
 	t.Log("Running appsody init...")
 	if err != nil {
 		t.Fatal(err)
@@ -157,39 +153,13 @@ func TestBuildLabels(t *testing.T) {
 	}
 
 	// appsody build
-	runChannel := make(chan error)
 	imageName := "testbuildimage"
-	go func() {
-		_, err = cmdtest.RunAppsodyCmdExec([]string{"build", "--tag", imageName}, projectDir)
-		runChannel <- err
-	}()
-
-	// It will take a while for the image to build, so lets use docker image ls to wait for it
-	t.Log("calling docker image ls to wait for the image")
-	imageBuilt := false
-	count := 900
-	for {
-		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"image", "ls", imageName})
-		if dockerErr != nil {
-			t.Log("Ignoring error running docker image ls "+imageName, dockerErr)
-		}
-		if strings.Contains(dockerOutput, imageName) {
-			t.Log("docker image " + imageName + " was found")
-			imageBuilt = true
-		} else {
-			time.Sleep(2 * time.Second)
-			count = count - 1
-		}
-		if count == 0 || imageBuilt {
-			break
-		}
+	_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName}, projectDir, t)
+	if err != nil {
+		t.Fatalf("Error on appsody build: %v", err)
 	}
 
-	if !imageBuilt {
-		t.Fatal("image was never built")
-	}
-
-	inspectOutput, inspectErr := cmdtest.RunDockerCmdExec([]string{"inspect", imageName})
+	inspectOutput, inspectErr := cmdtest.RunDockerCmdExec([]string{"inspect", imageName}, t)
 	if inspectErr != nil {
 		t.Fatal(inspectErr)
 	}
@@ -221,14 +191,14 @@ func TestBuildLabels(t *testing.T) {
 	}
 
 	//delete the image
-	deleteImage(imageName)
+	deleteImage(imageName, t)
 
 	// clean up
 	cleanup()
 }
 
-func deleteImage(imageName string) {
-	_, err := cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName})
+func deleteImage(imageName string, t *testing.T) {
+	_, err := cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName}, t)
 	if err != nil {
 		fmt.Printf("Ignoring error running docker image rm: %s", err)
 	}
@@ -252,7 +222,7 @@ func TestDeploymentConfig(t *testing.T) {
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -264,7 +234,7 @@ func TestDeploymentConfig(t *testing.T) {
 
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -273,14 +243,14 @@ func TestDeploymentConfig(t *testing.T) {
 		imageName := filepath.Base(projectDir)
 		pullURL := "my-pull-url"
 
-		_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName, "--pull-url", pullURL, "--knative"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"build", "--tag", imageName, "--pull-url", pullURL, "--knative"}, projectDir, t)
 		if err != nil {
 			t.Error("appsody build command returned err: ", err)
 		}
 		checkDeploymentConfig(t, filepath.Join(projectDir, deployFile), pullURL, imageName)
 
 		//delete the image
-		deleteImage(imageName)
+		deleteImage(imageName, t)
 
 		// clean up
 		cleanup()

@@ -18,18 +18,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func dockerStop(imageName string, dryrun bool) error {
+func dockerStop(rootConfig *RootCommandConfig, imageName string, dryrun bool) error {
 	cmdName := "docker"
-	signalInterval := "10" // numnrt of seconds to wait prior to sending SIGKILL
-	cmdArgs := []string{"stop", imageName, "-t", signalInterval}
-	err := execAndWait(cmdName, cmdArgs, Debug, dryrun)
+	cmdArgs := []string{"stop", imageName}
+	err := execAndWait(rootConfig.LoggingConfig, cmdName, cmdArgs, rootConfig.Debug, dryrun)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func containerRemove(imageName string, buildah bool, dryrun bool) error {
+func containerRemove(log *LoggingConfig, imageName string, buildah bool, dryrun bool) error {
 	cmdName := "docker"
 	//Added "-f" to force removal if container is still running or image has containers
 	cmdArgs := []string{"rm", imageName, "-f"}
@@ -37,7 +36,7 @@ func containerRemove(imageName string, buildah bool, dryrun bool) error {
 		cmdName = "buildah"
 		cmdArgs = []string{"rm", imageName}
 	}
-	err := execAndWait(cmdName, cmdArgs, Debug, dryrun)
+	err := execAndWait(log, cmdName, cmdArgs, log.Debug, dryrun)
 	if err != nil {
 		return err
 	}
@@ -64,7 +63,7 @@ Run this command from the root directory of your Appsody project`,
   Runs your project in a containerized development environment, binds the container port 3000 to the host port 3001, and passes the "--privileged" option to the "docker run" command as a flag.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			Info.log("Running development environment...")
+			rootConfig.Info.log("Running development environment...")
 			return commonCmd(config, "run")
 
 		},
