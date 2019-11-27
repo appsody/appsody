@@ -133,14 +133,14 @@ func (stackDetails *StackYaml) checkTemplatingData(log *LoggingConfig) (int, int
 	return stackLintErrorCount, stackLintWarningCount
 }
 
-func (s *StackYaml) checkLicense(log *LoggingConfig) int {
+func (stackDetails *StackYaml) checkLicense(log *LoggingConfig) int {
 	stackLintErrorCount := 0
 
-	if err := checkValidLicense(s.License); err != nil {
+	if err := checkValidLicense(stackDetails.License); err != nil {
 		stackLintErrorCount++
 		log.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
 	}
-	if valid, err := IsValidKubernetesLabelValue(s.License); !valid {
+	if valid, err := IsValidKubernetesLabelValue(stackDetails.License); !valid {
 		log.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
 	}
 	return stackLintErrorCount
