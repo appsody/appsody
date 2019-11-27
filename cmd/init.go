@@ -245,8 +245,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		if !mapEmpty {
 			checkErr := CheckStackRequirements(config.LoggingConfig, reqsMap, config.Buildah)
 			if checkErr != nil {
-				config.Error.log(checkErr)
-				os.Exit(1)
+				return checkErr
 			}
 		} else {
 			config.Info.log("No stack requirements set. Skipping...")
@@ -335,7 +334,6 @@ func install(config *initCommandConfig) error {
 		config.Warning.log("The stack init script failed: ", err)
 		config.Warning.log("Your local IDE may not build properly, but the Appsody container should still work.")
 		config.Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
-		os.Exit(0)
 	}
 	return nil
 }

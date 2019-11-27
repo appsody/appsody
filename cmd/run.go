@@ -20,8 +20,7 @@ import (
 
 func dockerStop(rootConfig *RootCommandConfig, imageName string, dryrun bool) error {
 	cmdName := "docker"
-	signalInterval := "10" // numnrt of seconds to wait prior to sending SIGKILL
-	cmdArgs := []string{"stop", imageName, "-t", signalInterval}
+	cmdArgs := []string{"stop", imageName}
 	err := execAndWait(rootConfig.LoggingConfig, cmdName, cmdArgs, rootConfig.Debug, dryrun)
 	if err != nil {
 		return err

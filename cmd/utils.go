@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/mitchellh/go-spdx"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
@@ -625,7 +626,7 @@ func UserHomeDir(log *LoggingConfig) string {
 	return homeDir
 }
 
-func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
+func getConfigLabels(projectConfig ProjectConfig, filename string) (map[string]string, error) {
 	var labels = make(map[string]string)
 
 	t := time.Now()
@@ -654,6 +655,8 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	if projectConfig.License != "" {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
+		} else if err := checkValidLicense(projectConfig.License); err != nil {
+			return labels, errors.Errorf("The %v SPDX license ID is invalid: %v.", filename, err)
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
 	}
@@ -1991,7 +1994,8 @@ func CheckStackRequirements(log *LoggingConfig, requirementArray map[string]stri
 				if parseErr != nil || cutCmdOutput == "0.0.0" {
 					log.Error.log(parseErr)
 					log.Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
-					return nil
+					// Continue when the version can not be determined or the appsody version is 0.0.0
+					continue
 				}
 				compareVersion := setConstraint.Check(parseUserVersion)
 
@@ -2034,4 +2038,15 @@ func CheckValidSemver(version string) error {
 	}
 
 	return nil
+}
+
+func checkValidLicense(license string) error {
+	// Get the list of all known licenses
+	list, _ := spdx.List()
+	for _, spdx := range list.Licenses {
+		if spdx.ID == license {
+			return nil
+		}
+	}
+	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
 }
