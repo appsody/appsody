@@ -135,13 +135,7 @@ func RunDockerCmdExec(args []string) (string, error) {
 	return outBuffer.String(), err
 }
 
-// AddLocalFileRepo calls the repo add command with the repo index located
-// at the local file path. The path may be relative to the current working
-// directory.
-// Returns the URL of the repo added.
-// Returns a function which should be deferred by the caller to cleanup
-// the repo list when finished.
-func AddLocalFileRepo(repoName string, repoFilePath string) (string, error) {
+func AddLocalFileRepo(repoName string, repoFilePath string, config *RootCommandConfig) (string, error) {
 	absPath, err := filepath.Abs(repoFilePath)
 	if err != nil {
 		return "", err
@@ -153,7 +147,7 @@ func AddLocalFileRepo(repoName string, repoFilePath string) (string, error) {
 	}
 	repoURL = "file://" + absPath
 	// add a new repo
-	_, err = RunAppsodyCmdExec([]string{"repo", "add", repoName, repoURL}, ".")
+	err = repoAdd(repoName, repoURL, config)
 	if err != nil {
 		return "", err
 	}

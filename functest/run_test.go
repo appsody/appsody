@@ -29,7 +29,7 @@ var stacksList = os.Getenv("STACKSLIST")
 // Test appsody run of the nodejs-express stack and check the http://localhost:3000/health endpoint
 func TestRun(t *testing.T) {
 	// first add the test repo index
-	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestRun(t *testing.T) {
 	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir)
+	_, err = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,13 +49,13 @@ func TestRun(t *testing.T) {
 	// appsody run
 	runChannel := make(chan error)
 	go func() {
-		_, err = cmdtest.RunAppsodyCmd([]string{"run"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"run"}, projectDir, t)
 		runChannel <- err
 	}()
 
 	// defer the appsody stop to close the docker container
 	defer func() {
-		_, err = cmdtest.RunAppsodyCmd([]string{"stop"}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"stop"}, projectDir, t)
 		if err != nil {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
@@ -114,7 +114,7 @@ func TestRunSimple(t *testing.T) {
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -126,7 +126,7 @@ func TestRunSimple(t *testing.T) {
 
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -135,7 +135,7 @@ func TestRunSimple(t *testing.T) {
 		runChannel := make(chan error)
 		containerName := "testRunSimpleContainer"
 		go func() {
-			_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", containerName}, projectDir)
+			_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", containerName}, projectDir, t)
 			runChannel <- err
 		}()
 
@@ -144,7 +144,7 @@ func TestRunSimple(t *testing.T) {
 		containerRunning := false
 		count := 100
 		for {
-			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName})
+			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName}, t)
 			if dockerErr != nil {
 				t.Log("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
 			}
@@ -165,7 +165,7 @@ func TestRunSimple(t *testing.T) {
 		}
 
 		// stop and clean up after the run
-		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", containerName}, projectDir)
+		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", containerName}, projectDir, t)
 		if err != nil {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
