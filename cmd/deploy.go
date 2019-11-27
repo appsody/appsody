@@ -49,9 +49,19 @@ func newDeployCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	var deployCmd = &cobra.Command{
 		Use:   "deploy",
-		Short: "Build and deploy your Appsody project to your Kubernetes cluster",
-		Long: `This command extracts the code from your project, builds a local Docker image for deployment,
-generates a deployment manifest (yaml) file if one is not present, and uses it to deploy your image to a Kubernetes cluster, either via the Appsody operator or as a Knative service.`,
+		Short: "Build and deploy your Appsody project to Kubernetes.",
+		Long: `Build and deploy a local container image of your Appsody project to your Kubernetes cluster. 
+		
+The command performs the following steps:
+
+1. Runs the appsody build command to build the container image for deployment.
+2. Generates a deployment manifest file, "app-deploy.yaml", if one is not present, then applies it to your Kubernetes cluster.
+3. Deploys your image to your Kubernetes cluster via the Appsody operator, or as a Knative service if you specify the "--knative" flag. If an Appsody operator cannot be found, one will be installed on your cluster.`,
+		Example: `  appsody deploy --namespace my-namespace
+  Builds and deploys your project to the "my-namespace" namespace in your local Kubernetes cluster.
+  
+  appsody deploy -t my-repo/nodejs-express --push-url external-registry-url --pull-url internal-registry-url
+  Builds and tags the image as "my-repo/nodejs-express", pushes the image to "external-registry-url/my-repo/nodejs-express", and creates a deployment manifest that tells the Kubernetes cluster to pull the image from "internal-registry-url/my-repo/nodejs-express".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			projectDir, err := getProjectDir(config.RootCommandConfig)
@@ -137,11 +147,12 @@ generates a deployment manifest (yaml) file if one is not present, and uses it t
 			return nil
 		},
 	}
+
 	addStackRegistryFlag(deployCmd, &config.RootCommandConfig.StackRegistry, config.RootCommandConfig)
-	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment configuration file. Do not deploy the project.")
-	deployCmd.PersistentFlags().BoolVar(&config.nobuild, "no-build", false, "Deploys the application without building a new image or modifying the deployment configuration file.")
-	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
-	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment configuration file if one exists.")
+	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment manifest file. Do not deploy the project.")
+	deployCmd.PersistentFlags().BoolVar(&config.nobuild, "no-build", false, "Deploys the application without building a new image or modifying the deployment manifest file.")
+	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment manifest.")
+	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment manifest file if one exists.")
 	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "default", "Target namespace in your Kubernetes cluster")
 	deployCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of docker.")

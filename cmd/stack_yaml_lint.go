@@ -61,6 +61,7 @@ func (s *StackDetails) validateYaml(rootConfig *RootCommandConfig, stackPath str
 	stackLintErrorCount += s.validateFields(rootConfig)
 	stackLintErrorCount += s.checkVersion(rootConfig.LoggingConfig)
 	stackLintErrorCount += s.checkDescLength(rootConfig.LoggingConfig)
+	stackLintErrorCount += s.checkLicense(rootConfig.LoggingConfig)
 	return stackLintErrorCount
 }
 
@@ -158,5 +159,18 @@ func (s *StackDetails) checkDescLength(log *LoggingConfig) int {
 		stackLintErrorCount++
 	}
 
+	return stackLintErrorCount
+}
+
+func (s *StackDetails) checkLicense(log *LoggingConfig) int {
+	stackLintErrorCount := 0
+
+	if err := checkValidLicense(s.License); err != nil {
+		stackLintErrorCount++
+		log.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
+	}
+	if valid, err := IsValidKubernetesLabelValue(s.License); !valid {
+		log.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
+	}
 	return stackLintErrorCount
 }
