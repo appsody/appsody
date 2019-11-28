@@ -115,17 +115,11 @@ func (stackDetails *StackYaml) checkTemplatingData(log *LoggingConfig) (int, int
 		return stackLintErrorCount, stackLintWarningCount
 	}
 
-	for key, value := range stackDetails.TemplatingData {
+	for key := range stackDetails.TemplatingData {
 		checkKey := keyRegex.FindString(string(key))
-		checkValue := keyRegex.FindString(string(value))
 
 		if checkKey == "" {
 			log.Error.log("Key variable: ", key, " is not in an alphanumeric format")
-			stackLintErrorCount++
-		}
-
-		if checkValue == "" {
-			log.Error.log("Value associated with key: ", key, " is not in an alphanumeric format")
 			stackLintErrorCount++
 		}
 
