@@ -415,6 +415,9 @@ func getStackRegistry(config *RootCommandConfig) (string, error) {
 		if len(stackElements) == 3 {
 			return stackElements[0], nil
 		}
+		if stackElements[0] == "dev.local" {
+			return "", nil
+		}
 		if len(stackElements) < 3 {
 			return defaultStackRegistry, nil
 		}
@@ -482,9 +485,9 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		stack := v.GetString("stack")
 		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
-		config.Debug.log("Image repository set to: ", imageRepo)
 		projectConfig.Stack = stack
-		if imageRepo != "docker.io" {
+		if imageRepo != "docker.io" && !strings.Contains(stack, "dev.local") {
+			config.Debug.log("Image repository set to: ", imageRepo)
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
 		//Override the stack registry URL
@@ -2013,7 +2016,6 @@ func CheckStackRequirements(log *LoggingConfig, requirementArray map[string]stri
 	}
 	return nil
 }
-
 func SeparateOutput(cmd *exec.Cmd) (string, error) {
 	var stdErr, stdOut bytes.Buffer
 	cmd.Stderr = &stdErr
