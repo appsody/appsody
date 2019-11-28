@@ -574,7 +574,7 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			}
 
 			// skip files with application other than peviously stated allowed types
-			if strings.Contains(fileType, "application") && !contains(fileType, allowedApplicationFiles) {
+			if !strings.Contains(fileType, "text") && !contains(fileType, allowedApplicationFiles) {
 				return filepath.SkipDir
 			}
 
