@@ -158,23 +158,29 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 	}
 }
 
+// Testing deploy delete when the required config file cannot be found
 func TestDeployDeleteNotFound(t *testing.T) {
 
+	// Not passing a config file so it will use the default, which shouldn't exist
 	_, err := cmdtest.RunAppsodyCmd([]string{"deploy", "delete"}, ".", t)
 	if err != nil {
 
+		// Because the config doesn't exist, this error should be returned (without -v)
 		if !strings.Contains(err.Error(), "Deployment manifest not found") {
 			t.Error("String \"Deployment manifest not found\" not found in output")
 		}
 
+		// If an error is not returned, the test should fail
 	} else {
 		t.Error("Deploy delete did not fail as expected")
 	}
 }
 
+// Testing deploy delete when given a file that exists, but can't be read
 func TestDeployDeleteKubeFail(t *testing.T) {
 	filename := "fake.yaml"
 
+	// Esnure that the fake yaml file is deleted
 	defer func() {
 		err := os.Remove(filename)
 		if err != nil {
@@ -182,24 +188,29 @@ func TestDeployDeleteKubeFail(t *testing.T) {
 		}
 	}()
 
+	// Attempt to create the fake file
 	file, err := os.Create(filename)
 
 	if err != nil {
 		t.Errorf("Error creating the file: %s", err)
 	}
 
+	// Change the fake file to lack read permissions
 	err = file.Chmod(0333)
 	if err != nil {
 		t.Errorf("Error changing file permissions: %s", err)
 	}
 
+	// Pass the file to deploy delete, which should fail
 	_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "delete", "-f", filename}, ".", t)
 	if err != nil {
 
-		if !strings.Contains(err.Error(), "kubectl delete failed") {
-			t.Error("String \"kubectl delete failed\" not found in output")
+		// If the error is not what expected, fail the test
+		if !strings.Contains(err.Error(), "kubectl delete failed: exit status 1: error: open "+filename+": permission denied") {
+			t.Error("String \"kubectl delete failed: exit status 1: error: open ", filename, ": permission denied\" not found in output")
 		}
 
+		// If there was not an error returned, fail the test
 	} else {
 		t.Error("Deploy delete did not fail as expected")
 	}
