@@ -157,3 +157,50 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 		cleanup()
 	}
 }
+
+func TestDeployDeleteNotFound(t *testing.T) {
+
+	_, err := cmdtest.RunAppsodyCmd([]string{"deploy", "delete"}, ".", t)
+	if err != nil {
+
+		if !strings.Contains(err.Error(), "Deployment manifest not found") {
+			t.Error("String \"Deployment manifest not found\" not found in output")
+		}
+
+	} else {
+		t.Error("Deploy delete did not fail as expected")
+	}
+}
+
+func TestDeployDeleteKubeFail(t *testing.T) {
+	filename := "fake.yaml"
+
+	defer func() {
+		err := os.Remove(filename)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
+
+	file, err := os.Create(filename)
+
+	if err != nil {
+		t.Errorf("Error creating the file: %s", err)
+	}
+
+	err = file.Chmod(0333)
+	if err != nil {
+		t.Errorf("Error changing file permissions: %s", err)
+	}
+
+	_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "delete", "-f", filename}, ".", t)
+	if err != nil {
+
+		if !strings.Contains(err.Error(), "kubectl delete failed") {
+			t.Error("String \"kubectl delete failed\" not found in output")
+		}
+
+	} else {
+		t.Error("Deploy delete did not fail as expected")
+	}
+}
