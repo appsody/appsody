@@ -610,13 +610,3 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 	return nil
 
 }
-
-// contains checks if a string is in a list
-func contains(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
