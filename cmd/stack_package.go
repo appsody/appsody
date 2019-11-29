@@ -22,7 +22,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/gabriel-vasile/mimetype"
+	"github.com/andrew-d/isbinary"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -548,16 +548,9 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 // previously created templateMetada to all files in the target directory
 func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
-	// current method means we allow certain application file types through
-	allowedApplicationFiles := []string{
-		"application/json",
-		"application/javascript",
-		"application/x-python",
-	}
-
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
-		//Skip .git folder and .DS_Store files
+		//Skip .git folder and .DS_Store
 		if info.Name() == ".git" || info.Name() == ".DS_Store" {
 			return filepath.SkipDir
 		} else if !info.IsDir() {
@@ -568,13 +561,11 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			// get permission of file
 			permission := info.Mode()
 
-			fileType, _, err := mimetype.DetectFile(path)
+			binaryFile, err := ioutil.ReadFile(path)
 			if err != nil {
-				return errors.Errorf("Error getting file type: %v", err)
+				return errors.Errorf("Error reading file for binary test: %v", err)
 			}
-
-			// skip files with application other than peviously stated allowed types
-			if !strings.Contains(fileType, "text") && !contains(fileType, allowedApplicationFiles) {
+			if isbinary.Test(binaryFile) {
 				return filepath.SkipDir
 			}
 
@@ -618,14 +609,4 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	return nil
 
-}
-
-// contains checks if a string is in a list
-func contains(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
 }
