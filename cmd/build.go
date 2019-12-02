@@ -487,7 +487,6 @@ func generateDeploymentConfig(config *buildCommandConfig, imageName string, labe
 	return nil
 }
 
-
 func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels map[string]string) error {
 	configFile := config.appDeployFile
 
