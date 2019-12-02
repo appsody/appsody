@@ -283,13 +283,17 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.interactive {
 		cmdArgs = append(cmdArgs, "-i")
 	}
-	interactiveSetting := strconv.FormatBool(config.interactive)
-	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode, "--interactive="+interactiveSetting)
+
+	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode)
 	if config.Verbose {
 		cmdArgs = append(cmdArgs, "-v")
 	}
 	if config.disableWatcher {
 		cmdArgs = append(cmdArgs, "--no-watcher")
+	}
+	if config.interactive {
+		interactiveSetting := strconv.FormatBool(config.interactive)
+		cmdArgs = append(cmdArgs, "--interactive="+interactiveSetting)
 	}
 	if !config.Buildah {
 		config.Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
