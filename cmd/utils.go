@@ -1510,6 +1510,14 @@ func pullCmd(log *LoggingConfig, imageToPull string, buildah bool, dryrun bool) 
 
 func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool {
 	cmdName := "docker"
+
+	imageNameComponents := strings.Split(imageToPull, "/")
+	if len(imageNameComponents) == 3 {
+		if imageNameComponents[0] == "index.docker.io" || imageNameComponents[0] == "docker.io" {
+			imageToPull = fmt.Sprintf("%s/%s", imageNameComponents[1], imageNameComponents[2])
+		}
+	}
+
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
 	imagelsOut, imagelsErr := SeparateOutput(imagelsCmd)

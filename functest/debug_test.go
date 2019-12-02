@@ -14,7 +14,6 @@
 package functest
 
 import (
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -41,20 +40,18 @@ func TestDebugSimple(t *testing.T) {
 
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
+		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+		defer cleanup()
+
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		// create a temporary dir to create the project and run the test
-		projectDir := cmdtest.GetTempProjectDir(t)
-		defer os.RemoveAll(projectDir)
-		t.Log("Created project dir: " + projectDir)
-
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
+		_, err = cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -63,7 +60,7 @@ func TestDebugSimple(t *testing.T) {
 		runChannel := make(chan error)
 		containerName := "testDebugSimpleContainer" + strings.ReplaceAll(stackRaw[i], "/", "_")
 		go func() {
-			_, err := cmdtest.RunAppsodyCmd([]string{"debug", "--name", containerName}, projectDir, t)
+			_, err := cmdtest.RunAppsody(sandbox, "debug", "--name", containerName)
 			runChannel <- err
 		}()
 		// It will take a while for the container to spin up, so let's use docker ps to wait for it
@@ -92,11 +89,9 @@ func TestDebugSimple(t *testing.T) {
 		}
 
 		// stop and cleanup
-		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", containerName}, projectDir, t)
+		_, err = cmdtest.RunAppsody(sandbox, "stop", "--name", containerName)
 		if err != nil {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
-
-		cleanup()
 	}
 }
