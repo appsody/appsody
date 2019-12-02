@@ -484,7 +484,8 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		imageRepo := config.CliConfig.GetString("images")
 		config.Debug.log("Image repository set to: ", imageRepo)
 		projectConfig.Stack = stack
-		if imageRepo != "docker.io" {
+		imageComponents := strings.Split(projectConfig.Stack, "/")
+		if len(imageComponents) < 3 {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
 		//Override the stack registry URL
