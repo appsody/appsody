@@ -275,14 +275,21 @@ func TestLintWithInvalidStackName(t *testing.T) {
 	newStackPath := filepath.Join(currentDir, "testdata", "test_stack")
 	args := []string{"stack", "lint"}
 
-	os.Rename(testStackPath, newStackPath)
+	renErr := os.Rename(testStackPath, newStackPath)
+	if renErr != nil {
+		t.Fatal(renErr)
+	}
 	_, err := cmdtest.RunAppsodyCmd(args, newStackPath, t)
 
 	if err == nil {
 		t.Fatal(err)
 	}
 
-	os.Rename(newStackPath, testStackPath)
+	renErr1 := os.Rename(newStackPath, testStackPath)
+
+	if renErr1 != nil {
+		t.Fatal(renErr1)
+	}
 }
 
 func TestLintWithMissingStackYaml(t *testing.T) {
