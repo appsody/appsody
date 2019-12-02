@@ -78,6 +78,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// 4. create/update an appsody repo for the stack
 
 	var imageNamespace string
+	var imageRegistry string
+	var namespaceAndRepo string 
 
 	log := rootConfig.LoggingConfig
 
@@ -195,7 +197,14 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// docker build
 			// create the image name to be used for the docker image
-			namespaceAndRepo := imageNamespace + "/" + stackID
+			if imageNamespace == "dev.local" && imageRegistry != "docker.io" {
+				return errors.Errorf("Error creating the image name. When specifying the image registry: %v, you must also specify the image namespace.", imageRegistry)
+			} else if imageNamespace == "dev.local"{
+				namespaceAndRepo = imageNamespace + "/" + stackID
+			} else {
+				namespaceAndRepo = imageRegistry + "/" + imageNamespace + "/" + stackID
+			}
+
 			buildImage := namespaceAndRepo + ":" + stackYaml.Version
 
 			imageDir := filepath.Join(stackPath, "image")
@@ -383,7 +392,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 		},
 	}
 
-	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
+	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using.")
+	stackPackageCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "docker.io", "Registry that the images will be created using.")
 
 	return stackPackageCmd
 }
