@@ -8,8 +8,8 @@
   pruneopts = "UT"
   revision = "fe7c21038085e01e67044ec1efe3afb1eaa59f75"
   version = "v3.0.1"
-  
-  [[projects]]
+
+[[projects]]
   digest = "1:a2682518d905d662d984ef9959984ef87cecb777d379bfa9d9fe40e78069b3e4"
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
@@ -24,6 +24,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
+
+[[projects]]
+  branch = "master"
+  digest = "1:b9a6ed6e14ea0822a501152c4a393cb03992ab353eca44f7f36024733e7898be"
+  name = "github.com/andrew-d/isbinary"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "2da2e88854f4ce878da1078b388a8eb2bb44be54"
 
 [[projects]]
   digest = "1:4756f15a2e26d1bb39c3e68d312bb07315376d8454a7ed1ef16829d9f009300e"
@@ -138,6 +146,14 @@
   revision = "36ee7e946282a3fb1cfecd476ddc9b35d8847e42"
 
 [[projects]]
+  digest = "1:af105c7c5dc0b4ae41991f122cae860b9600f7d226072c2a83127048c991660c"
+  name = "github.com/hashicorp/go-cleanhttp"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "eda1e5db218aad1db63ca4642c8906b26bcf2744"
+  version = "v0.5.1"
+
+[[projects]]
   digest = "1:c0d19ab64b32ce9fe5cf4ddceba78d5bc9807f0016db6b1183599da3dcc24d10"
   name = "github.com/hashicorp/hcl"
   packages = [
@@ -207,6 +223,14 @@
   pruneopts = "UT"
   revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
   version = "v1.1.0"
+
+[[projects]]
+  digest = "1:0a0ca14b7d62566a600adda490eba3d3283c470ff1dc29b18024cb074c30c150"
+  name = "github.com/mitchellh/go-spdx"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "08038d1df9704bb00c28597c6c2980af182b628e"
+  version = "v0.1.0"
 
 [[projects]]
   digest = "1:53bc4cd4914cd7cd52139990d5170d6dc99067ae31c56530621b18b35fc30318"
@@ -450,9 +474,11 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Masterminds/semver",
+    "github.com/andrew-d/isbinary",
     "github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1",
     "github.com/gosuri/uitable",
     "github.com/mitchellh/go-homedir",
+    "github.com/mitchellh/go-spdx",
     "github.com/pkg/errors",
     "github.com/spf13/cobra",
     "github.com/spf13/cobra/doc",

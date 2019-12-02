@@ -55,7 +55,7 @@ var supportedKubeLabels = []string{
 }
 
 func checkDockerBuildOptions(options []string) error {
-	buildOptionsTest := "(^((-t)|(--tag)|(-f)|(--file))((=?$)|(=.*)))"
+	buildOptionsTest := "(^((-t)|(--tag)|(--help)|(-f)|(--file))((=?$)|(=.*)))"
 
 	blackListedBuildOptionsRegexp := regexp.MustCompile(buildOptionsTest)
 	for _, value := range options {
@@ -95,10 +95,11 @@ If you want to push the built image to an image repository using the [--push] op
 			return build(config)
 		},
 	}
+	addStackRegistryFlag(buildCmd, &rootConfig.StackRegistry, rootConfig)
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Container image name and optionally, a tag in the 'name:tag' format.")
 	buildCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of Docker.")
-	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the Docker build options to use. Value must be in \"\".")
+	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the Docker build options to use. Value must be in \"\". The following Docker options are not supported: '--help','-t','--tag','-f','--file'.")
 	buildCmd.PersistentFlags().StringVar(&config.buildahBuildOptions, "buildah-options", "", "Specify the buildah build options to use. Value must be in \"\".")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the container image to the image repository.")
 	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
@@ -179,25 +180,25 @@ func build(config *buildCommandConfig) error {
 	}
 
 	cmdArgs = append(cmdArgs, "-f", dockerfile, extractDir)
-	Debug.log("final cmd args", cmdArgs)
+	config.Debug.log("final cmd args", cmdArgs)
 	var execError error
 	if !config.Buildah {
-		execError = DockerBuild(cmdArgs, DockerLog, config.Verbose, config.Dryrun)
+		execError = DockerBuild(config.RootCommandConfig, cmdArgs, config.DockerLog)
 	} else {
-		execError = BuildahBuild(cmdArgs, BuildahLog, config.Verbose, config.Dryrun)
+		execError = BuildahBuild(config.RootCommandConfig, cmdArgs, config.BuildahLog)
 	}
 
 	if execError != nil {
 		return execError
 	}
 	if config.pushURL != "" || config.push {
-		err := ImagePush(buildImage, config.Buildah, config.Dryrun)
+		err := ImagePush(config.LoggingConfig, buildImage, config.Buildah, config.Dryrun)
 		if err != nil {
 			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
 		}
 	}
 	if !config.Dryrun {
-		Info.log("Built docker image ", buildImage)
+		config.Info.log("Built docker image ", buildImage)
 	}
 
 	// Generate app-deploy
@@ -222,14 +223,14 @@ func getLabels(config *RootCommandConfig) (map[string]string, error) {
 		return labels, projectConfigErr
 	}
 
-	configLabels, err := getConfigLabels(*projectConfig)
+	configLabels, err := getConfigLabels(*projectConfig, ".appsody-config.yaml")
 	if err != nil {
 		return labels, err
 	}
 
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
-		Info.log(err)
+		config.Warning.log("Not all labels will be set. ", err.Error())
 	}
 
 	for key, value := range stackLabels {
@@ -257,13 +258,13 @@ func getLabels(config *RootCommandConfig) (map[string]string, error) {
 	return labels, nil
 }
 
-func convertLabelsToKubeFormat(labels map[string]string) map[string]string {
+func convertLabelsToKubeFormat(log *LoggingConfig, labels map[string]string) map[string]string {
 	var kubeLabels = make(map[string]string)
 
 	for key, value := range labels {
 		newKey, err := ConvertLabelToKubeFormat(key)
 		if err != nil {
-			Debug.logf("Skipping image label \"%s\" - %v", key, err)
+			log.Debug.logf("Skipping image label \"%s\" - %v", key, err)
 		} else {
 			kubeLabels[newKey] = value
 		}
@@ -338,12 +339,12 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	if !config.Buildah {
 		err := CheckPrereqs()
 		if err != nil {
-			Warning.logf("Failed to check prerequisites: %v\n", err)
+			config.Warning.logf("Failed to check prerequisites: %v\n", err)
 		}
 	}
 	stackImage := projectConfig.Stack
-	Debug.log("Stack image: ", stackImage)
-	Debug.log("Config directory: ", containerConfigDir)
+	config.Debug.log("Stack image: ", stackImage)
+	config.Debug.log("Config directory: ", containerConfigDir)
 
 	exists, err := Exists(configFile)
 	if err != nil {
@@ -351,12 +352,12 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	}
 
 	if exists {
-		Info.log("Found existing deployment manifest ", configFile)
+		config.Info.log("Found existing deployment manifest ", configFile)
 		err := updateDeploymentConfig(config)
 		if err != nil {
 			return err
 		}
-		Info.log("Updated existing deployment manifest ", configFile)
+		config.Info.log("Updated existing deployment manifest ", configFile)
 		return nil
 	}
 
@@ -382,14 +383,14 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 		cmdArgs = append([]string{"create"}, cmdArgs...)
 	}
 	cmdArgs = append(cmdArgs, stackImage)
-	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
+	err = execAndWaitReturnErr(config.LoggingConfig, cmdName, cmdArgs, config.Debug, config.Dryrun)
 	if err != nil {
-		Error.log("Container create command failed: ", err)
+		config.Error.log("Container create command failed: ", err)
 
 		// TODO: We shouldn't remove the container if it already exists
-		removeErr := containerRemove(extractContainerName, config.Buildah, config.Dryrun)
+		removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
 		if removeErr != nil {
-			Error.log("Error in containerRemove", removeErr)
+			config.Error.log("Error in containerRemove", removeErr)
 		}
 		return err
 	}
@@ -405,11 +406,11 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 		script := fmt.Sprintf("x=`buildah mount %s`; cp -f $x/%s %s", extractContainerName, configDir, configFile)
 		cmdArgs = []string{"-c", script}
 	}
-	err = execAndWaitReturnErr(cmdName, cmdArgs, Debug, config.Dryrun)
+	err = execAndWaitReturnErr(config.LoggingConfig, cmdName, cmdArgs, config.Debug, config.Dryrun)
 
-	removeErr := containerRemove(extractContainerName, config.Buildah, config.Dryrun)
+	removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
 	if removeErr != nil {
-		Error.log("containerRemove error ", removeErr)
+		config.Error.log("containerRemove error ", removeErr)
 	}
 
 	if err != nil {
@@ -435,21 +436,21 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	port, err := getEnvVarInt("PORT", config.RootCommandConfig)
 	if err != nil {
 		//try and get the exposed ports and use the first one
-		Warning.log("Could not detect a container port (PORT env var).")
+		config.Warning.log("Could not detect a container port (PORT env var).")
 		portsStr, portsErr := getExposedPorts(config.RootCommandConfig)
 		if portsErr != nil {
 			return portsErr
 		}
 		if len(portsStr) == 0 {
 			//No ports exposed
-			Warning.log("This container exposes no ports. The service will not be accessible.")
+			config.Warning.log("This container exposes no ports. The service will not be accessible.")
 			port = 0 //setting this to 0
 		} else {
 			portStr := portsStr[0]
-			Warning.log("Picking the first exposed port as the KNative service port. This may not be the correct port.")
+			config.Warning.log("Picking the first exposed port as the KNative service port. This may not be the correct port.")
 			port, err = strconv.Atoi(portStr)
 			if err != nil {
-				Warning.log("The exposed port is not a valid integer. The service will not be accessible.")
+				config.Warning.log("The exposed port is not a valid integer. The service will not be accessible.")
 				port = 0
 			}
 		}
@@ -479,9 +480,9 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 			return errors.Errorf("Failed to update deployment config file: %s", err)
 		}
 	} else {
-		Info.logf("Dry run skipped construction of file %s", configFile)
+		config.Info.logf("Dry run skipped construction of file %s", configFile)
 	}
-	Info.log("Created deployment manifest: ", configFile)
+	config.Info.log("Created deployment manifest: ", configFile)
 	return nil
 }
 
@@ -498,7 +499,7 @@ func updateDeploymentConfig(config *buildCommandConfig) error {
 		return errors.Errorf("Could not get labels: %s", err)
 	}
 
-	labels = convertLabelsToKubeFormat(labels)
+	labels = convertLabelsToKubeFormat(config.LoggingConfig, labels)
 
 	var selectedLabels = make(map[string]string)
 	for _, label := range supportedKubeLabels {
@@ -508,8 +509,22 @@ func updateDeploymentConfig(config *buildCommandConfig) error {
 		}
 	}
 
-	appsodyApplication.Labels = selectedLabels
-	appsodyApplication.Annotations = labels
+	if appsodyApplication.Labels == nil {
+		appsodyApplication.Labels = selectedLabels
+	} else {
+		for key, value := range selectedLabels {
+			appsodyApplication.Labels[key] = value
+		}
+	}
+
+	if appsodyApplication.Annotations == nil {
+		appsodyApplication.Annotations = labels
+	} else {
+		for key, value := range labels {
+			appsodyApplication.Annotations[key] = value
+		}
+	}
+
 	appsodyApplication.Spec.CreateKnativeService = &config.knative
 
 	imageName := appsodyApplication.Spec.ApplicationImage

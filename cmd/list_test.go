@@ -22,19 +22,16 @@ import (
 )
 
 func TestList(t *testing.T) {
-	// tests that would have run before this and crashed could leave the repo
-	// in a bad state - mostly leading to: "a repo with this name already exists."
-	// so clean it up pro-actively, ignore any errors.
-	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", "LocalTestRepo"}, ".")
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	// first add the test repo index
-	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup()
 
-	output, err := cmdtest.RunAppsodyCmd([]string{"list"}, ".")
+	output, err := cmdtest.RunAppsody(sandbox, "list")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,41 +47,34 @@ func TestList(t *testing.T) {
 
 // test the v2 list functionality
 func TestListV2(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	// first add the test repo index
-	var err error
-	var output string
-	var cleanup func()
-	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", "LocalTestRepo"}, ".")
-	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", "incubatortest"}, ".")
-	_, cleanup, err = cmdtest.AddLocalFileRepo("incubatortest", "../cmd/testdata/kabanero.yaml")
+	_, err := cmdtest.AddLocalRepo(sandbox, "incubatortest", "../cmd/testdata/kabanero.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup()
 
-	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "incubatortest"}, ".")
-
+	output, _ := cmdtest.RunAppsody(sandbox, "list", "incubatortest")
 	if !(strings.Contains(output, "nodejs") && strings.Contains(output, "incubatortest")) {
 		t.Error("list command should contain id 'nodejs'")
 	}
 
 	// test the current default repo
-	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "incubator"}, ".")
-
+	output, _ = cmdtest.RunAppsody(sandbox, "list", "incubator")
 	if !strings.Contains(output, "java-microprofile") {
 		t.Error("list command should contain id 'java-microprofile'")
 	}
 
-	output, _ = cmdtest.RunAppsodyCmd([]string{"list"}, ".")
-
+	output, _ = cmdtest.RunAppsody(sandbox, "list")
 	// we expect 2 instances
 	if !(strings.Contains(output, "java-microprofile") && (strings.Count(output, "nodejs ") == 2)) {
 		t.Error("list command should contain id 'java-microprofile and 2 nodejs '")
 	}
 
 	// test the current default repo
-	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "nonexisting"}, ".")
-
+	output, _ = cmdtest.RunAppsody(sandbox, "list", "nonexisting")
 	if !(strings.Contains(output, "cannot locate repository ")) {
 		t.Error("Failed to flag non-existing repo")
 	}
@@ -92,9 +82,11 @@ func TestListV2(t *testing.T) {
 }
 
 func TestListJson(t *testing.T) {
-	args := []string{"list", "-o", "json"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".")
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
+	args := []string{"list", "-o", "json"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,9 +101,11 @@ func TestListJson(t *testing.T) {
 }
 
 func TestListYaml(t *testing.T) {
-	args := []string{"list", "-o", "yaml"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".")
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
+	args := []string{"list", "-o", "yaml"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,52 +119,52 @@ func TestListYaml(t *testing.T) {
 	testContentsListOutput(t, list, output)
 }
 
-func TestListJsonSingleRepository(t *testing.T) {
-	args := []string{"list", "incubator", "-o", "yaml"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".")
+func TestListYamlSingleRepository(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
+	args := []string{"list", "incubator", "-o", "yaml"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	list, err := cmdtest.ParseListYAML(cmdtest.ParseYAML(output))
-
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if len(list.Repositories) != 1 && list.Repositories[0].Name == "incubator" {
-		t.Errorf("Could not find repository incubator! CLI output:\n%s", output)
+		t.Error("Could not find repository 'incubator'")
 	}
 }
 
 func testContentsListOutput(t *testing.T, list cmd.IndexOutputFormat, output string) {
 	if list.APIVersion == "" {
-		t.Errorf("Could not find APIVersion! CLI output:\n%s", output)
+		t.Error("Could not find 'APIVersion'")
 	}
 
 	if len(list.Repositories) != 2 {
-		t.Errorf("Expected two repositories! CLI output:\n%s", output)
+		t.Errorf("Expected 2 repositories to be defined, but found %d", len(list.Repositories))
 	}
 
 	for _, repo := range list.Repositories {
 		if len(repo.Stacks) < 1 {
-			t.Errorf("Expected repository %s to contain stacks! CLI output:\n%s", repo.Name, output)
+			t.Errorf("Repository '%s' does not contain any stacks", repo.Name)
 		}
 
 		for _, stack := range repo.Stacks {
 			if stack.ID == "" {
-				t.Errorf("Found stack with missing ID! CLI output:\n%s", output)
+				t.Errorf("A stack in repo '%s' has no 'ID'", repo.Name)
 			}
-
 			if stack.Version == "" {
-				t.Errorf("Found stack with missing Version! CLI output:\n%s", output)
+				t.Errorf("Stack '%s' in repo '%s' has no 'Version'", stack.ID, repo.Name)
 			}
 			if stack.Description == "" {
-				t.Errorf("Found stack with missing Description! CLI output:\n%s", output)
+				t.Errorf("Stack '%s' in repo '%s' has no 'Description'", stack.ID, repo.Name)
 			}
 			if len(stack.Templates) == 0 {
-				t.Errorf("Found stack with missing Templates! CLI output:\n%s", output)
+				t.Errorf("Stack '%s' in repo '%s' has no 'Templates'", stack.ID, repo.Name)
 			}
 		}
 	}

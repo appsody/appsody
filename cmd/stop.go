@@ -23,17 +23,21 @@ func newStopCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// stopCmd represents the stop command
 	var stopCmd = &cobra.Command{
 		Use:   "stop",
-		Short: "Stops the local Appsody docker container for your project",
-		Long: `Stop the local Appsody docker container for your project.
+		Short: "Stop the local, running Appsody container.",
+		Long: `Stop the local, running Appsody container for your project.
 
-Stops the docker container specified by the --name flag. 
-If --name is not specified, the container name is determined from the current working directory (see default below).
-To see a list of all your running docker containers, run the command "docker ps". The name is in the last column.`,
+By default, the command stops the Appsody container that was launched from the project in your current working directory. 
+To see a list of all your running Appsody containers, run the command 'appsody ps'.`,
+		Example: `  appsody stop
+  Stops the running Appsody container launched by the project in your current working directory.
+  
+  appsody stop --name nodejs-express-dev
+  Stops the running Appsody container with the name "nodejs-express-dev".`,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !rootConfig.Buildah {
-				Info.log("Stopping development environment")
-				err := dockerStop(containerName, rootConfig.Dryrun)
+				rootConfig.Info.log("Stopping development environment")
+				err := dockerStop(rootConfig, containerName, rootConfig.Dryrun)
 				if err != nil {
 					return err
 				}
@@ -48,17 +52,17 @@ To see a list of all your running docker containers, run the command "docker ps"
 				serviceArgs := []string{"service", serviceArgName}
 				deploymentArgs := []string{"deployment", deploymentArgName}
 				ingressArgs := []string{"ingress", ingressArgName}
-				_, err := RunKubeDelete(ingressArgs, rootConfig.Dryrun)
+				_, err := RunKubeDelete(rootConfig.LoggingConfig, ingressArgs, rootConfig.Dryrun)
 				if err != nil {
-					Error.logf("kubectl delete failed for ingress %s, due to %v", ingressArgName, err)
+					rootConfig.Error.logf("kubectl delete failed for ingress %s, due to %v", ingressArgName, err)
 				}
-				_, err = RunKubeDelete(serviceArgs, rootConfig.Dryrun)
+				_, err = RunKubeDelete(rootConfig.LoggingConfig, serviceArgs, rootConfig.Dryrun)
 				if err != nil {
-					Error.logf("kubectl delete failed for service %s, due to %v", serviceArgName, err)
+					rootConfig.Error.logf("kubectl delete failed for service %s, due to %v", serviceArgName, err)
 				}
-				_, err = RunKubeDelete(deploymentArgs, rootConfig.Dryrun)
+				_, err = RunKubeDelete(rootConfig.LoggingConfig, deploymentArgs, rootConfig.Dryrun)
 				if err != nil {
-					Error.logf("kubectl delete failed for deployment %s, due to %v", deploymentArgName, err)
+					rootConfig.Error.logf("kubectl delete failed for deployment %s, due to %v", deploymentArgName, err)
 				}
 			}
 			return nil

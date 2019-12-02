@@ -3,8 +3,8 @@
 #### Constant variables
 export STACKSLIST ?= incubator/nodejs
 # use -count=1 to disable cache and -p=1 to stream output live
-GO_TEST_COMMAND := go test -v -count=1 -p=1 -covermode=count -coverprofile=cover.out -coverpkg ./cmd
-GO_TEST_LOGGING := | tee test.out | grep -E "^\s*(---|===)" ; tail -3 test.out ; awk '/--- FAIL/,/===/' test.out ; ! grep -E "(--- FAIL)" test.out
+GO_TEST_COMMAND := go test -v -count=1 -p=1 -parallel 1 -covermode=count -coverprofile=cover.out -coverpkg ./cmd
+GO_TEST_LOGGING := | tee test.out | grep -E "^\s*(---|===)" ; tail -3 test.out ; awk '/--- FAIL/,/===/' test.out ; ! grep -E "(--- FAIL|^FAIL)" test.out
 GO_TEST_COVER_VIEWER := go tool cover -func=cover.out && go tool cover -html=cover.out
 # Set a default VERSION only if it is not already set
 VERSION ?= 0.0.0
@@ -23,7 +23,7 @@ BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder:0.1.0
 GH_ORG ?= appsody
-export APPSODY_CONTROLLER_VERSION ?=0.3.1
+export APPSODY_CONTROLLER_VERSION ?=0.3.2
 
 #### Dynamic variables. These change depending on the target name.
 # Gets the current os from the target name, e.g. the 'build-linux' target will result in os = 'linux'

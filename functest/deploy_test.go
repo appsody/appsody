@@ -14,7 +14,6 @@
 package functest
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -72,35 +71,30 @@ func TestDeploySimple(t *testing.T) {
 
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
+		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+		defer cleanup()
+
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		// create a temporary dir to create the project and run the test
-		projectDir := cmdtest.GetTempProjectDir(t)
-		defer os.RemoveAll(projectDir)
-		t.Log("Created project dir: " + projectDir)
-
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// appsody deploy
 		t.Log("Running appsody deploy...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "-t", "testdeploy/testimage", "--dryrun"}, projectDir)
+		_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", "testdeploy/testimage", "--dryrun")
 		if err != nil {
 			t.Log("WARNING: deploy dryrun failed. Ignoring for now until that gets fixed.")
 			// TODO We need to fix the deploy --dryrun option so it doesn't fail, then uncomment the line below
 			// t.Fatal(err)
 		}
-
-		// cleanup tasks
-		cleanup()
 	}
 }
 
@@ -122,20 +116,18 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
+		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+		defer cleanup()
+
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		// create a temporary dir to create the project and run the test
-		projectDir := cmdtest.GetTempProjectDir(t)
-		defer os.RemoveAll(projectDir)
-		t.Log("Created project dir: " + projectDir)
-
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir)
+		_, err = cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -144,16 +136,13 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 		pullURL := "my-pull-url"
 		// appsody deploy
 		t.Log("Running appsody deploy...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative"}, projectDir)
+		_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative")
 		if err != nil {
 			t.Log("WARNING: deploy dryrun failed. Ignoring for now until that gets fixed.")
 			// TODO We need to fix the deploy --dryrun option so it doesn't fail, then uncomment the line below
 			// t.Fatal(err)
 		}
 
-		checkDeploymentConfig(t, filepath.Join(projectDir, deployFile), pullURL, imageTag)
-
-		// cleanup tasks
-		cleanup()
+		checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag)
 	}
 }
