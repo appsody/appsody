@@ -81,6 +81,8 @@ Use 'appsody list' to see the available stacks and templates.`,
 			return initAppsody(stack, template, config)
 		},
 	}
+	// TODO - add the registry override flag, and the logic behind it
+	//addStackRegistryFlag(initCmd, &rootConfig.StackRegistry, rootConfig)
 
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
@@ -231,10 +233,22 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			"Buildah": stackReqs.Buildah,
 		}
 
-		checkErr := CheckStackRequirements(config.LoggingConfig, reqsMap, config.Buildah)
-		if checkErr != nil {
-			config.Error.log(checkErr)
-			os.Exit(1)
+		// Check to see if any requirements have actually been set
+		mapEmpty := true
+		for _, v := range reqsMap {
+			if v != "" {
+				mapEmpty = false
+			}
+		}
+
+		// If no requirements have been set, this function doesn't need to be called
+		if !mapEmpty {
+			checkErr := CheckStackRequirements(config.LoggingConfig, reqsMap, config.Buildah)
+			if checkErr != nil {
+				return checkErr
+			}
+		} else {
+			config.Info.log("No stack requirements set. Skipping...")
 		}
 
 		config.Info.log("Running appsody init...")
@@ -320,7 +334,6 @@ func install(config *initCommandConfig) error {
 		config.Warning.log("The stack init script failed: ", err)
 		config.Warning.log("Your local IDE may not build properly, but the Appsody container should still work.")
 		config.Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
-		os.Exit(0)
 	}
 	return nil
 }

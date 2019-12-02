@@ -160,8 +160,10 @@ Run this command from the root directory of your stack, or specify the path to y
 			stackLintErrorCount += dockerFileErrorCount
 			stackLintWarningCount += dockerFileWarningCount
 
-			var s StackDetails
-			stackLintErrorCount += s.validateYaml(rootConfig, stackPath)
+			var stackDetails StackYaml
+			stackYamlErrorCount, stackYamlWarningCount := stackDetails.validateYaml(rootConfig, stackPath)
+			stackLintErrorCount += stackYamlErrorCount
+			stackLintWarningCount += stackYamlWarningCount
 
 			rootConfig.Info.log("TOTAL ERRORS: ", stackLintErrorCount)
 			rootConfig.Info.log("TOTAL WARNINGS: ", stackLintWarningCount)

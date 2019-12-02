@@ -15,6 +15,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -140,27 +141,30 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	}
 	gitInfo.ChangesMade = changesMade
 
+	errMsg := ""
 	if gitInfo.Upstream != "" {
 		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(config.LoggingConfig, gitInfo.Upstream, config.Dryrun)
 		if gitErr != nil {
-			config.Info.Logf("Could not construct repository URL %v", gitErr)
+			errMsg += fmt.Sprintf("Could not construct repository URL %v ", gitErr)
 		}
 
 	} else {
-		config.Info.log("Unable to determine origin to compute repository URL")
+		errMsg += "Unable to determine origin to compute repository URL "
 	}
 
 	gitInfo.Commit, gitErr = RunGitGetLastCommit(gitInfo.RemoteURL, config)
 	if gitErr != nil {
-		config.Info.log("Received error getting current commit: ", gitErr)
+		errMsg += "Received error getting current commit: " + gitErr.Error()
 	}
-
+	if errMsg != "" {
+		return gitInfo, errors.New(errMsg)
+	}
 	return gitInfo, nil
 }
 
 //RunGitConfigLocalRemoteOriginURL
 func RunGitConfigLocalRemoteOriginURL(log *LoggingConfig, upstream string, dryrun bool) (string, error) {
-	log.Info.log("Attempting to perform git config --local remote.<origin>.url  ...")
+	log.Debug.log("Attempting to perform git config --local remote.<origin>.url  ...")
 
 	upstreamStart := strings.Split(upstream, "/")[0]
 	kargs := []string{"config", "--local", "remote." + upstreamStart + ".url"}
@@ -234,9 +238,9 @@ func RunGit(log *LoggingConfig, kargs []string, dryrun bool) (string, error) {
 		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
 		return "", nil
 	}
-	log.Info.log("Running git command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Debug.log("Running git command: ", kcmd, " ", strings.Join(kargs, " "))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := execCmd.Output()
+	kout, kerr := SeparateOutput(execCmd)
 
 	if kerr != nil {
 		return "", errors.Errorf("git command failed: %s", string(kout[:]))

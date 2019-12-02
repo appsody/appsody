@@ -20,8 +20,7 @@ import (
 
 func dockerStop(rootConfig *RootCommandConfig, imageName string, dryrun bool) error {
 	cmdName := "docker"
-	signalInterval := "10" // numnrt of seconds to wait prior to sending SIGKILL
-	cmdArgs := []string{"stop", imageName, "-t", signalInterval}
+	cmdArgs := []string{"stop", imageName}
 	err := execAndWait(rootConfig.LoggingConfig, cmdName, cmdArgs, rootConfig.Debug, dryrun)
 	if err != nil {
 		return err
@@ -50,8 +49,18 @@ func newRunCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// runCmd represents the run command
 	var runCmd = &cobra.Command{
 		Use:   "run",
-		Short: "Run the local Appsody environment for your project",
-		Long:  `This starts a docker based continuous build environment for your project.`,
+		Short: "Run your Appsody project in a containerized development environment.",
+		Long: `Run the local Appsody environment, starting a container-based, continuous build environment for your project.
+		
+Run this command from the root directory of your Appsody project`,
+		Example: `  appsody run
+  Runs your project in a containerized development environment.
+
+  appsody run --interactive
+  Runs your project in a containerized development environment, and attaches the standard input stream to the container. You can use the standard input stream to interact with processes inside the container.
+
+  appsody run -p 3001:3000 --docker-options "--privileged" 
+  Runs your project in a containerized development environment, binds the container port 3000 to the host port 3001, and passes the "--privileged" option to the "docker run" command as a flag.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			rootConfig.Info.log("Running development environment...")
