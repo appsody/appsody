@@ -105,7 +105,7 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 	cmd.PersistentFlags().BoolVarP(&config.publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
 	cmd.PersistentFlags().BoolVar(&config.disableWatcher, "no-watcher", false, "Disable file watching, regardless of container environment variable settings.")
 	cmd.PersistentFlags().BoolVarP(&config.interactive, "interactive", "i", false, "Attach STDIN to the container for interactive TTY mode")
-	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\".")
+	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\". The following Docker options are not supported:  '--help','-p','--publish-all','-P','-u','-—user','-—name','-—network','-t','-—tty,'—rm','—entrypoint','-v','—volume'.")
 
 }
 
@@ -233,7 +233,10 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 		go func() {
 			<-c
-			// note we still need this signaling block otherwise the signal is not caught and termination doesn't occur propertly
+			err := dockerStop(config.RootCommandConfig, config.containerName, config.Dryrun)
+			if err != nil {
+				config.Error.log(err)
+			}
 			//containerRemove(containerName) is not needed due to --rm flag
 		}()
 	}
@@ -305,10 +308,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			//Linux and Windows return a different error on Ctrl-C
 			if error == "signal: interrupt" || error == "signal: terminated" || error == "exit status 2" {
 				config.Info.log("Closing down, development environment was interrupted.")
-				err := dockerStop(config.RootCommandConfig, config.containerName, config.Dryrun)
-				if err != nil {
-					config.Error.log(err)
-				}
+
 			} else {
 				return errors.Errorf("Error in 'appsody %s': %s", mode, error)
 			}
@@ -421,6 +421,7 @@ func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {
 	if portsErr != nil {
 		return cmdArgs, portsErr
 	}
+
 	config.Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
 	// if the container port is not in the lised of exposed ports add it to the list
 
@@ -490,7 +491,6 @@ func checkPortInput(publishedPorts []string) (bool, error) {
 		} else {
 			// check the numbers
 			portValues := strings.Split(publishedPorts[i], ":")
-			fmt.Println(portValues)
 			if !validPortNumber.MatchString(portValues[0]) || !validPortNumber.MatchString(portValues[1]) {
 				portError = errors.New("The numeric port input: " + publishedPorts[i] + " is not valid.")
 				validPorts = false
