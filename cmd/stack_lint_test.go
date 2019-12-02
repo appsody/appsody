@@ -331,7 +331,7 @@ func TestLintWithMissingImage(t *testing.T) {
 	}
 
 	RestoreSampleStack(removeArray)
-	writeErr := ioutil.WriteFile(removeImage, []byte(file), 0644)
+	writeErr := ioutil.WriteFile(filepath.Join(removeImage, "Dockerfile-stack"), []byte(file), 0644)
 	if writeErr != nil {
 		t.Fatal(writeErr)
 	}
@@ -377,7 +377,7 @@ func TestLintWithMissingProject(t *testing.T) {
 	RestoreSampleStack(removeArray)
 }
 
-func TestLintWithMissingFile(t *testing.T) {
+func TestLintWithMissingREADME(t *testing.T) {
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	args := []string{"stack", "lint"}
@@ -398,11 +398,110 @@ func TestLintWithMissingFile(t *testing.T) {
 	RestoreSampleStack(removeArray)
 }
 
+func TestLintWithMissingDockerfileStackAndLicense(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+
+	removeDockerfileStack := filepath.Join(testStackPath, "image", "Dockerfile-stack")
+	removeLicense := filepath.Join(testStackPath, "image", "LICENSE")
+	removeArray := []string{removeDockerfileStack, removeLicense}
+
+	file, readErr := ioutil.ReadFile(removeDockerfileStack)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	for _, file := range removeArray {
+		osErr := os.RemoveAll(file)
+		if osErr != nil {
+			t.Fatal(osErr)
+		}
+	}
+
+	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	RestoreSampleStack(removeArray)
+	writeErr := ioutil.WriteFile(filepath.Join(removeDockerfileStack), []byte(file), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+
+}
+
+func TestLintWithMissingTemplatesDirectory(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+
+	removeTemplatesDir := filepath.Join(testStackPath, "templates")
+	removeArray := []string{removeTemplatesDir, filepath.Join(removeTemplatesDir, "default"), filepath.Join(removeTemplatesDir, "default", "app.js")}
+
+	osErr := os.RemoveAll(removeTemplatesDir)
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
+
+	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	RestoreSampleStack(removeArray)
+}
+
+func TestLintWithMissingTemplateInTemplatesDirectory(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+
+	removeTemplate := filepath.Join(testStackPath, "templates", "default")
+	removeArray := []string{removeTemplate, filepath.Join(removeTemplate, "app.js")}
+
+	osErr := os.RemoveAll(removeTemplate)
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
+
+	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	RestoreSampleStack(removeArray)
+}
+
+func TestLintWithConfigYamlInTemplate(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+
+	addConfigYaml := filepath.Join(testStackPath, "templates", "default", ".appsody-config.yaml")
+
+	_, osErr := os.Create(addConfigYaml)
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
+
+	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	removeErr := os.RemoveAll(addConfigYaml)
+	if removeErr != nil {
+		t.Fatal(removeErr)
+	}
+}
+
 func RestoreSampleStack(fixStack []string) {
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	for _, missingContent := range fixStack {
-		if missingContent == filepath.Join(testStackPath, "image") || missingContent == filepath.Join(testStackPath, "image/config") || missingContent == filepath.Join(testStackPath, "image/project") {
+		if missingContent == filepath.Join(testStackPath, "image") || missingContent == filepath.Join(testStackPath, "image", "config") || missingContent == filepath.Join(testStackPath, "image/project") || missingContent == filepath.Join(testStackPath, "templates") || missingContent == filepath.Join(testStackPath, "templates", "default") {
 			osErr := os.Mkdir(missingContent, os.ModePerm)
 			if osErr != nil {
 				fmt.Println(osErr)
