@@ -40,6 +40,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var noPackage bool
 	var noLint bool
 	var imageNamespace string
+	var imageRegistry string
 
 	var stackValidateCmd = &cobra.Command{
 		Use:   "validate",
@@ -78,6 +79,10 @@ Runs the following validation tests against the stack and its templates:
 			stackName := filepath.Base(stackPath)
 			rootConfig.Info.Log("stackName is: ", stackName)
 
+			if imageNamespace == "dev.local" && imageRegistry != "docker.io" {
+				return errors.Errorf("Error creating the image name. When specifying the image registry: %v: you must also specify the image namespace.", imageRegistry)
+			}
+
 			rootConfig.Info.Log("#################################################")
 			rootConfig.Info.Log("Validating stack:", stackName)
 			rootConfig.Info.Log("#################################################")
@@ -106,7 +111,7 @@ Runs the following validation tests against the stack and its templates:
 
 			// package
 			if !noPackage {
-				_, err = RunAppsodyCmdExec([]string{"stack", "package", "--image-namespace", imageNamespace}, stackPath)
+				_, err = RunAppsodyCmdExec([]string{"stack", "package", "--image-namespace", imageNamespace, "--image-registry", imageRegistry}, stackPath)
 				if err != nil {
 					//logs error but keeps going
 					rootConfig.Error.Log(err)
@@ -228,7 +233,8 @@ Runs the following validation tests against the stack and its templates:
 
 	stackValidateCmd.PersistentFlags().BoolVar(&noPackage, "no-package", false, "Skips running appsody stack package")
 	stackValidateCmd.PersistentFlags().BoolVar(&noLint, "no-lint", false, "Skips running appsody stack lint")
-	stackValidateCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace used for creating the images")
+	stackValidateCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace used for creating the images.")
+	stackValidateCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "docker.io", "Registry used for creating the images.")
 
 	return stackValidateCmd
 }

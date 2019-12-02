@@ -392,8 +392,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 		},
 	}
 
-	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using.")
-	stackPackageCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "docker.io", "Registry that the images will be created using.")
+	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace used for creating the images.")
+	stackPackageCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "docker.io", "Registry used for creating the images.")
 
 	return stackPackageCmd
 }
