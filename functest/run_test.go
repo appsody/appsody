@@ -28,20 +28,17 @@ var stacksList = os.Getenv("STACKSLIST")
 
 // Test appsody run of the nodejs-express stack and check the http://localhost:3000/health endpoint
 func TestRun(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	// first add the test repo index
-	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup()
-
-	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-	t.Log("Created project dir: " + projectDir)
 
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
+	_, err = cmdtest.RunAppsody(sandbox, "init", "nodejs-express")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,13 +46,13 @@ func TestRun(t *testing.T) {
 	// appsody run
 	runChannel := make(chan error)
 	go func() {
-		_, err = cmdtest.RunAppsodyCmd([]string{"run"}, projectDir, t)
+		_, err = cmdtest.RunAppsody(sandbox, "run")
 		runChannel <- err
 	}()
 
 	// defer the appsody stop to close the docker container
 	defer func() {
-		_, err = cmdtest.RunAppsodyCmd([]string{"stop"}, projectDir, t)
+		_, err = cmdtest.RunAppsody(sandbox, "stop")
 		if err != nil {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
@@ -113,20 +110,18 @@ func TestRunSimple(t *testing.T) {
 
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
+		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+		defer cleanup()
+
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		// create a temporary dir to create the project and run the test
-		projectDir := cmdtest.GetTempProjectDir(t)
-		defer os.RemoveAll(projectDir)
-		t.Log("Created project dir: " + projectDir)
-
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
+		_, err = cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -135,7 +130,7 @@ func TestRunSimple(t *testing.T) {
 		runChannel := make(chan error)
 		containerName := "testRunSimpleContainer"
 		go func() {
-			_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", containerName}, projectDir, t)
+			_, err = cmdtest.RunAppsody(sandbox, "run", "--name", containerName)
 			runChannel <- err
 		}()
 
@@ -165,10 +160,9 @@ func TestRunSimple(t *testing.T) {
 		}
 
 		// stop and clean up after the run
-		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", containerName}, projectDir, t)
+		_, err = cmdtest.RunAppsody(sandbox, "stop", "--name", containerName)
 		if err != nil {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
-		cleanup()
 	}
 }
