@@ -487,17 +487,19 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		imageRepo := config.CliConfig.GetString("images")
 		projectConfig.Stack = stack
 
-		if imageRepo != "docker.io" && !strings.Contains(stack, "dev.local") {
+		if imageRepo != "docker.io" {
 			config.Debug.log("Image repository set to: ", imageRepo)
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
 		//Override the stack registry URL
-		projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
+		if !strings.Contains(stack, "dev.local") {
+			projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
 
-		if err != nil {
-			return &projectConfig, err
+			if err != nil {
+				return &projectConfig, err
+			}
+			config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
 		}
-		config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
 		config.ProjectConfig = &projectConfig
 	}
 	return config.ProjectConfig, nil
