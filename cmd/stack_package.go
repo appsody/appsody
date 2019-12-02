@@ -197,12 +197,16 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// docker build
 			// create the image name to be used for the docker image
+			imageRepo := rootConfig.CliConfig.GetString("images")
+
 			if imageNamespace == "dev.local" && imageRegistry != "docker.io" {
 				return errors.Errorf("Error creating the image name. When specifying the image registry: %v: you must also specify the image namespace.", imageRegistry)
 			} else if imageNamespace == "dev.local" {
 				namespaceAndRepo = imageNamespace + "/" + stackID
-			} else {
+			} else if imageRegistry != "docker.io" {
 				namespaceAndRepo = imageRegistry + "/" + imageNamespace + "/" + stackID
+			} else {
+				namespaceAndRepo = imageRepo + "/" + imageNamespace + "/" + stackID
 			}
 
 			buildImage := namespaceAndRepo + ":" + stackYaml.Version

@@ -482,17 +482,22 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		stack := v.GetString("stack")
 		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
-		config.Debug.log("Image repository set to: ", imageRepo)
 		projectConfig.Stack = stack
 
-		if !strings.Contains(stack, "dev.local") && len(strings.Split(stack, "/")) < 3 {
-			projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
+		stackElements := strings.Split(stack, "/")
 
-			if err != nil {
-				return &projectConfig, err
-			}
-			config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
+		if imageRepo != "docker.io" && stackElements[0] != imageRepo && stackElements[0] == "docker.io" {
+			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 		}
+
+		// if !strings.Contains(stack, "dev.local") && len(stackElements) < 3 {
+		// 	projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
+
+		// 	if err != nil {
+		// 		return &projectConfig, err
+		// 	}
+		// 	config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
+		// }
 		config.ProjectConfig = &projectConfig
 	}
 	return config.ProjectConfig, nil
