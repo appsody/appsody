@@ -31,7 +31,7 @@ import (
 func TestTemplatingAllVariables(t *testing.T) {
 
 	// gets all the necessary data from a setup function
-	imageNamespace, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests()
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestTemplatingAllVariables(t *testing.T) {
 	}
 
 	// create the template metadata
-	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
+	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
 	if err != nil {
 		t.Fatalf("Error creating template map: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestTemplatingAllVariables(t *testing.T) {
 func TestTemplatingWrongVariables(t *testing.T) {
 
 	// gets all the necessary data from a setup function
-	imageNamespace, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests()
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestTemplatingWrongVariables(t *testing.T) {
 	}
 
 	// create the template metadata
-	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
+	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
 	if err != nil {
 		t.Fatalf("Error creating template map: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestTemplatingFilePermissions(t *testing.T) {
 	}
 
 	// gets all the necessary data from a setup function
-	imageNamespace, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests()
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestTemplatingFilePermissions(t *testing.T) {
 	}
 
 	// create the template metadata
-	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
+	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
 	if err != nil {
 		t.Fatalf("Error creating template map: %v", err)
 	}
@@ -233,7 +233,7 @@ func canWrite(filepath string) (bool, error) {
 
 }
 
-func setupStackPackageTests() (string, cmd.StackYaml, map[string]string, error) {
+func setupStackPackageTests() (string, string, cmd.StackYaml, map[string]string, error) {
 	var loggingConfig = &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(os.Stdout, os.Stderr)
 	var rootConfig = &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
@@ -241,6 +241,7 @@ func setupStackPackageTests() (string, cmd.StackYaml, map[string]string, error) 
 	var stackYaml cmd.StackYaml
 	stackID := "starter"
 	imageNamespace := "dev.local"
+	imageRegistry := "docker.io"
 	buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
 	projectPath := filepath.Join(".", "testdata", "starter")
 
@@ -249,24 +250,24 @@ func setupStackPackageTests() (string, cmd.StackYaml, map[string]string, error) 
 
 	err := cmd.InitConfig(rootConfig)
 	if err != nil {
-		return imageNamespace, stackYaml, labels, errors.Errorf("Error getting config: %v", err)
+		return imageNamespace, imageRegistry, stackYaml, labels, errors.Errorf("Error getting config: %v", err)
 	}
 
 	source, err := ioutil.ReadFile(filepath.Join(projectPath, "stack.yaml"))
 	if err != nil {
-		return imageNamespace, stackYaml, labels, errors.Errorf("Error reading stackyaml: %v", err)
+		return imageNamespace, imageRegistry, stackYaml, labels, errors.Errorf("Error reading stackyaml: %v", err)
 	}
 
 	err = yaml.Unmarshal(source, &stackYaml)
 	if err != nil {
-		return imageNamespace, stackYaml, labels, errors.Errorf("Error parsing stackyaml: %v", err)
+		return imageNamespace, imageRegistry, stackYaml, labels, errors.Errorf("Error parsing stackyaml: %v", err)
 	}
 
 	labels, err = cmd.GetLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
 	if err != nil {
-		return imageNamespace, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
+		return imageNamespace, imageRegistry, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
 	}
 
-	return imageNamespace, stackYaml, labels, err
+	return imageNamespace, imageRegistry, stackYaml, labels, err
 
 }
