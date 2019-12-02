@@ -22,6 +22,7 @@ import (
 	"os/user"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -282,8 +283,8 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.interactive {
 		cmdArgs = append(cmdArgs, "-i")
 	}
-
-	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode)
+	interactiveSetting := strconv.FormatBool(config.interactive)
+	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode, "--interactive="+interactiveSetting)
 	if config.Verbose {
 		cmdArgs = append(cmdArgs, "-v")
 	}
