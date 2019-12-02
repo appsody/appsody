@@ -79,7 +79,7 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 	var imageNamespace string
 	var imageRegistry string
-	var namespaceAndRepo string 
+	var namespaceAndRepo string
 
 	log := rootConfig.LoggingConfig
 
@@ -198,8 +198,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			// docker build
 			// create the image name to be used for the docker image
 			if imageNamespace == "dev.local" && imageRegistry != "docker.io" {
-				return errors.Errorf("Error creating the image name. When specifying the image registry: %v, you must also specify the image namespace.", imageRegistry)
-			} else if imageNamespace == "dev.local"{
+				return errors.Errorf("Error creating the image name. When specifying the image registry: %v: you must also specify the image namespace.", imageRegistry)
+			} else if imageNamespace == "dev.local" {
 				namespaceAndRepo = imageNamespace + "/" + stackID
 			} else {
 				namespaceAndRepo = imageRegistry + "/" + imageNamespace + "/" + stackID
