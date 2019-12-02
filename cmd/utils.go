@@ -1509,6 +1509,14 @@ func pullCmd(log *LoggingConfig, imageToPull string, buildah bool, dryrun bool) 
 
 func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool {
 	cmdName := "docker"
+
+	imageNameComponents := strings.Split(imageToPull, "/")
+	if len(imageNameComponents) == 3 {
+		if imageNameComponents[0] == "index.docker.io" || imageNameComponents[0] == "docker.io" {
+			imageToPull = fmt.Sprintf("%s/%s", imageNameComponents[1], imageNameComponents[2])
+		}
+	}
+
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
 	imagelsOut, imagelsErr := SeparateOutput(imagelsCmd)
@@ -2026,6 +2034,17 @@ func SeparateOutput(cmd *exec.Cmd) (string, error) {
 
 	// If there wasn't an error return the stdOut & (lack of) err
 	return strings.TrimSpace(stdOut.String()), err
+}
+
+func CheckValidSemver(version string) error {
+	versionRegex := regexp.MustCompile(`^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
+	checkVersionNo := versionRegex.FindString(version)
+
+	if checkVersionNo == "" {
+		return errors.Errorf("Version must be formatted in accordance to semver - Please see: https://semver.org/ for valid versions.")
+	}
+
+	return nil
 }
 
 func checkValidLicense(license string) error {
