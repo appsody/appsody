@@ -269,6 +269,74 @@ func TestLintWithValidStack(t *testing.T) {
 	}
 }
 
+func TestLintWithInvalidStackName(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	newStackPath := filepath.Join(currentDir, "testdata", "test_stack")
+	args := []string{"stack", "lint"}
+
+	os.Rename(testStackPath, newStackPath)
+	_, err := cmdtest.RunAppsodyCmd(args, newStackPath, t)
+
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	os.Rename(newStackPath, testStackPath)
+}
+
+func TestLintWithMissingStackYaml(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+	removeYaml := filepath.Join(testStackPath, "stack.yaml")
+	file, err := ioutil.ReadFile(removeYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	removeArray := []string{filepath.Join(removeYaml)}
+
+	os.RemoveAll(removeYaml)
+
+	_, appsodyErr := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	if appsodyErr == nil { //Lint check should fail, if not fail the test
+		t.Fatal(appsodyErr)
+	}
+
+	RestoreSampleStack(removeArray)
+	writeErr := ioutil.WriteFile(removeYaml, []byte(file), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+}
+
+func TestLintWithMissingImage(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+	removeImage := filepath.Join(testStackPath, "image")
+	file, readErr := ioutil.ReadFile(filepath.Join(removeImage, "Dockerfile-stack"))
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	removeArray := []string{removeImage, filepath.Join(removeImage, "config"), filepath.Join(removeImage, "project"), filepath.Join(removeImage, "config", "app-deploy.yaml"), filepath.Join(removeImage, "project", "Dockerfile"), filepath.Join(removeImage, "LICENSE"), filepath.Join(removeImage, "Dockerfile-stack")}
+
+	os.RemoveAll(removeImage)
+
+	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	if err == nil { //Lint check should fail, if not fail the test
+		t.Fatal(err)
+	}
+
+	RestoreSampleStack(removeArray)
+	writeErr := ioutil.WriteFile(removeImage, []byte(file), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+}
+
 func TestLintWithMissingConfig(t *testing.T) {
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
@@ -334,7 +402,7 @@ func RestoreSampleStack(fixStack []string) {
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	for _, missingContent := range fixStack {
-		if missingContent == filepath.Join(testStackPath, "image/config") || missingContent == filepath.Join(testStackPath, "image/project") {
+		if missingContent == filepath.Join(testStackPath, "image") || missingContent == filepath.Join(testStackPath, "image/config") || missingContent == filepath.Join(testStackPath, "image/project") {
 			osErr := os.Mkdir(missingContent, os.ModePerm)
 			if osErr != nil {
 				fmt.Println(osErr)
