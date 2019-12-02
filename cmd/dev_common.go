@@ -22,7 +22,6 @@ import (
 	"os/user"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -292,8 +291,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		cmdArgs = append(cmdArgs, "--no-watcher")
 	}
 	if config.interactive {
-		interactiveSetting := strconv.FormatBool(config.interactive)
-		cmdArgs = append(cmdArgs, "--interactive="+interactiveSetting)
+		cmdArgs = append(cmdArgs, "--interactive")
 	}
 	if !config.Buildah {
 		config.Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
