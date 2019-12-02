@@ -219,7 +219,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// create the template metadata
-			templateMetadata, err := CreateTemplateMap(labels, stackYaml, imageNamespace)
+			templateMetadata, err := CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
 			if err != nil {
 				return errors.Errorf("Error creating templating mal: %v", err)
 			}
@@ -498,7 +498,7 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 
 // CreateTemplateMap - uses the git labels, stack.yaml, stackID and imageNamespace to create a map
 // with all the necessary data needed for the template
-func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string) (map[string]interface{}, error) {
+func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string, imageRegistry string) (map[string]interface{}, error) {
 
 	// create stack variables and add to templateMetadata map
 	var templateMetadata = make(map[string]interface{})
@@ -535,6 +535,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	// create image map add to templateMetadata map
 	var image = make(map[string]string)
 	image["namespace"] = imageNamespace
+	image["registry"] = imageRegistry
 	stack["image"] = image
 
 	// loop through user variables and add them to map, must begin with alphanumeric character
