@@ -7,7 +7,6 @@ class Appsody < Formula
 
   def install
     bin.install "appsody"
-    bin.install "appsody-controller"
     ohai "Checking prerequisites..."
     retval=check_prereqs
     if retval
