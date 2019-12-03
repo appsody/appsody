@@ -279,17 +279,17 @@ func TestLintWithInvalidStackName(t *testing.T) {
 	if renErr != nil {
 		t.Fatal(renErr)
 	}
-	_, err := cmdtest.RunAppsodyCmd(args, newStackPath, t)
-
-	if err == nil {
-		t.Fatal(err)
-	}
+	output, err := cmdtest.RunAppsodyCmd(args, newStackPath, t)
 
 	renErr1 := os.Rename(newStackPath, testStackPath)
 
 	if renErr1 != nil {
 		t.Fatal(renErr1)
 	}
+	if !strings.Contains(output, "Stack directory name is invalid.") {
+		t.Fatal(err)
+	}
+
 }
 
 func TestLintWithMissingStackYaml(t *testing.T) {
@@ -331,17 +331,18 @@ func TestLintWithMissingImage(t *testing.T) {
 
 	os.RemoveAll(removeImage)
 
-	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-
-	if err == nil { //Lint check should fail, if not fail the test
-		t.Fatal(err)
-	}
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
 	RestoreSampleStack(removeArray)
 	writeErr := ioutil.WriteFile(filepath.Join(removeImage, "Dockerfile-stack"), []byte(file), 0644)
 	if writeErr != nil {
 		t.Fatal(writeErr)
 	}
+
+	if !strings.Contains(output, "Missing image directory") {
+		t.Fatal(err)
+	}
+
 }
 
 func TestLintWithMissingConfig(t *testing.T) {
@@ -353,13 +354,14 @@ func TestLintWithMissingConfig(t *testing.T) {
 
 	os.RemoveAll(removeConf)
 
-	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
-	if err != nil { //Lint check should pass, if not fail the test
+	RestoreSampleStack(removeArray)
+
+	if !strings.Contains(output, "Missing config directory") {
 		t.Fatal(err)
 	}
 
-	RestoreSampleStack(removeArray)
 }
 
 func TestLintWithMissingProject(t *testing.T) {
@@ -375,13 +377,14 @@ func TestLintWithMissingProject(t *testing.T) {
 		t.Fatal(osErr)
 	}
 
-	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
-	if err != nil { //Lint check should pass, if not fail the test
+	RestoreSampleStack(removeArray)
+
+	if !strings.Contains(output, "Missing project directory") {
 		t.Fatal(err)
 	}
 
-	RestoreSampleStack(removeArray)
 }
 
 func TestLintWithMissingREADME(t *testing.T) {
@@ -396,13 +399,14 @@ func TestLintWithMissingREADME(t *testing.T) {
 		t.Fatal(osErr)
 	}
 
-	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
-	if err == nil { //Lint check should fail, if not fail the test
+	RestoreSampleStack(removeArray)
+
+	if !strings.Contains(output, "Missing README.md") {
 		t.Fatal(err)
 	}
 
-	RestoreSampleStack(removeArray)
 }
 
 func TestLintWithMissingDockerfileStackAndLicense(t *testing.T) {
@@ -425,16 +429,16 @@ func TestLintWithMissingDockerfileStackAndLicense(t *testing.T) {
 		}
 	}
 
-	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-
-	if err == nil {
-		t.Fatal(err)
-	}
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
 	RestoreSampleStack(removeArray)
 	writeErr := ioutil.WriteFile(filepath.Join(removeDockerfileStack), []byte(file), 0644)
 	if writeErr != nil {
 		t.Fatal(writeErr)
+	}
+
+	if !strings.Contains(output, "Missing Dockerfile-stack") && !strings.Contains(output, "Missing LICENSE") {
+		t.Fatal(err)
 	}
 
 }
@@ -452,12 +456,14 @@ func TestLintWithMissingTemplatesDirectory(t *testing.T) {
 		t.Fatal(osErr)
 	}
 
-	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-	if err == nil {
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	RestoreSampleStack(removeArray)
+
+	if !strings.Contains(output, "Missing template directory") && !strings.Contains(output, "No templates found in") {
 		t.Fatal(err)
 	}
 
-	RestoreSampleStack(removeArray)
 }
 
 func TestLintWithMissingTemplateInTemplatesDirectory(t *testing.T) {
@@ -473,12 +479,14 @@ func TestLintWithMissingTemplateInTemplatesDirectory(t *testing.T) {
 		t.Fatal(osErr)
 	}
 
-	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-	if err == nil {
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	RestoreSampleStack(removeArray)
+
+	if !strings.Contains(output, "No templates found in") {
 		t.Fatal(err)
 	}
 
-	RestoreSampleStack(removeArray)
 }
 
 func TestLintWithConfigYamlInTemplate(t *testing.T) {
@@ -493,15 +501,17 @@ func TestLintWithConfigYamlInTemplate(t *testing.T) {
 		t.Fatal(osErr)
 	}
 
-	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-	if err == nil {
-		t.Fatal(err)
-	}
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
 	removeErr := os.RemoveAll(addConfigYaml)
 	if removeErr != nil {
 		t.Fatal(removeErr)
 	}
+
+	if !strings.Contains(output, "Unexpected .appsody-config.yaml") {
+		t.Fatal(err)
+	}
+
 }
 
 func RestoreSampleStack(fixStack []string) {

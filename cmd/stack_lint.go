@@ -121,6 +121,15 @@ Run this command from the root directory of your stack, or specify the path to y
 				stackLintWarningCount++
 			}
 
+			fileCheck, err = Exists(projectPath)
+			if err != nil {
+				rootConfig.Error.log("Error attempting to determine file: ", err)
+				stackLintErrorCount++
+			} else if !fileCheck {
+				rootConfig.Warning.log("Missing project directory in ", imagePath)
+				stackLintWarningCount++
+			}
+
 			fileCheck, err = Exists(filepath.Join(projectPath, "/Dockerfile"))
 			if err != nil {
 				rootConfig.Error.log("Error attempting to determine file: ", err)
