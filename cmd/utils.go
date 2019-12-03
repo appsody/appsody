@@ -483,21 +483,16 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
 		projectConfig.Stack = stack
-
-		stackElements := strings.Split(stack, "/")
-
-		if imageRepo != "docker.io" && stackElements[0] != imageRepo && stackElements[0] == "docker.io" {
+		imageComponents := strings.Split(projectConfig.Stack, "/")
+		if len(imageComponents) < 3 && !strings.Contains(stack, "dev.local") {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
+			projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
+
+			if err != nil {
+				return &projectConfig, err
+			}
+			config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
 		}
-
-		// if !strings.Contains(stack, "dev.local") && len(stackElements) < 3 {
-		// 	projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
-
-		// 	if err != nil {
-		// 		return &projectConfig, err
-		// 	}
-		// 	config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
-		// }
 		config.ProjectConfig = &projectConfig
 	}
 	return config.ProjectConfig, nil
@@ -746,47 +741,46 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 }
 
 func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
-	if config.cachedStackLabels == nil {
-		config.cachedStackLabels = make(map[string]string)
-		var data []map[string]interface{}
-		var buildahData map[string]interface{}
-		var containerConfig map[string]interface{}
-		projectConfig, projectConfigErr := getProjectConfig(config)
-		if projectConfigErr != nil {
-			return nil, projectConfigErr
-		}
-		imageName := projectConfig.Stack
-		pullErrs := pullImage(imageName, config)
-		if pullErrs != nil {
-			return nil, pullErrs
-		}
-		inspectOut, err := inspectImage(imageName, config)
+	labels := make(map[string]string)
+	var data []map[string]interface{}
+	var buildahData map[string]interface{}
+	var containerConfig map[string]interface{}
+	projectConfig, projectConfigErr := getProjectConfig(config)
+	if projectConfigErr != nil {
+		return nil, projectConfigErr
+	}
+	imageName := projectConfig.Stack
+	pullErrs := pullImage(imageName, config)
+	if pullErrs != nil {
+		return nil, pullErrs
+	}
+	inspectOut, err := inspectImage(imageName, config)
+	if err != nil {
+		return labels, err
+	}
+	if config.Buildah {
+		err = json.Unmarshal([]byte(inspectOut), &buildahData)
 		if err != nil {
-			return config.cachedStackLabels, err
+			return labels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
-		if config.Buildah {
-			err = json.Unmarshal([]byte(inspectOut), &buildahData)
-			if err != nil {
-				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
-			}
-			containerConfig = buildahData["config"].(map[string]interface{})
-			config.Debug.Log("Config inspected by buildah: ", config)
-		} else {
-			err := json.Unmarshal([]byte(inspectOut), &data)
-			if err != nil {
-				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
-			}
-			containerConfig = data[0]["Config"].(map[string]interface{})
+		containerConfig = buildahData["config"].(map[string]interface{})
+		config.Debug.Log("Config inspected by buildah: ", config)
+	} else {
+		err := json.Unmarshal([]byte(inspectOut), &data)
+		if err != nil {
+			return labels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
-		if containerConfig["Labels"] != nil {
-			labelsMap := containerConfig["Labels"].(map[string]interface{})
+		containerConfig = data[0]["Config"].(map[string]interface{})
+	}
+	if containerConfig["Labels"] != nil {
+		labelsMap := containerConfig["Labels"].(map[string]interface{})
 
-			for key, value := range labelsMap {
-				config.cachedStackLabels[key] = value.(string)
-			}
+		for key, value := range labelsMap {
+			labels[key] = value.(string)
 		}
 	}
-	return config.cachedStackLabels, nil
+
+	return labels, nil
 }
 
 func getExposedPorts(config *RootCommandConfig) ([]string, error) {
@@ -1514,6 +1508,14 @@ func pullCmd(log *LoggingConfig, imageToPull string, buildah bool, dryrun bool) 
 
 func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool {
 	cmdName := "docker"
+
+	imageNameComponents := strings.Split(imageToPull, "/")
+	if len(imageNameComponents) == 3 {
+		if imageNameComponents[0] == "index.docker.io" || imageNameComponents[0] == "docker.io" {
+			imageToPull = fmt.Sprintf("%s/%s", imageNameComponents[1], imageNameComponents[2])
+		}
+	}
+
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
 	imagelsOut, imagelsErr := SeparateOutput(imagelsCmd)
@@ -2031,6 +2033,17 @@ func SeparateOutput(cmd *exec.Cmd) (string, error) {
 
 	// If there wasn't an error return the stdOut & (lack of) err
 	return strings.TrimSpace(stdOut.String()), err
+}
+
+func CheckValidSemver(version string) error {
+	versionRegex := regexp.MustCompile(`^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
+	checkVersionNo := versionRegex.FindString(version)
+
+	if checkVersionNo == "" {
+		return errors.Errorf("Version must be formatted in accordance to semver - Please see: https://semver.org/ for valid versions.")
+	}
+
+	return nil
 }
 
 func checkValidLicense(license string) error {
