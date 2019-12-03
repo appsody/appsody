@@ -290,6 +290,9 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.disableWatcher {
 		cmdArgs = append(cmdArgs, "--no-watcher")
 	}
+	if config.interactive {
+		cmdArgs = append(cmdArgs, "--interactive")
+	}
 	if !config.Buildah {
 		config.Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
 		execCmd, err := DockerRunAndListen(config.RootCommandConfig, cmdArgs, config.Container, config.interactive)

@@ -299,7 +299,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					return errors.Errorf("Error trying to create file: %v", err)
 				}
 
-				_, err = g.WriteString("stack: " + buildImage)
+				// Only use major.minor version here
+				_, err = g.WriteString("stack: " + namespaceAndRepo + ":" + semver["majorminor"])
 				if err != nil {
 					return errors.Errorf("Error trying to write: %v", err)
 				}
