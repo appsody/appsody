@@ -73,6 +73,7 @@ var repoAddErrorTests = []struct {
 	{"Repo name is invalid", []string{"test!", "http://localhost/doesnotexist"}, "Invalid repository name"},
 	{"Repo name already exists", []string{"incubator", "http://localhost/doesnotexist"}, "already exists"},
 	{"Url already exists", []string{"test", "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"}, "already exists"},
+	{"Badly formatted repo config", []string{"test", "http://localhost/doesnotexist", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
 }
 
 func TestRepoAddErrors(t *testing.T) {
@@ -91,16 +92,4 @@ func TestRepoAddErrors(t *testing.T) {
 		})
 
 	}
-}
-
-func TestRepoAddBadConfig(t *testing.T) {
-	args := []string{"repo", "add", "test", "http://localhost/doesnotexist", "--config", "testdata/bad_format_repository_config/config.yaml"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
-	if err == nil {
-		t.Error("Expected non-zero exit code")
-	}
-	if !strings.Contains(output, "Failed to parse repository file yaml") {
-		t.Errorf("Did not find expected error '%s' in output", "Failed to parse repository file yaml")
-	}
-
 }
