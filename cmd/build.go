@@ -139,7 +139,7 @@ func build(config *buildCommandConfig) error {
 
 	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
 	dockerfile := filepath.Join(extractDir, "Dockerfile")
-	buildImage := "dev.local/" + projectName //Lowercased
+	buildImage := "dev.local/appsody/" + projectName //Lowercased
 
 	// Regardless of pass or fail, remove the local extracted folder
 	defer os.RemoveAll(extractDir)

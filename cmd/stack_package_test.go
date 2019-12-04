@@ -80,7 +80,7 @@ func TestTemplatingAllVariables(t *testing.T) {
 	}
 	s := string(b)
 	t.Log(s)
-	if !strings.Contains(s, "id: starter, name: Starter Sample, version: 0.1.1, description: Runnable starter stack, copy to create a new stack, tag: dev.local/starter:SNAPSHOT, maintainers: Henry Nash <henry.nash@uk.ibm.com>, semver.major: 0, semver.minor: 1, semver.patch: 1, semver.majorminor: 0.1, image.namespace: dev.local, customvariable1: value1, customvariable2: value2") {
+	if !strings.Contains(s, "id: starter, name: Starter Sample, version: 0.1.1, description: Runnable starter stack, copy to create a new stack, tag: appsody/starter:SNAPSHOT, maintainers: Henry Nash <henry.nash@uk.ibm.com>, semver.major: 0, semver.minor: 1, semver.patch: 1, semver.majorminor: 0.1, image.namespace: appsody, customvariable1: value1, customvariable2: value2") {
 		t.Fatal("Templating text did not match expected values")
 	}
 
@@ -240,8 +240,8 @@ func setupStackPackageTests() (string, string, cmd.StackYaml, map[string]string,
 	var labels = map[string]string{}
 	var stackYaml cmd.StackYaml
 	stackID := "starter"
-	imageNamespace := "dev.local"
-	imageRegistry := "docker.io"
+	imageNamespace := "appsody"
+	imageRegistry := "dev.local"
 	buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
 	projectPath := filepath.Join(".", "testdata", "starter")
 

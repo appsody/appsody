@@ -79,7 +79,7 @@ Runs the following validation tests against the stack and its templates:
 			stackName := filepath.Base(stackPath)
 			rootConfig.Info.Log("stackName is: ", stackName)
 
-			if imageNamespace == "dev.local" && imageRegistry != "docker.io" {
+			if imageRegistry != "dev.local" && imageNamespace == "appsody" {
 				return errors.Errorf("Error creating the image name. When specifying the image registry: %v: you must also specify the image namespace.", imageRegistry)
 			}
 
@@ -153,7 +153,7 @@ Runs the following validation tests against the stack and its templates:
 				rootConfig.Info.Log("Created project dir: " + projectDir)
 
 				// init
-				err = TestInit(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+				err = TestInit(rootConfig.LoggingConfig, imageRegistry+imageNamespace+stackName, templates[i], projectDir)
 				if err != nil {
 					rootConfig.Error.Log(err)
 					testResults = append(testResults, ("FAILED: Init for stack:" + stackName + " template:" + templates[i]))
@@ -167,7 +167,7 @@ Runs the following validation tests against the stack and its templates:
 
 				// run
 				if !initFail {
-					err = TestRun(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+					err = TestRun(rootConfig.LoggingConfig, imageRegistry+imageNamespace+stackName, templates[i], projectDir)
 					if err != nil {
 						//logs error but keeps going
 						rootConfig.Error.Log(err)
@@ -181,7 +181,7 @@ Runs the following validation tests against the stack and its templates:
 
 				// test
 				if !initFail {
-					err = TestTest(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+					err = TestTest(rootConfig.LoggingConfig, imageRegistry+imageNamespace+stackName, templates[i], projectDir)
 					if err != nil {
 						//logs error but keeps going
 						rootConfig.Error.Log(err)
@@ -195,7 +195,7 @@ Runs the following validation tests against the stack and its templates:
 
 				// build
 				if !initFail {
-					err = TestBuild(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+					err = TestBuild(rootConfig.LoggingConfig, imageRegistry+imageNamespace+stackName, templates[i], projectDir)
 					if err != nil {
 						//logs error but keeps going
 						rootConfig.Error.Log(err)
@@ -233,8 +233,8 @@ Runs the following validation tests against the stack and its templates:
 
 	stackValidateCmd.PersistentFlags().BoolVar(&noPackage, "no-package", false, "Skips running appsody stack package")
 	stackValidateCmd.PersistentFlags().BoolVar(&noLint, "no-lint", false, "Skips running appsody stack lint")
-	stackValidateCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace used for creating the images.")
-	stackValidateCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "docker.io", "Registry used for creating the images.")
+	stackValidateCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "appsody", "Namespace used for creating the images.")
+	stackValidateCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "dev.local", "Registry used for creating the images.")
 
 	return stackValidateCmd
 }
@@ -328,7 +328,7 @@ func TestTest(log *LoggingConfig, stack string, template string, projectDir stri
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
 func TestBuild(log *LoggingConfig, stack string, template string, projectDir string) error {
 
-	imageName := "dev.local/" + filepath.Base(projectDir)
+	imageName := "dev.local/appsody" + filepath.Base(projectDir)
 
 	log.Info.Log("**************************************************************************")
 	log.Info.Log("Running appsody build against stack:" + stack + " template:" + template)

@@ -483,8 +483,7 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
 		projectConfig.Stack = stack
-		imageComponents := strings.Split(projectConfig.Stack, "/")
-		if len(imageComponents) < 3 && !strings.Contains(stack, "dev.local") {
+		if !strings.Contains(stack, "dev.local") {
 			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
 			projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
 

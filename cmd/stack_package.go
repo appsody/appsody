@@ -90,10 +90,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 The packaging process builds the stack image, generates the "tar.gz" archive files for each template, and adds your stack to the "dev.local" repository in your Appsody configuration. You can see the list of your packaged stacks by running 'appsody list dev.local'.`,
 		Example: `  appsody stack package
-  Packages the stack in the current directory, tags the built image with the "dev.local" namespace, and adds the stack to the "dev.local" repository.
+  Packages the stack in the current directory, tags the built image with the default registry and namespace, and adds the stack to the "dev.local" repository.
   
   appsody stack package --image-namespace my-namespace
-  Packages the stack in the current directory, tags the built image with the "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
+  Packages the stack in the current directory, tags the built image with the default registry and "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			log.Info.Log("******************************************")
@@ -199,11 +199,9 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			// create the image name to be used for the docker image
 			imageRepo := rootConfig.CliConfig.GetString("images")
 
-			if imageNamespace == "dev.local" && imageRegistry != "docker.io" {
+			if imageRegistry != "dev.local" && imageNamespace == "appsody" {
 				return errors.Errorf("Error creating the image name. When specifying the image registry: %v: you must also specify the image namespace.", imageRegistry)
-			} else if imageNamespace == "dev.local" {
-				namespaceAndRepo = imageNamespace + "/" + stackID
-			} else if imageRegistry != "docker.io" {
+			} else if imageRegistry == "dev.local" && imageNamespace == "appsody" || imageRegistry != "dev.local" && imageNamespace != "appsody" {
 				namespaceAndRepo = imageRegistry + "/" + imageNamespace + "/" + stackID
 			} else {
 				namespaceAndRepo = imageRepo + "/" + imageNamespace + "/" + stackID
@@ -396,8 +394,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 		},
 	}
 
-	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace used for creating the images.")
-	stackPackageCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "docker.io", "Registry used for creating the images.")
+	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "appsody", "Namespace used for creating the images.")
+	stackPackageCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "dev.local", "Registry used for creating the images.")
 
 	return stackPackageCmd
 }
