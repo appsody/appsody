@@ -14,6 +14,8 @@
 package cmd_test
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -25,7 +27,6 @@ var repoSetDefaultLogsTests = []struct {
 	args         []string // input
 	expectedLogs string   // expected to be in the error message
 }{
-	{"Valid args", []string{"localhub", "--config", "testdata/multiple_repository_config/config.yaml"}, "default repository is now set to localhub"},
 	{"No args", nil, "you must specify desired default repository"},
 	{"Existing default repo", []string{"incubator"}, "default repository has already been set to"},
 	{"Non-existing repo", []string{"test"}, "not in configured list of repositories"},
@@ -44,4 +45,24 @@ func TestRepoSetDefaultLogs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepoSetDefault(t *testing.T) {
+	args := []string{"repo", "set-default", "localhub", "--config", "testdata/multiple_repository_config/config.yaml"}
+	removeRepo := filepath.Join("testdata", "multiple_repository_config", "repository", "repository.yaml")
+	file, readErr := ioutil.ReadFile(removeRepo)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
+
+	writeErr := ioutil.WriteFile(filepath.Join(removeRepo), []byte(file), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+
+	if !strings.Contains(output, "default repository is now set to localhub") {
+		t.Fatal(err)
+	}
+
 }
