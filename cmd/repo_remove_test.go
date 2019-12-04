@@ -14,22 +14,55 @@
 package cmd_test
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestRepoRemoveError(t *testing.T) {
+var repoRemoveLogsTests = []struct {
+	testName     string
+	args         []string // input
+	expectedLogs string   // expected to be in the error message
+}{
+	{"No args", nil, "you must specify repository name"},
+	{"Existing default repo", []string{"incubator"}, "cannot remove the default repository"},
+	{"Non-existing repo", []string{"test"}, "not in configured list of repositories"},
+	{"Badly formatted repo config", []string{"test", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
+}
 
-	args := []string{"repo", "remove"}
-	output, _ := cmdtest.RunAppsodyCmd(args, ".", t)
+func TestRepoRemoveLogs(t *testing.T) {
+	for _, tt := range repoRemoveLogsTests {
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+			args := append([]string{"repo", "remove"}, tt.args...)
+			output, _ := cmdtest.RunAppsodyCmd(args, ".", t)
 
-	if !strings.Contains(output, "Error, you must specify repository name") {
-		t.Error("String \"Error, you must specify repository name\" not found in output")
+			if !strings.Contains(output, tt.expectedLogs) {
+				t.Errorf("Did not find expected error '%s' in output", tt.expectedLogs)
+			}
+		})
+	}
+}
 
-	} else {
-		t.Log("Found the correct error string")
+func TestRepoRemove(t *testing.T) {
+	args := []string{"repo", "remove", "localhub", "--config", "testdata/multiple_repository_config/config.yaml"}
+	removeRepo := filepath.Join("testdata", "multiple_repository_config", "repository", "repository.yaml")
+	file, readErr := ioutil.ReadFile(removeRepo)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
+
+	writeErr := ioutil.WriteFile(filepath.Join(removeRepo), []byte(file), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+
+	if !strings.Contains(output, "repository has been removed") {
+		t.Fatal(err)
 	}
 
 }
