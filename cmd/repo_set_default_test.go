@@ -20,15 +20,28 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestRepoSetDefaultErrors(t *testing.T) {
+var repoSetDefaultLogsTests = []struct {
+	testName     string
+	args         []string // input
+	expectedLogs string   // expected to be in the error message
+}{
+	{"Valid args", []string{"localhub", "--config", "testdata/multiple_repository_config/config.yaml"}, "default repository is now set to localhub"},
+	{"No args", nil, "you must specify desired default repository"},
+	{"Existing default repo", []string{"incubator"}, "default repository has already been set to"},
+	{"Non-existing repo", []string{"test"}, "not in configured list of repositories"},
+	{"Badly formatted repo config", []string{"test", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
+}
 
-	args := []string{"repo", "set-default"}
-	output, _ := cmdtest.RunAppsodyCmd(args, ".", t)
+func TestRepoSetDefaultLogs(t *testing.T) {
+	for _, tt := range repoSetDefaultLogsTests {
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+			args := append([]string{"repo", "set-default"}, tt.args...)
+			output, _ := cmdtest.RunAppsodyCmd(args, ".", t)
 
-	if !strings.Contains(output, "Error, you must specify desired default repository") {
-		t.Error("String \"Error, you must specify desired default repository\" not found in output")
-
-	} else {
-		t.Log("Found the correct error string")
+			if !strings.Contains(output, tt.expectedLogs) {
+				t.Errorf("Did not find expected error '%s' in output", tt.expectedLogs)
+			}
+		})
 	}
 }
