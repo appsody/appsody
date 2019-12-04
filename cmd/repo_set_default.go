@@ -45,7 +45,10 @@ The default repository is used when you run the "appsody init" command without s
 				config.Info.log("Dry Run - Skipping appsody repo set-default ", repoName)
 			} else {
 				if repoFile.Has(repoName) {
-					defaultRepoName, _ := repoFile.GetDefaultRepoName(config)
+					defaultRepoName, err := repoFile.GetDefaultRepoName(config)
+					if err != nil {
+						return err
+					}
 					if repoName != defaultRepoName {
 						_, repoFileErr := repoFile.SetDefaultRepoName(repoName, defaultRepoName, config)
 						if repoFileErr != nil {
