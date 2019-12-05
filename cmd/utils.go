@@ -478,20 +478,7 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 			return &projectConfig, errors.Errorf("Error reading project config %v", err)
 
 		}
-
-		stack := v.GetString("stack")
 		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
-		imageRepo := config.CliConfig.GetString("images")
-		projectConfig.Stack = stack
-		if !strings.Contains(stack, "dev.local") {
-			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
-			projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
-
-			if err != nil {
-				return &projectConfig, err
-			}
-			config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
-		}
 		config.ProjectConfig = &projectConfig
 	}
 	return config.ProjectConfig, nil

@@ -78,11 +78,6 @@ Runs the following validation tests against the stack and its templates:
 			// get the stack name from the stack path
 			stackName := filepath.Base(stackPath)
 			rootConfig.Info.Log("stackName is: ", stackName)
-
-			if imageRegistry != "dev.local" && imageNamespace == "appsody" {
-				return errors.Errorf("Error creating the image name. When specifying the image registry: %v: you must also specify the image namespace.", imageRegistry)
-			}
-
 			rootConfig.Info.Log("#################################################")
 			rootConfig.Info.Log("Validating stack:", stackName)
 			rootConfig.Info.Log("#################################################")
@@ -151,9 +146,10 @@ Runs the following validation tests against the stack and its templates:
 				}
 
 				rootConfig.Info.Log("Created project dir: " + projectDir)
+				stack := "dev.local/" + stackName
 
 				// init
-				err = TestInit(rootConfig.LoggingConfig, imageRegistry+imageNamespace+stackName, templates[i], projectDir)
+				err = TestInit(rootConfig.LoggingConfig, stack, templates[i], projectDir)
 				if err != nil {
 					rootConfig.Error.Log(err)
 					testResults = append(testResults, ("FAILED: Init for stack:" + stackName + " template:" + templates[i]))
@@ -167,7 +163,7 @@ Runs the following validation tests against the stack and its templates:
 
 				// run
 				if !initFail {
-					err = TestRun(rootConfig.LoggingConfig, imageRegistry+imageNamespace+stackName, templates[i], projectDir)
+					err = TestRun(rootConfig.LoggingConfig, stack, templates[i], projectDir)
 					if err != nil {
 						//logs error but keeps going
 						rootConfig.Error.Log(err)
@@ -181,7 +177,7 @@ Runs the following validation tests against the stack and its templates:
 
 				// test
 				if !initFail {
-					err = TestTest(rootConfig.LoggingConfig, imageRegistry+imageNamespace+stackName, templates[i], projectDir)
+					err = TestTest(rootConfig.LoggingConfig, stack, templates[i], projectDir)
 					if err != nil {
 						//logs error but keeps going
 						rootConfig.Error.Log(err)
@@ -195,7 +191,7 @@ Runs the following validation tests against the stack and its templates:
 
 				// build
 				if !initFail {
-					err = TestBuild(rootConfig.LoggingConfig, imageRegistry+imageNamespace+stackName, templates[i], projectDir)
+					err = TestBuild(rootConfig.LoggingConfig, stack, templates[i], projectDir)
 					if err != nil {
 						//logs error but keeps going
 						rootConfig.Error.Log(err)

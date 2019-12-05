@@ -197,15 +197,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// docker build
 			// create the image name to be used for the docker image
-			imageRepo := rootConfig.CliConfig.GetString("images")
-
-			if imageRegistry != "dev.local" && imageNamespace == "appsody" {
-				return errors.Errorf("Error creating the image name. When specifying the image registry: %v: you must also specify the image namespace.", imageRegistry)
-			} else if imageRegistry == "dev.local" && imageNamespace == "appsody" || imageRegistry != "dev.local" && imageNamespace != "appsody" {
-				namespaceAndRepo = imageRegistry + "/" + imageNamespace + "/" + stackID
-			} else {
-				namespaceAndRepo = imageRepo + "/" + imageNamespace + "/" + stackID
-			}
+			namespaceAndRepo = imageRegistry + "/" + imageNamespace + "/" + stackID
 
 			buildImage := namespaceAndRepo + ":" + stackYaml.Version
 
