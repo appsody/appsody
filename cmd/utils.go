@@ -2058,3 +2058,124 @@ func checkValidLicense(license string) error {
 	}
 	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
 }
+
+func lintMountsRun(mountVar string, log *LoggingConfig, stackPath string) {
+	homeDir := UserHomeDir(log)
+	if mountVar == "" {
+		log.Error.log("No APPSODY MOUNTS exists")
+		return
+	}
+	mountList := strings.Split(mountVar, ";")
+
+	for _, mount := range mountList {
+
+		localPaths := strings.Split(strings.Trim(mount, "\""), ":")
+		if len(localPaths) != 2 {
+			log.Error.log("Mount is not properly formatted", mount)
+
+		}
+
+		localPath := localPaths[0]
+		if localPath == "" {
+			log.Error.log("Mount is empty", mount)
+
+		}
+
+		if localPath == "/" || localPath == "." {
+			log.Error.log(localPath, " is a directory.")
+		} else {
+			fullPath := ""
+			if localPath[0:1] == "~" {
+				fullPath = strings.Replace(localPath, "~", homeDir, 1)
+			} else {
+				fullPath = filepath.Join(stackPath, localPath)
+
+			}
+			validateMountPath(fullPath, log)
+		}
+	}
+
+}
+func lintMountVar(mountListSource string, log *LoggingConfig, stackPath string) (int, int) {
+	if mountListSource == "" {
+		log.Warning.log("No APPSODY MOUNTS exists, mount paths can not be validated.")
+		return 0, 1
+	}
+	errorCount := 0
+	warningCount := 0
+	mountList := strings.Split(mountListSource, ";")
+
+	templatePath := filepath.Join(stackPath, "templates")
+	log.Debug.log("Checking for template path: ", templatePath)
+	fileCheck, err := Exists(templatePath)
+	log.Debug.log("Template path exists: ", fileCheck)
+	if err != nil {
+		log.Error.log("Error attempting to determine if template path exists: ", err)
+		return 1, 0
+	}
+	if !fileCheck {
+		log.Error.log("Missing template directory in: ", stackPath)
+		return 1, 0
+	}
+	if IsEmptyDir(templatePath) {
+		log.Error.log("No templates found in: ", templatePath)
+		return 1, 0
+	}
+
+	templates, _ := ioutil.ReadDir(templatePath)
+	mountPairs := mountList
+	//s
+	// loop through the template directories and create the id and url
+	for _, f := range templates {
+
+		for _, mountPair := range mountPairs {
+			log.Debug.log("mount pair: ", mountPair)
+			localPaths := strings.Split(strings.Trim(mountPair, "\""), ":")
+			if len(localPaths) != 2 {
+				log.Error.log("Mount is not properly formatted", mountPair)
+				errorCount++
+			} else {
+				// add an error here if not 2?
+				localPath := localPaths[0]
+				if localPath == "" {
+					log.Error.log("Mount is empty", mountPair)
+					errorCount++
+				} else {
+					//make sure it isn't ""?
+					log.Debug.log("local path: ", localPath)
+					if localPath == "/" || localPath == "." {
+						log.Debug.log(localPath, " is a directory.")
+					} else if localPath[0:1] == "~" {
+						log.Info.log(localPath, " can not be evaluated at this time.")
+					} else {
+						mountFilePath := filepath.Join(stackPath, "templates", f.Name(), localPath)
+						log.Debug.log("mountFilePath: ", mountFilePath)
+						mountLintErrors, warnings := validateMountPath(mountFilePath, log)
+						warningCount = warningCount + warnings
+						errorCount = errorCount + mountLintErrors
+					}
+				}
+			}
+		}
+	}
+	return errorCount, warningCount
+}
+func validateMountPath(path string, log *LoggingConfig) (int, int) {
+	log.Debug.log("Attempting to validate mount path: ", path)
+	errorCount := 0
+	warningCount := 0
+	file, err := os.Stat(path)
+	if err != nil {
+		log.Info.log("Could not stat: ", path)
+		errorCount = 1
+	} else {
+		if file.Mode().IsDir() {
+			log.Debug.log(path, " is a directory")
+		} else {
+			warningCount = 1
+			log.Warning.log(path, " points to a single file.  Single file Docker mount paths cause unexpected behavior and will be deprecated in the future.")
+		}
+
+	}
+	return errorCount, warningCount
+}

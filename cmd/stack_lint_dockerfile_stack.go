@@ -144,5 +144,9 @@ func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
 			}
 		}
 	}
+	mountVar := dockerfileStack["APPSODY_MOUNTS"]
+	lintMountErrors, lintMountWarnings := lintMountVar(mountVar, log, stackPath)
+	stackLintWarningCount = stackLintWarningCount + lintMountWarnings
+	stackLintErrorCount = stackLintErrorCount + lintMountErrors
 	return stackLintErrorCount, stackLintWarningCount
 }

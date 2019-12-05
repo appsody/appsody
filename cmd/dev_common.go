@@ -162,6 +162,10 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if volumeErr != nil {
 		return volumeErr
 	}
+
+	appsodyMounts, _ := GetEnvVar("APPSODY_MOUNTS", config.RootCommandConfig)
+
+	lintMountsRun(appsodyMounts, config.RootCommandConfig.LoggingConfig, projectDir)
 	// Mount the APPSODY_DEPS cache volume if it exists
 	depsEnvVar, envErr := GetEnvVar("APPSODY_DEPS", config.RootCommandConfig)
 	if envErr != nil {

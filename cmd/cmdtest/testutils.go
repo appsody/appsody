@@ -29,7 +29,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const CLEANUP = true
+const CLEANUP = false
 
 // Repository struct represents an appsody repository
 type Repository struct {
