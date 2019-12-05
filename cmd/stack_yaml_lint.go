@@ -15,31 +15,16 @@
 package cmd
 
 import (
-	"bufio"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v2"
 )
 
-type StackDetails struct {
-	Name        string            `yaml:"name"`
-	Version     string            `yaml:"version"`
-	Description string            `yaml:"description"`
-	License     string            `yaml:"license"`
-	Language    string            `yaml:"language"`
-	Maintainers []StackMaintainer `yaml:"maintainers"`
-}
-
-type StackMaintainer struct {
-	Email string `yaml:"email"`
-}
-
-func (s *StackDetails) validateYaml(rootConfig *RootCommandConfig, stackPath string) int {
+func (stackDetails *StackYaml) validateYaml(rootConfig *RootCommandConfig, stackPath string) (int, int) {
 	stackLintErrorCount := 0
 	arg := filepath.Join(stackPath, "/stack.yaml")
 
@@ -51,52 +36,28 @@ func (s *StackDetails) validateYaml(rootConfig *RootCommandConfig, stackPath str
 		stackLintErrorCount++
 	}
 
-	err = yaml.Unmarshal([]byte(stackyaml), s)
+	err = yaml.Unmarshal([]byte(stackyaml), stackDetails)
 	if err != nil {
 		rootConfig.Error.log("Unmarshal: Error unmarshalling stack.yaml")
 		stackLintErrorCount++
 	}
 
-	stackLintErrorCount += s.checkDefaultTemplate(rootConfig.LoggingConfig, arg)
-	stackLintErrorCount += s.validateFields(rootConfig)
-	stackLintErrorCount += s.checkVersion(rootConfig.LoggingConfig)
-	stackLintErrorCount += s.checkDescLength(rootConfig.LoggingConfig)
-	stackLintErrorCount += s.checkLicense(rootConfig.LoggingConfig)
-	return stackLintErrorCount
+	stackLintErrorCount += stackDetails.validateFields(rootConfig)
+	validSemver := CheckValidSemver(string(stackDetails.Version))
+	if validSemver != nil {
+		rootConfig.Error.log(validSemver)
+	}
+
+	stackLintErrorCount += stackDetails.checkDescLength(rootConfig.LoggingConfig)
+	stackLintErrorCount += stackDetails.checkLicense(rootConfig.LoggingConfig)
+	templateErrorCount, templateWarningCount := stackDetails.checkTemplatingData(rootConfig.LoggingConfig)
+	stackLintErrorCount += templateErrorCount
+	return stackLintErrorCount, templateWarningCount
 }
 
-func (s *StackDetails) checkDefaultTemplate(log *LoggingConfig, arg string) int {
+func (stackDetails *StackYaml) validateFields(rootConfig *RootCommandConfig) int {
 	stackLintErrorCount := 0
-	defaultTemplateFound := false
-	file, err := os.Open(arg)
-	if err != nil {
-		log.Error.log(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		yamlFields := strings.Split(scanner.Text(), ":")
-		if yamlFields[0] == "default-template" && yamlFields[1] != "" {
-			defaultTemplateFound = true
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Error.log(err)
-	}
-
-	if !defaultTemplateFound {
-		log.Error.log("Missing value for field: default-template")
-		stackLintErrorCount++
-	}
-
-	return stackLintErrorCount
-}
-
-func (s *StackDetails) validateFields(rootConfig *RootCommandConfig) int {
-	stackLintErrorCount := 0
-	v := reflect.ValueOf(s).Elem()
+	v := reflect.ValueOf(stackDetails).Elem()
 	yamlValues := make([]interface{}, v.NumField())
 
 	for i := 0; i < v.NumField(); i++ {
@@ -107,54 +68,35 @@ func (s *StackDetails) validateFields(rootConfig *RootCommandConfig) int {
 		}
 	}
 
-	stackLintErrorCount += s.checkMaintainer(rootConfig.LoggingConfig, yamlValues)
+	stackLintErrorCount += stackDetails.checkMaintainer(rootConfig.LoggingConfig, yamlValues)
 	return stackLintErrorCount
 
 }
 
-func (s *StackDetails) checkMaintainer(log *LoggingConfig, yamlValues []interface{}) int {
+func (stackDetails *StackYaml) checkMaintainer(log *LoggingConfig, yamlValues []interface{}) int {
 	stackLintErrorCount := 0
 	Map := make(map[string]interface{})
 	Map["maintainerEmails"] = yamlValues[5]
 
-	maintainerEmails := Map["maintainerEmails"].([]StackMaintainer)
+	maintainerEmails := Map["maintainerEmails"].([]Maintainer)
 
 	if len(maintainerEmails) == 0 {
-		log.Error.log("Email is not provided under field: maintainers")
+		log.Error.log("Please list a stack maintainer with the following details: Name, Email, and Github ID")
 		stackLintErrorCount++
 	}
 
 	return stackLintErrorCount
 }
 
-func (s *StackDetails) checkVersion(log *LoggingConfig) int {
-	stackLintErrorCount := 0
-	versionNo := strings.Split(s.Version, ".")
-
-	for _, mmp := range versionNo {
-		_, err := strconv.Atoi(mmp)
-		if err != nil {
-			log.Error.log("Each version field must be an integer")
-		}
-	}
-
-	if len(versionNo) < 3 {
-		log.Error.log("Version must contain 3 or 4 elements")
-		stackLintErrorCount++
-	}
-
-	return stackLintErrorCount
-}
-
-func (s *StackDetails) checkDescLength(log *LoggingConfig) int {
+func (stackDetails *StackYaml) checkDescLength(log *LoggingConfig) int {
 	stackLintErrorCount := 0
 
-	if len(s.Description) > 70 {
+	if len(stackDetails.Description) > 70 {
 		log.Error.log("Description must be under 70 characters")
 		stackLintErrorCount++
 	}
 
-	if len(s.Name) > 30 {
+	if len(stackDetails.Name) > 30 {
 		log.Error.log("Stack name must be under 30 characters")
 		stackLintErrorCount++
 	}
@@ -162,14 +104,37 @@ func (s *StackDetails) checkDescLength(log *LoggingConfig) int {
 	return stackLintErrorCount
 }
 
-func (s *StackDetails) checkLicense(log *LoggingConfig) int {
+func (stackDetails *StackYaml) checkTemplatingData(log *LoggingConfig) (int, int) {
+	stackLintErrorCount := 0
+	stackLintWarningCount := 0
+	keyRegex := regexp.MustCompile("^[a-zA-Z0-9]*$")
+
+	if len(stackDetails.TemplatingData) == 0 {
+		log.Warning.log("No custom templating variables defined - You will not be able to reuse variables across the stack")
+		stackLintWarningCount++
+		return stackLintErrorCount, stackLintWarningCount
+	}
+
+	for key := range stackDetails.TemplatingData {
+		checkKey := keyRegex.FindString(string(key))
+
+		if checkKey == "" {
+			log.Error.log("Key variable: ", key, " is not in an alphanumeric format")
+			stackLintErrorCount++
+		}
+
+	}
+	return stackLintErrorCount, stackLintWarningCount
+}
+
+func (stackDetails *StackYaml) checkLicense(log *LoggingConfig) int {
 	stackLintErrorCount := 0
 
-	if err := checkValidLicense(s.License); err != nil {
+	if err := checkValidLicense(stackDetails.License); err != nil {
 		stackLintErrorCount++
 		log.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
 	}
-	if valid, err := IsValidKubernetesLabelValue(s.License); !valid {
+	if valid, err := IsValidKubernetesLabelValue(stackDetails.License); !valid {
 		log.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
 	}
 	return stackLintErrorCount

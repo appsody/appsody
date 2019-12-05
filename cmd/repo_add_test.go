@@ -21,22 +21,23 @@ import (
 )
 
 func TestRepoAdd(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	// see how many repos we currently have
-	output, err := cmdtest.RunAppsodyCmd([]string{"repo", "list"}, ".", t)
+	output, err := cmdtest.RunAppsody(sandbox, "repo", "list")
 	if err != nil {
 		t.Fatal(err)
 	}
 	startRepos := cmdtest.ParseRepoList(output)
 
 	addRepoName := "LocalTestRepo"
-	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", addRepoName}, ".", t)
-	addRepoURL, cleanup, err := cmdtest.AddLocalFileRepo(addRepoName, "testdata/index.yaml", t)
+	addRepoURL, err := cmdtest.AddLocalRepo(sandbox, addRepoName, "testdata/index.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup()
 
-	output, err = cmdtest.RunAppsodyCmd([]string{"repo", "list"}, ".", t)
+	output, err = cmdtest.RunAppsody(sandbox, "repo", "list")
 	if err != nil {
 		t.Fatal(err)
 	}

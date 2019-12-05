@@ -2,7 +2,17 @@
 @echo off
 
 docker ps >nul 2>nul
-IF %ERRORLEVEL% NEQ 0 ECHO [Warning] Docker not running or not installed 
+IF %ERRORLEVEL% EQU 0 goto CheckDocker
+@ECHO [Warning] Docker not running or not installed
+@ECHO [Warning] Appsody could not check if Docker has the appropriate write permissions on your file system
+goto AfterDocker
+:CheckDocker
+@ECHO Checking whether Docker has the appropriate write permissions on your file system 
+docker run --rm -it -v "%USERPROFILE%\.appsody":/data alpine /bin/sh -c "mkdir /data/test-write-permission && echo Success - Docker has write permissions; rmdir /data/test-write-permission"
+IF %ERRORLEVEL% EQU 0 goto AfterDocker
+@ECHO [Warning] Docker may not have the appropriate write permissions on your file system 
+@ECHO [Warning] Please refer to https://appsody.dev/docs/docker-windows-aad/ for more info on this
+:AfterDocker
 @echo Adding %~dp0 to your Path environment variable if not already present....
 @echo off
 
@@ -36,5 +46,6 @@ REM echo PATH = %PATH%
 if NOT "%TestPath%" == "%PATH%" goto :done
 set PATH=%PATH%%APPSODY_PATH%
 :done
+REM Checking if the docker user has the correct write permissions
 
 @echo Done - enjoy appsody!
