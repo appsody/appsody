@@ -856,7 +856,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -1000,6 +1000,17 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 			return "", err
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
+	}
+	//Set the env vars from docker run, if any
+	if len(dockerEnvVars) > 0 {
+		envVars := make([]*EnvVar, len(dockerEnvVars))
+		idx := 0
+		for key, value := range dockerEnvVars {
+			envVars[idx].Name = key
+			envVars[idx].Value = value
+			idx++
+		}
+		yamlMap.Spec.PodTemplate.Spec.Containers[0].Env = envVars
 	}
 	//Set the Pod release label to the container name
 	yamlMap.Spec.PodTemplate.Metadata.Labels["release"] = appName
