@@ -214,3 +214,36 @@ func TestStackAlreadyExists(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestStackCreateMissingArguments(t *testing.T) {
+	args := []string{"stack", "create"}
+	_, err := cmdtest.RunAppsodyCmd(args, ".", t)
+
+	if err == nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStackCreateSampleStackDryrun(t *testing.T) {
+	err := os.RemoveAll("testing-stack")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args := []string{"stack", "create", "testing-stack", "--dryrun", "--config", "testdata/default_repository_config/config.yaml"}
+	_, err = cmdtest.RunAppsodyCmd(args, ".", t)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exists, err := cmdtest.Exists("testing-stack")
+
+	if exists {
+		t.Fatal(err)
+		os.RemoveAll("testing-stack")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
