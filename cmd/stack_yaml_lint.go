@@ -49,7 +49,7 @@ func (stackDetails *StackYaml) validateYaml(rootConfig *RootCommandConfig, stack
 	}
 
 	stackLintErrorCount += stackDetails.checkDescLength(rootConfig.LoggingConfig)
-	stackLintErrorCount += stackDetails.checkLicense(rootConfig.LoggingConfig)
+	stackLintErrorCount += stackDetails.checkLicense(rootConfig)
 	templateErrorCount, templateWarningCount := stackDetails.checkTemplatingData(rootConfig.LoggingConfig)
 	stackLintErrorCount += templateErrorCount
 	return stackLintErrorCount, templateWarningCount
@@ -127,15 +127,15 @@ func (stackDetails *StackYaml) checkTemplatingData(log *LoggingConfig) (int, int
 	return stackLintErrorCount, stackLintWarningCount
 }
 
-func (stackDetails *StackYaml) checkLicense(log *LoggingConfig) int {
+func (stackDetails *StackYaml) checkLicense(config *RootCommandConfig) int {
 	stackLintErrorCount := 0
 
-	if err := checkValidLicense(stackDetails.License); err != nil {
+	if err := checkValidLicense(config, stackDetails.License); err != nil {
 		stackLintErrorCount++
-		log.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
+		config.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
 	}
 	if valid, err := IsValidKubernetesLabelValue(stackDetails.License); !valid {
-		log.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
+		config.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
 	}
 	return stackLintErrorCount
 }
