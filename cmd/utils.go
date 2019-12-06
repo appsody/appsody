@@ -1006,8 +1006,7 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 		envVars := make([]*EnvVar, len(dockerEnvVars))
 		idx := 0
 		for key, value := range dockerEnvVars {
-			envVars[idx].Name = key
-			envVars[idx].Value = value
+			envVars[idx] = &EnvVar{key, value}
 			idx++
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Env = envVars
