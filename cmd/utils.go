@@ -2135,8 +2135,8 @@ func lintMountVar(mountListSource string, log *LoggingConfig, stackPath string) 
 
 		for _, mount := range mountList {
 			traceMount := strings.Trim(mount, "\"")
-			log.Debug.log("mount pair: ", mount)
-			localPaths := strings.Split(strings.Trim(mount, "\""), ":")
+			log.Debug.log("mount pair: ", traceMount)
+			localPaths := strings.Split(traceMount, ":")
 			if len(localPaths) != 2 {
 				log.Error.log("Mount is not properly formatted: ", traceMount)
 				errCount++
