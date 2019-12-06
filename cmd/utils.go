@@ -2059,49 +2059,56 @@ func checkValidLicense(license string) error {
 	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
 }
 
-func lintMountsRun(mountVar string, log *LoggingConfig, stackPath string) {
+func lintMountsRun(mountVar string, log *LoggingConfig, stackPath string) error {
 	homeDir := UserHomeDir(log)
 	if mountVar == "" {
-		log.Error.log("No APPSODY MOUNTS exists")
-		return
+		return errors.Errorf("No APPSODY MOUNTS environment variable exists")
 	}
 	mountList := strings.Split(mountVar, ";")
 
 	for _, mount := range mountList {
-
+		traceMount := strings.Trim(mount, "\"")
 		localPaths := strings.Split(strings.Trim(mount, "\""), ":")
 		if len(localPaths) != 2 {
-			log.Error.log("Mount is not properly formatted", mount)
-
+			return errors.Errorf("Mount %s is not properly formatted: ", traceMount)
 		}
-
 		localPath := localPaths[0]
 		if localPath == "" {
-			log.Error.log("Mount is empty", mount)
-
+			return errors.Errorf("Mount is empty: %s", mount)
 		}
 
 		if localPath == "/" || localPath == "." {
-			log.Error.log(localPath, " is a directory.")
+			log.Debug.logf("Path %s for mount %s is a directory.", localPath, traceMount)
 		} else {
 			fullPath := ""
 			if localPath[0:1] == "~" {
-				fullPath = strings.Replace(localPath, "~", homeDir, 1)
+				tempLocalPath := strings.Replace(localPath, "~", "", 1)
+				fullPath = filepath.Join(homeDir, tempLocalPath)
+
 			} else {
 				fullPath = filepath.Join(stackPath, localPath)
 
 			}
-			validateMountPath(fullPath, log)
+
+			mountWarnings, mountError := validateMountPath(fullPath, traceMount, log)
+			if mountWarnings > 0 {
+				log.Debug.logf("There were %d lint warnings on the APPSODY_MOUNTS value mount %s for path %s", mountWarnings, traceMount, fullPath)
+			}
+			if mountError != nil {
+				return mountError
+			}
 		}
 	}
+	return nil
 
 }
 func lintMountVar(mountListSource string, log *LoggingConfig, stackPath string) (int, int) {
+
 	if mountListSource == "" {
 		log.Warning.log("No APPSODY MOUNTS exists, mount paths can not be validated.")
 		return 0, 1
 	}
-	errorCount := 0
+	errCount := 0
 	warningCount := 0
 	mountList := strings.Split(mountListSource, ";")
 
@@ -2111,71 +2118,74 @@ func lintMountVar(mountListSource string, log *LoggingConfig, stackPath string) 
 	log.Debug.log("Template path exists: ", fileCheck)
 	if err != nil {
 		log.Error.log("Error attempting to determine if template path exists: ", err)
-		return 1, 0
+		return 0, 1
 	}
 	if !fileCheck {
 		log.Error.log("Missing template directory in: ", stackPath)
-		return 1, 0
+		return 0, 1
 	}
 	if IsEmptyDir(templatePath) {
 		log.Error.log("No templates found in: ", templatePath)
-		return 1, 0
+		return 0, 1
 	}
-
 	templates, _ := ioutil.ReadDir(templatePath)
-	mountPairs := mountList
-	//s
-	// loop through the template directories and create the id and url
+
+	// loop through the template directories
 	for _, f := range templates {
 
-		for _, mountPair := range mountPairs {
-			log.Debug.log("mount pair: ", mountPair)
-			localPaths := strings.Split(strings.Trim(mountPair, "\""), ":")
+		for _, mount := range mountList {
+			traceMount := strings.Trim(mount, "\"")
+			log.Debug.log("mount pair: ", mount)
+			localPaths := strings.Split(strings.Trim(mount, "\""), ":")
 			if len(localPaths) != 2 {
-				log.Error.log("Mount is not properly formatted", mountPair)
-				errorCount++
+				log.Error.log("Mount is not properly formatted: ", traceMount)
+				errCount++
 			} else {
-				// add an error here if not 2?
+
 				localPath := localPaths[0]
 				if localPath == "" {
-					log.Error.log("Mount is empty", mountPair)
-					errorCount++
+					log.Error.logf("Path for mount %s is empty: ", traceMount)
+					errCount++
 				} else {
-					//make sure it isn't ""?
+
 					log.Debug.log("local path: ", localPath)
 					if localPath == "/" || localPath == "." {
-						log.Debug.log(localPath, " is a directory.")
+						log.Debug.logf("Path %s for mount %s is a directory.", localPath, traceMount)
 					} else if localPath[0:1] == "~" {
-						log.Info.log(localPath, " can not be evaluated at this time.")
+						log.Debug.logf("Path %s for mount %s can not be evaluated at this time.", localPath, traceMount)
 					} else {
 						mountFilePath := filepath.Join(stackPath, "templates", f.Name(), localPath)
+
 						log.Debug.log("mountFilePath: ", mountFilePath)
-						mountLintErrors, warnings := validateMountPath(mountFilePath, log)
+						warnings, mountLintError := validateMountPath(mountFilePath, traceMount, log)
 						warningCount = warningCount + warnings
-						errorCount = errorCount + mountLintErrors
+						if mountLintError != nil {
+							errCount++
+						}
+
 					}
 				}
 			}
 		}
 	}
-	return errorCount, warningCount
+	return warningCount, errCount
 }
-func validateMountPath(path string, log *LoggingConfig) (int, int) {
+func validateMountPath(path string, mount string, log *LoggingConfig) (int, error) {
 	log.Debug.log("Attempting to validate mount path: ", path)
-	errorCount := 0
+	var mountError error
 	warningCount := 0
 	file, err := os.Stat(path)
 	if err != nil {
-		log.Info.log("Could not stat: ", path)
-		errorCount = 1
+
+		mountError = errors.Errorf("Could not stat path: %s for mount %s", path, mount)
 	} else {
 		if file.Mode().IsDir() {
-			log.Debug.log(path, " is a directory")
+			log.Debug.logf("Path %s for mount %s is a directory", path, mount)
 		} else {
 			warningCount = 1
-			log.Warning.log(path, " points to a single file.  Single file Docker mount paths cause unexpected behavior and will be deprecated in the future.")
+			log.Warning.logf("Path %s for mount %s points to a single file.  Single file Docker mount paths cause unexpected behavior and will be deprecated in the future.", path, mount)
 		}
 
 	}
-	return errorCount, warningCount
+	return warningCount, mountError
 }
