@@ -143,6 +143,6 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 			// t.Fatal(err)
 		}
 
-		checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag)
+		checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, true)
 	}
 }
