@@ -165,5 +165,4 @@ func TestRunSimple(t *testing.T) {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
 	}
-
 }
