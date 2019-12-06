@@ -93,10 +93,5 @@ func TestDebugSimple(t *testing.T) {
 		if err != nil {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
-		// wait for the appsody command/goroutine to finish
-		runErr := <-runChannel
-		if runErr != nil {
-			t.Fatalf("appsody debug command stopped with an error: %v", runErr)
-		}
 	}
 }
