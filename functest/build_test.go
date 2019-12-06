@@ -276,20 +276,12 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.Ap
 		if label == "" && annotation == "" {
 			t.Errorf("Could not find label %s in deployment config", key)
 		}
-		/*
-			if label != "" && label != value {
-				t.Errorf("Mismatch of %s label between built image and deployment config", key)
-			}
-
-			if annotation != "" && annotation != value {
-				t.Errorf("Mismatch of %s label between built image and deployment config", key)
-			}*/
 		if label != "" && label != value {
 			t.Errorf("Mismatch of %s label between built image and deployment config. Expected %s but found %s", key, value, label)
 		}
 
 		if annotation != "" && annotation != value {
-			t.Errorf("Mismatch of %s annotation between built image and deployment config. Expected %s but found %s", key, value, label)
+			t.Errorf("Mismatch of %s annotation between built image and deployment config. Expected %s but found %s", key, value, annotation)
 		}
 	}
 
