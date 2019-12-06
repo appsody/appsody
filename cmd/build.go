@@ -139,7 +139,7 @@ func build(config *buildCommandConfig) error {
 
 	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
 	dockerfile := filepath.Join(extractDir, "Dockerfile")
-	buildImage := projectName //Lowercased
+	buildImage := "dev.local/" + projectName //Lowercased
 
 	// Regardless of pass or fail, remove the local extracted folder
 	defer os.RemoveAll(extractDir)
@@ -153,9 +153,11 @@ func build(config *buildCommandConfig) error {
 	if config.tag != "" {
 		buildImage = config.tag
 	}
+
 	if config.pushURL != "" {
 		buildImage = config.pushURL + "/" + buildImage
 	}
+
 	cmdArgs := []string{"-t", buildImage}
 
 	if buildOptions != "" {
@@ -202,7 +204,7 @@ func build(config *buildCommandConfig) error {
 	}
 
 	// Generate app-deploy
-	err = generateDeploymentConfig(config)
+	err = generateDeploymentConfig(config, buildImage, labels)
 	if err != nil {
 		return err
 	}
@@ -328,7 +330,7 @@ func CreateLabelPairs(labels map[string]string) []string {
 	return labelsArr
 }
 
-func generateDeploymentConfig(config *buildCommandConfig) error {
+func generateDeploymentConfig(config *buildCommandConfig, imageName string, labels map[string]string) error {
 	containerConfigDir := "/config/app-deploy.yaml"
 	configFile := config.appDeployFile
 
@@ -353,7 +355,7 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 
 	if exists {
 		config.Info.log("Found existing deployment manifest ", configFile)
-		err := updateDeploymentConfig(config)
+		err := updateDeploymentConfig(config, imageName, labels)
 		if err != nil {
 			return err
 		}
@@ -462,8 +464,6 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	split = strings.Split(stack, "/")
 	stack = split[len(split)-1]
 
-	imageName := "dev.local/" + projectName
-
 	if !config.Dryrun {
 		output := bytes.Replace(yamlReader, []byte("APPSODY_PROJECT_NAME"), []byte(projectName), -1)
 		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(imageName), -1)
@@ -475,7 +475,8 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 			return errors.Errorf("Failed to write local application configuration file: %s", err)
 		}
 
-		err = updateDeploymentConfig(config)
+		err = updateDeploymentConfig(config, imageName, labels)
+
 		if err != nil {
 			return errors.Errorf("Failed to update deployment config file: %s", err)
 		}
@@ -486,17 +487,12 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	return nil
 }
 
-func updateDeploymentConfig(config *buildCommandConfig) error {
+func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels map[string]string) error {
 	configFile := config.appDeployFile
 
 	appsodyApplication, err := getAppsodyApplication(configFile)
 	if err != nil {
 		return err
-	}
-
-	labels, err := getLabels(config.RootCommandConfig)
-	if err != nil {
-		return errors.Errorf("Could not get labels: %s", err)
 	}
 
 	labels = convertLabelsToKubeFormat(config.LoggingConfig, labels)
@@ -526,11 +522,6 @@ func updateDeploymentConfig(config *buildCommandConfig) error {
 	}
 
 	appsodyApplication.Spec.CreateKnativeService = &config.knative
-
-	imageName := appsodyApplication.Spec.ApplicationImage
-	if config.tag != "" {
-		imageName = config.tag
-	}
 
 	if config.pullURL != "" {
 		imageName = config.pullURL + "/" + findNamespaceRepositoryAndTag(imageName)
