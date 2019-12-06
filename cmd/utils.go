@@ -2068,7 +2068,7 @@ func lintMountsRun(mountVar string, log *LoggingConfig, stackPath string) error 
 
 	for _, mount := range mountList {
 		traceMount := strings.Trim(mount, "\"")
-		localPaths := strings.Split(strings.Trim(mount, "\""), ":")
+		localPaths := strings.Split(traceMount, ":")
 		if len(localPaths) != 2 {
 			return errors.Errorf("Mount %s is not properly formatted: ", traceMount)
 		}
