@@ -246,7 +246,7 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 			config.Warning.log("Could not mount ", mappedMount, " because the local file was not found.")
 			continue
 		}
-		lintMountPathForSingleFile(mappedMount, config.LoggingConfig)
+
 		volumeArgs = append(volumeArgs, "-v", mappedMount)
 	}
 	config.Debug.log("Mapped mount args: ", volumeArgs)
@@ -269,6 +269,7 @@ func mountExistsLocally(log *LoggingConfig, mount string) bool {
 	}
 	log.Debug.log("Checking for existence of local file or directory to mount: ", localFile[0])
 	fileExists, _ := Exists(localFile[0])
+	lintMountPathForSingleFile(localFile[0], log)
 	return fileExists
 }
 
@@ -2059,13 +2060,8 @@ func checkValidLicense(license string) error {
 	}
 	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
 }
-func lintMountPathForSingleFile(mount string, log *LoggingConfig) {
-	localPaths := strings.Split(mount, ":")
-	if len(localPaths) != 2 {
-		log.Warning.logf("Mount %s is not properly formatted: ", mount)
-		return
-	}
-	path := localPaths[0]
+func lintMountPathForSingleFile(path string, log *LoggingConfig) {
+
 	file, err := os.Stat(path)
 	if err != nil {
 		log.Warning.logf("Could not stat mount path: %s", path)
