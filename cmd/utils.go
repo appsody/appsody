@@ -246,6 +246,7 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 			config.Warning.log("Could not mount ", mappedMount, " because the local file was not found.")
 			continue
 		}
+		lintMountPathForSingleFile(mappedMount, config.LoggingConfig)
 		volumeArgs = append(volumeArgs, "-v", mappedMount)
 	}
 	config.Debug.log("Mapped mount args: ", volumeArgs)
@@ -2058,50 +2059,28 @@ func checkValidLicense(license string) error {
 	}
 	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
 }
-
-func lintMountsRun(mountVar string, log *LoggingConfig, stackPath string) error {
-	homeDir := UserHomeDir(log)
-	if mountVar == "" {
-		return errors.Errorf("No APPSODY MOUNTS environment variable exists")
+func lintMountPathForSingleFile(mount string, log *LoggingConfig) {
+	localPaths := strings.Split(mount, ":")
+	if len(localPaths) != 2 {
+		log.Warning.logf("Mount %s is not properly formatted: ", mount)
+		return
 	}
-	mountList := strings.Split(mountVar, ";")
+	path := localPaths[0]
+	file, err := os.Stat(path)
+	if err != nil {
+		log.Warning.logf("Could not stat mount path: %s", path)
 
-	for _, mount := range mountList {
-		traceMount := strings.Trim(mount, "\"")
-		localPaths := strings.Split(traceMount, ":")
-		if len(localPaths) != 2 {
-			return errors.Errorf("Mount %s is not properly formatted: ", traceMount)
-		}
-		localPath := localPaths[0]
-		if localPath == "" {
-			return errors.Errorf("Mount is empty: %s", mount)
-		}
-
-		if localPath == "/" || localPath == "." {
-			log.Debug.logf("Path %s for mount %s is a directory.", localPath, traceMount)
+	} else {
+		if file.Mode().IsDir() {
+			log.Debug.logf("Path %s for mount is a directory", path)
 		} else {
-			fullPath := ""
-			if localPath[0:1] == "~" {
-				tempLocalPath := strings.Replace(localPath, "~", "", 1)
-				fullPath = filepath.Join(homeDir, tempLocalPath)
 
-			} else {
-				fullPath = filepath.Join(stackPath, localPath)
-
-			}
-
-			mountWarnings, mountError := validateMountPath(fullPath, traceMount, log)
-			if mountWarnings > 0 {
-				log.Debug.logf("There were %d lint warnings on the APPSODY_MOUNTS value mount %s for path %s", mountWarnings, traceMount, fullPath)
-			}
-			if mountError != nil {
-				return mountError
-			}
+			log.Warning.logf("Path %s for mount points to a single file.  Single file Docker mount paths cause unexpected behavior and will be deprecated in the future.", path)
 		}
-	}
-	return nil
 
+	}
 }
+
 func lintMountVar(mountListSource string, log *LoggingConfig, stackPath string) (int, int) {
 
 	if mountListSource == "" {
