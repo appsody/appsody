@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"gopkg.in/yaml.v2"
 )
 
@@ -46,10 +47,12 @@ func (stackDetails *StackYaml) validateYaml(rootConfig *RootCommandConfig, stack
 	validSemver := CheckValidSemver(string(stackDetails.Version))
 	if validSemver != nil {
 		rootConfig.Error.log(validSemver)
+		stackLintErrorCount++
 	}
 
 	stackLintErrorCount += stackDetails.checkDescLength(rootConfig.LoggingConfig)
 	stackLintErrorCount += stackDetails.checkLicense(rootConfig.LoggingConfig)
+	stackLintErrorCount += stackDetails.checkRequirements(rootConfig.LoggingConfig)
 	templateErrorCount, templateWarningCount := stackDetails.checkTemplatingData(rootConfig.LoggingConfig)
 	stackLintErrorCount += templateErrorCount
 	return stackLintErrorCount, templateWarningCount
@@ -137,5 +140,28 @@ func (stackDetails *StackYaml) checkLicense(log *LoggingConfig) int {
 	if valid, err := IsValidKubernetesLabelValue(stackDetails.License); !valid {
 		log.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
 	}
+	return stackLintErrorCount
+}
+
+func (stackDetails *StackYaml) checkRequirements(log *LoggingConfig) int {
+	stackLintErrorCount := 0
+
+	reqsMap := map[string]string{
+		"Docker":  stackDetails.Requirements.Docker,
+		"Appsody": stackDetails.Requirements.Appsody,
+		"Buildah": stackDetails.Requirements.Buildah,
+	}
+
+	for _, req := range reqsMap {
+		if req == "" {
+			continue
+		}
+		_, err := semver.NewConstraint(req)
+		if err != nil {
+			log.Error.log("Requirement: ", req, " is not in the correct format. See: https://github.com/Masterminds/semver for a list of valid requirement constraints.")
+			stackLintErrorCount++
+		}
+	}
+
 	return stackLintErrorCount
 }
