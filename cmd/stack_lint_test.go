@@ -303,7 +303,10 @@ func TestLintWithMissingStackYaml(t *testing.T) {
 	}
 	removeArray := []string{filepath.Join(removeYaml)}
 
-	os.RemoveAll(removeYaml)
+	osErr := os.RemoveAll(removeYaml)
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
 
 	_, appsodyErr := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
@@ -329,7 +332,10 @@ func TestLintWithMissingImage(t *testing.T) {
 	}
 	removeArray := []string{removeImage, filepath.Join(removeImage, "config"), filepath.Join(removeImage, "project"), filepath.Join(removeImage, "config", "app-deploy.yaml"), filepath.Join(removeImage, "project", "Dockerfile"), filepath.Join(removeImage, "LICENSE"), filepath.Join(removeImage, "Dockerfile-stack")}
 
-	os.RemoveAll(removeImage)
+	osErr := os.RemoveAll(removeImage)
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
 
 	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
@@ -352,7 +358,10 @@ func TestLintWithMissingConfig(t *testing.T) {
 	removeConf := filepath.Join(testStackPath, "image", "config")
 	removeArray := []string{removeConf, filepath.Join(removeConf, "app-deploy.yaml")}
 
-	os.RemoveAll(removeConf)
+	osErr := os.RemoveAll(removeConf)
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
 
 	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
@@ -372,7 +381,6 @@ func TestLintWithMissingProject(t *testing.T) {
 	removeArray := []string{removeProj, filepath.Join(removeProj, "Dockerfile")}
 
 	osErr := os.RemoveAll(removeProj)
-
 	if osErr != nil {
 		t.Fatal(osErr)
 	}
