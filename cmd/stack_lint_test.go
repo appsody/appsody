@@ -371,7 +371,11 @@ func TestLintWithMissingProject(t *testing.T) {
 	removeProj := filepath.Join(testStackPath, "image", "project")
 	removeArray := []string{removeProj, filepath.Join(removeProj, "Dockerfile")}
 
-	os.RemoveAll(removeProj)
+	osErr := os.RemoveAll(removeProj)
+
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
 
 	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
@@ -390,7 +394,10 @@ func TestLintWithMissingREADME(t *testing.T) {
 	removeReadme := filepath.Join(testStackPath, "README.md")
 	removeArray := []string{removeReadme}
 
-	os.RemoveAll(removeReadme)
+	osErr := os.RemoveAll(removeReadme)
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
 
 	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
@@ -444,7 +451,10 @@ func TestLintWithMissingTemplatesDirectory(t *testing.T) {
 	removeTemplatesDir := filepath.Join(testStackPath, "templates")
 	removeArray := []string{removeTemplatesDir, filepath.Join(removeTemplatesDir, "default"), filepath.Join(removeTemplatesDir, "default", "app.js")}
 
-	os.RemoveAll(removeTemplatesDir)
+	osErr := os.RemoveAll(removeTemplatesDir)
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
 
 	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
@@ -464,7 +474,10 @@ func TestLintWithMissingTemplateInTemplatesDirectory(t *testing.T) {
 	removeTemplate := filepath.Join(testStackPath, "templates", "default")
 	removeArray := []string{removeTemplate, filepath.Join(removeTemplate, "app.js")}
 
-	os.RemoveAll(removeTemplate)
+	osErr := os.RemoveAll(removeTemplate)
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
 
 	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
 
@@ -498,8 +511,9 @@ func TestLintWithConfigYamlInTemplate(t *testing.T) {
 	if !strings.Contains(output, "Unexpected .appsody-config.yaml") {
 		t.Fatal(err)
 	}
-
 }
+
+func TestLint
 
 func RestoreSampleStack(fixStack []string) {
 	currentDir, _ := os.Getwd()
