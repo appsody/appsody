@@ -1980,40 +1980,58 @@ func CheckStackRequirements(log *LoggingConfig, requirementArray map[string]stri
 	log.Info.log("Checking stack requirements...")
 
 	for technology, minVersion := range requirementArray {
+		if minVersion == "" {
+			continue
+		}
 		if technology == "Docker" && buildah {
 			log.Debug.log("Skipping Docker requirement - Buildah is being used.")
-		} else if technology == "Buildah" && !buildah {
+			continue
+		}
+		if technology == "Buildah" && !buildah {
 			log.Debug.log("Skipping Buildah requirement - Docker is being used.")
-		} else if minVersion != "" {
-			log.Debug.log("Checking stack requirements for ", technology)
+			continue
+		}
+		log.Debug.logf("Checking version requirement: %s %s", technology, minVersion)
 
-			setConstraint, err := semver.NewConstraint(minVersion)
+		setConstraint, err := semver.NewConstraint(minVersion)
+		if err != nil {
+			log.Warning.logf("Skipping %s version requirement because the minimum version is invalid: %s", technology, err)
+			continue
+		}
+
+		var runVersionCmd string
+		if strings.ToLower(technology) == "appsody" {
+			if VERSION == "0.0.0" || VERSION == "vlatest" {
+				log.Warning.log("Skipping appsody version requirement because this is a local build of appsody ", VERSION)
+				continue
+			}
+			runVersionCmd = VERSION
+		} else {
+			cmd := exec.Command(strings.ToLower(technology), "version")
+			runVersionCmd, err = SeparateOutput(cmd)
 			if err != nil {
-				log.Error.log(err)
-			}
-
-			runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
-			if appErr != nil {
-				log.Error.log(appErr, " - Are you sure ", technology, " is installed?")
+				log.Error.log(err, " - Are you sure ", technology, " is installed?")
 				upgradesRequired++
-			} else {
-				cutCmdOutput := versionRegex.FindString(string(runVersionCmd))
-				parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
-				if parseErr != nil || cutCmdOutput == "0.0.0" {
-					log.Error.log(parseErr)
-					log.Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
-					// Continue when the version can not be determined or the appsody version is 0.0.0
-					continue
-				}
-				compareVersion := setConstraint.Check(parseUserVersion)
-
-				if compareVersion {
-					log.Info.log(technology + " requirements met")
-				} else {
-					log.Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
-					upgradesRequired++
-				}
+				continue
 			}
+			log.Debug.logf("Output of running %s: %s", strings.ToLower(technology)+" version", runVersionCmd)
+		}
+
+		cutCmdOutput := versionRegex.FindString(runVersionCmd)
+		parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
+		if parseErr != nil {
+			log.Warning.logf("Unable to parse %s version - This stack may not work in your current development environment. %s", technology, parseErr)
+			// Continue when the version can not be determined
+			continue
+		}
+		log.Debug.logf("Found version of %s to be %s", technology, parseUserVersion)
+		compareVersion := setConstraint.Check(parseUserVersion)
+
+		if compareVersion {
+			log.Info.log(technology + " requirements met")
+		} else {
+			log.Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
+			upgradesRequired++
 		}
 	}
 	if upgradesRequired > 0 {
