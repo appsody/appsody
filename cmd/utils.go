@@ -627,7 +627,10 @@ func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
 }
 
 // CheckPrereqs checks the prerequisites to run the CLI
-func CheckPrereqs() error {
+func CheckPrereqs(config *RootCommandConfig) error {
+	if config.Buildah {
+		return nil
+	}
 	dockerCmd := "docker"
 	dockerArgs := []string{"ps"}
 	checkDockerCmd := exec.Command(dockerCmd, dockerArgs...)
