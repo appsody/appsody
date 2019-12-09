@@ -422,8 +422,8 @@ func TestLintWithMissingDockerfileStackAndLicense(t *testing.T) {
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
-	for _, file := range removeArray {
-		osErr := os.RemoveAll(file)
+	for _, deleteFile := range removeArray {
+		osErr := os.RemoveAll(deleteFile)
 		if osErr != nil {
 			t.Fatal(osErr)
 		}
@@ -513,7 +513,157 @@ func TestLintWithConfigYamlInTemplate(t *testing.T) {
 	}
 }
 
-func TestLint
+func TestLintWithInvalidVersion(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+
+	stackYaml := filepath.Join(testStackPath, "stack.yaml")
+
+	file, readErr := ioutil.ReadFile(stackYaml)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+
+	lines := strings.Split(string(file), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "version: ") {
+			lines[i] = "version: invalidVersion"
+		}
+	}
+
+	invalidYaml := strings.Join(lines, "\n")
+	writeErr := ioutil.WriteFile(stackYaml, []byte(invalidYaml), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	restoreYaml := ioutil.WriteFile(stackYaml, []byte(file), 0644)
+	if restoreYaml != nil {
+		t.Fatal(restoreYaml)
+	}
+
+	if !strings.Contains(output, "Version must be formatted in accordance to semver") {
+		t.Fatal(err)
+	}
+
+}
+
+func TestLintWithLongNameAndDescription(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+
+	stackYaml := filepath.Join(testStackPath, "stack.yaml")
+
+	file, readErr := ioutil.ReadFile(stackYaml)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+
+	lines := strings.Split(string(file), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "name: ") {
+			lines[i] = "name: This stack name is far too long and therefore should fail"
+		}
+		if strings.HasPrefix(line, "description: ") {
+			lines[i] = "description: This stack description is far too long (greater than 70 characters) and therefore should also fail."
+		}
+	}
+
+	invalidYaml := strings.Join(lines, "\n")
+	writeErr := ioutil.WriteFile(stackYaml, []byte(invalidYaml), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	restoreYaml := ioutil.WriteFile(stackYaml, []byte(file), 0644)
+	if restoreYaml != nil {
+		t.Fatal(restoreYaml)
+	}
+
+	if !strings.Contains(output, "Description must be under ") && !strings.Contains(output, "Stack name must be under ") {
+		t.Fatal(err)
+	}
+}
+
+func TestLintWithInvalidLicenseField(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+
+	stackYaml := filepath.Join(testStackPath, "stack.yaml")
+
+	file, readErr := ioutil.ReadFile(stackYaml)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+
+	lines := strings.Split(string(file), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "license: ") {
+			lines[i] = "license: invalidLicense"
+		}
+	}
+
+	invalidYaml := strings.Join(lines, "\n")
+	writeErr := ioutil.WriteFile(stackYaml, []byte(invalidYaml), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	restoreYaml := ioutil.WriteFile(stackYaml, []byte(file), 0644)
+	if restoreYaml != nil {
+		t.Fatal(restoreYaml)
+	}
+
+	if !strings.Contains(output, "The stack.yaml SPDX license ID is invalid") {
+		t.Fatal(err)
+	}
+}
+
+func TestLintWithInvalidTemplatingValues(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+
+	stackYaml := filepath.Join(testStackPath, "stack.yaml")
+
+	file, readErr := ioutil.ReadFile(stackYaml)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+
+	lines := strings.Split(string(file), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "  key1: ") {
+			lines[i] = "  key&@_1: value"
+		}
+	}
+
+	invalidYaml := strings.Join(lines, "\n")
+	writeErr := ioutil.WriteFile(stackYaml, []byte(invalidYaml), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	restoreYaml := ioutil.WriteFile(stackYaml, []byte(file), 0644)
+	if restoreYaml != nil {
+		t.Fatal(restoreYaml)
+	}
+
+	if !strings.Contains(output, "is not in an alphanumeric format") {
+		t.Fatal(err)
+	}
+}
 
 func RestoreSampleStack(fixStack []string) {
 	currentDir, _ := os.Getwd()
