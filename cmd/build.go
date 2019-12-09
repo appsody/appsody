@@ -194,7 +194,7 @@ func build(config *buildCommandConfig) error {
 		return execError
 	}
 	if config.pushURL != "" || config.push {
-		err := ImagePush(config.LoggingConfig, buildImage, config.Buildah, config.Dryrun)
+		err := ImagePush(config.LoggingConfig, buildImage, config.Buildah, config.buildahBuildOptions, config.Dryrun)
 		if err != nil {
 			return errors.Errorf("Could not push the docker image - exiting. Error: %v", err)
 		}

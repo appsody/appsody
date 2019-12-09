@@ -1300,14 +1300,15 @@ func DockerTag(log *LoggingConfig, imageToTag string, tag string, dryrun bool) e
 }
 
 //ImagePush pushes a docker image to a docker registry (assumes that the user has done docker login)
-func ImagePush(log *LoggingConfig, imageToPush string, buildah bool, dryrun bool) error {
+func ImagePush(log *LoggingConfig, imageToPush string, buildah bool, pushArgs string, dryrun bool) error {
 	log.Info.log("Pushing image ", imageToPush)
 	cmdName := "docker"
 	if buildah {
 		cmdName = "buildah"
 	}
 
-	cmdArgs := []string{"push", imageToPush}
+	//the order matters especially with buildah
+	cmdArgs := []string{"push", pushArgs, imageToPush}
 	if dryrun {
 		log.Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
 		return nil
