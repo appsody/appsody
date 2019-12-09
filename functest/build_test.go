@@ -286,9 +286,7 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.Ap
 	if err != nil {
 		t.Errorf("Error inspecting docker image: %s", err)
 	}
-
-	output = strings.ReplaceAll(output, "\n", "")
-	output = strings.ReplaceAll(output, "'", "")
+	output = strings.Trim(output, "\n'")
 
 	var imageLabels map[string]string
 	err = json.Unmarshal([]byte(output), &imageLabels)
@@ -309,11 +307,11 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.Ap
 		}
 
 		if label != "" && label != value {
-			t.Errorf("Mismatch of %s label between built image and deployment config", key)
+			t.Errorf("Mismatch of %s label between built image and deployment config. Expected %s but found %s", key, value, label)
 		}
 
 		if annotation != "" && annotation != value {
-			t.Errorf("Mismatch of %s label between built image and deployment config", key)
+			t.Errorf("Mismatch of %s annotation between built image and deployment config. Expected %s but found %s", key, value, annotation)
 		}
 	}
 
