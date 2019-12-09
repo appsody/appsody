@@ -684,7 +684,7 @@ func getConfigLabels(projectConfig ProjectConfig, filename string) (map[string]s
 	return labels, nil
 }
 
-func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
+func GetGitLabels(config *RootCommandConfig) (map[string]string, error) {
 	gitInfo, err := GetGitInfo(config)
 	if err != nil {
 		return nil, err

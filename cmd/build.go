@@ -228,7 +228,7 @@ func getLabels(config *RootCommandConfig) (map[string]string, error) {
 		return labels, err
 	}
 
-	gitLabels, err := getGitLabels(config)
+	gitLabels, err := GetGitLabels(config)
 	if err != nil {
 		config.Warning.log("Not all labels will be set. ", err.Error())
 	}

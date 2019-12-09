@@ -445,7 +445,7 @@ func findStackAndRemove(log *LoggingConfig, stackID string, indexYaml IndexYaml)
 func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYaml, config *RootCommandConfig) (map[string]string, error) {
 	var labels = make(map[string]string)
 
-	gitLabels, err := getGitLabels(config)
+	gitLabels, err := GetGitLabels(config)
 	if err != nil {
 		config.Warning.log("Not all labels will be set. ", err.Error())
 	} else {
