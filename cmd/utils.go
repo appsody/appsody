@@ -91,6 +91,28 @@ func Exists(path string) (bool, error) {
 	return true, err
 }
 
+//ExtractDockerEnvVars returns a map with the env vars specified in docker options
+func ExtractDockerEnvVars(dockerOptions string) map[string]string {
+	tokens := strings.Split(dockerOptions, " ")
+	envVars := make(map[string]string)
+	for idx, token := range tokens {
+		if token == "-e" || token == "--env" {
+			if len(tokens) > idx+1 {
+				nextToken := tokens[idx+1]
+				if strings.Contains(nextToken, "=") {
+					nextToken = strings.ReplaceAll(nextToken, "\"", "")
+					keyValuePair := strings.Split(nextToken, "=")
+					if len(keyValuePair) > 1 {
+						envVars[keyValuePair[0]] = keyValuePair[1]
+					}
+				}
+			}
+		}
+	}
+	return envVars
+}
+
+//GetEnvVar obtains a Stack environment variable from the Stack image
 func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	if config.cachedEnvVars == nil {
 		config.cachedEnvVars = make(map[string]string)
@@ -627,7 +649,7 @@ func UserHomeDir(log *LoggingConfig) string {
 	return homeDir
 }
 
-func getConfigLabels(projectConfig ProjectConfig, filename string) (map[string]string, error) {
+func getConfigLabels(projectConfig ProjectConfig, filename string, log *LoggingConfig) (map[string]string, error) {
 	var labels = make(map[string]string)
 
 	t := time.Now()
@@ -656,7 +678,7 @@ func getConfigLabels(projectConfig ProjectConfig, filename string) (map[string]s
 	if projectConfig.License != "" {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
-		} else if err := checkValidLicense(projectConfig.License); err != nil {
+		} else if err := checkValidLicense(log, projectConfig.License); err != nil {
 			return labels, errors.Errorf("The %v SPDX license ID is invalid: %v.", filename, err)
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
@@ -834,7 +856,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -978,6 +1000,16 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 			return "", err
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
+	}
+	//Set the env vars from docker run, if any
+	if len(dockerEnvVars) > 0 {
+		envVars := make([]*EnvVar, len(dockerEnvVars))
+		idx := 0
+		for key, value := range dockerEnvVars {
+			envVars[idx] = &EnvVar{key, value}
+			idx++
+		}
+		yamlMap.Spec.PodTemplate.Spec.Containers[0].Env = envVars
 	}
 	//Set the Pod release label to the container name
 	yamlMap.Spec.PodTemplate.Metadata.Labels["release"] = appName
@@ -1980,40 +2012,58 @@ func CheckStackRequirements(log *LoggingConfig, requirementArray map[string]stri
 	log.Info.log("Checking stack requirements...")
 
 	for technology, minVersion := range requirementArray {
+		if minVersion == "" {
+			continue
+		}
 		if technology == "Docker" && buildah {
 			log.Debug.log("Skipping Docker requirement - Buildah is being used.")
-		} else if technology == "Buildah" && !buildah {
+			continue
+		}
+		if technology == "Buildah" && !buildah {
 			log.Debug.log("Skipping Buildah requirement - Docker is being used.")
-		} else if minVersion != "" {
-			log.Debug.log("Checking stack requirements for ", technology)
+			continue
+		}
+		log.Debug.logf("Checking version requirement: %s %s", technology, minVersion)
 
-			setConstraint, err := semver.NewConstraint(minVersion)
+		setConstraint, err := semver.NewConstraint(minVersion)
+		if err != nil {
+			log.Warning.logf("Skipping %s version requirement because the minimum version is invalid: %s", technology, err)
+			continue
+		}
+
+		var runVersionCmd string
+		if strings.ToLower(technology) == "appsody" {
+			if VERSION == "0.0.0" || VERSION == "vlatest" {
+				log.Warning.log("Skipping appsody version requirement because this is a local build of appsody ", VERSION)
+				continue
+			}
+			runVersionCmd = VERSION
+		} else {
+			cmd := exec.Command(strings.ToLower(technology), "version")
+			runVersionCmd, err = SeparateOutput(cmd)
 			if err != nil {
-				log.Error.log(err)
-			}
-
-			runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
-			if appErr != nil {
-				log.Error.log(appErr, " - Are you sure ", technology, " is installed?")
+				log.Error.log(err, " - Are you sure ", technology, " is installed?")
 				upgradesRequired++
-			} else {
-				cutCmdOutput := versionRegex.FindString(string(runVersionCmd))
-				parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
-				if parseErr != nil || cutCmdOutput == "0.0.0" {
-					log.Error.log(parseErr)
-					log.Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
-					// Continue when the version can not be determined or the appsody version is 0.0.0
-					continue
-				}
-				compareVersion := setConstraint.Check(parseUserVersion)
-
-				if compareVersion {
-					log.Info.log(technology + " requirements met")
-				} else {
-					log.Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
-					upgradesRequired++
-				}
+				continue
 			}
+			log.Debug.logf("Output of running %s: %s", strings.ToLower(technology)+" version", runVersionCmd)
+		}
+
+		cutCmdOutput := versionRegex.FindString(runVersionCmd)
+		parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
+		if parseErr != nil {
+			log.Warning.logf("Unable to parse %s version - This stack may not work in your current development environment. %s", technology, parseErr)
+			// Continue when the version can not be determined
+			continue
+		}
+		log.Debug.logf("Found version of %s to be %s", technology, parseUserVersion)
+		compareVersion := setConstraint.Check(parseUserVersion)
+
+		if compareVersion {
+			log.Info.log(technology + " requirements met")
+		} else {
+			log.Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
+			upgradesRequired++
 		}
 	}
 	if upgradesRequired > 0 {
@@ -2048,13 +2098,18 @@ func CheckValidSemver(version string) error {
 	return nil
 }
 
-func checkValidLicense(license string) error {
+func checkValidLicense(log *LoggingConfig, license string) error {
 	// Get the list of all known licenses
 	list, _ := spdx.List()
-	for _, spdx := range list.Licenses {
-		if spdx.ID == license {
-			return nil
+	if list != nil {
+		for _, spdx := range list.Licenses {
+			if spdx.ID == license {
+				return nil
+			}
 		}
+	} else {
+		log.Warning.log("Unable to check if license ID is valid.... continuing.")
+		return nil
 	}
 	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
 }

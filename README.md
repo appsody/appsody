@@ -29,6 +29,6 @@ Join our [Slack](https://appsody-slack.eu-gb.mybluemix.net/) to meet the team, a
 
 If you find a bug, such as a typo, please let us know by [creating an issue](https://github.com/appsody/appsody/issues/new).
 
-## Licence
+## License
 
 Please see [LICENSE](https://github.com/appsody/docs/blob/master/LICENSE) and [NOTICES](https://github.com/appsody/website/blob/master/NOTICE.md) for more information.
