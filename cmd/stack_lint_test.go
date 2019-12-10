@@ -373,40 +373,6 @@ func TestLintWithMissingREADME(t *testing.T) {
 
 }
 
-func TestLintWithMissingDockerfileStackAndLicense(t *testing.T) {
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
-	args := []string{"stack", "lint"}
-
-	removeDockerfileStack := filepath.Join(testStackPath, "image", "Dockerfile-stack")
-	removeLicense := filepath.Join(testStackPath, "image", "LICENSE")
-	removeArray := []string{removeDockerfileStack, removeLicense}
-
-	file, readErr := ioutil.ReadFile(removeDockerfileStack)
-	if readErr != nil {
-		t.Fatal(readErr)
-	}
-	for _, deleteFile := range removeArray {
-		osErr := os.RemoveAll(deleteFile)
-		if osErr != nil {
-			t.Fatal(osErr)
-		}
-	}
-
-	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-
-	RestoreSampleStack(removeArray)
-	writeErr := ioutil.WriteFile(filepath.Join(removeDockerfileStack), []byte(file), 0644)
-	if writeErr != nil {
-		t.Fatal(writeErr)
-	}
-
-	if !strings.Contains(output, "Missing Dockerfile-stack") && !strings.Contains(output, "Missing LICENSE") {
-		t.Fatal(err)
-	}
-
-}
-
 func TestLintWithMissingTemplatesDirectory(t *testing.T) {
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
