@@ -577,7 +577,7 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			}
 
 			// create new template from parsing file
-			tmpl, err := template.New(file).ParseFiles(path)
+			tmpl, err := template.New(file).Delims("{{.stack", "}}").ParseFiles(path)
 			if err != nil {
 				return errors.Errorf("Error creating new template from file: %v", err)
 			}
