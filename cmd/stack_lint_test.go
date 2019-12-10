@@ -406,30 +406,6 @@ func TestLintWithMissingDockerfileStackAndLicense(t *testing.T) {
 	}
 
 }
-
-func TestLintWithMissingTemplatesDirectory(t *testing.T) {
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
-	args := []string{"stack", "lint"}
-
-	removeTemplatesDir := filepath.Join(testStackPath, "templates")
-	removeArray := []string{removeTemplatesDir, filepath.Join(removeTemplatesDir, "default"), filepath.Join(removeTemplatesDir, "default", "app.js")}
-
-	osErr := os.RemoveAll(removeTemplatesDir)
-	if osErr != nil {
-		t.Fatal(osErr)
-	}
-
-	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-
-	RestoreSampleStack(removeArray)
-
-	if !strings.Contains(output, "Missing template directory") && !strings.Contains(output, "No templates found in") {
-		t.Fatal(err)
-	}
-
-}
-
 func TestLintWithConfigYamlInTemplate(t *testing.T) {
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
@@ -452,6 +428,29 @@ func TestLintWithConfigYamlInTemplate(t *testing.T) {
 	if !strings.Contains(output, "Unexpected .appsody-config.yaml") {
 		t.Fatal(err)
 	}
+}
+
+func TestLintWithMissingTemplatesDirectory(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+
+	removeTemplatesDir := filepath.Join(testStackPath, "templates")
+	removeArray := []string{removeTemplatesDir, filepath.Join(removeTemplatesDir, "default"), filepath.Join(removeTemplatesDir, "default", "app.js")}
+
+	osErr := os.RemoveAll(removeTemplatesDir)
+	if osErr != nil {
+		t.Fatal(osErr)
+	}
+
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	RestoreSampleStack(removeArray)
+
+	if !strings.Contains(output, "Missing template directory") && !strings.Contains(output, "No templates found in") {
+		t.Fatal(err)
+	}
+
 }
 
 func TestLintWithInvalidVersion(t *testing.T) {
