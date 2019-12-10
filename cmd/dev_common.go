@@ -342,7 +342,9 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 
-		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, depsMount, dryrun)
+		dockerEnvVars := ExtractDockerEnvVars(config.dockerOptions)
+		config.Debug.Logf("Docker env vars extracted from docker options: %v", dockerEnvVars)
+		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, dockerEnvVars, depsMount, dryrun)
 		if err != nil {
 			return err
 		}
