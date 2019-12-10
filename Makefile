@@ -128,10 +128,10 @@ build-darwin: ## Build the OSX binary
 .PHONY: localbin-darwin
 localbin-darwin: ## copy the darwin binary to local bin
 
-.PHONY: localbin-darwin
+.PHONY: localbin-linux
 localbin-linux: ## copy the linux binary to local bin
 
-.PHONY: localbin-darwin
+.PHONY: localbin-windows
 localbin-windows: ## copy the windows binary to local bin
 
 localbin-darwin localbin-linux localbin-windows:
