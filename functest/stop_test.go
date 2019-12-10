@@ -45,6 +45,7 @@ func TestStopWithoutName(t *testing.T) {
 	go func() {
 		_, err = cmdtest.RunAppsody(sandbox, "run")
 		runChannel <- err
+		close(runChannel)
 	}()
 
 	// defer the appsody stop to close the docker container
@@ -72,6 +73,12 @@ func TestStopWithoutName(t *testing.T) {
 		if dockerOutput != "" {
 			t.Fatal("docker container " + containerName + " was found and should have been stopped")
 
+		}
+
+		// wait for the appsody command/goroutine to finish
+		runErr := <-runChannel
+		if runErr != nil {
+			t.Logf("Ignoring error from the appsody command: %s", runErr)
 		}
 
 	}()
@@ -127,6 +134,7 @@ func TestStopWithName(t *testing.T) {
 	go func() {
 		_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", "testStopContainer"}, projectDir, t)
 		runChannel <- err
+		close(runChannel)
 	}()
 
 	// defer the appsody stop to close the docker container
@@ -150,6 +158,12 @@ func TestStopWithName(t *testing.T) {
 		if dockerOutput != "" {
 			t.Fatal("docker container testStopContainer was found and should have been stopped")
 
+		}
+
+		// wait for the appsody command/goroutine to finish
+		runErr := <-runChannel
+		if runErr != nil {
+			t.Logf("Ignoring error from the appsody command: %s", runErr)
 		}
 
 	}()

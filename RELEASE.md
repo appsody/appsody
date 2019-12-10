@@ -52,6 +52,11 @@ The Appsody CLI is made available by creating a tagged GitHub release
 1. Go to the [appsody/website](https://github.com/appsody/website/branches) repo and create a PR for the new Travis build branch.
 1. Review and merge the PR.
 
+## Create a new appsody-buildah release
+1. Go to the [Travis settings](https://travis-ci.com/appsody/appsody-buildah/settings) of appsody-buildah
+1. Update the CLI_VERSION variable to match the release you created above. Note you need to delete and recreate the variable. Select "DISPLAY VALUE IN BUILD LOG".
+1. Go to the [appsody-buildah releases](https://github.com/appsody/appsody-buildah/releases) and create a new release.
+
 ## Inform users about the new release
 1.  Post a message to the `cli` slack channel about the new release, providing a link to the relevant release notes
     ```
