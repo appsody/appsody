@@ -103,7 +103,9 @@ func ExtractDockerEnvFile(envFileName string) (map[string]string, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if equal := strings.Index(line, "="); equal >= 0 {
+		equal := strings.Index(line, "=")
+		hash := strings.Index(line, "#")
+		if equal >= 0 && hash != 0 {
 			if key := strings.TrimSpace(line[:equal]); len(key) > 0 {
 				value := ""
 				if len(line) > equal {
@@ -139,7 +141,6 @@ func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
 	} else {
 		envVars = make(map[string]string)
 	}
-	//tokens := strings.Split(dockerOptions, " ")
 	tokens := strings.Fields(dockerOptions)
 	for idx, token := range tokens {
 		if token == "-e" || token == "--env" {
