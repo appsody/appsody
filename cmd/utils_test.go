@@ -310,6 +310,7 @@ func TestValidateHostName(t *testing.T) {
 func TestExtractDockerEnvVars(t *testing.T) {
 	testDockerOptions1 := []string{
 		"-w /path/to/dir -e A=Val1",
+		"-w /path/to/dir     -e   A=Val1 ",
 		"-e A=Val1 -w /path/to/dir",
 		"-e A=Val1",
 		"--env A=Val1",
@@ -318,6 +319,7 @@ func TestExtractDockerEnvVars(t *testing.T) {
 		"--env A=Val1 -e B=Val2",
 		"-w /path/to/dir -e A=Val1 -e B=Val2",
 		"--workdir /path/to/dir -e A=Val1 -e B=Val2",
+		"--workdir /path/to/dir     -e A=Val1   -e B=Val2",
 		"--workdir /path/to/dir -e A=Val1 -e B=Val2 -m 1024",
 		"--workdir /path/to/dir --env A=Val1 --env B=Val2",
 		"--workdir /path/to/dir -e A=Val1 --env B=Val2",

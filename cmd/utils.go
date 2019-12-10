@@ -93,7 +93,7 @@ func Exists(path string) (bool, error) {
 
 //ExtractDockerEnvVars returns a map with the env vars specified in docker options
 func ExtractDockerEnvVars(dockerOptions string) map[string]string {
-	tokens := strings.Split(dockerOptions, " ")
+	tokens := strings.Fields(dockerOptions)
 	envVars := make(map[string]string)
 	for idx, token := range tokens {
 		if token == "-e" || token == "--env" {
