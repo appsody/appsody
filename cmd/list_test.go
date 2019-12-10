@@ -139,6 +139,26 @@ func TestListYamlSingleRepository(t *testing.T) {
 	}
 }
 
+func TestListJsonSingleRepository(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"list", "incubator", "-o", "json"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := cmdtest.ParseListJSON(cmdtest.ParseJSON(output))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(list.Repositories) != 1 && list.Repositories[0].Name == "incubator" {
+		t.Error("Could not find repository 'incubator'")
+	}
+}
+
 func testContentsListOutput(t *testing.T, list cmd.IndexOutputFormat, output string) {
 	if list.APIVersion == "" {
 		t.Error("Could not find 'APIVersion'")
