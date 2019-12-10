@@ -91,6 +91,28 @@ func Exists(path string) (bool, error) {
 	return true, err
 }
 
+//ExtractDockerEnvVars returns a map with the env vars specified in docker options
+func ExtractDockerEnvVars(dockerOptions string) map[string]string {
+	tokens := strings.Split(dockerOptions, " ")
+	envVars := make(map[string]string)
+	for idx, token := range tokens {
+		if token == "-e" || token == "--env" {
+			if len(tokens) > idx+1 {
+				nextToken := tokens[idx+1]
+				if strings.Contains(nextToken, "=") {
+					nextToken = strings.ReplaceAll(nextToken, "\"", "")
+					keyValuePair := strings.Split(nextToken, "=")
+					if len(keyValuePair) > 1 {
+						envVars[keyValuePair[0]] = keyValuePair[1]
+					}
+				}
+			}
+		}
+	}
+	return envVars
+}
+
+//GetEnvVar obtains a Stack environment variable from the Stack image
 func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	if config.cachedEnvVars == nil {
 		config.cachedEnvVars = make(map[string]string)
@@ -834,7 +856,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -978,6 +1000,16 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 			return "", err
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
+	}
+	//Set the env vars from docker run, if any
+	if len(dockerEnvVars) > 0 {
+		envVars := make([]*EnvVar, len(dockerEnvVars))
+		idx := 0
+		for key, value := range dockerEnvVars {
+			envVars[idx] = &EnvVar{key, value}
+			idx++
+		}
+		yamlMap.Spec.PodTemplate.Spec.Containers[0].Env = envVars
 	}
 	//Set the Pod release label to the container name
 	yamlMap.Spec.PodTemplate.Metadata.Labels["release"] = appName
