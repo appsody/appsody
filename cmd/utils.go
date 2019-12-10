@@ -268,7 +268,6 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 			config.Warning.log("Could not mount ", mappedMount, " because the local file was not found.")
 			continue
 		}
-
 		volumeArgs = append(volumeArgs, "-v", mappedMount)
 	}
 	config.Debug.log("Mapped mount args: ", volumeArgs)
