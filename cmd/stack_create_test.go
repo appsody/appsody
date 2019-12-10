@@ -16,19 +16,23 @@ package cmd_test
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
 func TestStackCreateSampleStack(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	err := os.RemoveAll("testing-stack")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "create", "testing-stack", "--config", "testdata/default_repository_config/config.yaml"}
-	_, err = cmdtest.RunAppsodyCmd(args, ".", t)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)
@@ -46,13 +50,16 @@ func TestStackCreateSampleStack(t *testing.T) {
 }
 
 func TestStackCreateWithCopyTag(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	err := os.RemoveAll("testing-stack")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "create", "testing-stack", "--config", "testdata/default_repository_config/config.yaml", "--copy", "incubator/nodejs"}
-	_, err = cmdtest.RunAppsodyCmd(args, ".", t)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)
@@ -70,13 +77,16 @@ func TestStackCreateWithCopyTag(t *testing.T) {
 }
 
 func TestStackCreateInvalidStackCase1(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	err := os.RemoveAll("testing-stack")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "create", "testing-stack", "--copy", "incubator/nodej"}
-	_, err = cmdtest.RunAppsodyCmd(args, ".", t)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -90,13 +100,16 @@ func TestStackCreateInvalidStackCase1(t *testing.T) {
 }
 
 func TestStackCreateInvalidStackCase2(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	err := os.RemoveAll("testing-stack")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "create", "testing-stack", "--copy", "nodejs"}
-	_, err = cmdtest.RunAppsodyCmd(args, ".", t)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -110,13 +123,16 @@ func TestStackCreateInvalidStackCase2(t *testing.T) {
 }
 
 func TestStackCreateInvalidStackCase3(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	err := os.RemoveAll("testing-stack")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "create", "testing-stack", "--copy", "experimental/nodejs"}
-	_, err = cmdtest.RunAppsodyCmd(args, ".", t)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -130,13 +146,16 @@ func TestStackCreateInvalidStackCase3(t *testing.T) {
 }
 
 func TestStackCreateInvalidStackCase4(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	err := os.RemoveAll("testing-stack")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "create", "testing-stack", "--copy", "exp/java-microprofile"}
-	_, err = cmdtest.RunAppsodyCmd(args, ".", t)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -150,13 +169,16 @@ func TestStackCreateInvalidStackCase4(t *testing.T) {
 }
 
 func TestStackCreateInvalidStackName(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	err := os.RemoveAll("testing_stack")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "create", "testing_stack"}
-	_, err = cmdtest.RunAppsodyCmd(args, ".", t)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -170,8 +192,11 @@ func TestStackCreateInvalidStackName(t *testing.T) {
 }
 
 func TestStackCreateInvalidLongStackName(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	args := []string{"stack", "create", "testing_stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stack"}
-	_, err := cmdtest.RunAppsodyCmd(args, ".", t)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -185,13 +210,16 @@ func TestStackCreateInvalidLongStackName(t *testing.T) {
 }
 
 func TestStackAlreadyExists(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	err := os.RemoveAll("testing-stack")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "create", "testing-stack", "--config", "testdata/default_repository_config/config.yaml"}
-	_, err = cmdtest.RunAppsodyCmd(args, ".", t)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)
@@ -203,13 +231,17 @@ func TestStackAlreadyExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err1 := cmdtest.RunAppsodyCmd(args, ".", t)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 
-	if err1 == nil {
-		t.Fatal(err)
+	if !strings.Contains(err.Error(), "A stack named testing-stack already exists in your directory. Specify a unique stack name") {
+		t.Error("String \"A stack named testing-stack already exists in your directory. Specify a unique stack name\" not found in output")
+	} else {
+		if err == nil {
+			t.Error("Expected error but did not receive one.")
+		}
 	}
 
-	os.RemoveAll("testing-stack")
+	err = os.RemoveAll("testing-stack")
 	if err != nil {
 		t.Fatal(err)
 	}

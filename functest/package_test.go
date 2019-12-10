@@ -22,9 +22,16 @@ import (
 )
 
 func TestPackage(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
+	// create a temporary dir to create the project and run the test
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join("..", "cmd", "testdata", "starter"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	args := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsodyCmd(args, filepath.Join("..", "cmd", "testdata", "starter"), t)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)

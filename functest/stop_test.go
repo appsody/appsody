@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"os"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
@@ -119,12 +118,20 @@ func TestStopWithoutName(t *testing.T) {
 func TestStopWithName(t *testing.T) {
 
 	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// create a temporary dir to create the project and run the test
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("Created project dir: " + sandbox.ProjectDir)
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
+	args := []string{"init", "nodejs-express"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +139,8 @@ func TestStopWithName(t *testing.T) {
 	// appsody run
 	runChannel := make(chan error)
 	go func() {
-		_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", "testStopContainer"}, projectDir, t)
+		args = []string{"run", "--name", "testStopContainer"}
+		_, err = cmdtest.RunAppsody(sandbox, args...)
 		runChannel <- err
 		close(runChannel)
 	}()
@@ -141,7 +149,8 @@ func TestStopWithName(t *testing.T) {
 
 	defer func() {
 		t.Log("about to run stop for with name")
-		stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"stop", "--name", "testStopContainer"}, projectDir, t)
+		args = []string{"stop", "--name", "testStopContainer"}
+		stopOutput, errStop := cmdtest.RunAppsody(sandbox, args...)
 		if !strings.Contains(stopOutput, "docker stop testStopContainer") {
 			t.Fatal("docker stop command not present for container testStopContainer")
 		}
