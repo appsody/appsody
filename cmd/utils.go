@@ -479,6 +479,9 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 
 		}
 
+		// TODO We should consider refactoring the following code. There is a circular dependency between
+		// getProjectConfig(), getStackRegistry(), and setting config.StackRegistry which is especially
+		// concering with the `if config.ProjectConfig == nil` caching of this method.
 		stack := v.GetString("stack")
 		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
