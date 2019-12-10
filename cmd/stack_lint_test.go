@@ -321,7 +321,7 @@ func TestLintWithMissingStackYaml(t *testing.T) {
 	}
 }
 
-func TestLintWithMissingImage(t *testing.T) {
+func TestLintWithMissingImageProjectAndConfigDir(t *testing.T) {
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	args := []string{"stack", "lint"}
@@ -346,50 +346,6 @@ func TestLintWithMissingImage(t *testing.T) {
 	}
 
 	if !strings.Contains(output, "Missing image directory") {
-		t.Fatal(err)
-	}
-
-}
-
-func TestLintWithMissingConfig(t *testing.T) {
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
-	args := []string{"stack", "lint"}
-	removeConf := filepath.Join(testStackPath, "image", "config")
-	removeArray := []string{removeConf, filepath.Join(removeConf, "app-deploy.yaml")}
-
-	osErr := os.RemoveAll(removeConf)
-	if osErr != nil {
-		t.Fatal(osErr)
-	}
-
-	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-
-	RestoreSampleStack(removeArray)
-
-	if !strings.Contains(output, "Missing config directory") {
-		t.Fatal(err)
-	}
-
-}
-
-func TestLintWithMissingProject(t *testing.T) {
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
-	args := []string{"stack", "lint"}
-	removeProj := filepath.Join(testStackPath, "image", "project")
-	removeArray := []string{removeProj, filepath.Join(removeProj, "Dockerfile")}
-
-	osErr := os.RemoveAll(removeProj)
-	if osErr != nil {
-		t.Fatal(osErr)
-	}
-
-	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-
-	RestoreSampleStack(removeArray)
-
-	if !strings.Contains(output, "Missing project directory") {
 		t.Fatal(err)
 	}
 
@@ -469,29 +425,6 @@ func TestLintWithMissingTemplatesDirectory(t *testing.T) {
 	RestoreSampleStack(removeArray)
 
 	if !strings.Contains(output, "Missing template directory") && !strings.Contains(output, "No templates found in") {
-		t.Fatal(err)
-	}
-
-}
-
-func TestLintWithMissingTemplateInTemplatesDirectory(t *testing.T) {
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
-	args := []string{"stack", "lint"}
-
-	removeTemplate := filepath.Join(testStackPath, "templates", "default")
-	removeArray := []string{removeTemplate, filepath.Join(removeTemplate, "app.js")}
-
-	osErr := os.RemoveAll(removeTemplate)
-	if osErr != nil {
-		t.Fatal(osErr)
-	}
-
-	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-
-	RestoreSampleStack(removeArray)
-
-	if !strings.Contains(output, "No templates found in") {
 		t.Fatal(err)
 	}
 
