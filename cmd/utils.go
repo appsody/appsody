@@ -93,7 +93,7 @@ func Exists(path string) (bool, error) {
 
 //ExtractDockerEnvVars returns a map with the env vars specified in docker options
 func ExtractDockerEnvVars(dockerOptions string) map[string]string {
-	tokens := strings.Split(dockerOptions, " ")
+	tokens := strings.Fields(dockerOptions)
 	envVars := make(map[string]string)
 	for idx, token := range tokens {
 		if token == "-e" || token == "--env" {
@@ -290,6 +290,7 @@ func mountExistsLocally(log *LoggingConfig, mount string) bool {
 	}
 	log.Debug.log("Checking for existence of local file or directory to mount: ", localFile[0])
 	fileExists, _ := Exists(localFile[0])
+	lintMountPathForSingleFile(localFile[0], log)
 	return fileExists
 }
 
@@ -655,7 +656,7 @@ func UserHomeDir(log *LoggingConfig) string {
 	return homeDir
 }
 
-func getConfigLabels(projectConfig ProjectConfig, filename string) (map[string]string, error) {
+func getConfigLabels(projectConfig ProjectConfig, filename string, log *LoggingConfig) (map[string]string, error) {
 	var labels = make(map[string]string)
 
 	t := time.Now()
@@ -684,7 +685,7 @@ func getConfigLabels(projectConfig ProjectConfig, filename string) (map[string]s
 	if projectConfig.License != "" {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
-		} else if err := checkValidLicense(projectConfig.License); err != nil {
+		} else if err := checkValidLicense(log, projectConfig.License); err != nil {
 			return labels, errors.Errorf("The %v SPDX license ID is invalid: %v.", filename, err)
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
@@ -2098,13 +2099,34 @@ func CheckValidSemver(version string) error {
 	return nil
 }
 
-func checkValidLicense(license string) error {
+func checkValidLicense(log *LoggingConfig, license string) error {
 	// Get the list of all known licenses
 	list, _ := spdx.List()
-	for _, spdx := range list.Licenses {
-		if spdx.ID == license {
-			return nil
+	if list != nil {
+		for _, spdx := range list.Licenses {
+			if spdx.ID == license {
+				return nil
+			}
 		}
+	} else {
+		log.Warning.log("Unable to check if license ID is valid.... continuing.")
+		return nil
 	}
 	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
+}
+func lintMountPathForSingleFile(path string, log *LoggingConfig) {
+
+	file, err := os.Stat(path)
+	if err != nil {
+		log.Warning.logf("Could not stat mount path: %s", path)
+
+	} else {
+		if file.Mode().IsDir() {
+			log.Debug.logf("Path %s for mount is a directory", path)
+		} else {
+
+			log.Warning.logf("Path %s for mount points to a single file.  Single file Docker mount paths cause unexpected behavior and will be deprecated in the future.", path)
+		}
+
+	}
 }
