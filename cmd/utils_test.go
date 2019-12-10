@@ -310,6 +310,7 @@ func TestValidateHostName(t *testing.T) {
 func TestExtractDockerEnvVars(t *testing.T) {
 	testDockerOptions1 := []string{
 		"-w /path/to/dir -e A=Val1",
+		"-w /path/to/dir    -e     A=Val1  ",
 		"-e A=Val1 -w /path/to/dir",
 		"-e A=Val1",
 		"--env A=Val1",
@@ -317,6 +318,7 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	testDockerOptions2 := []string{
 		"--env A=Val1 -e B=Val2",
 		"-w /path/to/dir -e A=Val1 -e B=Val2",
+		"-w /path/to/dir     -e A=Val1    -e     B=Val2",
 		"--workdir /path/to/dir -e A=Val1 -e B=Val2",
 		"--workdir /path/to/dir -e A=Val1 -e B=Val2 -m 1024",
 		"--workdir /path/to/dir --env A=Val1 --env B=Val2",
@@ -341,8 +343,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	for _, dockerOption := range testDockerOptions1 {
 
 		t.Run(dockerOption, func(t *testing.T) {
-			envVars := cmd.ExtractDockerEnvVars(dockerOption)
+			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
 
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
 			if len(envVars) != len(result1) {
 				t.Errorf("Expected %d element(s) and got %d - %v", len(result1), len(envVars), envVars)
 			}
@@ -356,8 +361,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	for _, dockerOption := range testDockerOptions2 {
 
 		t.Run(dockerOption, func(t *testing.T) {
-			envVars := cmd.ExtractDockerEnvVars(dockerOption)
+			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
 
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
 			if len(envVars) != len(result2) {
 				t.Errorf("Expected %d element(s) and got %d - %v", len(result2), len(envVars), envVars)
 			}
@@ -371,7 +379,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	for _, dockerOption := range testDockerOptions3 {
 
 		t.Run(dockerOption, func(t *testing.T) {
-			envVars := cmd.ExtractDockerEnvVars(dockerOption)
+			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
 			if len(envVars) != 0 {
 				t.Errorf("Expected 0 element(s) and got %d - %v", len(envVars), envVars)
 			}
