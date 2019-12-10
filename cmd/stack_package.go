@@ -223,7 +223,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// tag with the full version then mojorminor, major, and latest
 			cmdArgs := []string{"-t", buildImage}
-			semver := make(map[string]interface{})["semver"].(map[string]string)
+			var semver = make(map[string]string)
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["majorminor"])
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["major"])
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo)
