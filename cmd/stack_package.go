@@ -567,8 +567,8 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 				return errors.Errorf("Error reading file for binary test: %v", err)
 			}
 
-			// skip binary files and DS_Store file
-			if isbinary.Test(binaryFile) || info.Name() == ".DS_Store" {
+			// skip binary files
+			if isbinary.Test(binaryFile) {
 				return nil
 			}
 
