@@ -302,7 +302,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					return errors.Errorf("Error trying to create file: %v", err)
 				}
 
-				_, err = g.WriteString("stack: " + buildImage)
+				// Only use major.minor version here
+				_, err = g.WriteString("stack: " + namespaceAndRepo + ":" + semver["majorminor"])
 				if err != nil {
 					return errors.Errorf("Error trying to write: %v", err)
 				}
@@ -476,7 +477,7 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 		License:     stackYaml.License,
 		Maintainers: stackYaml.Maintainers,
 	}
-	configLabels, err := getConfigLabels(projectConfig, "stack.yaml")
+	configLabels, err := getConfigLabels(projectConfig, "stack.yaml", config.LoggingConfig)
 	if err != nil {
 		return labels, err
 	}
@@ -555,8 +556,8 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
-		//Skip .git folder and .DS_Store
-		if info.Name() == ".git" || info.Name() == ".DS_Store" {
+		//Skip .git folder
+		if info.IsDir() && info.Name() == ".git" {
 			return filepath.SkipDir
 		} else if !info.IsDir() {
 
@@ -570,8 +571,10 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			if err != nil {
 				return errors.Errorf("Error reading file for binary test: %v", err)
 			}
+
+			// skip binary files
 			if isbinary.Test(binaryFile) {
-				return filepath.SkipDir
+				return nil
 			}
 
 			// set file permission to writable to apply templating
