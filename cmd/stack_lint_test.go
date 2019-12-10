@@ -406,29 +406,6 @@ func TestLintWithMissingDockerfileStackAndLicense(t *testing.T) {
 	}
 
 }
-func TestLintWithConfigYamlInTemplate(t *testing.T) {
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
-	args := []string{"stack", "lint"}
-
-	addConfigYaml := filepath.Join(testStackPath, "templates", "default", ".appsody-config.yaml")
-
-	_, osErr := os.Create(addConfigYaml)
-	if osErr != nil {
-		t.Fatal(osErr)
-	}
-
-	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
-
-	removeErr := os.RemoveAll(addConfigYaml)
-	if removeErr != nil {
-		t.Fatal(removeErr)
-	}
-
-	if !strings.Contains(output, "Unexpected .appsody-config.yaml") {
-		t.Fatal(err)
-	}
-}
 
 func TestLintWithMissingTemplatesDirectory(t *testing.T) {
 	currentDir, _ := os.Getwd()
@@ -603,6 +580,44 @@ func TestLintWithInvalidTemplatingValues(t *testing.T) {
 	if !strings.Contains(output, "is not in an alphanumeric format") {
 		t.Fatal(err)
 	}
+}
+
+func TestLintWithInvalidRequirements(t *testing.T) {
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	args := []string{"stack", "lint"}
+
+	stackYaml := filepath.Join(testStackPath, "stack.yaml")
+
+	file, readErr := ioutil.ReadFile(stackYaml)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+
+	lines := strings.Split(string(file), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "  appsody-version:") {
+			lines[i] = "  appsody-version: invalid-req"
+		}
+	}
+
+	invalidYaml := strings.Join(lines, "\n")
+	writeErr := ioutil.WriteFile(stackYaml, []byte(invalidYaml), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+
+	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+
+	restoreYaml := ioutil.WriteFile(stackYaml, []byte(file), 0644)
+	if restoreYaml != nil {
+		t.Fatal(restoreYaml)
+	}
+
+	if !strings.Contains(output, "is not in the correct format. See:") {
+		t.Fatal(err)
+	}
+
 }
 
 func RestoreSampleStack(fixStack []string) {
