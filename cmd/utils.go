@@ -290,6 +290,7 @@ func mountExistsLocally(log *LoggingConfig, mount string) bool {
 	}
 	log.Debug.log("Checking for existence of local file or directory to mount: ", localFile[0])
 	fileExists, _ := Exists(localFile[0])
+	lintMountPathForSingleFile(localFile[0], log)
 	return fileExists
 }
 
@@ -2115,4 +2116,20 @@ func checkValidLicense(log *LoggingConfig, license string) error {
 		return nil
 	}
 	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
+}
+func lintMountPathForSingleFile(path string, log *LoggingConfig) {
+
+	file, err := os.Stat(path)
+	if err != nil {
+		log.Warning.logf("Could not stat mount path: %s", path)
+
+	} else {
+		if file.Mode().IsDir() {
+			log.Debug.logf("Path %s for mount is a directory", path)
+		} else {
+
+			log.Warning.logf("Path %s for mount points to a single file.  Single file Docker mount paths cause unexpected behavior and will be deprecated in the future.", path)
+		}
+
+	}
 }
