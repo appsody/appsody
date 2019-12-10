@@ -473,7 +473,7 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 		License:     stackYaml.License,
 		Maintainers: stackYaml.Maintainers,
 	}
-	configLabels, err := getConfigLabels(projectConfig, "stack.yaml")
+	configLabels, err := getConfigLabels(projectConfig, "stack.yaml", config.LoggingConfig)
 	if err != nil {
 		return labels, err
 	}

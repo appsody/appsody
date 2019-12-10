@@ -133,7 +133,7 @@ func (stackDetails *StackYaml) checkTemplatingData(log *LoggingConfig) (int, int
 func (stackDetails *StackYaml) checkLicense(log *LoggingConfig) int {
 	stackLintErrorCount := 0
 
-	if err := checkValidLicense(stackDetails.License); err != nil {
+	if err := checkValidLicense(log, stackDetails.License); err != nil {
 		stackLintErrorCount++
 		log.Error.logf("The stack.yaml SPDX license ID is invalid: %v.", err)
 	}
