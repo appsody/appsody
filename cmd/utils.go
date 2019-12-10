@@ -478,7 +478,23 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 			return &projectConfig, errors.Errorf("Error reading project config %v", err)
 
 		}
+
+		stack := v.GetString("stack")
 		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
+		imageRepo := config.CliConfig.GetString("images")
+		config.Debug.log("Image repository set to: ", imageRepo)
+		projectConfig.Stack = stack
+		imageComponents := strings.Split(projectConfig.Stack, "/")
+		if len(imageComponents) < 3 {
+			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
+		}
+		//Override the stack registry URL
+		projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
+
+		if err != nil {
+			return &projectConfig, err
+		}
+		config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
 		config.ProjectConfig = &projectConfig
 	}
 	return config.ProjectConfig, nil
