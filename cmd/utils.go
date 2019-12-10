@@ -513,10 +513,16 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		}
 		//Override the stack registry URL
 		projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
-
 		if err != nil {
 			return &projectConfig, err
 		}
+
+		//Buildah cannot pull from index.docker.io - only pulls from docker.io
+		projectConfig.Stack, err = NormalizeImageName(projectConfig.Stack)
+		if err != nil {
+			return &projectConfig, err
+		}
+
 		config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
 		config.ProjectConfig = &projectConfig
 	}
@@ -1576,12 +1582,6 @@ func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool 
 func pullImage(imageToPull string, config *RootCommandConfig) error {
 	if config.imagePulled == nil {
 		config.imagePulled = make(map[string]bool)
-	}
-
-	//Buildah cannot pull from index.docker.io - only pulls from docker.io
-	imageToPull, imageNameErr := NormalizeImageName(imageToPull)
-	if imageNameErr != nil {
-		return imageNameErr
 	}
 
 	config.Debug.logf("%s image pulled status: %t", imageToPull, config.imagePulled[imageToPull])
