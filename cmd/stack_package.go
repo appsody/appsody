@@ -551,8 +551,8 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
-		//Skip .git folder and .DS_Store
-		if info.Name() == ".git" || info.Name() == ".DS_Store" {
+		//Skip .git folder
+		if info.IsDir() && info.Name() == ".git" {
 			return filepath.SkipDir
 		} else if !info.IsDir() {
 
@@ -566,8 +566,10 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			if err != nil {
 				return errors.Errorf("Error reading file for binary test: %v", err)
 			}
+
+			// skip binary files
 			if isbinary.Test(binaryFile) {
-				return filepath.SkipDir
+				return nil
 			}
 
 			// set file permission to writable to apply templating
