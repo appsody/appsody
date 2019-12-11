@@ -23,8 +23,11 @@ import (
 
 func TestPackageStarterStack(t *testing.T) {
 
+	repoRemoveArgs := []string{"repo", "remove", "dev.local"}
+	_, err := cmdtest.RunAppsodyCmd(repoRemoveArgs, ".", t)
+
 	args := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsodyCmd(args, filepath.Join("..", "cmd", "testdata", "starter"), t)
+	_, err = cmdtest.RunAppsodyCmd(args, filepath.Join("..", "cmd", "testdata", "starter"), t)
 
 	if err != nil {
 		t.Fatal(err)

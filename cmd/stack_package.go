@@ -410,23 +410,6 @@ func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
 	return newStackStruct
 }
 
-func getStackData(stackPath string) (StackYaml, error) {
-	// get the necessary data from the current stack.yaml
-	var stackYaml StackYaml
-
-	source, err := ioutil.ReadFile(filepath.Join(stackPath, "stack.yaml"))
-	if err != nil {
-		return stackYaml, errors.Errorf("Error trying to read: %v", err)
-	}
-
-	err = yaml.Unmarshal(source, &stackYaml)
-	if err != nil {
-		return stackYaml, errors.Errorf("Error trying to unmarshall: %v", err)
-	}
-
-	return stackYaml, nil
-}
-
 func findStackAndRemove(log *LoggingConfig, stackID string, indexYaml IndexYaml) IndexYaml {
 	// find the index of the stack
 	foundStack := -1
