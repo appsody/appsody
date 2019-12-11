@@ -107,7 +107,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	}
 	var proceedWithTemplate bool
 
-	err = CheckPrereqs()
+	err = CheckPrereqs(config.RootCommandConfig)
 	if err != nil {
 		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
