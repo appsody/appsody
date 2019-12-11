@@ -228,12 +228,15 @@ func TestPackageNoStackYaml(t *testing.T) {
 	stackYaml := filepath.Join(stackPath, "stack.yaml")
 	newStackYaml := filepath.Join(stackPath, "test")
 
-	os.Rename(stackYaml, newStackYaml)
+	err := os.Rename(stackYaml, newStackYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.Rename(newStackYaml, stackYaml)
 
 	// run stack package
 	args := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsodyCmd(args, stackPath, t)
+	_, err = cmdtest.RunAppsodyCmd(args, stackPath, t)
 
 	if err == nil { // stack package will fail as stack.yaml file does not exist
 		t.Fatal(err)
@@ -298,12 +301,15 @@ func TestPackageNoTemplates(t *testing.T) {
 	templates := filepath.Join(stackPath, "templates")
 	newTemplates := filepath.Join(stackPath, "test")
 
-	os.Rename(templates, newTemplates)
+	err := os.Rename(templates, newTemplates)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.Rename(newTemplates, templates)
 
 	// run stack package
 	args := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsodyCmd(args, stackPath, t)
+	_, err = cmdtest.RunAppsodyCmd(args, stackPath, t)
 
 	if err == nil { // stack package will fail as stack.yaml file does not exist
 		t.Fatal(err)
