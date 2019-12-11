@@ -14,7 +14,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -81,7 +80,7 @@ func generateDoc(log *LoggingConfig, commandDocFile string, rootCmd *cobra.Comma
 	}
 	docString := string(buf)
 	docParts := strings.Split(docString, "```")
-	fmt.Println("The length is:  ", len(docParts))
+
 	for docCtr := 0; docCtr < len(docParts); docCtr = docCtr + 2 {
 		if strings.Contains(docParts[docCtr], "<") {
 
