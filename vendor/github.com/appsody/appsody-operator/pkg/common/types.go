@@ -36,11 +36,19 @@ type BaseApplicationStatus interface {
 	GetCondition(StatusConditionType) StatusCondition
 	SetCondition(StatusCondition)
 	NewCondition() StatusCondition
+	GetConsumedServices() ConsumedServices
+	SetConsumedServices(ConsumedServices)
 }
+
+// ConsumedServices stores status of the service binding dependencies
+type ConsumedServices map[ServiceBindingCategory][]string
 
 const (
 	// StatusConditionTypeReconciled ...
 	StatusConditionTypeReconciled StatusConditionType = "Reconciled"
+
+	// StatusConditionTypeDependenciesSatisfied ...
+	StatusConditionTypeDependenciesSatisfied StatusConditionType = "DependenciesSatisfied"
 )
 
 // BaseApplicationAutoscaling represents basic HPA configuration
@@ -57,18 +65,50 @@ type BaseApplicationStorage interface {
 	GetVolumeClaimTemplate() *corev1.PersistentVolumeClaim
 }
 
-// BaseApplicationService epresents basic service configuration
+// BaseApplicationService represents basic service configuration
 type BaseApplicationService interface {
 	GetPort() int32
 	GetType() *corev1.ServiceType
 	GetAnnotations() map[string]string
+	GetProvides() ServiceBindingProvides
+	GetConsumes() []ServiceBindingConsumes
 }
 
-// BaseApplicationMonitoring epresents basic service configuration
+// BaseApplicationMonitoring represents basic service monitoring configuration
 type BaseApplicationMonitoring interface {
 	GetLabels() map[string]string
 	GetEndpoints() []prometheusv1.Endpoint
 }
+
+// ServiceBindingProvides represents a service to be provided
+type ServiceBindingProvides interface {
+	GetCategory() ServiceBindingCategory
+	GetContext() string
+	GetProtocol() string
+	GetAuth() ServiceBindingAuth
+}
+
+// ServiceBindingConsumes represents a service to be consumed
+type ServiceBindingConsumes interface {
+	GetName() string
+	GetNamespace() string
+	GetCategory() ServiceBindingCategory
+	GetMountPath() string
+}
+
+// ServiceBindingAuth represents authentication info when binding services
+type ServiceBindingAuth interface {
+	GetUsername() corev1.SecretKeySelector
+	GetPassword() corev1.SecretKeySelector
+}
+
+// ServiceBindingCategory ...
+type ServiceBindingCategory string
+
+const (
+	// ServiceBindingCategoryOpenAPI ...
+	ServiceBindingCategoryOpenAPI ServiceBindingCategory = "openapi"
+)
 
 // BaseApplication represents basic kubernetes application
 type BaseApplication interface {
@@ -94,5 +134,8 @@ type BaseApplication interface {
 	GetCreateAppDefinition() *bool
 	GetMonitoring() BaseApplicationMonitoring
 	GetLabels() map[string]string
+	GetAnnotations() map[string]string
 	GetStatus() BaseApplicationStatus
+	GetInitContainers() []corev1.Container
+	GetGroupName() string
 }
