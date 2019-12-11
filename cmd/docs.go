@@ -100,7 +100,11 @@ func generateDoc(log *LoggingConfig, commandDocFile string, rootCmd *cobra.Comma
 
 	}
 
-	ioutil.WriteFile(commandDocFile, []byte(finalString), 644)
+	ioErr = ioutil.WriteFile(commandDocFile, []byte(finalString), 644)
+	if ioErr != nil {
+		log.Error.log("Doc file could not be written: ", ioErr)
+		return ioErr
+	}
 	return nil
 
 }
