@@ -320,6 +320,7 @@ func TestExtractDockerEnvVars(t *testing.T) {
 		"-w /path/to/dir -e A=Val1 -e B=Val2",
 		"-w /path/to/dir     -e A=Val1    -e     B=Val2",
 		"--workdir /path/to/dir -e A=Val1 -e B=Val2",
+		"--workdir /path/to/dir     -e A=Val1   -e B=Val2",
 		"--workdir /path/to/dir -e A=Val1 -e B=Val2 -m 1024",
 		"--workdir /path/to/dir --env A=Val1 --env B=Val2",
 		"--workdir /path/to/dir -e A=Val1 --env B=Val2",

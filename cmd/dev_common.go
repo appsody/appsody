@@ -142,7 +142,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		return configErr
 	}
 
-	err := CheckPrereqs()
+	err := CheckPrereqs(config.RootCommandConfig)
 	if err != nil {
 		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
