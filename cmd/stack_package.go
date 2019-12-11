@@ -226,7 +226,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// tag with the full version then mojorminor, major, and latest
 			cmdArgs := []string{"-t", buildImage}
-			semver := templateMetadata["stack"].(map[string]interface{})["semver"].(map[string]string)
+			semver := templateMetadata["semver"].(map[string]string)
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["majorminor"])
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["major"])
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo)
@@ -510,14 +510,13 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	}
 
 	// create map that holds stack variables
-	var stack = make(map[string]interface{})
-	stack["id"] = labels[appsodyStackKeyPrefix+"id"]
-	stack["name"] = labels[ociKeyPrefix+"title"]
-	stack["version"] = versionLabel
-	stack["description"] = labels[ociKeyPrefix+"description"]
-	stack["created"] = labels[ociKeyPrefix+"created"]
-	stack["tag"] = labels[appsodyStackKeyPrefix+"tag"]
-	stack["maintainers"] = labels[ociKeyPrefix+"authors"]
+	templateMetadata["id"] = labels[appsodyStackKeyPrefix+"id"]
+	templateMetadata["name"] = labels[ociKeyPrefix+"title"]
+	templateMetadata["version"] = versionLabel
+	templateMetadata["description"] = labels[ociKeyPrefix+"description"]
+	templateMetadata["created"] = labels[ociKeyPrefix+"created"]
+	templateMetadata["tag"] = labels[appsodyStackKeyPrefix+"tag"]
+	templateMetadata["maintainers"] = labels[ociKeyPrefix+"authors"]
 
 	// create version map and add to templateMetadata map
 	var semver = make(map[string]string)
@@ -525,13 +524,13 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	semver["minor"] = versionFull[1]
 	semver["patch"] = versionFull[2]
 	semver["majorminor"] = strings.Join(versionFull[0:2], ".")
-	stack["semver"] = semver
+	templateMetadata["semver"] = semver
 
 	// create image map add to templateMetadata map
 	var image = make(map[string]string)
 	image["namespace"] = imageNamespace
 	image["registry"] = imageRegistry
-	stack["image"] = image
+	templateMetadata["image"] = image
 
 	// loop through user variables and add them to map, must begin with alphanumeric character
 	for key, value := range stackYaml.TemplatingData {
@@ -540,12 +539,11 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 		runes := []rune(key)
 		firstRune := runes[0]
 		if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
-			stack[key] = value
+			templateMetadata[key] = value
 		} else {
 			return templateMetadata, errors.Errorf("Variable name didn't start with alphanumeric character")
 		}
 	}
-	templateMetadata["stack"] = stack
 	return templateMetadata, err
 
 }
@@ -584,7 +582,7 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			}
 
 			// create new template from parsing file
-			tmpl, err := template.New(file).ParseFiles(path)
+			tmpl, err := template.New(file).Delims("{{.stack", "}}").ParseFiles(path)
 			if err != nil {
 				return errors.Errorf("Error creating new template from file: %v", err)
 			}
