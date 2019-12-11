@@ -232,7 +232,12 @@ func TestPackageNoStackYaml(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Rename(newStackYaml, stackYaml)
+	defer func() {
+		err = os.Rename(newStackYaml, stackYaml)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	// run stack package
 	args := []string{"stack", "package"}
@@ -305,7 +310,12 @@ func TestPackageNoTemplates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Rename(newTemplates, templates)
+	defer func() {
+		err = os.Rename(newTemplates, templates)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	// run stack package
 	args := []string{"stack", "package"}
