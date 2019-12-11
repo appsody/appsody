@@ -40,6 +40,7 @@ func newStackValidateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var noPackage bool
 	var noLint bool
 	var imageNamespace string
+	var imageRegistry string
 
 	var stackValidateCmd = &cobra.Command{
 		Use:   "validate",
@@ -77,7 +78,6 @@ Runs the following validation tests against the stack and its templates:
 			// get the stack name from the stack path
 			stackName := filepath.Base(stackPath)
 			rootConfig.Info.Log("stackName is: ", stackName)
-
 			rootConfig.Info.Log("#################################################")
 			rootConfig.Info.Log("Validating stack:", stackName)
 			rootConfig.Info.Log("#################################################")
@@ -106,7 +106,7 @@ Runs the following validation tests against the stack and its templates:
 
 			// package
 			if !noPackage {
-				_, err = RunAppsodyCmdExec([]string{"stack", "package", "--image-namespace", imageNamespace}, stackPath)
+				_, err = RunAppsodyCmdExec([]string{"stack", "package", "--image-namespace", imageNamespace, "--image-registry", imageRegistry}, stackPath)
 				if err != nil {
 					//logs error but keeps going
 					rootConfig.Error.Log(err)
@@ -146,9 +146,10 @@ Runs the following validation tests against the stack and its templates:
 				}
 
 				rootConfig.Info.Log("Created project dir: " + projectDir)
+				stack := "dev.local/" + stackName
 
 				// init
-				err = TestInit(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+				err = TestInit(rootConfig.LoggingConfig, stack, templates[i], projectDir)
 				if err != nil {
 					rootConfig.Error.Log(err)
 					testResults = append(testResults, ("FAILED: Init for stack:" + stackName + " template:" + templates[i]))
@@ -162,7 +163,7 @@ Runs the following validation tests against the stack and its templates:
 
 				// run
 				if !initFail {
-					err = TestRun(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+					err = TestRun(rootConfig.LoggingConfig, stack, templates[i], projectDir)
 					if err != nil {
 						//logs error but keeps going
 						rootConfig.Error.Log(err)
@@ -176,7 +177,7 @@ Runs the following validation tests against the stack and its templates:
 
 				// test
 				if !initFail {
-					err = TestTest(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+					err = TestTest(rootConfig.LoggingConfig, stack, templates[i], projectDir)
 					if err != nil {
 						//logs error but keeps going
 						rootConfig.Error.Log(err)
@@ -190,7 +191,7 @@ Runs the following validation tests against the stack and its templates:
 
 				// build
 				if !initFail {
-					err = TestBuild(rootConfig.LoggingConfig, "dev.local/"+stackName, templates[i], projectDir)
+					err = TestBuild(rootConfig.LoggingConfig, stack, templates[i], projectDir)
 					if err != nil {
 						//logs error but keeps going
 						rootConfig.Error.Log(err)
@@ -228,7 +229,8 @@ Runs the following validation tests against the stack and its templates:
 
 	stackValidateCmd.PersistentFlags().BoolVar(&noPackage, "no-package", false, "Skips running appsody stack package")
 	stackValidateCmd.PersistentFlags().BoolVar(&noLint, "no-lint", false, "Skips running appsody stack lint")
-	stackValidateCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace used for creating the images")
+	stackValidateCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "appsody", "Namespace used for creating the images.")
+	stackValidateCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "dev.local", "Registry used for creating the images.")
 
 	return stackValidateCmd
 }
@@ -322,7 +324,7 @@ func TestTest(log *LoggingConfig, stack string, template string, projectDir stri
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
 func TestBuild(log *LoggingConfig, stack string, template string, projectDir string) error {
 
-	imageName := "dev.local/" + filepath.Base(projectDir)
+	imageName := "dev.local/appsody" + filepath.Base(projectDir)
 
 	log.Info.Log("**************************************************************************")
 	log.Info.Log("Running appsody build against stack:" + stack + " template:" + template)

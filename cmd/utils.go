@@ -502,6 +502,9 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 
 		}
 
+		// TODO We should consider refactoring the following code. There is a circular dependency between
+		// getProjectConfig(), getStackRegistry(), and setting config.StackRegistry which is especially
+		// concering with the `if config.ProjectConfig == nil` caching of this method.
 		stack := v.GetString("stack")
 		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
@@ -513,10 +516,16 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		}
 		//Override the stack registry URL
 		projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
-
 		if err != nil {
 			return &projectConfig, err
 		}
+
+		//Buildah cannot pull from index.docker.io - only pulls from docker.io
+		projectConfig.Stack, err = NormalizeImageName(projectConfig.Stack)
+		if err != nil {
+			return &projectConfig, err
+		}
+
 		config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
 		config.ProjectConfig = &projectConfig
 	}
@@ -628,7 +637,10 @@ func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
 }
 
 // CheckPrereqs checks the prerequisites to run the CLI
-func CheckPrereqs() error {
+func CheckPrereqs(config *RootCommandConfig) error {
+	if config.Buildah {
+		return nil
+	}
 	dockerCmd := "docker"
 	dockerArgs := []string{"ps"}
 	checkDockerCmd := exec.Command(dockerCmd, dockerArgs...)
@@ -1573,12 +1585,6 @@ func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool 
 func pullImage(imageToPull string, config *RootCommandConfig) error {
 	if config.imagePulled == nil {
 		config.imagePulled = make(map[string]bool)
-	}
-
-	//Buildah cannot pull from index.docker.io - only pulls from docker.io
-	imageToPull, imageNameErr := NormalizeImageName(imageToPull)
-	if imageNameErr != nil {
-		return imageNameErr
 	}
 
 	config.Debug.logf("%s image pulled status: %t", imageToPull, config.imagePulled[imageToPull])

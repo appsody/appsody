@@ -31,7 +31,7 @@ import (
 func TestTemplatingAllVariables(t *testing.T) {
 
 	// gets all the necessary data from a setup function
-	imageNamespace, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests()
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestTemplatingAllVariables(t *testing.T) {
 	defer os.RemoveAll(templatingPath)
 
 	// write some text to file
-	_, err = file.WriteString("id: {{.stack.id}}, name: {{.stack.name}}, version: {{.stack.version}}, description: {{.stack.description}}, tag: {{.stack.tag}}, maintainers: {{.stack.maintainers}}, semver.major: {{.stack.semver.major}}, semver.minor: {{.stack.semver.minor}}, semver.patch: {{.stack.semver.patch}}, semver.majorminor: {{.stack.semver.majorminor}}, image.namespace: {{.stack.image.namespace}}, customvariable1: {{.stack.variable1}}, customvariable2: {{.stack.variable2}}")
+	_, err = file.WriteString("{{test}}, id: {{.stack.id}}, name: {{.stack.name}}, version: {{.stack.version}}, description: {{.stack.description}}, tag: {{.stack.tag}}, maintainers: {{.stack.maintainers}}, semver.major: {{.stack.semver.major}}, semver.minor: {{.stack.semver.minor}}, semver.patch: {{.stack.semver.patch}}, semver.majorminor: {{.stack.semver.majorminor}}, image.namespace: {{.stack.image.namespace}}, image.registry: {{.stack.image.registry}}, customvariable1: {{.stack.variable1}}, customvariable2: {{.stack.variable2}}")
 	if err != nil {
 		t.Fatalf("Error writing to file: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestTemplatingAllVariables(t *testing.T) {
 	}
 
 	// create the template metadata
-	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
+	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
 	if err != nil {
 		t.Fatalf("Error creating template map: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestTemplatingAllVariables(t *testing.T) {
 	}
 	s := string(b)
 	t.Log(s)
-	if !strings.Contains(s, "id: starter, name: Starter Sample, version: 0.1.1, description: Runnable starter stack, copy to create a new stack, tag: dev.local/starter:SNAPSHOT, maintainers: Henry Nash <henry.nash@uk.ibm.com>, semver.major: 0, semver.minor: 1, semver.patch: 1, semver.majorminor: 0.1, image.namespace: dev.local, customvariable1: value1, customvariable2: value2") {
+	if !strings.Contains(s, "{{test}}, id: starter, name: Starter Sample, version: 0.1.1, description: Runnable starter stack, copy to create a new stack, tag: appsody/starter:SNAPSHOT, maintainers: Henry Nash <henry.nash@uk.ibm.com>, semver.major: 0, semver.minor: 1, semver.patch: 1, semver.majorminor: 0.1, image.namespace: appsody, image.registry: dev.local, customvariable1: value1, customvariable2: value2") {
 		t.Fatal("Templating text did not match expected values")
 	}
 
@@ -90,7 +90,7 @@ func TestTemplatingAllVariables(t *testing.T) {
 func TestTemplatingWrongVariables(t *testing.T) {
 
 	// gets all the necessary data from a setup function
-	imageNamespace, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests()
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestTemplatingWrongVariables(t *testing.T) {
 	}
 
 	// create the template metadata
-	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
+	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
 	if err != nil {
 		t.Fatalf("Error creating template map: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestTemplatingFilePermissions(t *testing.T) {
 	}
 
 	// gets all the necessary data from a setup function
-	imageNamespace, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests()
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestTemplatingFilePermissions(t *testing.T) {
 	}
 
 	// create the template metadata
-	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace)
+	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
 	if err != nil {
 		t.Fatalf("Error creating template map: %v", err)
 	}
@@ -233,14 +233,15 @@ func canWrite(filepath string) (bool, error) {
 
 }
 
-func setupStackPackageTests() (string, cmd.StackYaml, map[string]string, error) {
+func setupStackPackageTests() (string, string, cmd.StackYaml, map[string]string, error) {
 	var loggingConfig = &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(os.Stdout, os.Stderr)
 	var rootConfig = &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
 	var labels = map[string]string{}
 	var stackYaml cmd.StackYaml
 	stackID := "starter"
-	imageNamespace := "dev.local"
+	imageNamespace := "appsody"
+	imageRegistry := "dev.local"
 	buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
 	projectPath := filepath.Join(".", "testdata", "starter")
 
@@ -249,24 +250,24 @@ func setupStackPackageTests() (string, cmd.StackYaml, map[string]string, error) 
 
 	err := cmd.InitConfig(rootConfig)
 	if err != nil {
-		return imageNamespace, stackYaml, labels, errors.Errorf("Error getting config: %v", err)
+		return imageNamespace, imageRegistry, stackYaml, labels, errors.Errorf("Error getting config: %v", err)
 	}
 
 	source, err := ioutil.ReadFile(filepath.Join(projectPath, "stack.yaml"))
 	if err != nil {
-		return imageNamespace, stackYaml, labels, errors.Errorf("Error reading stackyaml: %v", err)
+		return imageNamespace, imageRegistry, stackYaml, labels, errors.Errorf("Error reading stackyaml: %v", err)
 	}
 
 	err = yaml.Unmarshal(source, &stackYaml)
 	if err != nil {
-		return imageNamespace, stackYaml, labels, errors.Errorf("Error parsing stackyaml: %v", err)
+		return imageNamespace, imageRegistry, stackYaml, labels, errors.Errorf("Error parsing stackyaml: %v", err)
 	}
 
 	labels, err = cmd.GetLabelsForStackImage(stackID, buildImage, stackYaml, rootConfig)
 	if err != nil {
-		return imageNamespace, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
+		return imageNamespace, imageRegistry, stackYaml, labels, errors.Errorf("Error getting labels: %v", err)
 	}
 
-	return imageNamespace, stackYaml, labels, err
+	return imageNamespace, imageRegistry, stackYaml, labels, err
 
 }
