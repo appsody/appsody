@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"bufio"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -144,5 +145,95 @@ func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
 			}
 		}
 	}
+	mountVar := dockerfileStack["APPSODY_MOUNTS"]
+	lintMountWarnings, lintMountErrors := lintMountVar(mountVar, log, stackPath)
+	stackLintWarningCount = stackLintWarningCount + lintMountWarnings
+	stackLintErrorCount = stackLintErrorCount + lintMountErrors
 	return stackLintErrorCount, stackLintWarningCount
+}
+
+func lintMountVar(mountListSource string, log *LoggingConfig, stackPath string) (int, int) {
+
+	if mountListSource == "" {
+		log.Error.log("No APPSODY MOUNTS exists, mount paths can not be validated.")
+		return 0, 1
+	}
+	errCount := 0
+	warningCount := 0
+	mountList := strings.Split(mountListSource, ";")
+
+	templatePath := filepath.Join(stackPath, "templates")
+	log.Debug.log("Checking for template path: ", templatePath)
+	fileCheck, err := Exists(templatePath)
+	log.Debug.log("Template path exists: ", fileCheck)
+	if err != nil {
+		log.Error.log("Error attempting to determine if template path exists: ", err)
+		return 0, 1
+	}
+	if !fileCheck {
+		log.Error.log("Missing template directory in: ", stackPath)
+		return 0, 1
+	}
+	if IsEmptyDir(templatePath) {
+		log.Error.log("No templates found in: ", templatePath)
+		return 0, 1
+	}
+	templates, _ := ioutil.ReadDir(templatePath)
+
+	// loop through the template directories
+	for _, f := range templates {
+
+		for _, mount := range mountList {
+			traceMount := strings.Trim(mount, "\"")
+			log.Debug.log("mount pair: ", traceMount)
+			localPaths := strings.Split(traceMount, ":")
+			if len(localPaths) != 2 {
+				log.Error.log("Mount is not properly formatted it is missing the single colon: ", traceMount)
+				errCount++
+			} else {
+
+				localPath := localPaths[0]
+				if localPath == "" {
+					log.Error.logf("Path for mount %s is empty: ", traceMount)
+					errCount++
+				} else {
+
+					log.Debug.log("local path: ", localPath)
+					if localPath == "/" || localPath == "." {
+						log.Debug.logf("Path %s for mount %s is a directory.", localPath, traceMount)
+					} else if localPath[0:1] == "~" {
+						log.Debug.logf("Path %s for mount %s can not be evaluated at this time.", localPath, traceMount)
+					} else {
+						mountFilePath := filepath.Join(stackPath, "templates", f.Name(), localPath)
+
+						log.Debug.log("mountFilePath: ", mountFilePath)
+						warnings, valErrors := validateMountPath(mountFilePath, traceMount, log)
+						warningCount = warningCount + warnings
+						errCount = errCount + valErrors
+
+					}
+				}
+			}
+		}
+	}
+	return warningCount, errCount
+}
+func validateMountPath(path string, mount string, log *LoggingConfig) (int, int) {
+	log.Debug.log("Attempting to validate mount path: ", path)
+
+	warningCount, errorCount := 0, 0
+	file, err := os.Stat(path)
+	if err != nil {
+		errorCount = 1
+		log.Error.logf("Could not stat path: %s for mount %s", path, mount)
+	} else {
+		if file.Mode().IsDir() {
+			log.Debug.logf("Path %s for mount %s is a directory", path, mount)
+		} else {
+			warningCount = 1
+			log.Warning.logf("Path %s for mount %s points to a single file.  Single file Docker mount paths cause unexpected behavior and will be deprecated in the future.", path, mount)
+		}
+
+	}
+	return warningCount, errorCount
 }

@@ -62,7 +62,22 @@ func TestDebugSimple(t *testing.T) {
 		go func() {
 			_, err := cmdtest.RunAppsody(sandbox, "debug", "--name", containerName)
 			runChannel <- err
+			close(runChannel)
 		}()
+
+		// defer the appsody stop to close the docker container
+		defer func() {
+			_, err = cmdtest.RunAppsody(sandbox, "stop", "--name", containerName)
+			if err != nil {
+				t.Logf("Ignoring error running appsody stop: %s", err)
+			}
+			// wait for the appsody command/goroutine to finish
+			runErr := <-runChannel
+			if runErr != nil {
+				t.Logf("Ignoring error from the appsody command: %s", runErr)
+			}
+		}()
+
 		// It will take a while for the container to spin up, so let's use docker ps to wait for it
 		t.Log("calling docker ps to wait for container")
 		containerRunning := false
@@ -86,12 +101,6 @@ func TestDebugSimple(t *testing.T) {
 
 		if !containerRunning {
 			t.Fatal("container never appeared to start")
-		}
-
-		// stop and cleanup
-		_, err = cmdtest.RunAppsody(sandbox, "stop", "--name", containerName)
-		if err != nil {
-			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
 	}
 }

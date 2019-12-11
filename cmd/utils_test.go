@@ -306,3 +306,78 @@ func TestValidateHostName(t *testing.T) {
 
 	}
 }
+
+func TestExtractDockerEnvVars(t *testing.T) {
+	testDockerOptions1 := []string{
+		"-w /path/to/dir -e A=Val1",
+		"-w /path/to/dir     -e   A=Val1 ",
+		"-e A=Val1 -w /path/to/dir",
+		"-e A=Val1",
+		"--env A=Val1",
+	}
+	testDockerOptions2 := []string{
+		"--env A=Val1 -e B=Val2",
+		"-w /path/to/dir -e A=Val1 -e B=Val2",
+		"--workdir /path/to/dir -e A=Val1 -e B=Val2",
+		"--workdir /path/to/dir     -e A=Val1   -e B=Val2",
+		"--workdir /path/to/dir -e A=Val1 -e B=Val2 -m 1024",
+		"--workdir /path/to/dir --env A=Val1 --env B=Val2",
+		"--workdir /path/to/dir -e A=Val1 --env B=Val2",
+		"-e A=Val1 --workdir /path/to/dir --env B=Val2",
+	}
+	testDockerOptions3 := []string{
+		"--workdir /path/to/dir -m 1024",
+		"--workdir /path/to/dir -e A Val1",
+		"-env A=1",
+		"--env A",
+		"whatever --env -e",
+	}
+
+	result1 := make(map[string]string)
+	result1["A"] = "Val1"
+
+	result2 := make(map[string]string)
+	result2["A"] = "Val1"
+	result2["B"] = "Val2"
+
+	for _, dockerOption := range testDockerOptions1 {
+
+		t.Run(dockerOption, func(t *testing.T) {
+			envVars := cmd.ExtractDockerEnvVars(dockerOption)
+
+			if len(envVars) != len(result1) {
+				t.Errorf("Expected %d element(s) and got %d - %v", len(result1), len(envVars), envVars)
+			}
+			for key, value := range envVars {
+				if value != result2[key] {
+					t.Errorf("Expected %s for env var %s and got %s - %v", result2[key], key, value, envVars)
+				}
+			}
+		})
+	}
+	for _, dockerOption := range testDockerOptions2 {
+
+		t.Run(dockerOption, func(t *testing.T) {
+			envVars := cmd.ExtractDockerEnvVars(dockerOption)
+
+			if len(envVars) != len(result2) {
+				t.Errorf("Expected %d element(s) and got %d - %v", len(result2), len(envVars), envVars)
+			}
+			for key, value := range envVars {
+				if value != result2[key] {
+					t.Errorf("Expected %s for env var %s and got %s - %v", result2[key], key, value, envVars)
+				}
+			}
+		})
+	}
+	for _, dockerOption := range testDockerOptions3 {
+
+		t.Run(dockerOption, func(t *testing.T) {
+			envVars := cmd.ExtractDockerEnvVars(dockerOption)
+			if len(envVars) != 0 {
+				t.Errorf("Expected 0 element(s) and got %d - %v", len(envVars), envVars)
+			}
+
+		})
+	}
+}

@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
+	"github.com/appsody/appsody/cmd/cmdtest"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -216,6 +217,246 @@ func TestTemplatingFilePermissions(t *testing.T) {
 
 	if writable && err == nil {
 		t.Fatal("Opened read only file")
+	}
+
+}
+
+func TestPackageNoStackYaml(t *testing.T) {
+
+	// rename stack.yaml to test
+	stackPath := filepath.Join("..", "cmd", "testdata", "starter")
+	stackYaml := filepath.Join(stackPath, "stack.yaml")
+	newStackYaml := filepath.Join(stackPath, "test")
+
+	os.Rename(stackYaml, newStackYaml)
+	defer os.Rename(newStackYaml, stackYaml)
+
+	// run stack package
+	args := []string{"stack", "package"}
+	_, err := cmdtest.RunAppsodyCmd(args, stackPath, t)
+
+	if err == nil { // stack package will fail as stack.yaml file does not exist
+		t.Fatal(err)
+	}
+
+}
+
+func TestPackageInvalidStackYaml(t *testing.T) {
+
+	// add invalid line to stack.yaml
+	stackPath := filepath.Join("..", "cmd", "testdata", "starter")
+	stackYaml := filepath.Join(stackPath, "stack.yaml")
+
+	restoreLine := ""
+	file, err := ioutil.ReadFile(stackYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(string(file), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, "default-template") {
+			restoreLine = lines[i]
+			lines[i] = "Testing"
+		}
+	}
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// run stack package
+	args := []string{"stack", "package"}
+	_, err = cmdtest.RunAppsodyCmd(args, stackPath, t)
+
+	if err == nil { // stack package will fail as stack.yaml has invalid foramtting
+		t.Fatal(err)
+	}
+
+	for i, line := range lines {
+		if strings.Contains(line, "Testing") {
+			lines[i] = restoreLine
+		}
+	}
+
+	output = strings.Join(lines, "\n")
+	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func TestPackageNoTemplates(t *testing.T) {
+
+	// rename templates directory to test
+	stackPath := filepath.Join("..", "cmd", "testdata", "starter")
+	templates := filepath.Join(stackPath, "templates")
+	newTemplates := filepath.Join(stackPath, "test")
+
+	os.Rename(templates, newTemplates)
+	defer os.Rename(newTemplates, templates)
+
+	// run stack package
+	args := []string{"stack", "package"}
+	_, err := cmdtest.RunAppsodyCmd(args, stackPath, t)
+
+	if err == nil { // stack package will fail as stack.yaml file does not exist
+		t.Fatal(err)
+	}
+
+}
+
+func TestPackageInvalidCustomVars(t *testing.T) {
+
+	// add invalid line to stack.yaml
+	stackPath := filepath.Join("..", "cmd", "testdata", "starter")
+	stackYaml := filepath.Join(stackPath, "stack.yaml")
+
+	restoreLine := ""
+	file, err := ioutil.ReadFile(stackYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(string(file), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, "variable1") {
+			restoreLine = lines[i]
+			lines[i] = "  ^variable1: value1"
+		}
+	}
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// run stack package
+	args := []string{"stack", "package"}
+	_, err = cmdtest.RunAppsodyCmd(args, stackPath, t)
+
+	if err == nil { // stack package will fail as custom variable does not begin with alphanumeric char
+		t.Fatal(err)
+	}
+
+	for i, line := range lines {
+		if strings.Contains(line, "  ^variable1") {
+			lines[i] = restoreLine
+		}
+	}
+
+	output = strings.Join(lines, "\n")
+	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func TestPackageInvalidCustomVarMap(t *testing.T) {
+
+	// add invalid line to stack.yaml
+	stackPath := filepath.Join("..", "cmd", "testdata", "starter")
+	stackYaml := filepath.Join(stackPath, "stack.yaml")
+
+	restoreLine := ""
+	file, err := ioutil.ReadFile(stackYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(string(file), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, "variable1") {
+			restoreLine = lines[i]
+			lines[i] = "  variable1: \n    value1: s"
+		}
+	}
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// run stack package
+	args := []string{"stack", "package"}
+	_, err = cmdtest.RunAppsodyCmd(args, stackPath, t)
+
+	if err == nil { // stack package will fail as custom var isnt string to string map
+		t.Fatal(err)
+	}
+
+	for i, line := range lines {
+		if strings.Contains(line, "value1:") {
+			lines[i] = restoreLine
+		}
+	}
+
+	output = strings.Join(lines, "\n")
+	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func TestPackageInvalidVersion(t *testing.T) {
+
+	// add invalid line to stack.yaml
+	stackPath := filepath.Join("..", "cmd", "testdata", "starter")
+	stackYaml := filepath.Join(stackPath, "stack.yaml")
+
+	restoreLine := ""
+	file, err := ioutil.ReadFile(stackYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(string(file), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, "version:") {
+			restoreLine = lines[i]
+			lines[i] = "version: 0.1"
+		}
+	}
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// run stack package
+	args := []string{"stack", "package"}
+	_, err = cmdtest.RunAppsodyCmd(args, stackPath, t)
+
+	if err == nil { // stack package will fail as version is incomplete
+		t.Fatal(err)
+	}
+
+	for i, line := range lines {
+		if strings.Contains(line, "version:") {
+			lines[i] = restoreLine
+		}
+	}
+
+	output = strings.Join(lines, "\n")
+	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
+
+	if err != nil {
+		t.Fatal(err)
 	}
 
 }
