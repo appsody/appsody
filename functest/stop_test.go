@@ -121,17 +121,9 @@ func TestStopWithName(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log("Created project dir: " + sandbox.ProjectDir)
-
 	// appsody init nodejs-express
 	args := []string{"init", "nodejs-express"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -26,17 +26,10 @@ func TestRunWithDockerOptionsRegex(t *testing.T) {
 	defer cleanup()
 
 	var runOutput string
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log("Created project dir: " + sandbox.ProjectDir)
 
 	args := []string{"init", "nodejs-express"}
 	// appsody init nodejs-express
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}

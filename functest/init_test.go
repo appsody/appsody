@@ -29,17 +29,9 @@ func TestInit(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log("Created project dir: " + sandbox.ProjectDir)
-
 	// appsody init nodejs-express
 	args := []string{"init", "nodejs-express"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,14 +45,6 @@ func TestNoOverwrite(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log("Created project dir: " + sandbox.ProjectDir)
-
 	appsodyFile := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
 
 	appjs := filepath.Join(sandbox.ProjectDir, "app.js")
@@ -68,7 +52,7 @@ func TestNoOverwrite(t *testing.T) {
 	packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
 
 	appjsPath := filepath.Join(sandbox.ProjectDir, "app.js")
-	_, err = os.Create(appjsPath)
+	_, err := os.Create(appjsPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,14 +90,6 @@ func TestOverwrite(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log("Created project dir: " + sandbox.ProjectDir)
-
 	appsodyFile := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
 
 	appjs := filepath.Join(sandbox.ProjectDir, "app.js")
@@ -121,7 +97,7 @@ func TestOverwrite(t *testing.T) {
 	packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
 
 	appjsPath := filepath.Join(sandbox.ProjectDir, "app.js")
-	_, err = os.Create(appjsPath)
+	_, err := os.Create(appjsPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,14 +137,6 @@ func TestNoTemplate(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log("Created project dir: " + sandbox.ProjectDir)
-
 	appsodyFile := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
 
 	appjs := filepath.Join(sandbox.ProjectDir, "app.js")
@@ -177,7 +145,7 @@ func TestNoTemplate(t *testing.T) {
 
 	appjsPath := filepath.Join(sandbox.ProjectDir, "app.js")
 	// file size should be 0 bytes
-	_, err = os.Create(appjsPath)
+	_, err := os.Create(appjsPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,14 +182,6 @@ func TestWhiteList(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log("Created project dir: " + sandbox.ProjectDir)
-
 	appjs := filepath.Join(sandbox.ProjectDir, "app.js")
 	vscode := filepath.Join(sandbox.ProjectDir, ".vscode")
 	project := filepath.Join(sandbox.ProjectDir, ".project")
@@ -232,7 +192,7 @@ func TestWhiteList(t *testing.T) {
 	metadata := filepath.Join(sandbox.ProjectDir, ".metadata")
 	appsodyFile := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
 
-	_, err = os.Create(project)
+	_, err := os.Create(project)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,17 +258,9 @@ func TestInitV2WithDefaultRepoSpecified(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log("Created project dir: " + sandbox.ProjectDir)
-
 	// appsody init nodejs-express
 	args := []string{"init", "incubator/nodejs"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Error(err)
 	}
@@ -320,17 +272,9 @@ func TestInitV2WithNonDefaultRepoSpecified(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log("Created project dir: " + sandbox.ProjectDir)
-
 	// appsody init nodejs-express
 	args := []string{"init", "experimental/nodejs-functions"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Error(err)
 	}
@@ -340,12 +284,6 @@ func TestInitV2WithNonDefaultRepoSpecified(t *testing.T) {
 func TestInitV2WithBadStackSpecified(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
-
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	// appsody init nodejs-express
 	args := []string{"init", "badnodejs-express"}
@@ -359,12 +297,6 @@ func TestInitV2WithBadStackSpecified(t *testing.T) {
 func TestInitV2WithBadRepoSpecified(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
-
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	// appsody init nodejs-express
 	args := []string{"init", "badrepo/nodejs-express"}
@@ -381,15 +313,9 @@ func TestInitV2WithDefaultRepoSpecifiedTemplateNonDefault(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// appsody init nodejs-express
 	args := []string{"init", "incubator/nodejs-express", "scaffold"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Error(err)
 	}
@@ -401,15 +327,9 @@ func TestInitV2WithDefaultRepoSpecifiedTemplateDefault(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// appsody init nodejs-express
 	args := []string{"init", "incubator/nodejs-express", "simple"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Error(err)
 	}
@@ -420,15 +340,9 @@ func TestInitV2WithNoRepoSpecifiedTemplateDefault(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// appsody init nodejs-express
 	args := []string{"init", "nodejs-express", "simple"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Error(err)
 	}
@@ -438,12 +352,6 @@ func TestInitV2WithNoRepoSpecifiedTemplateDefault(t *testing.T) {
 func TestNone(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
-
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
 	packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
@@ -461,12 +369,6 @@ func TestNoneAndNoTemplate(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
 	packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
 
@@ -483,12 +385,6 @@ func TestNoTemplateOnly(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
 	packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
 
@@ -504,12 +400,6 @@ func TestNoTemplateOnly(t *testing.T) {
 func TestNoTemplateAndSimple(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
-
-	// create a temporary dir to create the project and run the test
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	// appsody init nodejs-express
 	args := []string{"init", "nodejs-express", "simple", "--no-template"}

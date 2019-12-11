@@ -52,14 +52,6 @@ func TestExtract(t *testing.T) {
 	// loop through the stacks
 	for i := range stackRaw {
 
-		// create a temporary dir to create the project and run the test
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", sandbox.ProjectDir)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		t.Log("Created project dir: " + sandbox.ProjectDir)
-
 		// create a temporary dir to extract the project, sibling to projectDir
 		parentDir := filepath.Dir(sandbox.ProjectDir)
 
@@ -71,7 +63,7 @@ func TestExtract(t *testing.T) {
 		// appsody init inside projectDir
 		t.Log("Now running appsody init...")
 		args := []string{"init", stackRaw[i]}
-		_, err = cmdtest.RunAppsody(sandbox, args...)
+		_, err := cmdtest.RunAppsody(sandbox, args...)
 		if err != nil {
 			t.Fatal(err)
 		}
