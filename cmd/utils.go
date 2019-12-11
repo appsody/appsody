@@ -91,7 +91,6 @@ func Exists(path string) (bool, error) {
 	return true, err
 }
 
-
 //ExtractDockerEnvFile returns a map with the env vars specified in docker env file
 func ExtractDockerEnvFile(envFileName string) (map[string]string, error) {
 	envVars := make(map[string]string)
