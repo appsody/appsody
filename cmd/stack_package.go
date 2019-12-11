@@ -78,6 +78,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// 4. create/update an appsody repo for the stack
 
 	var imageNamespace string
+	var imageRegistry string
+	var namespaceAndRepo string
 
 	log := rootConfig.LoggingConfig
 
@@ -88,10 +90,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 The packaging process builds the stack image, generates the "tar.gz" archive files for each template, and adds your stack to the "dev.local" repository in your Appsody configuration. You can see the list of your packaged stacks by running 'appsody list dev.local'.`,
 		Example: `  appsody stack package
-  Packages the stack in the current directory, tags the built image with the "dev.local" namespace, and adds the stack to the "dev.local" repository.
+  Packages the stack in the current directory, tags the built image with the default registry and namespace, and adds the stack to the "dev.local" repository.
   
   appsody stack package --image-namespace my-namespace
-  Packages the stack in the current directory, tags the built image with the "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
+  Packages the stack in the current directory, tags the built image with the default registry and "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			log.Info.Log("******************************************")
@@ -195,7 +197,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// docker build
 			// create the image name to be used for the docker image
-			namespaceAndRepo := imageNamespace + "/" + stackID
+			namespaceAndRepo = imageRegistry + "/" + imageNamespace + "/" + stackID
+
 			buildImage := namespaceAndRepo + ":" + stackYaml.Version
 
 			imageDir := filepath.Join(stackPath, "image")
@@ -210,7 +213,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// create the template metadata
-			templateMetadata, err := CreateTemplateMap(labels, stackYaml, imageNamespace)
+			templateMetadata, err := CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
 			if err != nil {
 				return errors.Errorf("Error creating templating mal: %v", err)
 			}
@@ -384,7 +387,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 		},
 	}
 
-	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
+	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "appsody", "Namespace used for creating the images.")
+	stackPackageCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "dev.local", "Registry used for creating the images.")
 
 	return stackPackageCmd
 }
@@ -489,7 +493,7 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 
 // CreateTemplateMap - uses the git labels, stack.yaml, stackID and imageNamespace to create a map
 // with all the necessary data needed for the template
-func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string) (map[string]interface{}, error) {
+func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string, imageRegistry string) (map[string]interface{}, error) {
 
 	// create stack variables and add to templateMetadata map
 	var templateMetadata = make(map[string]interface{})
@@ -525,6 +529,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	// create image map add to templateMetadata map
 	var image = make(map[string]string)
 	image["namespace"] = imageNamespace
+	image["registry"] = imageRegistry
 	templateMetadata["image"] = image
 
 	// loop through user variables and add them to map, must begin with alphanumeric character
