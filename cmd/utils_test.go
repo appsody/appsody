@@ -404,8 +404,8 @@ func TestCopyFailPermissions(t *testing.T) {
 	err = cmd.CopyFile(log, existingFile, nonExistentFile)
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "exit status 1: cp: "+existingFile+": Permission denied") {
-			t.Errorf("String \"exit status 1: cp: "+existingFile+": Permission denied\" not found in output: '%v'", err.Error())
+		if !strings.Contains(err.Error(), "Permission denied") {
+			t.Errorf("String \"Permission denied\" not found in output: '%v'", err.Error())
 		}
 
 	} else {
@@ -508,8 +508,8 @@ func TestMoveFailPermissions(t *testing.T) {
 	err = cmd.MoveDir(log, existingFile, existingDir)
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "exit status 1: cp: "+existingDir+existingFile+": Permission denied") {
-			t.Errorf("String \"exit status 1: cp: "+existingFile+": Permission denied\" not found in output: '%v'", err.Error())
+		if !strings.Contains(err.Error(), "Permission denied") {
+			t.Errorf("String \"Permission denied\" not found in output: '%v'", err.Error())
 		}
 
 	} else {
