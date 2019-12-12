@@ -92,9 +92,9 @@ Complete documentation is available at https://appsody.dev`,
 		//Run: no run action for the root command
 	}
 
-	rootCmd.PersistentFlags().StringVar(&rootConfig.CfgFile, "config", "", "config file (default is $HOME/.appsody/.appsody.yaml)")
-	rootCmd.PersistentFlags().BoolVarP(&rootConfig.Verbose, "verbose", "v", false, "Turns on debug output and logging to a file in $HOME/.appsody/logs")
-	rootCmd.PersistentFlags().BoolVar(&rootConfig.Dryrun, "dryrun", false, "Turns on dry run mode")
+	rootCmd.PersistentFlags().StringVar(&rootConfig.CfgFile, "config", "", "Location of Appsody config files to use. (default '$HOME/.appsody/.appsody.yaml')")
+	rootCmd.PersistentFlags().BoolVarP(&rootConfig.Verbose, "verbose", "v", false, "Prints out more detailed logs on the console, and logs them to a file in $HOME/.appsody/logs.")
+	rootCmd.PersistentFlags().BoolVar(&rootConfig.Dryrun, "dryrun", false, "Lists terminal commands that would be run without executing them.")
 
 	// parse the root flags and init logging before adding all the other commands in case those log messages
 	rootCmd.SetArgs(args)
