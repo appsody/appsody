@@ -624,23 +624,23 @@ func TestImagePushDryrun(t *testing.T) {
 	}
 }
 
-func TestImagePushNoReg(t *testing.T) {
-	var outBuffer bytes.Buffer
-	loggingConfig := &cmd.LoggingConfig{}
-	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+// func TestImagePushNoReg(t *testing.T) {
+// 	var outBuffer bytes.Buffer
+// 	loggingConfig := &cmd.LoggingConfig{}
+// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-	imageName := "notvalid"
+// 	imageName := "notvalid"
 
-	err := cmd.ImagePush(loggingConfig, imageName, false, false)
+// 	err := cmd.ImagePush(loggingConfig, imageName, false, false)
 
-	if err != nil {
-		if !strings.Contains(err.Error(), "An image does not exist locally with the tag: "+imageName) {
-			t.Errorf("String \"An image does not exist locally with the tag: %s, \" not found in output: '%v'", imageName, err.Error())
-		}
-	} else {
-		t.Error("Expected an error to be returned from command, but error was nil")
-	}
-}
+// 	if err != nil {
+// 		if !strings.Contains(err.Error(), "An image does not exist locally with the tag: "+imageName) {
+// 			t.Errorf("String \"An image does not exist locally with the tag: %s, \" not found in output: '%v'", imageName, err.Error())
+// 		}
+// 	} else {
+// 		t.Error("Expected an error to be returned from command, but error was nil")
+// 	}
+// }
 
 // func TestKubeGetFailNoRes(t *testing.T) {
 // 	var outBuffer bytes.Buffer
