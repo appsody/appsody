@@ -51,6 +51,20 @@ func TestPS(t *testing.T) {
 	go func() {
 		_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", containerName}, projectDir, t)
 		runChannel <- err
+		close(runChannel)
+	}()
+
+	defer func() {
+		// run appsody stop to close the docker container
+		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", containerName}, projectDir, t)
+		if err != nil {
+			t.Logf("Ignoring error running appsody stop: %s", err)
+		}
+		// wait for the appsody command/goroutine to finish
+		runErr := <-runChannel
+		if runErr != nil {
+			t.Logf("Ignoring error from the appsody command: %s", runErr)
+		}
 	}()
 
 	// It will take a while for the container to spin up, so let's use docker ps to wait for it
@@ -90,12 +104,4 @@ func TestPS(t *testing.T) {
 	if errStop != nil {
 		t.Logf("Ignoring error running appsody ps: %s", errStop)
 	}
-
-	// defer the appsody stop to close the docker container
-	defer func() {
-		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", "testPSContainer"}, projectDir, t)
-		if err != nil {
-			t.Logf("Ignoring error running appsody stop: %s", err)
-		}
-	}()
 }

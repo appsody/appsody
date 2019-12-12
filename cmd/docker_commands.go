@@ -125,9 +125,9 @@ func RunCommandAndListen(config *RootCommandConfig, commandValue string, args []
 			for consoleScanner.Scan() {
 				text := consoleScanner.Text()
 				if lastByteNewline && (config.Verbose || logger != config.Info) {
-					os.Stdout.WriteString("[" + logger.name + "] ")
+					_, _ = logger.outWriter.Write([]byte("[" + logger.name + "] "))
 				}
-				os.Stdout.WriteString(text)
+				_, _ = logger.outWriter.Write([]byte(text))
 				lastByteNewline = text == "\n"
 			}
 		}()

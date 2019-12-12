@@ -3,13 +3,14 @@
 #### Constant variables
 export STACKSLIST ?= incubator/nodejs
 # use -count=1 to disable cache and -p=1 to stream output live
-GO_TEST_COMMAND := go test -v -count=1 -p=1 -covermode=count -coverprofile=cover.out -coverpkg ./cmd
+GO_TEST_COMMAND := go test -v -count=1 -p=1 -parallel 1 -covermode=count -coverprofile=cover.out -coverpkg ./cmd
 GO_TEST_LOGGING := | tee test.out | grep -E "^\s*(---|===)" ; tail -3 test.out ; awk '/--- FAIL/,/===/' test.out ; ! grep -E "(--- FAIL|^FAIL)" test.out
 GO_TEST_COVER_VIEWER := go tool cover -func=cover.out && go tool cover -html=cover.out
 # Set a default VERSION only if it is not already set
 VERSION ?= 0.0.0
 COMMAND := appsody
 BUILD_PATH := $(PWD)/build
+LOCAL_BIN_PATH := $(PWD)/bin
 PACKAGE_PATH := $(PWD)/package
 DOCS_PATH := $(PWD)/my-project
 GO_PATH := $(shell go env GOPATH)
@@ -23,14 +24,17 @@ BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder:0.1.0
 GH_ORG ?= appsody
-export APPSODY_CONTROLLER_VERSION ?=0.3.2
+export APPSODY_CONTROLLER_VERSION ?=0.3.3
 
 #### Dynamic variables. These change depending on the target name.
-# Gets the current os from the target name, e.g. the 'build-linux' target will result in os = 'linux'
-# CAUTION: All targets that use these variables must have the OS after the first '-' in their name.
-#          For example, these are all good: build-linux, tar-darwin, tar-darwin-new
+# Gets the current os and arch from the target name, e.g. the 'build-linux' target will result in os = 'linux'
+# The arch is defaulted to amd64, otherwise it is taken from the part after the second '-', e.g. 'build-linux-ppc64le'
+# CAUTION: All targets that use these variables must have the OS after the first '-' in their name and 
+#          optionally arch after the second '-'
+#          For example, these are all good: build-linux, tar-darwin, tar-darwin-ppc64le
 os = $(word 2,$(subst -, ,$@))
-build_name = $(COMMAND)-$(VERSION)-$(os)-amd64
+arch = $(or $(word 3,$(subst -, ,$@)), amd64)
+build_name = $(COMMAND)-$(VERSION)-$(os)-$(arch)
 build_binary = $(build_name)$(BINARY_EXT_$(os))
 package_binary = $(COMMAND)$(BINARY_EXT_$(os))
 
@@ -100,6 +104,7 @@ ensure: $(DEP_BINARY) ## Runs `dep ensure` to make sure the Gopkg.lock and /vend
 .PHONY: clean
 clean: ## Removes existing build artifacts in order to get a fresh build
 	rm -rf $(BUILD_PATH)
+	rm -rf $(LOCAL_BIN_PATH)
 	rm -rf $(PACKAGE_PATH)
 	rm -f $(GOLANGCI_LINT_BINARY)
 	rm -f $(DEP_BINARY)
@@ -107,30 +112,47 @@ clean: ## Removes existing build artifacts in order to get a fresh build
 	go clean
 
 .PHONY: build
-build: build-linux build-darwin build-windows ## Build binaries for all operating systems and store them in the build/ dir
+build: build-linux build-darwin build-windows build-linux-ppc64le ## Build binaries for all operating systems and store them in the build/ dir
 
 .PHONY: build-linux
 build-linux: ## Build the linux binary
 
+.PHONY: build-linux-ppc64le
+build-linux-ppc64le: ## Build the linux ppc64le binary
+
 .PHONY: build-windows
 build-windows: ## Build the windows binary
 
-build-linux build-windows: ## Build the binary of the respective operating system
-	GOOS=$(os) CGO_ENABLED=0 GOARCH=amd64 go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION) -X main.CONTROLLERVERSION=$(APPSODY_CONTROLLER_VERSION)"
+build-linux build-linux-ppc64le build-windows: ## Build the binary of the respective operating system
+	GOOS=$(os) CGO_ENABLED=0 GOARCH=$(arch) go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION) -X main.CONTROLLERVERSION=$(APPSODY_CONTROLLER_VERSION)"
 
 .PHONY: build-darwin
-
 build-darwin: ## Build the OSX binary
-	GOOS=$(os) GOARCH=amd64 go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION) -X main.CONTROLLERVERSION=$(APPSODY_CONTROLLER_VERSION)"
+	GOOS=$(os) GOARCH=$(arch) go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION) -X main.CONTROLLERVERSION=$(APPSODY_CONTROLLER_VERSION)"
+
+.PHONY: localbin-darwin
+localbin-darwin: ## copy the darwin binary to local bin
+
+.PHONY: localbin-linux
+localbin-linux: ## copy the linux binary to local bin
+
+.PHONY: localbin-windows
+localbin-windows: ## copy the windows binary to local bin
+
+localbin-darwin localbin-linux localbin-windows:
+	mkdir -p $(LOCAL_BIN_PATH)
+	cp -p $(BUILD_PATH)/$(build_binary) $(LOCAL_BIN_PATH)/appsody
 
 .PHONY: package
-package: build-docs tar-linux deb-linux rpm-linux tar-darwin brew-darwin tar-windows ## Creates packages for all operating systems and store them in package/ dir
+package: build-docs tar-linux tar-linux-ppc64le deb-linux rpm-linux tar-darwin brew-darwin tar-windows ## Creates packages for all operating systems and store them in package/ dir
 
 .PHONY: tar-linux
 tar-linux: build-linux ## Build the linux binary and package it in a .tar.gz file
+.PHONY: tar-linux-ppc64le
+tar-linux-ppc64le: build-linux-ppc64le ## Build the linux binary and package it in a .tar.gz file
 .PHONY: tar-darwin
 tar-darwin: build-darwin ## Build the OSX binary and package it in a .tar.gz file
-tar-linux tar-darwin:
+tar-linux tar-linux-ppc64le tar-darwin:
 	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)
 	tar cfz $(build_name).tar.gz LICENSE README.md $(package_binary)
 	mkdir -p $(PACKAGE_PATH)
