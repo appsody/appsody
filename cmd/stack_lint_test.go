@@ -30,7 +30,7 @@ func TestAppsodyRunMissingInDockerfileStack(t *testing.T) {
 	defer cleanup()
 
 	restoreLine := ""
-	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestAppsodyRunMissingInDockerfileStack(t *testing.T) {
 		}
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestAppsodyRunMissingInDockerfileStack(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +76,7 @@ func TestAppsodyMountsMissingInDockerfileStack(t *testing.T) {
 	defer cleanup()
 
 	restoreLine := ""
-	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestAppsodyMountsMissingInDockerfileStack(t *testing.T) {
 		}
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ func TestAppsodyMountsMissingInDockerfileStack(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -125,7 +125,7 @@ func TestAppsodyWatchDirPresentAndOnChangeMissingInDockerfileStack(t *testing.T)
 	defer cleanup()
 
 	restoreLine := ""
-	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
 
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +143,7 @@ func TestAppsodyWatchDirPresentAndOnChangeMissingInDockerfileStack(t *testing.T)
 			}
 
 			output := strings.Join(lines, "\n")
-			err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+			err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 			if err != nil {
 				t.Fatal(err)
@@ -163,7 +163,7 @@ func TestAppsodyWatchDirPresentAndOnChangeMissingInDockerfileStack(t *testing.T)
 			}
 
 			output = strings.Join(lines, "\n")
-			err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+			err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 			if err != nil {
 				t.Fatal(err)
@@ -185,7 +185,7 @@ func Test_KillValue(t *testing.T) {
 	defer cleanup()
 
 	restoreLine := ""
-	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
 
 	if err != nil {
 		t.Fatal(err)
@@ -201,7 +201,7 @@ func Test_KillValue(t *testing.T) {
 	}
 
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -221,7 +221,7 @@ func Test_KillValue(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -233,7 +233,7 @@ func TestAppsodyRegexValue(t *testing.T) {
 	defer cleanup()
 
 	restoreLine := ""
-	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
 
 	if err != nil {
 		t.Fatal(err)
@@ -249,7 +249,7 @@ func TestAppsodyRegexValue(t *testing.T) {
 	}
 
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -269,7 +269,7 @@ func TestAppsodyRegexValue(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)

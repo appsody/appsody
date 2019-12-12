@@ -14,6 +14,7 @@
 package cmd_test
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -32,7 +33,7 @@ func TestRepoAdd(t *testing.T) {
 	startRepos := cmdtest.ParseRepoList(output)
 
 	addRepoName := "LocalTestRepo"
-	addRepoURL, err := cmdtest.AddLocalRepo(sandbox, addRepoName, "testdata/index.yaml")
+	addRepoURL, err := cmdtest.AddLocalRepo(sandbox, addRepoName, filepath.Join("testdata", "index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
