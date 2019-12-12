@@ -636,6 +636,51 @@ func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
 	return nil
 }
 
+// CopyAllContents copies the files and folders from one place to another, without the parent folder
+func CopyAllContents(log *LoggingConfig, fromDir, toDir string) error {
+	var files []string
+
+	// Get the filepaths within the given folder
+	err := filepath.Walk(fromDir, func(path string, info os.FileInfo, err error) error {
+		log.Debug.logf("Finding files in %s", fromDir)
+		files = append(files, path)
+		return nil
+	})
+	if err != nil {
+		return errors.New(err.Error())
+	}
+
+	// Loop through the files/folders
+	for _, file := range files {
+
+		// Determine the type of the file
+		fi, err := os.Stat(file)
+		if err != nil {
+			return errors.New(err.Error())
+		}
+		switch mode := fi.Mode(); {
+		// If the file is a directory
+		case mode.IsDir():
+			log.Debug.logf("Attempting to copy %s to %s", file, toDir)
+			err := CopyDir(log, file, toDir)
+			if err != nil {
+				return errors.New(err.Error())
+			}
+			// If the file is not a directory
+		case mode.IsRegular():
+			log.Debug.logf("Attempting to copy %s to %s", file, toDir)
+			err := CopyFile(log, file, toDir)
+			if err != nil {
+				return errors.New(err.Error())
+			}
+		default:
+			return errors.New("Unexpected file type")
+		}
+
+	}
+	return nil
+}
+
 // CheckPrereqs checks the prerequisites to run the CLI
 func CheckPrereqs(config *RootCommandConfig) error {
 	if config.Buildah {

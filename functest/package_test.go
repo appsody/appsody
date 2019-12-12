@@ -11,13 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package functest
 
 import (
+	"bytes"
 	"path/filepath"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -25,9 +26,20 @@ func TestPackage(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"stack", "package", filepath.Join("..", "cmd", "testdata", "starter")}
-	_, err := cmdtest.RunAppsody(sandbox, args...)
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
 
+	stackDir := filepath.Join("..", "cmd", "testdata", "starter")
+	err := cmd.CopyAllContents(log, stackDir, sandbox.ProjectDir)
+	if err != nil {
+		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+	} else {
+		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+	}
+
+	args := []string{"stack", "package"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
