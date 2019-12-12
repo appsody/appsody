@@ -65,10 +65,9 @@ type RootCommandConfig struct {
 	StackRegistry    string
 
 	// package scoped, these are mostly for caching
-	setupConfigRun    bool
-	imagePulled       map[string]bool
-	cachedEnvVars     map[string]string
-	cachedStackLabels map[string]string
+	setupConfigRun bool
+	imagePulled    map[string]bool
+	cachedEnvVars  map[string]string
 }
 
 // Regular expression to match ANSI terminal commands so that we can remove them from the log
@@ -103,13 +102,13 @@ Complete documentation is available at https://appsody.dev`,
 	// later the Execute func will parse the flags again
 	rootCmd.FParseErrWhitelist = cobra.FParseErrWhitelist{UnknownFlags: true}
 	_ = rootCmd.ParseFlags(args) // ignore flag errors here because we haven't added all the commands
-	setupErr := setupConfig(args, rootConfig)
-	if setupErr != nil {
-		return rootCmd, rootConfig, setupErr
-	}
 	err := rootConfig.initLogging()
 	if err != nil {
 		return rootCmd, rootConfig, err
+	}
+	setupErr := setupConfig(args, rootConfig)
+	if setupErr != nil {
+		return rootCmd, rootConfig, setupErr
 	}
 
 	rootCmd.AddCommand(

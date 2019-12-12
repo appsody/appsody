@@ -105,7 +105,7 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 	cmd.PersistentFlags().BoolVarP(&config.publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
 	cmd.PersistentFlags().BoolVar(&config.disableWatcher, "no-watcher", false, "Disable file watching, regardless of container environment variable settings.")
 	cmd.PersistentFlags().BoolVarP(&config.interactive, "interactive", "i", false, "Attach STDIN to the container for interactive TTY mode")
-	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\".")
+	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\". The following Docker options are not supported:  '--help','-p','--publish-all','-P','-u','-—user','-—name','-—network','-t','-—tty,'—rm','—entrypoint','-v','—volume'.")
 
 }
 
@@ -143,7 +143,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		return configErr
 	}
 
-	err := CheckPrereqs()
+	err := CheckPrereqs(config.RootCommandConfig)
 	if err != nil {
 		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
@@ -290,6 +290,9 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.disableWatcher {
 		cmdArgs = append(cmdArgs, "--no-watcher")
 	}
+	if config.interactive {
+		cmdArgs = append(cmdArgs, "--interactive")
+	}
 	if !config.Buildah {
 		config.Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
 		execCmd, err := DockerRunAndListen(config.RootCommandConfig, cmdArgs, config.Container, config.interactive)
@@ -339,7 +342,9 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 
-		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, depsMount, dryrun)
+		dockerEnvVars := ExtractDockerEnvVars(config.dockerOptions)
+		config.Debug.Logf("Docker env vars extracted from docker options: %v", dockerEnvVars)
+		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, dockerEnvVars, depsMount, dryrun)
 		if err != nil {
 			return err
 		}
