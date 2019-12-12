@@ -11,13 +11,14 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplication":            schema_pkg_apis_appsody_v1beta1_AppsodyApplication(ref),
-		"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationAutoScaling": schema_pkg_apis_appsody_v1beta1_AppsodyApplicationAutoScaling(ref),
-		"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationService":     schema_pkg_apis_appsody_v1beta1_AppsodyApplicationService(ref),
-		"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationSpec":        schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref),
-		"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationStatus":      schema_pkg_apis_appsody_v1beta1_AppsodyApplicationStatus(ref),
-		"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationStorage":     schema_pkg_apis_appsody_v1beta1_AppsodyApplicationStorage(ref),
-		"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.StatusCondition":               schema_pkg_apis_appsody_v1beta1_StatusCondition(ref),
+		"./pkg/apis/appsody/v1beta1.AppsodyApplication":            schema_pkg_apis_appsody_v1beta1_AppsodyApplication(ref),
+		"./pkg/apis/appsody/v1beta1.AppsodyApplicationAutoScaling": schema_pkg_apis_appsody_v1beta1_AppsodyApplicationAutoScaling(ref),
+		"./pkg/apis/appsody/v1beta1.AppsodyApplicationService":     schema_pkg_apis_appsody_v1beta1_AppsodyApplicationService(ref),
+		"./pkg/apis/appsody/v1beta1.AppsodyApplicationSpec":        schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref),
+		"./pkg/apis/appsody/v1beta1.AppsodyApplicationStatus":      schema_pkg_apis_appsody_v1beta1_AppsodyApplicationStatus(ref),
+		"./pkg/apis/appsody/v1beta1.ServiceBindingConsumes":        schema_pkg_apis_appsody_v1beta1_ServiceBindingConsumes(ref),
+		"./pkg/apis/appsody/v1beta1.ServiceBindingProvides":        schema_pkg_apis_appsody_v1beta1_ServiceBindingProvides(ref),
+		"./pkg/apis/appsody/v1beta1.StatusCondition":               schema_pkg_apis_appsody_v1beta1_StatusCondition(ref),
 	}
 }
 
@@ -26,6 +27,7 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplication(ref common.ReferenceCall
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "AppsodyApplication is the Schema for the appsodyapplications API",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"kind": {
 						SchemaProps: spec.SchemaProps{
@@ -48,19 +50,19 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplication(ref common.ReferenceCall
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationSpec"),
+							Ref: ref("./pkg/apis/appsody/v1beta1.AppsodyApplicationSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationStatus"),
+							Ref: ref("./pkg/apis/appsody/v1beta1.AppsodyApplicationStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationSpec", "github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"./pkg/apis/appsody/v1beta1.AppsodyApplicationSpec", "./pkg/apis/appsody/v1beta1.AppsodyApplicationStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -69,6 +71,7 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationAutoScaling(ref common.Re
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "AppsodyApplicationAutoScaling ...",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"targetCPUUtilizationPercentage": {
 						SchemaProps: spec.SchemaProps{
@@ -91,7 +94,6 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationAutoScaling(ref common.Re
 				},
 			},
 		},
-		Dependencies: []string{},
 	}
 }
 
@@ -100,6 +102,7 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationService(ref common.Refere
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "AppsodyApplicationService ...",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
@@ -117,6 +120,7 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationService(ref common.Refere
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Type:   []string{"string"},
@@ -126,10 +130,33 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationService(ref common.Refere
 							},
 						},
 					},
+					"consumes": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("./pkg/apis/appsody/v1beta1.ServiceBindingConsumes"),
+									},
+								},
+							},
+						},
+					},
+					"provides": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("./pkg/apis/appsody/v1beta1.ServiceBindingProvides"),
+						},
+					},
 				},
 			},
 		},
-		Dependencies: []string{},
+		Dependencies: []string{
+			"./pkg/apis/appsody/v1beta1.ServiceBindingConsumes", "./pkg/apis/appsody/v1beta1.ServiceBindingProvides"},
 	}
 }
 
@@ -138,6 +165,7 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "AppsodyApplicationSpec defines the desired state of AppsodyApplication",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"version": {
 						SchemaProps: spec.SchemaProps{
@@ -159,7 +187,7 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 					},
 					"autoscaling": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationAutoScaling"),
+							Ref: ref("./pkg/apis/appsody/v1beta1.AppsodyApplicationAutoScaling"),
 						},
 					},
 					"pullPolicy": {
@@ -175,6 +203,12 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 						},
 					},
 					"volumes": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": "name",
+								"x-kubernetes-list-type":     "map",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -187,6 +221,11 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 						},
 					},
 					"volumeMounts": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -215,7 +254,7 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 					},
 					"service": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationService"),
+							Ref: ref("./pkg/apis/appsody/v1beta1.AppsodyApplicationService"),
 						},
 					},
 					"expose": {
@@ -225,6 +264,11 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 						},
 					},
 					"envFrom": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -237,6 +281,12 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 						},
 					},
 					"env": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": "name",
+								"x-kubernetes-list-type":     "map",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -255,6 +305,11 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 						},
 					},
 					"architecture": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "set",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -269,7 +324,7 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 					},
 					"storage": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationStorage"),
+							Ref: ref("./pkg/apis/appsody/v1beta1.AppsodyApplicationStorage"),
 						},
 					},
 					"createKnativeService": {
@@ -286,7 +341,7 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 					},
 					"monitoring": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationMonitoring"),
+							Ref: ref("./pkg/apis/appsody/v1beta1.AppsodyApplicationMonitoring"),
 						},
 					},
 					"createAppDefinition": {
@@ -295,12 +350,30 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationSpec(ref common.Reference
 							Format: "",
 						},
 					},
+					"initContainers": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": "name",
+								"x-kubernetes-list-type":     "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Container"),
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"applicationImage"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationAutoScaling", "github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationMonitoring", "github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationService", "github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.AppsodyApplicationStorage", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Probe", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
+			"./pkg/apis/appsody/v1beta1.AppsodyApplicationAutoScaling", "./pkg/apis/appsody/v1beta1.AppsodyApplicationMonitoring", "./pkg/apis/appsody/v1beta1.AppsodyApplicationService", "./pkg/apis/appsody/v1beta1.AppsodyApplicationStorage", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Probe", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
 	}
 }
 
@@ -309,14 +382,41 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationStatus(ref common.Referen
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "AppsodyApplicationStatus defines the observed state of AppsodyApplication",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"conditions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.StatusCondition"),
+										Ref: ref("./pkg/apis/appsody/v1beta1.StatusCondition"),
+									},
+								},
+							},
+						},
+					},
+					"consumedServices": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type: []string{"array"},
+										Items: &spec.SchemaOrArray{
+											Schema: &spec.Schema{
+												SchemaProps: spec.SchemaProps{
+													Type:   []string{"string"},
+													Format: "",
+												},
+											},
+										},
 									},
 								},
 							},
@@ -326,17 +426,30 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationStatus(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1.StatusCondition"},
+			"./pkg/apis/appsody/v1beta1.StatusCondition"},
 	}
 }
 
-func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationStorage(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_appsody_v1beta1_ServiceBindingConsumes(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "AppsodyApplicationStorage ...",
+				Description: "ServiceBindingConsumes represents a service to be consumed",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"size": {
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"category": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
 							Format: "",
@@ -348,16 +461,49 @@ func schema_pkg_apis_appsody_v1beta1_AppsodyApplicationStorage(ref common.Refere
 							Format: "",
 						},
 					},
-					"volumeClaimTemplate": {
+				},
+				Required: []string{"name", "category"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_appsody_v1beta1_ServiceBindingProvides(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ServiceBindingProvides represents information about",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"category": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/api/core/v1.PersistentVolumeClaim"),
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"context": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"protocol": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"auth": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("./pkg/apis/appsody/v1beta1.ServiceBindingAuth"),
 						},
 					},
 				},
+				Required: []string{"category"},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/core/v1.PersistentVolumeClaim"},
+			"./pkg/apis/appsody/v1beta1.ServiceBindingAuth"},
 	}
 }
 
@@ -366,6 +512,7 @@ func schema_pkg_apis_appsody_v1beta1_StatusCondition(ref common.ReferenceCallbac
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "StatusCondition ...",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"lastTransitionTime": {
 						SchemaProps: spec.SchemaProps{

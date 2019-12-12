@@ -14,6 +14,7 @@
 package cmd
 
 import (
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -71,6 +72,40 @@ func generateDoc(log *LoggingConfig, commandDocFile string, rootCmd *cobra.Comma
 			log.Error.log("Doc file generation failed: ", markdownGenErr)
 			return markdownGenErr
 		}
+	}
+	escapedChars := []string{"<"}
+	buf, ioErr := ioutil.ReadFile(commandDocFile)
+	if ioErr != nil {
+		log.Error.log("Doc file could not be read: ", ioErr)
+		return ioErr
+	}
+	docString := string(buf)
+	docParts := strings.Split(docString, "`")
+
+	for docCtr := 0; docCtr < len(docParts); docCtr = docCtr + 2 {
+		if strings.Contains(docParts[docCtr], "<") {
+			for _, escChar := range escapedChars {
+				docParts[docCtr] = strings.ReplaceAll(docParts[docCtr], escChar, "\\<")
+			}
+		}
+	}
+	finalString := ""
+	for writeCtr := 0; writeCtr < len(docParts); writeCtr++ {
+		if !(writeCtr%2 == 0) {
+			finalString += "`"
+		}
+
+		finalString += docParts[writeCtr]
+		if !(writeCtr%2 == 0) {
+			finalString += "`"
+		}
+
+	}
+
+	ioErr = ioutil.WriteFile(commandDocFile, []byte(finalString), 0644)
+	if ioErr != nil {
+		log.Error.log("Doc file could not be written: ", ioErr)
+		return ioErr
 	}
 	return nil
 
