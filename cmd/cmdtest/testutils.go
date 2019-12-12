@@ -31,6 +31,8 @@ import (
 
 const CLEANUP = true
 
+const TestDirPath = "../cmd/testdata"
+
 // Repository struct represents an appsody repository
 type Repository struct {
 	Name string

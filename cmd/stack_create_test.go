@@ -16,6 +16,7 @@ package cmd_test
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -31,7 +32,7 @@ func TestStackCreateSampleStack(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--config", "testdata/default_repository_config/config.yaml"}
+	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join("testdata", "default_repository_config", "config.yaml")}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
@@ -58,7 +59,7 @@ func TestStackCreateWithCopyTag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--config", "testdata/default_repository_config/config.yaml", "--copy", "incubator/nodejs"}
+	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join("testdata", "default_repository_config", "config.yaml"), "--copy", "incubator/nodejs"}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
@@ -218,7 +219,7 @@ func TestStackAlreadyExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--config", "testdata/default_repository_config/config.yaml"}
+	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join("testdata", "default_repository_config", "config.yaml")}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
