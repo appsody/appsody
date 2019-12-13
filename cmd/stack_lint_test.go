@@ -356,7 +356,8 @@ func TestLintWithMissingFile(t *testing.T) {
 }
 
 func RestoreSampleStack(fixStack []string) {
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	currentDir, _ := os.Getwd()
+	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	for _, missingContent := range fixStack {
 		if missingContent == filepath.Join(testStackPath, "image/config") || missingContent == filepath.Join(testStackPath, "image/project") {
 			osErr := os.Mkdir(missingContent, os.ModePerm)
