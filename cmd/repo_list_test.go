@@ -25,9 +25,9 @@ var repoListTests = []struct {
 	configFile       string // input
 	expectedNumRepos int    // number of expected repositories to list
 }{
-	{filepath.Join("testdata", "empty_repository_config", "config.yaml"), 0},
-	{filepath.Join("testdata", "default_repository_config", "config.yaml"), 1},
-	{filepath.Join("testdata", "multiple_repository_config", "config.yaml"), 2},
+	{filepath.Join(cmdtest.TestDirPath, "empty_repository_config", "config.yaml"), 0},
+	{filepath.Join(cmdtest.TestDirPath, "default_repository_config", "config.yaml"), 1},
+	{filepath.Join(cmdtest.TestDirPath, "multiple_repository_config", "config.yaml"), 2},
 }
 
 func TestRepoList(t *testing.T) {
@@ -61,7 +61,7 @@ func TestRepoListJson(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"repo", "list", "--config", filepath.Join("testdata", "multiple_repository_config", "config.yaml"), "-o", "json"}
+	args := []string{"repo", "list", "--config", filepath.Join(cmdtest.TestDirPath, "multiple_repository_config", "config.yaml"), "-o", "json"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +78,7 @@ func TestRepoListYaml(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"repo", "list", "--config", filepath.Join("testdata", "multiple_repository_config", "config.yaml"), "-o", "yaml"}
+	args := []string{"repo", "list", "--config", filepath.Join(cmdtest.TestDirPath, "multiple_repository_config", "config.yaml"), "-o", "yaml"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)

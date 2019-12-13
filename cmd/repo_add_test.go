@@ -33,7 +33,7 @@ func TestRepoAdd(t *testing.T) {
 	startRepos := cmdtest.ParseRepoList(output)
 
 	addRepoName := "LocalTestRepo"
-	addRepoURL, err := cmdtest.AddLocalRepo(sandbox, addRepoName, filepath.Join("testdata", "index.yaml"))
+	addRepoURL, err := cmdtest.AddLocalRepo(sandbox, addRepoName, filepath.Join(cmdtest.TestDirPath, "index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -30,13 +30,18 @@ func TestPackage(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join("..", "cmd", "testdata", "starter")
-	err := cmd.CopyAllContents(log, stackDir, sandbox.ProjectDir)
+	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	err := cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
 	if err != nil {
 		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
 	} else {
 		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
 	}
+
+	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
+	// folder within the temp directory that has been generated for sandboxing purposes, rather than
+	// the usual core temp directory
+	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
 
 	args := []string{"stack", "package"}
 	_, err = cmdtest.RunAppsody(sandbox, args...)

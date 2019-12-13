@@ -279,8 +279,7 @@ func TestLintWithValidStack(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	currentDir, _ := os.Getwd()
-	args := []string{"stack", "lint", filepath.Join(currentDir, "testdata", "test-stack")}
+	args := []string{"stack", "lint", filepath.Join(cmdtest.TestDirPath, "test-stack")}
 
 	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil { //Lint check should pass, if not fail the test
@@ -337,8 +336,7 @@ func TestLintWithMissingFile(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
 	args := []string{"stack", "lint"}
 	removeReadme := filepath.Join(testStackPath, "README.md")
 	removeArray := []string{removeReadme}
@@ -358,8 +356,7 @@ func TestLintWithMissingFile(t *testing.T) {
 }
 
 func RestoreSampleStack(fixStack []string) {
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
+	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
 	for _, missingContent := range fixStack {
 		if missingContent == filepath.Join(testStackPath, "image/config") || missingContent == filepath.Join(testStackPath, "image/project") {
 			osErr := os.Mkdir(missingContent, os.ModePerm)
