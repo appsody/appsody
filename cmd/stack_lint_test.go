@@ -15,7 +15,6 @@
 package cmd_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -294,17 +293,11 @@ func TestLintWithMissingConfig(t *testing.T) {
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	args := []string{"stack", "lint", testStackPath}
-	removeConf := filepath.Join(testStackPath, "image", "config")
-	removeArray := []string{removeConf, filepath.Join(removeConf, "app-deploy.yaml")}
-
-	os.RemoveAll(removeConf)
 	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil { //Lint check should pass, if not fail the test
 		t.Fatal(err)
 	}
-
-	RestoreSampleStack(removeArray)
 }
 
 func TestLintWithMissingProject(t *testing.T) {
@@ -314,61 +307,23 @@ func TestLintWithMissingProject(t *testing.T) {
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	args := []string{"stack", "lint", testStackPath}
-	removeProj := filepath.Join(testStackPath, "image", "project")
-	removeArray := []string{removeProj, filepath.Join(removeProj, "Dockerfile")}
-
-	osErr := os.RemoveAll(removeProj)
-
-	if osErr != nil {
-		t.Fatal(osErr)
-	}
 
 	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil { //Lint check should pass, if not fail the test
 		t.Fatal(err)
 	}
-
-	RestoreSampleStack(removeArray)
 }
 
 func TestLintWithMissingFile(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
 	args := []string{"stack", "lint"}
-	removeReadme := filepath.Join(testStackPath, "README.md")
-	removeArray := []string{removeReadme}
-
-	osErr := os.RemoveAll(removeReadme)
-	if osErr != nil {
-		t.Fatal(osErr)
-	}
 
 	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil { //Lint check should fail, if not fail the test
 		t.Fatal(err)
-	}
-
-	RestoreSampleStack(removeArray)
-}
-
-func RestoreSampleStack(fixStack []string) {
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
-	for _, missingContent := range fixStack {
-		if missingContent == filepath.Join(testStackPath, "image/config") || missingContent == filepath.Join(testStackPath, "image/project") {
-			osErr := os.Mkdir(missingContent, os.ModePerm)
-			if osErr != nil {
-				fmt.Println(osErr)
-			}
-		} else {
-			_, osErr := os.Create(missingContent)
-			if osErr != nil {
-				fmt.Println(osErr)
-			}
-		}
 	}
 }
