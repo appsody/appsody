@@ -35,6 +35,8 @@ import (
 // nothing is broken.
 
 func TestExtract(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	t.Log("stacksList is: ", stacksList)
 
@@ -50,13 +52,8 @@ func TestExtract(t *testing.T) {
 	// loop through the stacks
 	for i := range stackRaw {
 
-		// create a temporary dir to create the project and run the test
-		projectDir := cmdtest.GetTempProjectDir(t)
-		defer os.RemoveAll(projectDir)
-		t.Log("Created project dir: " + projectDir)
-
 		// create a temporary dir to extract the project, sibling to projectDir
-		parentDir := filepath.Dir(projectDir)
+		parentDir := filepath.Dir(sandbox.ProjectDir)
 
 		extractDir := parentDir + "/appsody-extract-test-extract-" + strings.ReplaceAll(stackRaw[i], "/", "_")
 
@@ -65,14 +62,16 @@ func TestExtract(t *testing.T) {
 
 		// appsody init inside projectDir
 		t.Log("Now running appsody init...")
-		_, err := cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
+		args := []string{"init", stackRaw[i]}
+		_, err := cmdtest.RunAppsody(sandbox, args...)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// appsody extract: running in projectDir, extracting into extractDir
 		t.Log("Now running appsody extract...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"extract", "--target-dir", extractDir, "-v"}, projectDir, t)
+		args = []string{"extract", "--target-dir", extractDir, "-v"}
+		_, err = cmdtest.RunAppsody(sandbox, args...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -94,7 +93,7 @@ func TestExtract(t *testing.T) {
 			t.Fatal("Error getting current directory: ", err)
 		}
 
-		err = os.Chdir(projectDir)
+		err = os.Chdir(sandbox.ProjectDir)
 		if err != nil {
 			t.Fatal("Error changing directory: ", err)
 		}
@@ -139,7 +138,7 @@ func TestExtract(t *testing.T) {
 			if strings.HasPrefix(src, "~") {
 				local = strings.Replace(src, "~", homeDir, 1)
 			} else {
-				local = projectDir + "/" + src
+				local = sandbox.ProjectDir + "/" + src
 			}
 			t.Log("local: ", local)
 			t.Log("remote: ", remote)
