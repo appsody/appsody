@@ -317,6 +317,9 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	}
 	testDockerOptions2 := []string{
 		"--env A=Val1 -e B=Val2",
+		"--env=A=Val1 -e=B=Val2",
+		"--env A=Val1 -e=B=Val2",
+		"--env=A=Val1 -e B=Val2",
 		"-w /path/to/dir -e A=Val1 -e B=Val2",
 		"-w /path/to/dir     -e A=Val1    -e     B=Val2",
 		"--workdir /path/to/dir -e A=Val1 -e B=Val2",

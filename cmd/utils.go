@@ -147,16 +147,20 @@ func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
 	}
 	tokens := strings.Fields(dockerOptions)
 	for idx, token := range tokens {
+		nextToken := ""
 		if token == "-e" || token == "--env" {
 			if len(tokens) > idx+1 {
-				nextToken := tokens[idx+1]
-				if strings.Contains(nextToken, "=") {
-					nextToken = strings.ReplaceAll(nextToken, "\"", "")
-					keyValuePair := strings.Split(nextToken, "=")
-					if len(keyValuePair) > 1 {
-						envVars[keyValuePair[0]] = keyValuePair[1]
-					}
-				}
+				nextToken = tokens[idx+1]
+			}
+		} else if strings.Contains(token, "-e=") || strings.Contains(token, "-env=") {
+			posEqual := strings.Index(token, "=")
+			nextToken = token[posEqual+1:]
+		}
+		if nextToken != "" && strings.Contains(nextToken, "=") {
+			nextToken = strings.ReplaceAll(nextToken, "\"", "")
+			keyValuePair := strings.Split(nextToken, "=")
+			if len(keyValuePair) > 1 {
+				envVars[keyValuePair[0]] = keyValuePair[1]
 			}
 		}
 	}
