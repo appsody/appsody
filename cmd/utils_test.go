@@ -336,6 +336,7 @@ func TestExtractDockerEnvVars(t *testing.T) {
 
 	testDockerOptions4 := []string{
 		"--env-file ./testdata/test_docker_options/test_docker_options.env",
+		"--env-file=./testdata/test_docker_options/test_docker_options.env",
 		"--env-file ./testdata/test_docker_options/test_docker_options.env -w /whatever/it/is",
 		" --env-file ./testdata/test_docker_options/test_docker_options.env   -w     /whatever/it/is",
 	}

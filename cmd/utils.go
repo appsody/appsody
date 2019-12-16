@@ -128,9 +128,13 @@ func ExtractDockerEnvFile(envFileName string) (map[string]string, error) {
 func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
 	//Check whether there's --env-file, this needs to be processed first
 	var envVars map[string]string
-	envFilePos := strings.Index(dockerOptions, "--env-file")
+	envFilePos := strings.Index(dockerOptions, "--env-file=")
+	lenFlag := len("--env-file=")
+	if envFilePos < 0 {
+		envFilePos = strings.Index(dockerOptions, "--env-file")
+	}
 	if envFilePos >= 0 {
-		tokens := strings.Fields(dockerOptions[envFilePos+len("--env-file"):])
+		tokens := strings.Fields(dockerOptions[envFilePos+lenFlag:])
 		if len(tokens) > 0 {
 			var err error
 			envVars, err = ExtractDockerEnvFile(tokens[0])
