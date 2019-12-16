@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -38,6 +39,8 @@ var validProjectNameTests = []string{
 	// 68 chars is valid
 	"a2345678901234567890123456789012345678901234567890123456789012345678",
 }
+
+const TravisTesting = false
 
 func TestValidProjectNames(t *testing.T) {
 
@@ -309,6 +312,10 @@ func TestValidateHostName(t *testing.T) {
 }
 
 func TestCopy(t *testing.T) {
+
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
@@ -365,8 +372,14 @@ func TestCopyFailFNF(t *testing.T) {
 	err = cmd.CopyFile(log, nonExistentFile, existingFile)
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+		if runtime.GOOS == "windows" {
+			if !strings.Contains(err.Error(), "The system cannot find the file specified") {
+				t.Errorf("String \"The system cannot find the file specified\" not found in output: '%v'", err.Error())
+			}
+		} else {
+			if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
+				t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+			}
 		}
 
 	} else {
@@ -375,6 +388,9 @@ func TestCopyFailFNF(t *testing.T) {
 }
 
 func TestCopyFailPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
@@ -423,8 +439,14 @@ func TestMoveFailFNF(t *testing.T) {
 	err := cmd.MoveDir(log, nonExistentFile, "../")
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+		if runtime.GOOS == "windows" {
+			if !strings.Contains(err.Error(), "Could not copy "+nonExistentFile) {
+				t.Errorf("String \"Could not copy "+nonExistentFile+"\" not found in output: '%v'", err.Error())
+			}
+		} else {
+			if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
+				t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+			}
 		}
 
 	} else {
@@ -433,6 +455,11 @@ func TestMoveFailFNF(t *testing.T) {
 }
 
 func TestMove(t *testing.T) {
+
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
@@ -508,8 +535,14 @@ func TestMoveFailPermissions(t *testing.T) {
 	err = cmd.MoveDir(log, existingFile, existingDir)
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "Permission denied") {
-			t.Errorf("String \"Permission denied\" not found in output: '%v'", err.Error())
+		if runtime.GOOS == "windows" {
+			if !strings.Contains(err.Error(), "Could not copy "+existingFile+" to "+existingDir) {
+				t.Errorf("String \"Permission denied\" not found in output: '%v'", err.Error())
+			}
+		} else {
+			if !strings.Contains(err.Error(), "Permission denied") {
+				t.Errorf("String \"Could not copy "+existingFile+" to"+existingDir+"\" not found in output: '%v'", err.Error())
+			}
 		}
 
 	} else {
@@ -542,15 +575,22 @@ func TestCopyDirFailFNF(t *testing.T) {
 	err = cmd.CopyDir(log, nonExistentFile, existingFile)
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+		if runtime.GOOS == "windows" {
+			if !strings.Contains(err.Error(), "Could not copy "+nonExistentFile+" to "+existingFile) {
+				t.Errorf("String \"Could not copy "+nonExistentFile+" to "+existingFile+"\" not found in output: '%v'", err.Error())
+			}
+		} else {
+			if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
+				t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+			}
 		}
 	} else {
 		t.Error("Expected an error to be returned from command, but error was nil")
 	}
 }
 
-// func TestGetGitLables(t *testing.T) {
+// func TestGetGitLables(t *testing.T)
+
 // 	var outBuffer bytes.Buffer
 // 	loggingConfig := &cmd.LoggingConfig{}
 // 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
@@ -624,57 +664,63 @@ func TestImagePushDryrun(t *testing.T) {
 	}
 }
 
-// func TestImagePushNoReg(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestImagePushNoReg(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	imageName := "notvalid"
+	imageName := "notvalid"
 
-// 	err := cmd.ImagePush(loggingConfig, imageName, false, false)
+	err := cmd.ImagePush(loggingConfig, imageName, false, false)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "An image does not exist locally with the tag: "+imageName) {
-// 			t.Errorf("String \"An image does not exist locally with the tag: %s, \" not found in output: '%v'", imageName, err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	if err != nil {
+		if !strings.Contains(err.Error(), "An image does not exist locally with the tag: "+imageName) {
+			t.Errorf("String \"An image does not exist locally with the tag: %s, \" not found in output: '%v'", imageName, err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
-// func TestKubeGetFailNoRes(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestKubeGetFailNoRes(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	cmdParms := []string{}
-// 	_, err := cmd.KubeGet(loggingConfig, cmdParms, "", false)
+	cmdParms := []string{}
+	_, err := cmd.KubeGet(loggingConfig, cmdParms, "", false)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "exit status 1: You must specify the type of resource to get.") {
-// 			t.Errorf("String \"exit status 1: You must specify the type of resource to get.\" not found in output: '%v'", err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	if err != nil {
+		if !strings.Contains(err.Error(), "exit status 1: You must specify the type of resource to get.") {
+			t.Errorf("String \"exit status 1: You must specify the type of resource to get.\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
-// func TestKubeGetFailIncorrectRes(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestKubeGetFailIncorrectRes(t *testing.T) {
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	cmdParms := []string{"invalid"}
-// 	_, err := cmd.KubeGet(loggingConfig, cmdParms, "", false)
+	cmdParms := []string{"invalid"}
+	_, err := cmd.KubeGet(loggingConfig, cmdParms, "", false)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "kubectl get failed: exit status 1: error: the server doesn't have a resource type \"invalid\"") {
-// 			t.Errorf("String \"kubectl get failed: exit status 1: error: the server doesn't have a resource type \"invalid\"\" not found in output: '%v'", err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl get failed: exit status 1: error: the server doesn't have a resource type \"invalid\"") {
+			t.Errorf("String \"kubectl get failed: exit status 1: error: the server doesn't have a resource type \"invalid\"\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
 func TestKubeApplyDryrun(t *testing.T) {
 	var outBuffer bytes.Buffer
@@ -690,92 +736,101 @@ func TestKubeApplyDryrun(t *testing.T) {
 	}
 }
 
-// func TestKubeApplyFailFNF(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestKubeApplyFailFNF(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	fileName := "file"
+	fileName := "file"
 
-// 	err := cmd.KubeApply(loggingConfig, fileName, "", false)
+	err := cmd.KubeApply(loggingConfig, fileName, "", false)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "kubectl apply failed: exit status 1: error: the path \""+fileName+"\" does not exist") {
-// 			t.Errorf("String \"kubectl apply failed: exit status 1: error: the path \"%s\" does not exist\" not found in output: '%v'", fileName, err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl apply failed: exit status 1: error: the path \""+fileName+"\" does not exist") {
+			t.Errorf("String \"kubectl apply failed: exit status 1: error: the path \"%s\" does not exist\" not found in output: '%v'", fileName, err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
-// func TestKubeApplyFailFileInvalid(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestKubeApplyFailFileInvalid(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	fileName := "file"
+	fileName := "file"
 
-// 	// Ensure that the fake yaml file is deleted
-// 	defer func() {
-// 		err := os.Remove(fileName)
-// 		if err != nil {
-// 			t.Errorf("Error removing the file: %s", err)
-// 		}
-// 	}()
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(fileName)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
 
-// 	// Attempt to create the fake file
-// 	_, err := os.Create(fileName)
-// 	if err != nil {
-// 		t.Errorf("Error creating the file: %v", err)
-// 	}
+	// Attempt to create the fake file
+	_, err := os.Create(fileName)
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
 
-// 	err = cmd.KubeApply(loggingConfig, fileName, "", false)
+	err = cmd.KubeApply(loggingConfig, fileName, "", false)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "kubectl apply failed: exit status 1: error: no objects passed to apply") {
-// 			t.Errorf("String \"kubectl apply failed: exit status 1: error: no objects passed to apply\" not found in output: '%v'", err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl apply failed: exit status 1: error: no objects passed to apply") {
+			t.Errorf("String \"kubectl apply failed: exit status 1: error: no objects passed to apply\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
-// func TestKubeApplyFailPermission(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestKubeApplyFailPermission(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	fileName := "file"
+	fileName := "file"
 
-// 	// Ensure that the fake yaml file is deleted
-// 	defer func() {
-// 		err := os.Remove(fileName)
-// 		if err != nil {
-// 			t.Errorf("Error removing the file: %s", err)
-// 		}
-// 	}()
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(fileName)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
 
-// 	// Attempt to create the fake file
-// 	file, err := os.Create(fileName)
-// 	if err != nil {
-// 		t.Errorf("Error creating the file: %v", err)
-// 	}
+	// Attempt to create the fake file
+	file, err := os.Create(fileName)
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
 
-// 	err = file.Chmod(0333)
-// 	if err != nil {
-// 		t.Errorf("Error changing file permissions: %s", err)
-// 	}
+	err = file.Chmod(0333)
+	if err != nil {
+		t.Errorf("Error changing file permissions: %s", err)
+	}
 
-// 	err = cmd.KubeApply(loggingConfig, fileName, "", false)
+	err = cmd.KubeApply(loggingConfig, fileName, "", false)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "kubectl apply failed: exit status 1: error: open file: permission denied") {
-// 			t.Errorf("String \"kubectl apply failed: exit status 1: error: open file: permission denied\" not found in output: '%v'", err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl apply failed: exit status 1: error: open file: permission denied") {
+			t.Errorf("String \"kubectl apply failed: exit status 1: error: open file: permission denied\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
 func TestKubeDeleteDryrun(t *testing.T) {
 	var outBuffer bytes.Buffer
@@ -791,94 +846,107 @@ func TestKubeDeleteDryrun(t *testing.T) {
 	}
 }
 
-// func TestKubeDeleteFailFNF(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestKubeDeleteFailFNF(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
 
-// 	fileName := "file"
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	err := cmd.KubeDelete(loggingConfig, fileName, "", false)
+	fileName := "file"
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "kubectl delete failed: exit status 1: error: the path \""+fileName+"\" does not exist") {
-// 			t.Errorf("String \"kubectl delete failed: exit status 1: error: the path \"%s\" does not exist\" not found in output: '%v'", fileName, err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	err := cmd.KubeDelete(loggingConfig, fileName, "", false)
 
-// func TestKubeDeleteFailPermission(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl delete failed: exit status 1: error: the path \""+fileName+"\" does not exist") {
+			t.Errorf("String \"kubectl delete failed: exit status 1: error: the path \"%s\" does not exist\" not found in output: '%v'", fileName, err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
-// 	fileName := "file"
+func TestKubeDeleteFailPermission(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	// Ensure that the fake yaml file is deleted
-// 	defer func() {
-// 		err := os.Remove(fileName)
-// 		if err != nil {
-// 			t.Errorf("Error removing the file: %s", err)
-// 		}
-// 	}()
+	fileName := "file"
 
-// 	// Attempt to create the fake file
-// 	file, err := os.Create(fileName)
-// 	if err != nil {
-// 		t.Errorf("Error creating the file: %v", err)
-// 	}
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(fileName)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
 
-// 	err = file.Chmod(0333)
-// 	if err != nil {
-// 		t.Errorf("Error changing file permissions: %s", err)
-// 	}
+	// Attempt to create the fake file
+	file, err := os.Create(fileName)
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
 
-// 	err = cmd.KubeDelete(loggingConfig, fileName, "", false)
+	err = file.Chmod(0333)
+	if err != nil {
+		t.Errorf("Error changing file permissions: %s", err)
+	}
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "kubectl delete failed: exit status 1: error: open file: permission denied") {
-// 			t.Errorf("String \"kubectl delete failed: exit status 1: error: open file: permission denied\" not found in output: '%v'", err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	err = cmd.KubeDelete(loggingConfig, fileName, "", false)
 
-// func TestKubeGetNodePortURLFailNoService(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl delete failed: exit status 1: error: open file: permission denied") {
+			t.Errorf("String \"kubectl delete failed: exit status 1: error: open file: permission denied\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
-// 	_, err := cmd.KubeGetNodePortURL(loggingConfig, "", "namespace", false)
+func TestKubeGetNodePortURLFailNoService(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty") {
-// 			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty\" not found in output: '%v'", err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	_, err := cmd.KubeGetNodePortURL(loggingConfig, "", "namespace", false)
 
-// func TestKubeGetNodePortURLFailInvalidService(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	if err != nil {
+		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty") {
+			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
-// 	service := "definitelynotaservice"
+func TestKubeGetNodePortURLFailInvalidService(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	_, err := cmd.KubeGetNodePortURL(loggingConfig, service, "", false)
+	service := "definitelynotaservice"
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \""+service+"\" not found") {
-// 			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \"%s\" not found\" not found in output: '%v'", service, err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	_, err := cmd.KubeGetNodePortURL(loggingConfig, service, "", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \""+service+"\" not found") {
+			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \"%s\" not found\" not found in output: '%v'", service, err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
 func TestKubeGetNodePortURLDryrun(t *testing.T) {
 	var outBuffer bytes.Buffer
@@ -894,39 +962,45 @@ func TestKubeGetNodePortURLDryrun(t *testing.T) {
 	}
 }
 
-// func TestKubeGetDeploymentURLFailNoService(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestKubeGetDeploymentURLFailNoService(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	_, err := cmd.KubeGetDeploymentURL(loggingConfig, "", "namespace", false)
+	_, err := cmd.KubeGetDeploymentURL(loggingConfig, "", "namespace", false)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty") {
-// 			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty\" not found in output: '%v'", err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	if err != nil {
+		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty") {
+			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
-// func TestKubeGetDeploymentURLFailInvalidService(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestKubeGetDeploymentURLFailInvalidService(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	service := "definitelynotaservice"
+	service := "definitelynotaservice"
 
-// 	_, err := cmd.KubeGetDeploymentURL(loggingConfig, service, "", false)
+	_, err := cmd.KubeGetDeploymentURL(loggingConfig, service, "", false)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \""+service+"\" not found") {
-// 			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \"%s\" not found\" not found in output: '%v'", service, err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	if err != nil {
+		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \""+service+"\" not found") {
+			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \"%s\" not found\" not found in output: '%v'", service, err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
 func TestKubeGetDeploymentURLDryrun(t *testing.T) {
 	var outBuffer bytes.Buffer
@@ -942,21 +1016,24 @@ func TestKubeGetDeploymentURLDryrun(t *testing.T) {
 	}
 }
 
-// func TestKubeGetRouteURLFailInvalidService(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestKubeGetRouteURLFailInvalidService(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	_, err := cmd.KubeGetRouteURL(loggingConfig, "", "namespace", false)
+	_, err := cmd.KubeGetRouteURL(loggingConfig, "", "namespace", false)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: the server doesn't have a resource type") {
-// 			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: the server doesn't have a resource type\" not found\" not found in output: '%v'", err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	if err != nil {
+		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: the server doesn't have a resource type") {
+			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: the server doesn't have a resource type\" not found\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
 func TestKubeGetRouteURLDryrun(t *testing.T) {
 	var outBuffer bytes.Buffer
@@ -972,21 +1049,24 @@ func TestKubeGetRouteURLDryrun(t *testing.T) {
 	}
 }
 
-// func TestKubeGetKnativeURLFailInvalidService(t *testing.T) {
-// 	var outBuffer bytes.Buffer
-// 	loggingConfig := &cmd.LoggingConfig{}
-// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+func TestKubeGetKnativeURLFailInvalidService(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-// 	_, err := cmd.KubeGetKnativeURL(loggingConfig, "", "namespace", false)
+	_, err := cmd.KubeGetKnativeURL(loggingConfig, "", "namespace", false)
 
-// 	if err != nil {
-// 		if !strings.Contains(err.Error(), "kubectl get failed: exit status 1: error: the server doesn't have a resource type") {
-// 			t.Errorf("String \"kubectl get failed: exit status 1: error: the server doesn't have a resource type\" not found in output: '%v'", err.Error())
-// 		}
-// 	} else {
-// 		t.Error("Expected an error to be returned from command, but error was nil")
-// 	}
-// }
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl get failed: exit status 1: error: the server doesn't have a resource type") {
+			t.Errorf("String \"kubectl get failed: exit status 1: error: the server doesn't have a resource type\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
 
 func TestKubeGetKnativeURLDryrun(t *testing.T) {
 	var outBuffer bytes.Buffer
