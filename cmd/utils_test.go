@@ -348,6 +348,10 @@ func TestCopy(t *testing.T) {
 }
 
 func TestCopyFailFNF(t *testing.T) {
+
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
@@ -372,16 +376,9 @@ func TestCopyFailFNF(t *testing.T) {
 	err = cmd.CopyFile(log, nonExistentFile, existingFile)
 
 	if err != nil {
-		if runtime.GOOS == "windows" {
-			if !strings.Contains(err.Error(), "The system cannot find the file specified") {
-				t.Errorf("String \"The system cannot find the file specified\" not found in output: '%v'", err.Error())
-			}
-		} else {
-			if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-				t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
-			}
+		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
+			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
 		}
-
 	} else {
 		t.Errorf("Error: %v", err)
 	}
@@ -430,6 +427,9 @@ func TestCopyFailPermissions(t *testing.T) {
 }
 
 func TestMoveFailFNF(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
@@ -439,16 +439,9 @@ func TestMoveFailFNF(t *testing.T) {
 	err := cmd.MoveDir(log, nonExistentFile, "../")
 
 	if err != nil {
-		if runtime.GOOS == "windows" {
-			if !strings.Contains(err.Error(), "Could not copy "+nonExistentFile) {
-				t.Errorf("String \"Could not copy "+nonExistentFile+"\" not found in output: '%v'", err.Error())
-			}
-		} else {
-			if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-				t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
-			}
+		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
+			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
 		}
-
 	} else {
 		t.Error("Expected an error to be returned from command, but error was nil")
 	}
@@ -500,6 +493,9 @@ func TestMove(t *testing.T) {
 }
 
 func TestMoveFailPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
@@ -535,22 +531,18 @@ func TestMoveFailPermissions(t *testing.T) {
 	err = cmd.MoveDir(log, existingFile, existingDir)
 
 	if err != nil {
-		if runtime.GOOS == "windows" {
-			if !strings.Contains(err.Error(), "Could not copy "+existingFile+" to "+existingDir) {
-				t.Errorf("String \"Permission denied\" not found in output: '%v'", err.Error())
-			}
-		} else {
-			if !strings.Contains(err.Error(), "Permission denied") {
-				t.Errorf("String \"Could not copy "+existingFile+" to"+existingDir+"\" not found in output: '%v'", err.Error())
-			}
+		if !strings.Contains(err.Error(), "Permission denied") {
+			t.Errorf("String \"Could not copy "+existingFile+" to"+existingDir+"\" not found in output: '%v'", err.Error())
 		}
-
 	} else {
 		t.Error("Expected an error to be returned from command, but error was nil")
 	}
 }
 
 func TestCopyDirFailFNF(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
@@ -575,14 +567,8 @@ func TestCopyDirFailFNF(t *testing.T) {
 	err = cmd.CopyDir(log, nonExistentFile, existingFile)
 
 	if err != nil {
-		if runtime.GOOS == "windows" {
-			if !strings.Contains(err.Error(), "Could not copy "+nonExistentFile+" to "+existingFile) {
-				t.Errorf("String \"Could not copy "+nonExistentFile+" to "+existingFile+"\" not found in output: '%v'", err.Error())
-			}
-		} else {
-			if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-				t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
-			}
+		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
+			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
 		}
 	} else {
 		t.Error("Expected an error to be returned from command, but error was nil")
