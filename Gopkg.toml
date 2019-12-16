@@ -48,7 +48,7 @@
 
 [[constraint]]
   name = "github.com/appsody/appsody-operator"
-  version = "0.2.0"
+  version = "0.3.0"
 
 [[override]]
   name = "k8s.io/apimachinery"
