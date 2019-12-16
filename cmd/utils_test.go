@@ -651,6 +651,9 @@ func TestCopyDirFailFNF(t *testing.T) {
 // }
 
 func TestImagePushDryrun(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
@@ -706,6 +709,9 @@ func TestKubeGetFailNoRes(t *testing.T) {
 }
 
 func TestKubeGetFailIncorrectRes(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
@@ -836,6 +842,9 @@ func TestKubeApplyFailPermission(t *testing.T) {
 }
 
 func TestKubeDeleteDryrun(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
@@ -952,6 +961,9 @@ func TestKubeGetNodePortURLFailInvalidService(t *testing.T) {
 }
 
 func TestKubeGetNodePortURLDryrun(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
@@ -1006,6 +1018,9 @@ func TestKubeGetDeploymentURLFailInvalidService(t *testing.T) {
 }
 
 func TestKubeGetDeploymentURLDryrun(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
@@ -1039,6 +1054,9 @@ func TestKubeGetRouteURLFailInvalidService(t *testing.T) {
 }
 
 func TestKubeGetRouteURLDryrun(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
@@ -1072,6 +1090,9 @@ func TestKubeGetKnativeURLFailInvalidService(t *testing.T) {
 }
 
 func TestKubeGetKnativeURLDryrun(t *testing.T) {
+	if !TravisTesting {
+		t.Skip()
+	}
 	var outBuffer bytes.Buffer
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
