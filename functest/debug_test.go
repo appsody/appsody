@@ -14,6 +14,7 @@
 package functest
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -44,7 +45,7 @@ func TestDebugSimple(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
