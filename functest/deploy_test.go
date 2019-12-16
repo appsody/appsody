@@ -40,14 +40,6 @@ func TestParser(t *testing.T) {
 
 	for i := range stackRaw {
 		t.Log("stackRaw is: ", stackRaw[i])
-
-		// code to sepearate the repos and stacks...
-		// stageStack := strings.Split(stackRaw[i], "/")
-		// stage := stageStack[0]
-		// stack := stageStack[1]
-		// t.Log("stage is: ", stage)
-		// t.Log("stack is: ", stack)
-
 	}
 
 }
@@ -150,8 +142,12 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 // Testing deploy delete when the required config file cannot be found
 func TestDeployDeleteNotFound(t *testing.T) {
 
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	// Not passing a config file so it will use the default, which shouldn't exist
-	_, err := cmdtest.RunAppsodyCmd([]string{"deploy", "delete"}, ".", t)
+	args := []string{"deploy", "delete"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 
 		// Because the config doesn't exist, this error should be returned (without -v)
