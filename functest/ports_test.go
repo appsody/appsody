@@ -14,8 +14,6 @@
 package functest
 
 import (
-	"log"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -26,20 +24,18 @@ import (
 // test port mapping in dry run mode
 func TestPortMap(t *testing.T) {
 
-	var runOutput string
 	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-	log.Println("Created project dir: " + projectDir)
-
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
+	args := []string{"init", "nodejs-express"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runOutput, _ = cmdtest.RunAppsodyCmd([]string{"run", "--dryrun", "--publish", "3100:3000", "--publish", "4100:4000", "--publish", "9230:9229"}, projectDir, t)
+	args = []string{"run", "--dryrun", "--publish", "3100:3000", "--publish", "4100:4000", "--publish", "9230:9229"}
+	runOutput, _ := cmdtest.RunAppsody(sandbox, args...)
 	if !strings.Contains(runOutput, "docker run --rm -p 3100:3000 -p 4100:4000 -p 9230:9229") {
 
 		t.Fatal("Ports are not correctly specified as: -p 3100:3000 -p 4100:4000 -p 9230:9229")
@@ -50,44 +46,38 @@ func TestPortMap(t *testing.T) {
 
 // This test tests the setting of --publish-all in dry run mode
 func TestPublishAll(t *testing.T) {
-
-	var runOutput string
-
 	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
+	args := []string{"init", "nodejs-express"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runOutput, _ = cmdtest.RunAppsodyCmd([]string{"run", "--publish-all", "--dryrun"}, projectDir, t)
+	args = []string{"run", "--publish-all", "--dryrun"}
+	runOutput, _ := cmdtest.RunAppsody(sandbox, args...)
 
 	if !strings.Contains(runOutput, "docker run --rm -P") {
 		t.Fatal("publish all is not found in output as: docker run --rm -P")
-
 	}
-
 }
 
 // This test tests the setting of --network
 func TestRunWithNetwork(t *testing.T) {
-
-	var runOutput string
 	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
+	args := []string{"init", "nodejs-express"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runOutput, _ = cmdtest.RunAppsodyCmd([]string{"run", "--network", "noSuchNetwork", "--publish-all", "--dryrun"}, projectDir, t)
+	args = []string{"run", "--network", "noSuchNetwork", "--publish-all", "--dryrun"}
+	runOutput, _ := cmdtest.RunAppsody(sandbox, args...)
 
 	if !strings.Contains(runOutput, "--network noSuchNetwork") {
 		t.Fatal("--network is not found in output as: --network noSuchNetwork")
@@ -97,20 +87,18 @@ func TestRunWithNetwork(t *testing.T) {
 
 // This test tests the setting of --docker-options
 func TestRunWithDockerOptions(t *testing.T) {
-
-	var runOutput string
 	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
+	args := []string{"init", "nodejs-express"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runOutput, err = cmdtest.RunAppsodyCmd([]string{"run", "--docker-options", "-m 4g", "--publish-all", "--dryrun"}, projectDir, t)
+	args = []string{"run", "--docker-options", "-m 4g", "--publish-all", "--dryrun"}
+	runOutput, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal("Error running appsody run: ", err)

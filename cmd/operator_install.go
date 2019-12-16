@@ -33,15 +33,21 @@ func newOperatorInstallCmd(operatorConfig *operatorCommandConfig) *cobra.Command
 	// installCmd represents the "appsody deploy install" command
 	var installCmd = &cobra.Command{
 		Use:   "install",
-		Short: "Install the Appsody Operator into the configured Kubernetes cluster",
-		Long:  ``,
+		Short: "Install the Appsody Operator.",
+		Long: `Install the Appsody Operator into your configured Kubernetes cluster.
+		
+The Appsody Operator listens for incoming AppsodyApplication resources on your cluster. For more information, see https://operatorhub.io/operator/appsody-operator. 
+
+By default, the operator watches a single namespace. You can specify the ‘--watch-all’ flag to tell the operator to watch all namespaces in the cluster. If you want to watch multiple, but not all, namespaces within your cluster, install an additional operator to watch each additional namespace.`,
+		Example: `  appsody operator install --namespace my-namespace --watchspace my-watchspace
+  Installs the Appsody Operator into your Kubernetes cluster in the "my-namespace" namespace, and sets it to watch for AppsodyApplication resources in the "my-watchspace" namespace.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return operatorInstall(config)
 		},
 	}
 
-	installCmd.PersistentFlags().StringVarP(&config.watchspace, "watchspace", "w", "", "The namespace which the operator will watch.")
-	installCmd.PersistentFlags().BoolVar(&config.all, "watch-all", false, "The operator will watch all namespaces.")
+	installCmd.PersistentFlags().StringVarP(&config.watchspace, "watchspace", "w", "", "The namespace that the operator watches.")
+	installCmd.PersistentFlags().BoolVar(&config.all, "watch-all", false, "Specifies that the operator watches all namespaces.")
 	return installCmd
 }
 

@@ -14,6 +14,7 @@
 package cmd_test
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -22,19 +23,16 @@ import (
 )
 
 func TestList(t *testing.T) {
-	// tests that would have run before this and crashed could leave the repo
-	// in a bad state - mostly leading to: "a repo with this name already exists."
-	// so clean it up pro-actively, ignore any errors.
-	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", "LocalTestRepo"}, ".", t)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	// first add the test repo index
-	_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup()
 
-	output, err := cmdtest.RunAppsodyCmd([]string{"list"}, ".", t)
+	output, err := cmdtest.RunAppsody(sandbox, "list")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,41 +48,34 @@ func TestList(t *testing.T) {
 
 // test the v2 list functionality
 func TestListV2(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	// first add the test repo index
-	var err error
-	var output string
-	var cleanup func()
-	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", "LocalTestRepo"}, ".", t)
-	_, _ = cmdtest.RunAppsodyCmd([]string{"repo", "remove", "incubatortest"}, ".", t)
-	_, cleanup, err = cmdtest.AddLocalFileRepo("incubatortest", "../cmd/testdata/kabanero.yaml", t)
+	_, err := cmdtest.AddLocalRepo(sandbox, "incubatortest", filepath.Join(cmdtest.TestDirPath, "kabanero.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup()
 
-	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "incubatortest"}, ".", t)
-
+	output, _ := cmdtest.RunAppsody(sandbox, "list", "incubatortest")
 	if !(strings.Contains(output, "nodejs") && strings.Contains(output, "incubatortest")) {
 		t.Error("list command should contain id 'nodejs'")
 	}
 
 	// test the current default repo
-	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "incubator"}, ".", t)
-
+	output, _ = cmdtest.RunAppsody(sandbox, "list", "incubator")
 	if !strings.Contains(output, "java-microprofile") {
 		t.Error("list command should contain id 'java-microprofile'")
 	}
 
-	output, _ = cmdtest.RunAppsodyCmd([]string{"list"}, ".", t)
-
+	output, _ = cmdtest.RunAppsody(sandbox, "list")
 	// we expect 2 instances
 	if !(strings.Contains(output, "java-microprofile") && (strings.Count(output, "nodejs ") == 2)) {
 		t.Error("list command should contain id 'java-microprofile and 2 nodejs '")
 	}
 
 	// test the current default repo
-	output, _ = cmdtest.RunAppsodyCmd([]string{"list", "nonexisting"}, ".", t)
-
+	output, _ = cmdtest.RunAppsody(sandbox, "list", "nonexisting")
 	if !(strings.Contains(output, "cannot locate repository ")) {
 		t.Error("Failed to flag non-existing repo")
 	}
@@ -92,9 +83,11 @@ func TestListV2(t *testing.T) {
 }
 
 func TestListJson(t *testing.T) {
-	args := []string{"list", "-o", "json"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
+	args := []string{"list", "-o", "json"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,9 +102,11 @@ func TestListJson(t *testing.T) {
 }
 
 func TestListYaml(t *testing.T) {
-	args := []string{"list", "-o", "yaml"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
+	args := []string{"list", "-o", "yaml"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,15 +121,16 @@ func TestListYaml(t *testing.T) {
 }
 
 func TestListYamlSingleRepository(t *testing.T) {
-	args := []string{"list", "incubator", "-o", "yaml"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
+	args := []string{"list", "incubator", "-o", "yaml"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	list, err := cmdtest.ParseListYAML(cmdtest.ParseYAML(output))
-
 	if err != nil {
 		t.Fatal(err)
 	}

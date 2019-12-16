@@ -35,8 +35,10 @@ func newOperatorUninstallCmd(operatorConfig *operatorCommandConfig) *cobra.Comma
 	// uninstallCmd represents the "appsody deploy uninstall" command
 	var uninstallCmd = &cobra.Command{
 		Use:   "uninstall",
-		Short: "Uninstall the Appsody Operator from the configured Kubernetes cluster",
-		Long:  ``,
+		Short: "Uninstall the Appsody Operator.",
+		Long:  `Uninstall the Appsody Operator from your configured Kubernetes cluster.`,
+		Example: `  appsody operator uninstall --namespace my-namespace
+  Uninstalls the Appsody Operator in the "my-namespace" namespace from your Kubernetes cluster.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			operatorNamespace := "default"

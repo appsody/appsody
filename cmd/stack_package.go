@@ -22,7 +22,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/gabriel-vasile/mimetype"
+	"github.com/andrew-d/isbinary"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -78,6 +78,8 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	// 4. create/update an appsody repo for the stack
 
 	var imageNamespace string
+	var imageRegistry string
+	var namespaceAndRepo string
 
 	log := rootConfig.LoggingConfig
 
@@ -88,10 +90,10 @@ func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 The packaging process builds the stack image, generates the "tar.gz" archive files for each template, and adds your stack to the "dev.local" repository in your Appsody configuration. You can see the list of your packaged stacks by running 'appsody list dev.local'.`,
 		Example: `  appsody stack package
-  Packages the stack in the current directory, tags the built image with the "dev.local" namespace, and adds the stack to the "dev.local" repository.
+  Packages the stack in the current directory, tags the built image with the default registry and namespace, and adds the stack to the "dev.local" repository.
   
   appsody stack package --image-namespace my-namespace
-  Packages the stack in the current directory, tags the built image with the "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
+  Packages the stack in the current directory, tags the built image with the default registry and "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			log.Info.Log("******************************************")
@@ -195,7 +197,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// docker build
 			// create the image name to be used for the docker image
-			namespaceAndRepo := imageNamespace + "/" + stackID
+			namespaceAndRepo = imageRegistry + "/" + imageNamespace + "/" + stackID
+
 			buildImage := namespaceAndRepo + ":" + stackYaml.Version
 
 			imageDir := filepath.Join(stackPath, "image")
@@ -210,7 +213,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// create the template metadata
-			templateMetadata, err := CreateTemplateMap(labels, stackYaml, imageNamespace)
+			templateMetadata, err := CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
 			if err != nil {
 				return errors.Errorf("Error creating templating mal: %v", err)
 			}
@@ -223,7 +226,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// tag with the full version then mojorminor, major, and latest
 			cmdArgs := []string{"-t", buildImage}
-			semver := templateMetadata["stack"].(map[string]interface{})["semver"].(map[string]string)
+			semver := templateMetadata["semver"].(map[string]string)
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["majorminor"])
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["major"])
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo)
@@ -299,7 +302,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					return errors.Errorf("Error trying to create file: %v", err)
 				}
 
-				_, err = g.WriteString("stack: " + buildImage)
+				// Only use major.minor version here
+				_, err = g.WriteString("stack: " + namespaceAndRepo + ":" + semver["majorminor"])
 				if err != nil {
 					return errors.Errorf("Error trying to write: %v", err)
 				}
@@ -383,7 +387,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 		},
 	}
 
-	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "dev.local", "Namespace that the images will be created using (default is dev.local)")
+	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "appsody", "Namespace used for creating the images.")
+	stackPackageCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "dev.local", "Registry used for creating the images.")
 
 	return stackPackageCmd
 }
@@ -472,7 +477,7 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 		License:     stackYaml.License,
 		Maintainers: stackYaml.Maintainers,
 	}
-	configLabels, err := getConfigLabels(projectConfig, "stack.yaml")
+	configLabels, err := getConfigLabels(projectConfig, "stack.yaml", config.LoggingConfig)
 	if err != nil {
 		return labels, err
 	}
@@ -488,7 +493,7 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 
 // CreateTemplateMap - uses the git labels, stack.yaml, stackID and imageNamespace to create a map
 // with all the necessary data needed for the template
-func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string) (map[string]interface{}, error) {
+func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNamespace string, imageRegistry string) (map[string]interface{}, error) {
 
 	// create stack variables and add to templateMetadata map
 	var templateMetadata = make(map[string]interface{})
@@ -505,14 +510,13 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	}
 
 	// create map that holds stack variables
-	var stack = make(map[string]interface{})
-	stack["id"] = labels[appsodyStackKeyPrefix+"id"]
-	stack["name"] = labels[ociKeyPrefix+"title"]
-	stack["version"] = versionLabel
-	stack["description"] = labels[ociKeyPrefix+"description"]
-	stack["created"] = labels[ociKeyPrefix+"created"]
-	stack["tag"] = labels[appsodyStackKeyPrefix+"tag"]
-	stack["maintainers"] = labels[ociKeyPrefix+"authors"]
+	templateMetadata["id"] = labels[appsodyStackKeyPrefix+"id"]
+	templateMetadata["name"] = labels[ociKeyPrefix+"title"]
+	templateMetadata["version"] = versionLabel
+	templateMetadata["description"] = labels[ociKeyPrefix+"description"]
+	templateMetadata["created"] = labels[ociKeyPrefix+"created"]
+	templateMetadata["tag"] = labels[appsodyStackKeyPrefix+"tag"]
+	templateMetadata["maintainers"] = labels[ociKeyPrefix+"authors"]
 
 	// create version map and add to templateMetadata map
 	var semver = make(map[string]string)
@@ -520,12 +524,13 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	semver["minor"] = versionFull[1]
 	semver["patch"] = versionFull[2]
 	semver["majorminor"] = strings.Join(versionFull[0:2], ".")
-	stack["semver"] = semver
+	templateMetadata["semver"] = semver
 
 	// create image map add to templateMetadata map
 	var image = make(map[string]string)
 	image["namespace"] = imageNamespace
-	stack["image"] = image
+	image["registry"] = imageRegistry
+	templateMetadata["image"] = image
 
 	// loop through user variables and add them to map, must begin with alphanumeric character
 	for key, value := range stackYaml.TemplatingData {
@@ -534,12 +539,11 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 		runes := []rune(key)
 		firstRune := runes[0]
 		if unicode.IsLetter(firstRune) || unicode.IsNumber(firstRune) {
-			stack[key] = value
+			templateMetadata[key] = value
 		} else {
 			return templateMetadata, errors.Errorf("Variable name didn't start with alphanumeric character")
 		}
 	}
-	templateMetadata["stack"] = stack
 	return templateMetadata, err
 
 }
@@ -548,17 +552,10 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 // previously created templateMetada to all files in the target directory
 func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
-	// current method means we allow certain application file types through
-	allowedApplicationFiles := []string{
-		"application/json",
-		"application/javascript",
-		"application/x-python",
-	}
-
 	err := filepath.Walk(stackPath, func(path string, info os.FileInfo, err error) error {
 
-		//Skip .git folder and .DS_Store files
-		if info.Name() == ".git" || info.Name() == ".DS_Store" {
+		//Skip .git folder
+		if info.IsDir() && info.Name() == ".git" {
 			return filepath.SkipDir
 		} else if !info.IsDir() {
 
@@ -568,14 +565,14 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			// get permission of file
 			permission := info.Mode()
 
-			fileType, _, err := mimetype.DetectFile(path)
+			binaryFile, err := ioutil.ReadFile(path)
 			if err != nil {
-				return errors.Errorf("Error getting file type: %v", err)
+				return errors.Errorf("Error reading file for binary test: %v", err)
 			}
 
-			// skip files with application other than peviously stated allowed types
-			if strings.Contains(fileType, "application") && !contains(fileType, allowedApplicationFiles) {
-				return filepath.SkipDir
+			// skip binary files
+			if isbinary.Test(binaryFile) {
+				return nil
 			}
 
 			// set file permission to writable to apply templating
@@ -585,7 +582,7 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 			}
 
 			// create new template from parsing file
-			tmpl, err := template.New(file).ParseFiles(path)
+			tmpl, err := template.New(file).Delims("{{.stack", "}}").ParseFiles(path)
 			if err != nil {
 				return errors.Errorf("Error creating new template from file: %v", err)
 			}
@@ -618,14 +615,4 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	return nil
 
-}
-
-// contains checks if a string is in a list
-func contains(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
 }

@@ -16,7 +16,7 @@ package functest
 import (
 	"fmt"
 	"log"
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -43,20 +43,18 @@ func TestTestSimple(t *testing.T) {
 
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
+		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+		defer cleanup()
+
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		// create a temporary dir to create the project and run the test
-		projectDir := cmdtest.GetTempProjectDir(t)
-		defer os.RemoveAll(projectDir)
-		t.Log("Created project dir: " + projectDir)
-
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
+		_, err = cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
 
 		if err != nil {
 			t.Fatal(err)
@@ -66,8 +64,22 @@ func TestTestSimple(t *testing.T) {
 		runChannel := make(chan error)
 		go func() {
 			log.Println("Running appsody test...")
-			_, err = cmdtest.RunAppsodyCmd([]string{"test"}, projectDir, t)
+			_, err = cmdtest.RunAppsody(sandbox, "test")
 			runChannel <- err
+			close(runChannel)
+		}()
+
+		// defer the appsody stop to close the docker container
+		defer func() {
+			_, err = cmdtest.RunAppsody(sandbox, "stop")
+			if err != nil {
+				t.Logf("Ignoring error running appsody stop: %s", err)
+			}
+			// wait for the appsody command/goroutine to finish
+			runErr := <-runChannel
+			if runErr != nil {
+				t.Logf("Ignoring error from the appsody command: %s", runErr)
+			}
 		}()
 
 		waitForError := 20 // in seconds
@@ -87,16 +99,11 @@ func TestTestSimple(t *testing.T) {
 				fmt.Printf("appsody test kept running for %d seconds with no error so consider this passed\n", waitForError)
 				stillWaiting = false
 				// stop the container if it is still up
-				_, err = cmdtest.RunAppsodyCmd([]string{"stop"}, projectDir, t)
+				_, err = cmdtest.RunAppsody(sandbox, "stop")
 				if err != nil {
 					t.Logf("Ignoring error running appsody stop: %s", err)
 				}
 			}
 		}
-
-		// stop and cleanup
-
-		cleanup()
-		os.RemoveAll(projectDir)
 	}
 }
