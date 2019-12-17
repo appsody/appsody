@@ -91,10 +91,57 @@ func Exists(path string) (bool, error) {
 	return true, err
 }
 
-//ExtractDockerEnvVars returns a map with the env vars specified in docker options
-func ExtractDockerEnvVars(dockerOptions string) map[string]string {
-	tokens := strings.Fields(dockerOptions)
+//ExtractDockerEnvFile returns a map with the env vars specified in docker env file
+func ExtractDockerEnvFile(envFileName string) (map[string]string, error) {
 	envVars := make(map[string]string)
+	file, err := os.Open(envFileName)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		equal := strings.Index(line, "=")
+		hash := strings.Index(line, "#")
+		if equal >= 0 && hash != 0 {
+			if key := strings.TrimSpace(line[:equal]); len(key) > 0 {
+				value := ""
+				if len(line) > equal {
+					value = strings.TrimSpace(line[equal+1:])
+				}
+				envVars[key] = value
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+
+		return nil, err
+	}
+
+	return envVars, nil
+}
+
+//ExtractDockerEnvVars returns a map with the env vars specified in docker options
+func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
+	//Check whether there's --env-file, this needs to be processed first
+	var envVars map[string]string
+	envFilePos := strings.Index(dockerOptions, "--env-file")
+	if envFilePos >= 0 {
+		tokens := strings.Fields(dockerOptions[envFilePos+len("--env-file"):])
+		if len(tokens) > 0 {
+			var err error
+			envVars, err = ExtractDockerEnvFile(tokens[0])
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		envVars = make(map[string]string)
+	}
+	tokens := strings.Fields(dockerOptions)
 	for idx, token := range tokens {
 		if token == "-e" || token == "--env" {
 			if len(tokens) > idx+1 {
@@ -109,7 +156,7 @@ func ExtractDockerEnvVars(dockerOptions string) map[string]string {
 			}
 		}
 	}
-	return envVars
+	return envVars, nil
 }
 
 //GetEnvVar obtains a Stack environment variable from the Stack image

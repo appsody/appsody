@@ -16,12 +16,11 @@ package functest
 
 import (
 	"errors"
+	"github.com/appsody/appsody/cmd/cmdtest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
 var initResultsCheckTests = []struct {
@@ -36,24 +35,32 @@ var initResultsCheckTests = []struct {
 }
 
 func TestInitResultsCheck(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	for _, tt := range initResultsCheckTests {
-		// create a temporary dir to create the project and run the test
-		projectDir := cmdtest.GetTempProjectDir(t)
-		defer os.RemoveAll(projectDir)
-		t.Log("Created project dir: " + projectDir)
 
 		t.Run(tt.testName, func(t *testing.T) {
-			args := append([]string{"init"}, tt.args...)
-			_, err := cmdtest.RunAppsodyCmd(args, projectDir, t)
+			testDir := filepath.Join(sandbox.ProjectDir, tt.testName)
+			err := os.Mkdir(testDir, os.FileMode(0755))
 			if err != nil {
-				t.Error(err)
+				t.Errorf("Error creating directory: %v", err)
 			}
-			appsodyResultsCheck(projectDir, t)
+
+			args := append([]string{"init"}, tt.args...)
+
+			sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, tt.testName)
+			_, err = cmdtest.RunAppsody(sandbox, args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			appsodyResultsCheck(sandbox.ProjectDir, t)
 		})
+
 	}
 }
 
-var initLogsTests = []struct {
+var initErrorsTests = []struct {
 	testName     string
 	args         []string //input
 	expectedLogs string   //expected output
@@ -67,26 +74,24 @@ var initLogsTests = []struct {
 	{"TestInitWithBadlyFormattedConfig", []string{"nodejs-express", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml", "Correct error message not given"},
 	{"TestInitWithEmptyConfig", []string{"nodejs-express", "--config", "testdata/empty_repository_config/config.yaml"}, "Your stack repository is empty", "Correct error message not given"},
 	{"TestInitWithBadRepoUrlConfig", []string{"nodejs-express", "--config", "testdata/bad_repo_url_repository_config/config.yaml"}, "The following indices could not be read, skipping", "Correct error message not given"},
-	{"TestInitV2WithNonDefaultRepoSpecified", []string{"experimental/nodejs-functions"}, "Successfully initialized Appsody project", "Init should have passed without errors."},
-	{"TestInitV2WithStackHasInitScript", []string{"java-microprofile"}, "Successfully initialized Appsody project", "Init should have passed without errors."},
 	{"TestInitV2WithStackHasInitScriptDryrun", []string{"java-microprofile", "--dryrun"}, "Dry Run - Skipping", "Commands should be skipped on dry run"},
 	{"TestInitDryRun", []string{"nodejs-express", "--dryrun"}, "Dry Run - Skipping", "Commands should be skipped on dry run"},
 	{"TestInitMalformedStackParm", []string{"/nodejs-express"}, "malformed project parameter - slash at the beginning or end should be removed", "Malformed stack parameter should be flagged."},
 	{"TestInitStackParmTooManySlashes", []string{"incubator/nodejs-express/bad"}, "malformed project parameter - too many slashes", "Malformed stack parameter with too many slashes should be flagged."},
 }
 
-func TestLogsErrors(t *testing.T) {
-	for _, tt := range initLogsTests {
-		// create a temporary dir to create the project and run the test
-		projectDir := cmdtest.GetTempProjectDir(t)
-		defer os.RemoveAll(projectDir)
-		t.Log("Created project dir: " + projectDir)
+func TestInitErrors(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
+	for _, tt := range initErrorsTests {
+		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.testName, func(t *testing.T) {
 			args := append([]string{"init"}, tt.args...)
 			// appsody init nodejs-express
-			output, _ := cmdtest.RunAppsodyCmd(args, projectDir, t)
-			if !(strings.Contains(output, tt.expectedLogs)) {
+
+			output, _ := cmdtest.RunAppsody(sandbox, args...)
+			if !strings.Contains(output, tt.expectedLogs) {
 				t.Error(tt.outputError)
 			}
 		})
@@ -104,38 +109,68 @@ var initTemplateShouldNotExistTests = []struct {
 }
 
 func TestInitTemplateShouldNotExistTests(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	for _, tt := range initTemplateShouldNotExistTests {
 
-		// create a temporary dir to create the project and run the test
-		projectDir := cmdtest.GetTempProjectDir(t)
-		defer os.RemoveAll(projectDir)
-		t.Log("Created project dir: " + projectDir)
-
-		packagejson := filepath.Join(projectDir, "package.json")
-		packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+		packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
+		packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
 
 		t.Run(tt.testName, func(t *testing.T) {
 			args := append([]string{"init", "nodejs-express"}, tt.args...)
-			_, _ = cmdtest.RunAppsodyCmd(args, projectDir, t)
+			_, _ = cmdtest.RunAppsody(sandbox, args...)
 			shouldNotExist(packagejson, t)
 			shouldNotExist(packagejsonlock, t)
 		})
 	}
 }
 
+func TestInitV2WithNonDefaultRepoSpecified(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "experimental/nodejs-functions"}
+
+	output, _ := cmdtest.RunAppsody(sandbox, args...)
+	if !(strings.Contains(output, "Successfully initialized Appsody project")) {
+		t.Error("Init should have passed without errors.")
+	}
+}
+
+func TestInitV2WithStackHasInitScript(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "java-microprofile"}
+
+	output, _ := cmdtest.RunAppsody(sandbox, args...)
+	if !(strings.Contains(output, "Successfully initialized Appsody project")) {
+		t.Error("Init should have passed without errors.")
+	}
+}
+
 func TestInitOnExistingAppsodyProject(t *testing.T) {
-	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	args := []string{"init", "nodejs-express"}
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd(args, projectDir, t)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	output, _ := cmdtest.RunAppsodyCmd(args, projectDir, t)
+	output, _ := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		if !(strings.Contains(output, "cannot run `appsody init <stack>` on an existing appsody project")) {
+			t.Error("Should have flagged that you cannot init an existing Appsody project.")
+		} else {
+			t.Fatal(err)
+		}
+	}
+
 	if !(strings.Contains(output, "cannot run `appsody init <stack>` on an existing appsody project")) {
 		t.Error("Should have flagged that you cannot init an existing Appsody project.")
 	}
@@ -144,15 +179,13 @@ func TestInitOnExistingAppsodyProject(t *testing.T) {
 //This test makes sure that no project creation occurred because app.js existed prior to the call
 func TestNoOverwrite(t *testing.T) {
 
-	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
-	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
-	appjs := filepath.Join(projectDir, "app.js")
-	packagejson := filepath.Join(projectDir, "package.json")
-	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+	appsodyFile := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
+	appjs := filepath.Join(sandbox.ProjectDir, "app.js")
+	packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
+	packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
 
 	_, err := os.Create(appjs)
 	if err != nil {
@@ -165,7 +198,8 @@ func TestNoOverwrite(t *testing.T) {
 	}
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
+	args := []string{"init", "nodejs-express"}
+	_, _ = cmdtest.RunAppsody(sandbox, args...)
 
 	shouldNotExist(appsodyFile, t)
 	shouldNotExist(packagejson, t)
@@ -186,12 +220,10 @@ func shouldNotExist(file string, t *testing.T) {
 func TestOverwrite(t *testing.T) {
 
 	var fileInfoFinal os.FileInfo
-	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
-	appjs := filepath.Join(projectDir, "app.js")
+	appjs := filepath.Join(sandbox.ProjectDir, "app.js")
 	_, err := os.Create(appjs)
 	if err != nil {
 		t.Fatal(err)
@@ -203,9 +235,13 @@ func TestOverwrite(t *testing.T) {
 	}
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--overwrite"}, projectDir, t)
+	args := []string{"init", "nodejs-express", "--overwrite"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	appsodyResultsCheck(projectDir, t)
+	appsodyResultsCheck(sandbox.ProjectDir, t)
 
 	fileInfoFinal, err = os.Stat(appjs)
 	if err != nil {
@@ -224,15 +260,13 @@ func TestOverwrite(t *testing.T) {
 //This test makes sure that no files are created except .appsody-config.yaml
 func TestNoTemplate(t *testing.T) {
 	var fileInfoFinal os.FileInfo
-	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
-	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
-	appjs := filepath.Join(projectDir, "app.js")
-	packagejson := filepath.Join(projectDir, "package.json")
-	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+	appsodyFile := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
+	appjs := filepath.Join(sandbox.ProjectDir, "app.js")
+	packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
+	packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
 
 	// file size should be 0 bytes
 	_, err := os.Create(appjs)
@@ -243,7 +277,11 @@ func TestNoTemplate(t *testing.T) {
 	shouldExist(appjs, t)
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express", "--no-template"}, projectDir, t)
+	args := []string{"init", "nodejs-express", "--no-template"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	shouldExist(appsodyFile, t)
 
@@ -268,16 +306,14 @@ func TestNoTemplate(t *testing.T) {
 // the command should work despite existing artifacts
 func TestWhiteList(t *testing.T) {
 
-	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
-	vscode := filepath.Join(projectDir, ".vscode")
-	project := filepath.Join(projectDir, ".project")
-	cwSet := filepath.Join(projectDir, ".cw-settings")
-	cwExtension := filepath.Join(projectDir, ".cw-extension")
-	metadata := filepath.Join(projectDir, ".metadata")
+	vscode := filepath.Join(sandbox.ProjectDir, ".vscode")
+	project := filepath.Join(sandbox.ProjectDir, ".project")
+	cwSet := filepath.Join(sandbox.ProjectDir, ".cw-settings")
+	cwExtension := filepath.Join(sandbox.ProjectDir, ".cw-extension")
+	metadata := filepath.Join(sandbox.ProjectDir, ".metadata")
 
 	_, err := os.Create(project)
 	if err != nil {
@@ -301,10 +337,14 @@ func TestWhiteList(t *testing.T) {
 	}
 
 	// appsody init nodejs-express
-	_, _ = cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
+	args := []string{"init", "nodejs-express"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	shouldExist(vscode, t)
-	appsodyResultsCheck(projectDir, t)
+	appsodyResultsCheck(sandbox.ProjectDir, t)
 }
 
 func shouldExist(file string, t *testing.T) {
