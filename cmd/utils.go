@@ -158,6 +158,8 @@ func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
 		}
 		if nextToken != "" && strings.Contains(nextToken, "=") {
 			nextToken = strings.ReplaceAll(nextToken, "\"", "")
+			nextToken = strings.ReplaceAll(nextToken, "'", "")
+			//Note that Appsody doesn't support quotes in -e, use --env-file
 			keyValuePair := strings.Split(nextToken, "=")
 			if len(keyValuePair) > 1 {
 				envVars[keyValuePair[0]] = keyValuePair[1]
