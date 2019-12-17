@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"os"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
@@ -35,12 +34,12 @@ func TestPS(t *testing.T) {
 	//
 
 	// create a temporary dir to create the project and run the test
-	projectDir := cmdtest.GetTempProjectDir(t)
-	defer os.RemoveAll(projectDir)
-	t.Log("Created project dir: " + projectDir)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	// appsody init nodejs-express
-	_, err := cmdtest.RunAppsodyCmd([]string{"init", "nodejs-express"}, projectDir, t)
+	args := []string{"init", "nodejs-express"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,14 +48,16 @@ func TestPS(t *testing.T) {
 	runChannel := make(chan error)
 	containerName := "testPSContainer"
 	go func() {
-		_, err = cmdtest.RunAppsodyCmd([]string{"run", "--name", containerName}, projectDir, t)
+		args = []string{"run", "--name", containerName}
+		_, err = cmdtest.RunAppsody(sandbox, args...)
 		runChannel <- err
 		close(runChannel)
 	}()
 
 	defer func() {
 		// run appsody stop to close the docker container
-		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", containerName}, projectDir, t)
+		args = []string{"stop", "--name", containerName}
+		_, err = cmdtest.RunAppsody(sandbox, args...)
 		if err != nil {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
@@ -94,7 +95,7 @@ func TestPS(t *testing.T) {
 
 	// now run appsody ps and see if we can spot the container
 	t.Log("about to run appsody ps")
-	stopOutput, errStop := cmdtest.RunAppsodyCmd([]string{"ps"}, projectDir, t)
+	stopOutput, errStop := cmdtest.RunAppsody(sandbox, "ps")
 	if !strings.Contains(stopOutput, "CONTAINER") {
 		t.Fatal("output doesn't contain header line")
 	}

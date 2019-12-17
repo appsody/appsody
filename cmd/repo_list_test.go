@@ -14,6 +14,7 @@
 package cmd_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
@@ -24,12 +25,16 @@ var repoListTests = []struct {
 	configFile       string // input
 	expectedNumRepos int    // number of expected repositories to list
 }{
-	{"testdata/empty_repository_config/config.yaml", 0},
-	{"testdata/default_repository_config/config.yaml", 1},
-	{"testdata/multiple_repository_config/config.yaml", 2},
+	{filepath.Join(cmdtest.TestDirPath, "empty_repository_config", "config.yaml"), 0},
+	{filepath.Join(cmdtest.TestDirPath, "default_repository_config", "config.yaml"), 1},
+	{filepath.Join(cmdtest.TestDirPath, "multiple_repository_config", "config.yaml"), 2},
 }
 
 func TestRepoList(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	for _, tt := range repoListTests {
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.configFile, func(t *testing.T) {
@@ -37,7 +42,7 @@ func TestRepoList(t *testing.T) {
 			if tt.configFile != "" {
 				args = append(args, "--config", tt.configFile)
 			}
-			output, err := cmdtest.RunAppsodyCmd(args, ".", t)
+			output, err := cmdtest.RunAppsody(sandbox, args...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,8 +58,11 @@ func TestRepoList(t *testing.T) {
 }
 
 func TestRepoListJson(t *testing.T) {
-	args := []string{"repo", "list", "--config", "testdata/multiple_repository_config/config.yaml", "-o", "json"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"repo", "list", "--config", filepath.Join(cmdtest.TestDirPath, "multiple_repository_config", "config.yaml"), "-o", "json"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,8 +75,11 @@ func TestRepoListJson(t *testing.T) {
 }
 
 func TestRepoListYaml(t *testing.T) {
-	args := []string{"repo", "list", "--config", "testdata/multiple_repository_config/config.yaml", "-o", "yaml"}
-	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"repo", "list", "--config", filepath.Join(cmdtest.TestDirPath, "multiple_repository_config", "config.yaml"), "-o", "yaml"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
