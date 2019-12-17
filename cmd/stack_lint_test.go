@@ -287,30 +287,6 @@ func TestLintWithValidStack(t *testing.T) {
 	}
 }
 
-func TestLintWithInvalidStackName(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
-	newStackPath := filepath.Join(cmdtest.TestDirPath, "test_stack")
-	args := []string{"stack", "lint", newStackPath}
-
-	renErr := os.Rename(testStackPath, newStackPath)
-	if renErr != nil {
-		t.Fatal(renErr)
-	}
-	output, err := cmdtest.RunAppsody(sandbox, args...)
-
-	renErr1 := os.Rename(newStackPath, testStackPath)
-
-	if renErr1 != nil {
-		t.Fatal(renErr1)
-	}
-	if !strings.Contains(output, "Stack directory name is invalid.") {
-		t.Fatal(err)
-	}
-}
-
 func TestLintWithMissingStackYaml(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
