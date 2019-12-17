@@ -25,9 +25,12 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestAPPSODY_RUNMissingInDockerfileStack(t *testing.T) {
+func TestAppsodyRunMissingInDockerfileStack(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	restoreLine := ""
-	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,15 +44,15 @@ func TestAPPSODY_RUNMissingInDockerfileStack(t *testing.T) {
 		}
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "lint"}
-	_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testData/test-stack", t)
 
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 	if err == nil { //Lint check should fail, if not fail the test
 		t.Fatal(err)
 	}
@@ -61,16 +64,19 @@ func TestAPPSODY_RUNMissingInDockerfileStack(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestAPPSODY_MOUNTSMissingInDockerfileStack(t *testing.T) {
+func TestAppsodyMountsMissingInDockerfileStack(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	restoreLine := ""
-	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,19 +90,22 @@ func TestAPPSODY_MOUNTSMissingInDockerfileStack(t *testing.T) {
 		}
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "lint"}
-	_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testdata/test-stack", t)
 
-	if err == nil { //Lint check should fail, if not fail the test
-		t.Fatal(err)
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if !strings.Contains(err.Error(), "LINT TEST FAILED") {
+		t.Error("String \"LINT TEST FAILED\" not found in output")
+	} else {
+		if err == nil {
+			t.Error("Expected error but did not receive one.")
+		}
 	}
-
 	for i, line := range lines {
 		if strings.Contains(line, "Testing") {
 			lines[i] = restoreLine
@@ -104,16 +113,19 @@ func TestAPPSODY_MOUNTSMissingInDockerfileStack(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestAPPSODY_WATCH_DIRPRESENTAndONCHANGEMissingInDockerfileStack(t *testing.T) {
+func TestAppsodyWatchDirPresentAndOnChangeMissingInDockerfileStack(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	restoreLine := ""
-	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
 
 	if err != nil {
 		t.Fatal(err)
@@ -131,15 +143,15 @@ func TestAPPSODY_WATCH_DIRPRESENTAndONCHANGEMissingInDockerfileStack(t *testing.
 			}
 
 			output := strings.Join(lines, "\n")
-			err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+			err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			args := []string{"stack", "lint"}
-			_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testdata/test-stack", t)
 
+			_, err = cmdtest.RunAppsody(sandbox, args...)
 			if err == nil { //Lint check should fail, if not fail the test
 				t.Fatal(err)
 			}
@@ -151,7 +163,7 @@ func TestAPPSODY_WATCH_DIRPRESENTAndONCHANGEMissingInDockerfileStack(t *testing.
 			}
 
 			output = strings.Join(lines, "\n")
-			err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+			err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 			if err != nil {
 				t.Fatal(err)
@@ -159,7 +171,7 @@ func TestAPPSODY_WATCH_DIRPRESENTAndONCHANGEMissingInDockerfileStack(t *testing.
 
 		} else {
 			args := []string{"stack", "lint"}
-			_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testdata/test-stack", t)
+			_, err = cmdtest.RunAppsody(sandbox, args...)
 
 			if err == nil { //Lint check should fail, if not fail the test
 				t.Fatal(err)
@@ -168,9 +180,12 @@ func TestAPPSODY_WATCH_DIRPRESENTAndONCHANGEMissingInDockerfileStack(t *testing.
 	}
 }
 
-func Test_KILLValue(t *testing.T) {
+func Test_KillValue(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	restoreLine := ""
-	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
 
 	if err != nil {
 		t.Fatal(err)
@@ -186,15 +201,15 @@ func Test_KILLValue(t *testing.T) {
 	}
 
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "lint"}
-	_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testData/test-stack", t)
 
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 	if err == nil { //Lint check should fail, if not fail the test
 		t.Fatal(err)
 	}
@@ -206,16 +221,19 @@ func Test_KILLValue(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func Test_APPSODY_REGEXValue(t *testing.T) {
+func TestAppsodyRegexValue(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	restoreLine := ""
-	file, err := ioutil.ReadFile("../cmd/testdata/test-stack/image/Dockerfile-stack")
+	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
 
 	if err != nil {
 		t.Fatal(err)
@@ -231,15 +249,15 @@ func Test_APPSODY_REGEXValue(t *testing.T) {
 	}
 
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	args := []string{"stack", "lint"}
-	_, err = cmdtest.RunAppsodyCmd(args, "../cmd/testdata/test-stack", t)
 
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 	if err == nil { //Lint check should fail, if not fail the test
 		t.Fatal(err)
 	}
@@ -251,25 +269,28 @@ func Test_APPSODY_REGEXValue(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile("../cmd/testdata/test-stack/image/Dockerfile-stack", []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLintWithValidStack(t *testing.T) {
-	currentDir, _ := os.Getwd()
-	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
-	args := []string{"stack", "lint"}
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
-	_, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+	args := []string{"stack", "lint", filepath.Join(cmdtest.TestDirPath, "test-stack")}
 
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil { //Lint check should pass, if not fail the test
 		t.Fatal(err)
 	}
 }
 
 func TestLintWithInvalidStackName(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	newStackPath := filepath.Join(currentDir, "testdata", "test_stack")
@@ -279,7 +300,7 @@ func TestLintWithInvalidStackName(t *testing.T) {
 	if renErr != nil {
 		t.Fatal(renErr)
 	}
-	output, err := cmdtest.RunAppsodyCmd(args, newStackPath, t)
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 
 	renErr1 := os.Rename(newStackPath, testStackPath)
 
@@ -289,7 +310,6 @@ func TestLintWithInvalidStackName(t *testing.T) {
 	if !strings.Contains(output, "Stack directory name is invalid.") {
 		t.Fatal(err)
 	}
-
 }
 
 func TestLintWithMissingStackYaml(t *testing.T) {
@@ -348,29 +368,25 @@ func TestLintWithMissingImageProjectAndConfigDir(t *testing.T) {
 	if !strings.Contains(output, "Missing image directory") {
 		t.Fatal(err)
 	}
-
 }
 
 func TestLintWithMissingREADME(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	currentDir, _ := os.Getwd()
 	testStackPath := filepath.Join(currentDir, "testdata", "test-stack")
 	args := []string{"stack", "lint"}
 	removeReadme := filepath.Join(testStackPath, "README.md")
 	removeArray := []string{removeReadme}
 
-	osErr := os.RemoveAll(removeReadme)
-	if osErr != nil {
-		t.Fatal(osErr)
-	}
-
-	output, err := cmdtest.RunAppsodyCmd(args, testStackPath, t)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	RestoreSampleStack(removeArray)
 
 	if !strings.Contains(output, "Missing README.md") {
 		t.Fatal(err)
 	}
-
 }
 
 func TestLintWithMissingTemplatesDirectory(t *testing.T) {
