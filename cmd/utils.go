@@ -686,7 +686,13 @@ func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
 // CheckPrereqs checks the prerequisites to run the CLI
 func CheckPrereqs(config *RootCommandConfig) error {
 	if config.Buildah {
-		return nil
+		buildahCmd := "buildah"
+		buildahArgs := []string{"containers"}
+		checkBuildahCmd := exec.Command(buildahCmd, buildahArgs...)
+		_, buildahCmdErr := checkBuildahCmd.Output()
+		if buildahCmdErr != nil {
+			return errors.New("buildah does not seem to be installed or running - failed to execute buildah containers")
+		}
 	}
 	dockerCmd := "docker"
 	dockerArgs := []string{"ps"}
