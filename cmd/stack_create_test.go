@@ -24,7 +24,7 @@ import (
 )
 
 func TestStackCreateSampleStack(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
 	err := os.RemoveAll("testing-stack")
@@ -32,7 +32,7 @@ func TestStackCreateSampleStack(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join(cmdtest.TestDirPath, "default_repository_config", "config.yaml")}
+	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
@@ -51,7 +51,7 @@ func TestStackCreateSampleStack(t *testing.T) {
 }
 
 func TestStackCreateWithCopyTag(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
 	err := os.RemoveAll("testing-stack")
@@ -59,7 +59,7 @@ func TestStackCreateWithCopyTag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join(cmdtest.TestDirPath, "default_repository_config", "config.yaml"), "--copy", "incubator/nodejs"}
+	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml"), "--copy", "incubator/nodejs"}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
@@ -219,7 +219,7 @@ func TestStackAlreadyExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join(cmdtest.TestDirPath, "default_repository_config", "config.yaml")}
+	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {

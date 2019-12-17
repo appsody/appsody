@@ -41,11 +41,12 @@ type Repository struct {
 
 type TestSandbox struct {
 	*testing.T
-	ProjectDir  string
-	ProjectName string
-	ConfigDir   string
-	ConfigFile  string
-	Verbose     bool
+	ProjectDir   string
+	TestDataPath string
+	ProjectName  string
+	ConfigDir    string
+	ConfigFile   string
+	Verbose      bool
 }
 
 func inArray(haystack []string, needle string) bool {
@@ -85,6 +86,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	sandbox.ProjectName = strings.ToLower(strings.Replace(filepath.Base(testDir), "appsody-", "", 1))
 	sandbox.ProjectDir = filepath.Join(testDir, sandbox.ProjectName)
 	sandbox.ConfigDir = filepath.Join(testDir, "config")
+	sandbox.TestDataPath = filepath.Join(testDir, "testdata")
 	err = os.MkdirAll(sandbox.ProjectDir, 0755)
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
@@ -93,8 +95,13 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
 	}
+	err = os.MkdirAll(sandbox.TestDataPath, 0755)
+	if err != nil {
+		t.Fatal("Error creating project dir: ", err)
+	}
 	t.Log("Created testing project dir: ", sandbox.ProjectDir)
 	t.Log("Created testing config dir: ", sandbox.ConfigDir)
+	t.Log("Created testa data dir: ", sandbox.TestDataPath)
 
 	// Create the config file if it does not already exist.
 	sandbox.ConfigFile = filepath.Join(sandbox.ConfigDir, "config.yaml")
@@ -103,6 +110,16 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error writing config file: ", err)
 	}
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	err = cmd.CopyDir(loggingConfig, TestDirPath, testDir)
+	if err != nil {
+		t.Fatal("Error copying testdata folder: ", err)
+	}
+
+	t.Logf("Copied %s to %s", TestDirPath, testDir)
 
 	cleanupFunc := func() {
 		if CLEANUP {

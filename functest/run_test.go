@@ -29,7 +29,7 @@ var stacksList = os.Getenv("STACKSLIST")
 
 // Test appsody run of the nodejs-express stack and check the http://localhost:3000/health endpoint
 func TestRun(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
 	// first add the test repo index

@@ -105,7 +105,7 @@ var appsodyCommitLabels = []string{
 
 func TestBuildLabels(t *testing.T) {
 	stacksList = "incubator/nodejs"
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
 	// first add the test repo index

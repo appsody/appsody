@@ -25,7 +25,7 @@ import (
 )
 
 func TestStopWithoutName(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
 	// first add the test repo index
@@ -119,7 +119,7 @@ func TestStopWithoutName(t *testing.T) {
 func TestStopWithName(t *testing.T) {
 
 	// create a temporary dir to create the project and run the test
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
 	// appsody init nodejs-express
