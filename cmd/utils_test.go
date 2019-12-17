@@ -368,6 +368,8 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	result4["VAR3"] = ""
 	result4["VAR4"] = "Override"
 	result4["VAR6"] = "VAL6"
+	result4["VAR7"] = "VAL\"7"
+	result4["VAR'8"] = "VAL'8"
 
 	for _, dockerOption := range testDockerOptions1 {
 
