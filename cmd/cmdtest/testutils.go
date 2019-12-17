@@ -95,13 +95,9 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
 	}
-	err = os.MkdirAll(sandbox.TestDataPath, 0755)
-	if err != nil {
-		t.Fatal("Error creating project dir: ", err)
-	}
+
 	t.Log("Created testing project dir: ", sandbox.ProjectDir)
 	t.Log("Created testing config dir: ", sandbox.ConfigDir)
-	t.Log("Created testa data dir: ", sandbox.TestDataPath)
 
 	// Create the config file if it does not already exist.
 	sandbox.ConfigFile = filepath.Join(sandbox.ConfigDir, "config.yaml")
