@@ -693,6 +693,7 @@ func CheckPrereqs(config *RootCommandConfig) error {
 		if buildahCmdErr != nil {
 			return errors.New("buildah does not seem to be installed or running - failed to execute buildah containers")
 		}
+		return nil
 	}
 	dockerCmd := "docker"
 	dockerArgs := []string{"ps"}
