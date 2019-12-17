@@ -61,6 +61,22 @@ func TestRepoAdd(t *testing.T) {
 	}
 }
 
+func TestRepoAddDryRun(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"repo", "add", "experimental", "https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml", "--dryrun", "--config", "testdata/default_repository_config/config.yaml"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+
+	if err != nil {
+		t.Error(err)
+	}
+	if !strings.Contains(output, "Dry Run - Skipping") {
+		t.Errorf("Did not find expected error Dry Run - Skipping in output")
+	}
+
+}
+
 var repoAddErrorTests = []struct {
 	testName      string
 	args          []string // input
@@ -88,12 +104,11 @@ func TestRepoAddErrors(t *testing.T) {
 			output, err := cmdtest.RunAppsody(sandbox, args...)
 
 			if err == nil {
-				t.Error("Expected non-zero exit code")
+				t.Error("Expected non-zero exit code.")
 			}
 			if !strings.Contains(output, tt.expectedError) {
 				t.Errorf("Did not find expected error '%s' in output", tt.expectedError)
 			}
 		})
-
 	}
 }
