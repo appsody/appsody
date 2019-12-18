@@ -145,6 +145,12 @@ Runs the following validation tests against the stack and its templates:
 					return err
 				}
 
+				// set file permission to writable to allow init
+				err = os.Chmod(projectDir, 0777)
+				if err != nil {
+					return errors.Errorf("Error changing file permision: %v", err)
+				}
+
 				rootConfig.Info.Log("Created project dir: " + projectDir)
 				stack := "dev.local/" + stackName
 
