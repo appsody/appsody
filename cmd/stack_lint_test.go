@@ -308,7 +308,7 @@ func TestLintWithMissingStackYaml(t *testing.T) {
 	_, appsodyErr := cmdtest.RunAppsody(sandbox, args...)
 
 	if appsodyErr == nil { //Lint check should fail, if not fail the test
-		t.Fatal(appsodyErr)
+		t.Fatal("Expected failure - Missing stack.yaml")
 	}
 
 	RestoreSampleStack(removeArray, testStackPath)
@@ -345,7 +345,7 @@ func TestLintWithMissingImageProjectAndConfigDir(t *testing.T) {
 	}
 
 	if !strings.Contains(output, "Missing image directory") {
-		t.Fatal(err)
+		t.Fatal(err, ": Expected failure - Missing image directory")
 	}
 }
 
@@ -368,7 +368,7 @@ func TestLintWithMissingREADME(t *testing.T) {
 	RestoreSampleStack(removeArray, testStackPath)
 
 	if !strings.Contains(output, "Missing README.md") {
-		t.Fatal(err)
+		t.Fatal(err, ": Expected failure - Missing README")
 	}
 }
 
@@ -392,7 +392,7 @@ func TestLintWithMissingTemplatesDirectory(t *testing.T) {
 	RestoreSampleStack(removeArray, testStackPath)
 
 	if !strings.Contains(output, "Missing template directory") && !strings.Contains(output, "No templates found in") {
-		t.Fatal(err)
+		t.Fatal(err, ": Expected failure - Missing templates directory")
 	}
 }
 
@@ -431,7 +431,7 @@ func TestLintWithInvalidVersion(t *testing.T) {
 	}
 
 	if !strings.Contains(output, "Version must be formatted in accordance to semver") {
-		t.Fatal(err)
+		t.Fatal(err, ": Expected failure - Version in stack.yaml not formatted in accordance to semver")
 	}
 
 }
@@ -474,7 +474,7 @@ func TestLintWithLongNameAndDescription(t *testing.T) {
 	}
 
 	if !strings.Contains(output, "Description must be under ") && !strings.Contains(output, "Stack name must be under ") {
-		t.Fatal(err)
+		t.Fatal(err, ": Expected failure - Stack name and description in stack.yaml is too long")
 	}
 }
 
@@ -513,7 +513,7 @@ func TestLintWithInvalidLicenseField(t *testing.T) {
 	}
 
 	if !strings.Contains(output, "The stack.yaml SPDX license ID is invalid") {
-		t.Fatal(err)
+		t.Fatal(err, ": Expected failure - License value in stack.yaml is invalid")
 	}
 }
 
@@ -552,7 +552,7 @@ func TestLintWithInvalidTemplatingValues(t *testing.T) {
 	}
 
 	if !strings.Contains(output, "is not in an alphanumeric format") {
-		t.Fatal(err)
+		t.Fatal(err, ": Expected failure - Templating data in stack.yaml is not in alphanumeric format.")
 	}
 }
 
@@ -591,7 +591,7 @@ func TestLintWithInvalidRequirements(t *testing.T) {
 	}
 
 	if !strings.Contains(output, "is not in the correct format. See:") {
-		t.Fatal(err)
+		t.Fatal(err, ": Expected failure - Requirement constraint is not in the correct format.")
 	}
 
 }
