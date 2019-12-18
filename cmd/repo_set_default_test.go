@@ -34,11 +34,14 @@ var repoSetDefaultLogsTests = []struct {
 }
 
 func TestRepoSetDefaultLogs(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	for _, tt := range repoSetDefaultLogsTests {
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.testName, func(t *testing.T) {
 			args := append([]string{"repo", "set-default"}, tt.args...)
-			output, _ := cmdtest.RunAppsodyCmd(args, ".", t)
+			output, _ := cmdtest.RunAppsody(sandbox, args...)
 
 			if !strings.Contains(output, tt.expectedLogs) {
 				t.Errorf("Did not find expected error '%s' in output", tt.expectedLogs)
@@ -48,13 +51,16 @@ func TestRepoSetDefaultLogs(t *testing.T) {
 }
 
 func TestRepoSetDefault(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	args := []string{"repo", "set-default", "localhub", "--config", "testdata/multiple_repository_config/config.yaml"}
 	removeRepo := filepath.Join("testdata", "multiple_repository_config", "repository", "repository.yaml")
 	file, readErr := ioutil.ReadFile(removeRepo)
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
-	output, err := cmdtest.RunAppsodyCmd(args, ".", t)
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 
 	writeErr := ioutil.WriteFile(filepath.Join(removeRepo), []byte(file), 0644)
 	if writeErr != nil {
