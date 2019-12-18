@@ -214,13 +214,8 @@ func TestStackAlreadyExists(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	err := os.RemoveAll("testing-stack")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)
@@ -240,10 +235,5 @@ func TestStackAlreadyExists(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error but did not receive one.")
 		}
-	}
-
-	err = os.RemoveAll("testing-stack")
-	if err != nil {
-		t.Fatal(err)
 	}
 }

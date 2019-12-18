@@ -110,12 +110,37 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	var outBuffer bytes.Buffer
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
-	err = cmd.CopyDir(loggingConfig, TestDirPath, testDir)
+
+	_, err = os.Stat(TestDirPath)
 	if err != nil {
-		t.Fatal("Error copying testdata folder: ", err)
+		t.Logf("Cannot find source directory %s to copy", TestDirPath)
 	}
 
-	t.Logf("Copied %s to %s", TestDirPath, testDir)
+	var execCmd string
+	var execArgs = []string{TestDirPath, testDir}
+
+	if runtime.GOOS == "windows" {
+		execCmd = "CMD"
+		winArgs := []string{"/C", "XCOPY", "I", "/F", "/E", "/H", "/K"}
+		execArgs = append(winArgs[0:], execArgs...)
+
+	} else {
+		execCmd = "cp"
+		bashArgs := []string{"-rf"}
+		execArgs = append(bashArgs[0:], execArgs...)
+	}
+	t.Log("About to run: ", execCmd, execArgs)
+	copyCmd := exec.Command(execCmd, execArgs...)
+	cmdOutput, cmdErr := copyCmd.Output()
+	_, err = os.Stat(testDir)
+	if err != nil {
+		t.Logf("Could not copy %s to %s - output of copy command %s %s\n", TestDirPath, testDir, cmdOutput, cmdErr)
+	}
+	t.Logf("Directory copy of %s to %s was successful \n", TestDirPath, testDir)
+	if runtime.GOOS == "windows" {
+
+		t.Logf("OUTPUT: %s", cmdOutput)
+	}
 
 	cleanupFunc := func() {
 		if CLEANUP {
