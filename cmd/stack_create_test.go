@@ -27,24 +27,26 @@ func TestStackCreateSampleStack(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
-	err := os.RemoveAll("testing-stack")
+	testStackName := "testing-create-sample-stack"
+
+	err := os.RemoveAll(testStackName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
+	args := []string{"stack", "create", testStackName, "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	exists, err := cmdtest.Exists(testStackName)
 
 	if !exists {
 		t.Fatal(err)
 	}
-	os.RemoveAll("testing-stack")
+	os.RemoveAll(testStackName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,24 +56,26 @@ func TestStackCreateWithCopyTag(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
-	err := os.RemoveAll("testing-stack")
+	testStackName := "testing-create-stack-with-copy"
+
+	err := os.RemoveAll(testStackName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml"), "--copy", "incubator/nodejs"}
+	args := []string{"stack", "create", testStackName, "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml"), "--copy", "incubator/nodejs"}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	exists, err := cmdtest.Exists(testStackName)
 
 	if !exists {
 		t.Fatal(err)
 	}
-	os.RemoveAll("testing-stack")
+	os.RemoveAll(testStackName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,21 +85,27 @@ func TestStackCreateInvalidStackCase1(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	err := os.RemoveAll("testing-stack")
+	testStackName := "testing-stack-create-invalid-1"
+	err := os.RemoveAll(testStackName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--copy", "incubator/nodej"}
+	args := []string{"stack", "create", testStackName, "--copy", "incubator/nodej"}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	exists, err := cmdtest.Exists(testStackName)
 
 	if exists {
+		// It SHOULDN'T exist, but it might
+		err = os.RemoveAll(testStackName)
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Fatal(err)
 	}
 }
@@ -104,21 +114,27 @@ func TestStackCreateInvalidStackCase2(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	err := os.RemoveAll("testing-stack")
+	testStackName := "testing-stack-create-invalid-2"
+	err := os.RemoveAll(testStackName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--copy", "nodejs"}
+	args := []string{"stack", "create", testStackName, "--copy", "nodejs"}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	exists, err := cmdtest.Exists(testStackName)
 
 	if exists {
+		// It SHOULDN'T exist, but it might
+		err = os.RemoveAll(testStackName)
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Fatal(err)
 	}
 }
@@ -127,21 +143,28 @@ func TestStackCreateInvalidStackCase3(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	err := os.RemoveAll("testing-stack")
+	testStackName := "testing-stack-create-invalid-3"
+
+	err := os.RemoveAll(testStackName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--copy", "experimental/nodejs"}
+	args := []string{"stack", "create", testStackName, "--copy", "experimental/nodejs"}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	exists, err := cmdtest.Exists(testStackName)
 
 	if exists {
+		// It SHOULDN'T exist, but it might
+		err = os.RemoveAll(testStackName)
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Fatal(err)
 	}
 }
@@ -150,21 +173,28 @@ func TestStackCreateInvalidStackCase4(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	err := os.RemoveAll("testing-stack")
+	testStackName := "testing-stack-create-invalid-4"
+
+	err := os.RemoveAll(testStackName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing-stack", "--copy", "exp/java-microprofile"}
+	args := []string{"stack", "create", testStackName, "--copy", "exp/java-microprofile"}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	exists, err := cmdtest.Exists(testStackName)
 
 	if exists {
+		// It SHOULDN'T exist, but it might
+		err = os.RemoveAll(testStackName)
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Fatal(err)
 	}
 }
@@ -173,21 +203,27 @@ func TestStackCreateInvalidStackName(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	err := os.RemoveAll("testing_stack")
+	testStackName := "testing_stack_invalid_name"
+	err := os.RemoveAll(testStackName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	args := []string{"stack", "create", "testing_stack"}
+	args := []string{"stack", "create", testStackName}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing_stack")
+	exists, err := cmdtest.Exists(testStackName)
 
 	if exists {
+		// It SHOULDN'T exist, but it might
+		err = os.RemoveAll(testStackName)
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Fatal(err)
 	}
 }
@@ -196,16 +232,23 @@ func TestStackCreateInvalidLongStackName(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"stack", "create", "testing_stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stack"}
+	testStackName := "testing_stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stack"
+
+	args := []string{"stack", "create", testStackName}
 	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing_stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stack")
+	exists, err := cmdtest.Exists(testStackName)
 
 	if exists {
+		// It SHOULDN'T exist, but it might
+		err = os.RemoveAll(testStackName)
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Fatal(err)
 	}
 }
@@ -214,14 +257,22 @@ func TestStackAlreadyExists(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"stack", "create", "testing-stack", "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
-	_, err := cmdtest.RunAppsody(sandbox, args...)
+	testStackName := "test-stack-already-exists"
+
+	err := os.RemoveAll(testStackName)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	args := []string{"stack", "create", testStackName, "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exists, err := cmdtest.Exists(testStackName)
 
 	if !exists {
 		t.Fatal(err)
@@ -229,11 +280,16 @@ func TestStackAlreadyExists(t *testing.T) {
 
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
-	if !strings.Contains(err.Error(), "A stack named testing-stack already exists in your directory. Specify a unique stack name") {
-		t.Error("String \"A stack named testing-stack already exists in your directory. Specify a unique stack name\" not found in output")
+	if !strings.Contains(err.Error(), "A stack named "+testStackName+" already exists in your directory. Specify a unique stack name") {
+		t.Error("String \"A stack named " + testStackName + "already exists in your directory. Specify a unique stack name\" not found in output")
 	} else {
 		if err == nil {
 			t.Error("Expected error but did not receive one.")
 		}
+	}
+
+	err = os.RemoveAll(testStackName)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
