@@ -42,6 +42,9 @@ func TestStackCreateSampleStack(t *testing.T) {
 	}
 
 	exists, err := cmdtest.Exists(testStackName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if !exists {
 		t.Fatal(err)
@@ -71,6 +74,9 @@ func TestStackCreateWithCopyTag(t *testing.T) {
 	}
 
 	exists, err := cmdtest.Exists(testStackName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if !exists {
 		t.Fatal(err)
@@ -99,6 +105,9 @@ func TestStackCreateInvalidStackCase1(t *testing.T) {
 	}
 
 	exists, err := cmdtest.Exists(testStackName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if exists {
 		// It SHOULDN'T exist, but it might
@@ -128,6 +137,9 @@ func TestStackCreateInvalidStackCase2(t *testing.T) {
 	}
 
 	exists, err := cmdtest.Exists(testStackName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if exists {
 		// It SHOULDN'T exist, but it might
@@ -158,6 +170,9 @@ func TestStackCreateInvalidStackCase3(t *testing.T) {
 	}
 
 	exists, err := cmdtest.Exists(testStackName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if exists {
 		// It SHOULDN'T exist, but it might
@@ -188,6 +203,9 @@ func TestStackCreateInvalidStackCase4(t *testing.T) {
 	}
 
 	exists, err := cmdtest.Exists(testStackName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if exists {
 		// It SHOULDN'T exist, but it might
@@ -217,6 +235,9 @@ func TestStackCreateInvalidStackName(t *testing.T) {
 	}
 
 	exists, err := cmdtest.Exists(testStackName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if exists {
 		// It SHOULDN'T exist, but it might
@@ -242,6 +263,9 @@ func TestStackCreateInvalidLongStackName(t *testing.T) {
 	}
 
 	exists, err := cmdtest.Exists(testStackName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if exists {
 		// It SHOULDN'T exist, but it might
@@ -273,6 +297,9 @@ func TestStackAlreadyExists(t *testing.T) {
 	}
 
 	exists, err := cmdtest.Exists(testStackName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if !exists {
 		t.Fatal(err)
