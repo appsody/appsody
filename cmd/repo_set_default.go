@@ -31,7 +31,7 @@ The default repository is used when you run the "appsody init" command without s
   Sets your default repository to "my-local-repo".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return errors.New("Error, you must specify desired default repository")
+				return errors.New("You must specify desired default repository")
 			}
 
 			var repoName = args[0]
@@ -55,10 +55,10 @@ The default repository is used when you run the "appsody init" command without s
 							return repoFileErr
 						}
 					} else {
-						config.Info.log("Your default repository has already been set to " + repoName)
+						return errors.New("Your default repository has already been set to " + repoName)
 					}
 				} else {
-					config.Error.log("Repository is not in configured list of repositories")
+					return errors.New("The repository '" + repoName + "' is not in your configured list of repositories")
 				}
 			}
 			return nil
