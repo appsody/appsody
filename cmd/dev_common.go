@@ -44,7 +44,6 @@ type devCommonConfig struct {
 }
 
 func checkDockerRunOptions(options []string) error {
-	fmt.Println("testing docker options", options)
 	//runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))((=?$)|(=.*)))"
 	runOptionsTest := "(^((--help)|(-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))((=?$)|(=.*)))"
 
@@ -143,7 +142,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		return configErr
 	}
 
-	err := CheckPrereqs()
+	err := CheckPrereqs(config.RootCommandConfig)
 	if err != nil {
 		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
@@ -342,7 +341,12 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 
-		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, depsMount, dryrun)
+		dockerEnvVars, err := ExtractDockerEnvVars(config.dockerOptions)
+		if err != nil {
+			return err
+		}
+		config.Debug.Logf("Docker env vars extracted from docker options: %v", dockerEnvVars)
+		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, dockerEnvVars, depsMount, dryrun)
 		if err != nil {
 			return err
 		}

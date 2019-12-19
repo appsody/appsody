@@ -34,15 +34,15 @@
   revision = "2da2e88854f4ce878da1078b388a8eb2bb44be54"
 
 [[projects]]
-  digest = "1:4756f15a2e26d1bb39c3e68d312bb07315376d8454a7ed1ef16829d9f009300e"
+  digest = "1:f019509d1a31bfd4c373d99f80998572baad0d6a89d13d9aa608e00ac3eb2485"
   name = "github.com/appsody/appsody-operator"
   packages = [
     "pkg/apis/appsody/v1beta1",
     "pkg/common",
   ]
   pruneopts = "UT"
-  revision = "fa1611ade8d75cd94c1c10a74c262f9d10b2c499"
-  version = "0.2.1"
+  revision = "0cf924823e6a5afeb8b1bdb7e50f82cc6d104875"
+  version = "v0.3.0"
 
 [[projects]]
   digest = "1:f6944c59395c37a8c6fc9f65ba4e64dce4bf0eb9e459ed1ceb51d18a88efbc35"
@@ -451,12 +451,9 @@
   revision = "0270cf2f1c1d995d34b36019a6f65d58e6e33ad4"
 
 [[projects]]
-  digest = "1:68cd93696d4de06936c94bf0c510802140c2d3c956b557f3d001430d58cf676c"
+  digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"
   name = "sigs.k8s.io/controller-runtime"
-  packages = [
-    "pkg/runtime/scheme",
-    "pkg/scheme",
-  ]
+  packages = ["pkg/scheme"]
   pruneopts = "UT"
   revision = "d21241119ea4de139f1892ba2f5bc72c96d07f3f"
   version = "v0.3.0"

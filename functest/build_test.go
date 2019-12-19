@@ -52,7 +52,7 @@ func TestBuildSimple(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -95,13 +95,21 @@ var appsodyStackLabels = []string{
 	"configured",
 }
 
+var appsodyCommitKey = "dev.appsody.image.commit."
+var appsodyCommitLabels = []string{
+	"message",
+	"date",
+	"committer",
+	"author",
+}
+
 func TestBuildLabels(t *testing.T) {
 	stacksList = "incubator/nodejs"
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
 	// first add the test repo index
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,9 +121,18 @@ func TestBuildLabels(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	copyCmd := exec.Command("cp", "../cmd/testdata/.appsody-config.yaml", sandbox.ProjectDir)
-	err = copyCmd.Run()
 	t.Log("Copying .appsody-config.yaml to project dir...")
+	copyCmd := exec.Command("cp", filepath.Join(cmdtest.TestDirPath, ".appsody-config.yaml"), sandbox.ProjectDir)
+	err = copyCmd.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	commitMessage := "initial test commit"
+	t.Log("Setting up git for ", sandbox.ProjectDir)
+	gitCmd := exec.Command("sh", "-c", "git init && git add . && git commit -m '"+commitMessage+"' && git remote add upstream url && git branch upstream && git branch -u upstream")
+	gitCmd.Dir = sandbox.ProjectDir
+	err = gitCmd.Run()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,6 +175,18 @@ func TestBuildLabels(t *testing.T) {
 		}
 	}
 
+	for _, label := range appsodyCommitLabels {
+		if labelsMap[appsodyCommitKey+label] == nil {
+			t.Errorf("Could not find %s%s label in Docker image!", appsodyCommitKey, label)
+		}
+	}
+
+	if labelsMap[appsodyCommitKey+"message"] != commitMessage {
+		t.Errorf("Expected commit message \"%s\" but found \"%s\"", commitMessage, labelsMap[appsodyCommitKey+"message"])
+	}
+
+	checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, false)
+
 	//delete the image
 	deleteImage(imageName, t)
 }
@@ -190,7 +219,7 @@ func TestDeploymentConfig(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -210,14 +239,14 @@ func TestDeploymentConfig(t *testing.T) {
 		if err != nil {
 			t.Error("appsody build command returned err: ", err)
 		}
-		checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName)
+		checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, true)
 
 		//delete the image
 		deleteImage(imageName, t)
 	}
 }
 
-func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imageTag string) {
+func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imageTag string, knative bool) {
 	_, err := os.Stat(deployFile)
 	if err != nil && os.IsNotExist(err) {
 		t.Errorf("Could not find %s", deployFile)
@@ -244,7 +273,7 @@ func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imag
 		t.Errorf("Incorrect ApplicationImage in app-deploy.yaml. Expected %s but found %s", expectedApplicationImage, appsodyApplication.Spec.ApplicationImage)
 	}
 
-	if *appsodyApplication.Spec.CreateKnativeService != true {
+	if *appsodyApplication.Spec.CreateKnativeService != knative {
 		t.Error("CreateKnativeService not set to true in the app-deploy.yaml when using --knative flag")
 	}
 

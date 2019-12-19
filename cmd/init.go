@@ -107,7 +107,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	}
 	var proceedWithTemplate bool
 
-	err = CheckPrereqs()
+	err = CheckPrereqs(config.RootCommandConfig)
 	if err != nil {
 		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
@@ -304,6 +304,16 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 //Runs the .appsody-init.sh/bat files if necessary
 func install(config *initCommandConfig) error {
 	config.Info.log("Setting up the development environment")
+
+	// reset config.StackRegistry and get it again from the newly untarred .appsody-config.yaml
+	// this will need to be updated when we support --stack-registry on the init command
+	config.StackRegistry = ""
+	var stackErr error
+	config.StackRegistry, stackErr = getStackRegistry(config.RootCommandConfig)
+	if stackErr != nil {
+		return stackErr
+	}
+
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
 		return perr
