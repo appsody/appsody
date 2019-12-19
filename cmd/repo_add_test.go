@@ -36,7 +36,7 @@ func TestRepoAdd(t *testing.T) {
 	// see how many repos we have after running repo add
 	endRepos := getRepoListOutput(t, sandbox)
 
-	if len(startRepos) != (len(endRepos) + 1) {
+	if (len(startRepos) + 1) != len(endRepos) {
 		t.Errorf("Expected %d repos but found %d", (len(startRepos) + 1), len(endRepos))
 	} else {
 		// check that the correct repo name and url were added
