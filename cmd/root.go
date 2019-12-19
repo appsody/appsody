@@ -92,7 +92,7 @@ Complete documentation is available at https://appsody.dev`,
 		//Run: no run action for the root command
 	}
 
-	rootCmd.PersistentFlags().StringVar(&rootConfig.CfgFile, "config", "", "The absolute path to the Appsody config file. Use this option when you want to specify your own, customized config file. (default '$HOME/.appsody/.appsody.yaml')")
+	rootCmd.PersistentFlags().StringVar(&rootConfig.CfgFile, "config", "", "The absolute path to the Appsody config file. Use this option when you want to specify your own, customized config file (default '$HOME/.appsody/.appsody.yaml')")
 	rootCmd.PersistentFlags().BoolVarP(&rootConfig.Verbose, "verbose", "v", false, "Prints more detailed log output, to the console and to a file in $HOME/.appsody/logs")
 	rootCmd.PersistentFlags().BoolVar(&rootConfig.Dryrun, "dryrun", false, "Shows the commands that are called by this command, without running them.")
 
