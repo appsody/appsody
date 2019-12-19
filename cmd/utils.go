@@ -691,7 +691,7 @@ func CheckPrereqs(config *RootCommandConfig) error {
 		checkBuildahCmd := exec.Command(buildahCmd, buildahArgs...)
 		_, buildahCmdErr := checkBuildahCmd.Output()
 		if buildahCmdErr != nil {
-			return errors.New("buildah does not seem to be installed or running - failed to execute buildah containers")
+			return errors.Errorf("buildah does not seem to be installed or capable of running in this environment - failed to execute buildah containers: %v", buildahCmdErr)
 		}
 		return nil
 	}
