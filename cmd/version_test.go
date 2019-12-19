@@ -15,17 +15,27 @@
 package cmd_test
 
 import (
+	"strings"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
 func TestVersion(t *testing.T) {
 
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	args := []string{"version"}
-	_, err := cmdtest.RunAppsodyCmd(args, ".", t)
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if !strings.Contains(output, cmd.VERSION) {
+		t.Fatal("Output does not contain version")
+	}
+
 }
