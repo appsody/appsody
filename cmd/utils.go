@@ -132,6 +132,7 @@ func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
 	lenFlag := len("--env-file=")
 	if envFilePos < 0 {
 		envFilePos = strings.Index(dockerOptions, "--env-file")
+		lenFlag = len("--env-file")
 	}
 	if envFilePos >= 0 {
 		tokens := strings.Fields(dockerOptions[envFilePos+lenFlag:])
