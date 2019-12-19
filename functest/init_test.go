@@ -54,7 +54,7 @@ func TestInitResultsCheck(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			appsodyResultsCheck(sandbox.ProjectDir, t)
+			checkExpressExists(sandbox.ProjectDir, t)
 		})
 
 	}
@@ -96,6 +96,7 @@ func TestInitErrors(t *testing.T) {
 			} else if err == nil {
 				t.Errorf("Expected an error from test %v but it did not return one.", tt.testName)
 			}
+			checkExpressNotExists(sandbox.ProjectDir, t)
 		})
 	}
 }
@@ -262,7 +263,7 @@ func TestOverwrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	appsodyResultsCheck(sandbox.ProjectDir, t)
+	checkExpressExists(sandbox.ProjectDir, t)
 
 	fileInfoFinal, err = os.Stat(appjs)
 	if err != nil {
@@ -365,7 +366,7 @@ func TestWhiteList(t *testing.T) {
 	}
 
 	shouldExist(vscode, t)
-	appsodyResultsCheck(sandbox.ProjectDir, t)
+	checkExpressExists(sandbox.ProjectDir, t)
 }
 
 func shouldExist(file string, t *testing.T) {
@@ -376,7 +377,7 @@ func shouldExist(file string, t *testing.T) {
 	}
 
 }
-func appsodyResultsCheck(projectDir string, t *testing.T) {
+func checkExpressExists(projectDir string, t *testing.T) {
 
 	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
 	appjs := filepath.Join(projectDir, "app.js")
@@ -384,11 +385,20 @@ func appsodyResultsCheck(projectDir string, t *testing.T) {
 	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
 
 	shouldExist(appsodyFile, t)
-
 	shouldExist(appjs, t)
-
 	shouldExist(packagejson, t)
-
 	shouldExist(packagejsonlock, t)
+}
 
+func checkExpressNotExists(projectDir string, t *testing.T) {
+
+	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
+	appjs := filepath.Join(projectDir, "app.js")
+	packagejson := filepath.Join(projectDir, "package.json")
+	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
+
+	shouldNotExist(appsodyFile, t)
+	shouldNotExist(appjs, t)
+	shouldNotExist(packagejson, t)
+	shouldNotExist(packagejsonlock, t)
 }
