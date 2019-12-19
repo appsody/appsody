@@ -248,35 +248,36 @@ func TestStackAlreadyExists(t *testing.T) {
 	}
 }
 
-func TestStackCreateMissingArguments(t *testing.T) {
-	args := []string{"stack", "create"}
-	_, err := cmdtest.RunAppsodyCmd(args, ".", t)
+func TestStackCreateMissingArgumentsFail(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
-	if err == nil {
-		t.Fatal(err)
+	args := []string{"stack", "create"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "Required parameter missing. You must specify a stack name") {
+			t.Errorf("String \"Required parameter missing. You must specify a stack name\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
 	}
+
 }
 
 func TestStackCreateSampleStackDryrun(t *testing.T) {
-	err := os.RemoveAll("testing-stack")
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	args := []string{"stack", "create", "testing-stack", "--dryrun", "--config", "testdata/default_repository_config/config.yaml"}
-	_, err = cmdtest.RunAppsodyCmd(args, ".", t)
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
-		t.Fatal(err)
-	}
-
-	exists, err := cmdtest.Exists("testing-stack")
-
-	if exists {
-		t.Fatal(err)
-		os.RemoveAll("testing-stack")
-		if err != nil {
-			t.Fatal(err)
+		t.Errorf("Error running dry run mode: %v", err)
+	} else {
+		if !strings.Contains(output, "Dry run complete") {
+			t.Errorf("String \"Dry run complete\" not found in output: '%v'", err.Error())
 		}
 	}
 }
