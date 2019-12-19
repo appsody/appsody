@@ -54,10 +54,10 @@ You cannot remove the default repository, but you can make a different repositor
 					if repoName != defaultRepoName {
 						repoFile.Remove(repoName, config)
 					} else {
-						config.Error.log("You cannot remove the default repository " + repoName)
+						return errors.New("You cannot remove the default repository " + repoName)
 					}
 				} else {
-					config.Error.log("Repository is not in configured list of repositories")
+					return errors.New("Repository is not in configured list of repositories")
 				}
 				err := repoFile.WriteFile(getRepoFileLocation(config))
 				if err != nil {
