@@ -93,13 +93,13 @@ func TestRepoSetDefaultDryRun(t *testing.T) {
 
 	args := []string{"repo", "set-default", "localhub", "--config", "testdata/multiple_repository_config/config.yaml", "--dryrun"}
 
-	output, err := cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// check default repo is unchanged and is still incubator
-	output, err = cmdtest.RunAppsody(sandbox, "repo", "list")
+	output, err := cmdtest.RunAppsody(sandbox, "repo", "list")
 	if err != nil {
 		t.Fatal(err)
 	}
