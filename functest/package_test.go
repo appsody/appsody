@@ -11,28 +11,40 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package functest
 
 import (
+	"bytes"
 	"path/filepath"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestPackageStarterStack(t *testing.T) {
+func TestPackage(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
-	repoRemoveArgs := []string{"repo", "remove", "dev.local"}
-	_, err := cmdtest.RunAppsodyCmd(repoRemoveArgs, ".", t)
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
 
+	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	err := cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
 	if err != nil {
-		t.Fatal(err)
+		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+	} else {
+		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
 	}
 
-	args := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsodyCmd(args, filepath.Join("..", "cmd", "testdata", "starter"), t)
+	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
+	// folder within the temp directory that has been generated for sandboxing purposes, rather than
+	// the usual core temp directory
+	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
 
+	args := []string{"stack", "package"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}

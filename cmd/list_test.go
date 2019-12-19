@@ -14,6 +14,7 @@
 package cmd_test
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -26,7 +27,7 @@ func TestList(t *testing.T) {
 	defer cleanup()
 
 	// first add the test repo index
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +52,7 @@ func TestListV2(t *testing.T) {
 	defer cleanup()
 
 	// first add the test repo index
-	_, err := cmdtest.AddLocalRepo(sandbox, "incubatortest", "../cmd/testdata/kabanero.yaml")
+	_, err := cmdtest.AddLocalRepo(sandbox, "incubatortest", filepath.Join(cmdtest.TestDirPath, "kabanero.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,6 +131,26 @@ func TestListYamlSingleRepository(t *testing.T) {
 	}
 
 	list, err := cmdtest.ParseListYAML(cmdtest.ParseYAML(output))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(list.Repositories) != 1 && list.Repositories[0].Name == "incubator" {
+		t.Error("Could not find repository 'incubator'")
+	}
+}
+
+func TestListJsonSingleRepository(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"list", "incubator", "-o", "json"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := cmdtest.ParseListJSON(cmdtest.ParseJSON(output))
 	if err != nil {
 		t.Fatal(err)
 	}

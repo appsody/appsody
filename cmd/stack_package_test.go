@@ -38,7 +38,7 @@ func TestTemplatingAllVariables(t *testing.T) {
 	}
 
 	// creates templating.txt file where templating variables will appear
-	templatingPath := filepath.Join(".", "testdata", "templating", "templating.txt")
+	templatingPath := filepath.Join(cmdtest.TestDirPath, "templating", "templating.txt")
 	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
 	if err != nil {
 		t.Fatalf("Error creating templating dir: %v", err)
@@ -97,7 +97,7 @@ func TestTemplatingWrongVariables(t *testing.T) {
 	}
 
 	// creates templating.txt file where templating variables will appear
-	templatingPath := filepath.Join(".", "testdata", "templating", "templating.txt")
+	templatingPath := filepath.Join(cmdtest.TestDirPath, "templating", "templating.txt")
 	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
 	if err != nil {
 		t.Fatalf("Error creating templating dir: %v", err)
@@ -161,7 +161,7 @@ func TestTemplatingFilePermissions(t *testing.T) {
 	}
 
 	// creates templating.txt file where templating variables will appear
-	templatingPath := filepath.Join(".", "testdata", "templating", "templating.txt")
+	templatingPath := filepath.Join(cmdtest.TestDirPath, "templating", "templating.txt")
 	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
 	if err != nil {
 		t.Fatalf("Error creating templating dir: %v", err)
@@ -500,7 +500,7 @@ func setupStackPackageTests() (string, string, cmd.StackYaml, map[string]string,
 	imageNamespace := "appsody"
 	imageRegistry := "dev.local"
 	buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
-	projectPath := filepath.Join(".", "testdata", "starter")
+	projectPath := filepath.Join(cmdtest.TestDirPath, "starter")
 
 	rootConfig.ProjectDir = projectPath
 	rootConfig.Dryrun = false
