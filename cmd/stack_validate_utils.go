@@ -28,7 +28,7 @@ import (
 // The stdout and stderr are captured, printed, and returned
 // args will be passed to the appsody command
 // workingDir will be the directory the command runs in
-func RunAppsodyCmdExec(args []string, workingDir string) (string, error) {
+func RunAppsodyCmdExec(args []string, workingDir string, rootConfig *RootCommandConfig) (string, error) {
 	execDir, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -48,7 +48,10 @@ func RunAppsodyCmdExec(args []string, workingDir string) (string, error) {
 
 	executable, _ := os.Executable()
 
-	cmdArgs := []string{executable, "-v"}
+	cmdArgs := []string{executable}
+	if rootConfig.Verbose {
+		cmdArgs = append(cmdArgs, "-v")
+	}
 	cmdArgs = append(cmdArgs, args...)
 	fmt.Println(cmdArgs)
 
