@@ -12,28 +12,38 @@ import (
 // AppsodyApplicationSpec defines the desired state of AppsodyApplication
 // +k8s:openapi-gen=true
 type AppsodyApplicationSpec struct {
-	Version              string                         `json:"version,omitempty"`
-	ApplicationImage     string                         `json:"applicationImage"`
-	Replicas             *int32                         `json:"replicas,omitempty"`
-	Autoscaling          *AppsodyApplicationAutoScaling `json:"autoscaling,omitempty"`
-	PullPolicy           *corev1.PullPolicy             `json:"pullPolicy,omitempty"`
-	PullSecret           *string                        `json:"pullSecret,omitempty"`
-	Volumes              []corev1.Volume                `json:"volumes,omitempty"`
-	VolumeMounts         []corev1.VolumeMount           `json:"volumeMounts,omitempty"`
-	ResourceConstraints  *corev1.ResourceRequirements   `json:"resourceConstraints,omitempty"`
-	ReadinessProbe       *corev1.Probe                  `json:"readinessProbe,omitempty"`
-	LivenessProbe        *corev1.Probe                  `json:"livenessProbe,omitempty"`
-	Service              *AppsodyApplicationService     `json:"service,omitempty"`
-	Expose               *bool                          `json:"expose,omitempty"`
-	EnvFrom              []corev1.EnvFromSource         `json:"envFrom,omitempty"`
-	Env                  []corev1.EnvVar                `json:"env,omitempty"`
-	ServiceAccountName   *string                        `json:"serviceAccountName,omitempty"`
-	Architecture         []string                       `json:"architecture,omitempty"`
-	Storage              *AppsodyApplicationStorage     `json:"storage,omitempty"`
-	CreateKnativeService *bool                          `json:"createKnativeService,omitempty"`
-	Stack                string                         `json:"stack,omitempty"`
-	Monitoring           *AppsodyApplicationMonitoring  `json:"monitoring,omitempty"`
-	CreateAppDefinition  *bool                          `json:"createAppDefinition,omitempty"`
+	Version          string                         `json:"version,omitempty"`
+	ApplicationImage string                         `json:"applicationImage"`
+	Replicas         *int32                         `json:"replicas,omitempty"`
+	Autoscaling      *AppsodyApplicationAutoScaling `json:"autoscaling,omitempty"`
+	PullPolicy       *corev1.PullPolicy             `json:"pullPolicy,omitempty"`
+	PullSecret       *string                        `json:"pullSecret,omitempty"`
+	// +listType=map
+	// +listMapKey=name
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+	// +listType=atomic
+	VolumeMounts        []corev1.VolumeMount         `json:"volumeMounts,omitempty"`
+	ResourceConstraints *corev1.ResourceRequirements `json:"resourceConstraints,omitempty"`
+	ReadinessProbe      *corev1.Probe                `json:"readinessProbe,omitempty"`
+	LivenessProbe       *corev1.Probe                `json:"livenessProbe,omitempty"`
+	Service             *AppsodyApplicationService   `json:"service,omitempty"`
+	Expose              *bool                        `json:"expose,omitempty"`
+	// +listType=atomic
+	EnvFrom []corev1.EnvFromSource `json:"envFrom,omitempty"`
+	// +listType=map
+	// +listMapKey=name
+	Env                []corev1.EnvVar `json:"env,omitempty"`
+	ServiceAccountName *string         `json:"serviceAccountName,omitempty"`
+	// +listType=set
+	Architecture         []string                      `json:"architecture,omitempty"`
+	Storage              *AppsodyApplicationStorage    `json:"storage,omitempty"`
+	CreateKnativeService *bool                         `json:"createKnativeService,omitempty"`
+	Stack                string                        `json:"stack,omitempty"`
+	Monitoring           *AppsodyApplicationMonitoring `json:"monitoring,omitempty"`
+	CreateAppDefinition  *bool                         `json:"createAppDefinition,omitempty"`
+	// +listType=map
+	// +listMapKey=name
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 }
 
 // AppsodyApplicationAutoScaling ...
@@ -56,10 +66,31 @@ type AppsodyApplicationService struct {
 	Port int32 `json:"port,omitempty"`
 
 	Annotations map[string]string `json:"annotations,omitempty"`
+	// +listType=atomic
+	Consumes []ServiceBindingConsumes `json:"consumes,omitempty"`
+	Provides *ServiceBindingProvides  `json:"provides,omitempty"`
+}
+
+// ServiceBindingProvides represents information about
+// +k8s:openapi-gen=true
+type ServiceBindingProvides struct {
+	Category common.ServiceBindingCategory `json:"category"`
+	Context  string                        `json:"context,omitempty"`
+	Protocol string                        `json:"protocol,omitempty"`
+	Auth     *ServiceBindingAuth           `json:"auth,omitempty"`
+}
+
+// ServiceBindingConsumes represents a service to be consumed
+// +k8s:openapi-gen=true
+type ServiceBindingConsumes struct {
+	Name      string                        `json:"name"`
+	Namespace string                        `json:"namespace,omitempty"`
+	Category  common.ServiceBindingCategory `json:"category"`
+	MountPath string                        `json:"mountPath,omitempty"`
 }
 
 // AppsodyApplicationStorage ...
-// +k8s:openapi-gen=true
+// +k8s:openapi-gen=false
 type AppsodyApplicationStorage struct {
 	// +kubebuilder:validation:Pattern=^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$
 	Size                string                        `json:"size,omitempty"`
@@ -73,10 +104,20 @@ type AppsodyApplicationMonitoring struct {
 	Endpoints []prometheusv1.Endpoint `json:"endpoints,omitempty"`
 }
 
+// ServiceBindingAuth allows a service to provide authentication information
+type ServiceBindingAuth struct {
+	// The secret that contains the username for authenticating
+	Username corev1.SecretKeySelector `json:"username,omitempty"`
+	// The secret that contains the password for authenticating
+	Password corev1.SecretKeySelector `json:"password,omitempty"`
+}
+
 // AppsodyApplicationStatus defines the observed state of AppsodyApplication
 // +k8s:openapi-gen=true
 type AppsodyApplicationStatus struct {
-	Conditions []StatusCondition `json:"conditions,omitempty"`
+	// +listType=atomic
+	Conditions       []StatusCondition       `json:"conditions,omitempty"`
+	ConsumedServices common.ConsumedServices `json:"consumedServices,omitempty"`
 }
 
 // StatusCondition ...
@@ -96,19 +137,24 @@ type StatusConditionType string
 const (
 	// StatusConditionTypeReconciled ...
 	StatusConditionTypeReconciled StatusConditionType = "Reconciled"
+
+	// StatusConditionTypeDependenciesSatisfied ...
+	StatusConditionTypeDependenciesSatisfied StatusConditionType = "DependenciesSatisfied"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // AppsodyApplication is the Schema for the appsodyapplications API
 // +k8s:openapi-gen=true
+// +kubebuilder:resource:path=appsodyapplications,scope=Namespaced
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Image",type="string",JSONPath=".spec.applicationImage",priority="0",description="Absolute name of the deployed image containing registry and tag"
-// +kubebuilder:printcolumn:name="Exposed",type="boolean",JSONPath=".spec.expose",priority="0",description="Specifies whether deployment is exposed externally via default Route"
-// +kubebuilder:printcolumn:name="Reconciled",type="string",JSONPath=".status.conditions[?(@.type=='Reconciled')].status",priority="0",description="Status of the reconcile condition"
-// +kubebuilder:printcolumn:name="Reason",type="string",JSONPath=".status.conditions[?(@.type=='Reconciled')].reason",priority="1",description="Reason for the failure of reconcile condition"
-// +kubebuilder:printcolumn:name="Message",type="string",JSONPath=".status.conditions[?(@.type=='Reconciled')].message",priority="1",description="Failure message from reconcile condition"
-// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",priority="0",description="Age of the resource"
+// +kubebuilder:printcolumn:name="Image",type="string",JSONPath=".spec.applicationImage",priority=0,description="Absolute name of the deployed image containing registry and tag"
+// +kubebuilder:printcolumn:name="Exposed",type="boolean",JSONPath=".spec.expose",priority=0,description="Specifies whether deployment is exposed externally via default Route"
+// +kubebuilder:printcolumn:name="Reconciled",type="string",JSONPath=".status.conditions[?(@.type=='Reconciled')].status",priority=0,description="Status of the reconcile condition"
+// +kubebuilder:printcolumn:name="Reason",type="string",JSONPath=".status.conditions[?(@.type=='Reconciled')].reason",priority=1,description="Reason for the failure of reconcile condition"
+// +kubebuilder:printcolumn:name="Message",type="string",JSONPath=".status.conditions[?(@.type=='Reconciled')].message",priority=1,description="Failure message from reconcile condition"
+// +kubebuilder:printcolumn:name="DependenciesSatisfied",type="string",JSONPath=".status.conditions[?(@.type=='DependenciesSatisfied')].status",priority=1,description="Status of the application dependencies"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",priority=0,description="Age of the resource"
 type AppsodyApplication struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -252,6 +298,29 @@ func (cr *AppsodyApplication) GetStatus() common.BaseApplicationStatus {
 	return &cr.Status
 }
 
+// GetInitContainers returns list of init containers
+func (cr *AppsodyApplication) GetInitContainers() []corev1.Container {
+	return cr.Spec.InitContainers
+}
+
+// GetGroupName returns group name to be used in labels and annotation
+func (cr *AppsodyApplication) GetGroupName() string {
+	return "appsody.dev"
+}
+
+// GetConsumedServices returns a map of all the service names to be consumed by the application
+func (s *AppsodyApplicationStatus) GetConsumedServices() common.ConsumedServices {
+	if s.ConsumedServices == nil {
+		return nil
+	}
+	return s.ConsumedServices
+}
+
+// SetConsumedServices sets ConsumedServices
+func (s *AppsodyApplicationStatus) SetConsumedServices(c common.ConsumedServices) {
+	s.ConsumedServices = c
+}
+
 // GetMinReplicas returns minimum replicas
 func (a *AppsodyApplicationAutoScaling) GetMinReplicas() *int32 {
 	return a.MinReplicas
@@ -267,7 +336,7 @@ func (a *AppsodyApplicationAutoScaling) GetTargetCPUUtilizationPercentage() *int
 	return a.TargetCPUUtilizationPercentage
 }
 
-// GetSize returns pesistent volume size
+// GetSize returns persistent volume size
 func (s *AppsodyApplicationStorage) GetSize() string {
 	return s.Size
 }
@@ -295,6 +364,76 @@ func (s *AppsodyApplicationService) GetPort() int32 {
 // GetType returns service type
 func (s *AppsodyApplicationService) GetType() *corev1.ServiceType {
 	return s.Type
+}
+
+// GetProvides returns service provider configuration
+func (s *AppsodyApplicationService) GetProvides() common.ServiceBindingProvides {
+	if s.Provides == nil {
+		return nil
+	}
+	return s.Provides
+}
+
+// GetCategory returns category of a service provider configuration
+func (p *ServiceBindingProvides) GetCategory() common.ServiceBindingCategory {
+	return p.Category
+}
+
+// GetContext returns context of a service provider configuration
+func (p *ServiceBindingProvides) GetContext() string {
+	return p.Context
+}
+
+// GetAuth returns secret of a service provider configuration
+func (p *ServiceBindingProvides) GetAuth() common.ServiceBindingAuth {
+	if p.Auth == nil {
+		return nil
+	}
+	return p.Auth
+}
+
+// GetProtocol returns protocol of a service provider configuration
+func (p *ServiceBindingProvides) GetProtocol() string {
+	return p.Protocol
+}
+
+// GetConsumes returns a list of service consumers' configuration
+func (s *AppsodyApplicationService) GetConsumes() []common.ServiceBindingConsumes {
+	consumes := make([]common.ServiceBindingConsumes, len(s.Consumes))
+	for i := range s.Consumes {
+		consumes[i] = &s.Consumes[i]
+	}
+	return consumes
+}
+
+// GetName returns service name of a service consumer configuration
+func (c *ServiceBindingConsumes) GetName() string {
+	return c.Name
+}
+
+// GetNamespace returns namespace of a service consumer configuration
+func (c *ServiceBindingConsumes) GetNamespace() string {
+	return c.Namespace
+}
+
+// GetCategory returns category of a service consumer configuration
+func (c *ServiceBindingConsumes) GetCategory() common.ServiceBindingCategory {
+	return common.ServiceBindingCategoryOpenAPI
+}
+
+// GetMountPath returns mount path of a service consumer configuration
+func (c *ServiceBindingConsumes) GetMountPath() string {
+	return c.MountPath
+}
+
+// GetUsername returns username of a service binding auth object
+func (a *ServiceBindingAuth) GetUsername() corev1.SecretKeySelector {
+	return a.Username
+}
+
+// GetPassword returns password of a service binding auth object
+func (a *ServiceBindingAuth) GetPassword() corev1.SecretKeySelector {
+	return a.Password
 }
 
 // GetLabels returns labels to be added on ServiceMonitor
@@ -385,6 +524,36 @@ func (cr *AppsodyApplication) Initialize(defaults AppsodyApplicationSpec, consta
 			cr.Spec.Service.Port = defaults.Service.Port
 		} else {
 			cr.Spec.Service.Port = 8080
+		}
+	}
+
+	if cr.Spec.CreateAppDefinition == nil {
+		if defaults.CreateAppDefinition != nil {
+			cr.Spec.CreateAppDefinition = defaults.CreateAppDefinition
+		}
+	}
+
+	if cr.Spec.Monitoring == nil {
+		if defaults.Monitoring != nil {
+			cr.Spec.Monitoring = defaults.Monitoring
+		}
+	}
+
+	if cr.Spec.InitContainers == nil {
+		if defaults.InitContainers != nil {
+			cr.Spec.InitContainers = defaults.InitContainers
+		}
+	}
+
+	if cr.Spec.Service.Provides != nil && cr.Spec.Service.Provides.Protocol == "" {
+		cr.Spec.Service.Provides.Protocol = "http"
+	}
+
+	for i := range cr.Spec.Service.Consumes {
+		if cr.Spec.Service.Consumes[i].Category == common.ServiceBindingCategoryOpenAPI {
+			if cr.Spec.Service.Consumes[i].Namespace == "" {
+				cr.Spec.Service.Consumes[i].Namespace = cr.Namespace
+			}
 		}
 	}
 
@@ -486,7 +655,7 @@ func (cr *AppsodyApplication) applyConstants(defaults AppsodyApplicationSpec, co
 		for _, v := range constants.VolumeMounts {
 			found := false
 			for _, v2 := range cr.Spec.VolumeMounts {
-				if v2.Name == v.Name {
+				if v2.Name == v.Name && v2.SubPath == v.SubPath {
 					found = true
 				}
 			}
@@ -512,11 +681,26 @@ func (cr *AppsodyApplication) applyConstants(defaults AppsodyApplicationSpec, co
 	if constants.Autoscaling != nil {
 		cr.Spec.Autoscaling = constants.Autoscaling
 	}
+
+	if constants.InitContainers != nil {
+		cr.Spec.InitContainers = constants.InitContainers
+	}
+
+	if constants.Monitoring != nil {
+		cr.Spec.Monitoring = constants.Monitoring
+	}
+
+	if constants.CreateAppDefinition != nil {
+		cr.Spec.CreateAppDefinition = constants.CreateAppDefinition
+	}
+
 }
 
 // GetLabels returns set of labels to be added to all resources
 func (cr *AppsodyApplication) GetLabels() map[string]string {
+
 	labels := map[string]string{
+		"app.kubernetes.io/instance":   cr.Name,
 		"app.kubernetes.io/name":       cr.Name,
 		"app.kubernetes.io/managed-by": "appsody-operator",
 	}
@@ -530,7 +714,7 @@ func (cr *AppsodyApplication) GetLabels() map[string]string {
 	}
 
 	for key, value := range cr.Labels {
-		if key != "app.kubernetes.io/name" {
+		if key != "app.kubernetes.io/instance" {
 			labels[key] = value
 		}
 	}
@@ -538,14 +722,19 @@ func (cr *AppsodyApplication) GetLabels() map[string]string {
 	return labels
 }
 
+// GetAnnotations returns set of annotations to be added to all resources
+func (cr *AppsodyApplication) GetAnnotations() map[string]string {
+	return cr.Annotations
+}
+
 // GetType returns status condition type
 func (c *StatusCondition) GetType() common.StatusConditionType {
-	return common.StatusConditionTypeReconciled
+	return convertToCommonStatusConditionType(c.Type)
 }
 
 // SetType returns status condition type
 func (c *StatusCondition) SetType(ct common.StatusConditionType) {
-	c.Type = StatusConditionTypeReconciled
+	c.Type = convertFromCommonStatusConditionType(ct)
 }
 
 // GetLastTransitionTime return time of last status change
@@ -605,7 +794,7 @@ func (s *AppsodyApplicationStatus) NewCondition() common.StatusCondition {
 
 // GetConditions returns slice of conditions
 func (s *AppsodyApplicationStatus) GetConditions() []common.StatusCondition {
-	var conditions = []common.StatusCondition{}
+	var conditions = make([]common.StatusCondition, len(s.Conditions))
 	for i := range s.Conditions {
 		conditions[i] = &s.Conditions[i]
 	}
@@ -614,7 +803,6 @@ func (s *AppsodyApplicationStatus) GetConditions() []common.StatusCondition {
 
 // GetCondition ...
 func (s *AppsodyApplicationStatus) GetCondition(t common.StatusConditionType) common.StatusCondition {
-
 	for i := range s.Conditions {
 		if s.Conditions[i].GetType() == t {
 			return &s.Conditions[i]
@@ -625,7 +813,6 @@ func (s *AppsodyApplicationStatus) GetCondition(t common.StatusConditionType) co
 
 // SetCondition ...
 func (s *AppsodyApplicationStatus) SetCondition(c common.StatusCondition) {
-
 	condition := &StatusCondition{}
 	found := false
 	for i := range s.Conditions {
@@ -643,5 +830,27 @@ func (s *AppsodyApplicationStatus) SetCondition(c common.StatusCondition) {
 	condition.SetType(c.GetType())
 	if !found {
 		s.Conditions = append(s.Conditions, *condition)
+	}
+}
+
+func convertToCommonStatusConditionType(c StatusConditionType) common.StatusConditionType {
+	switch c {
+	case StatusConditionTypeReconciled:
+		return common.StatusConditionTypeReconciled
+	case StatusConditionTypeDependenciesSatisfied:
+		return common.StatusConditionTypeDependenciesSatisfied
+	default:
+		panic(c)
+	}
+}
+
+func convertFromCommonStatusConditionType(c common.StatusConditionType) StatusConditionType {
+	switch c {
+	case common.StatusConditionTypeReconciled:
+		return StatusConditionTypeReconciled
+	case common.StatusConditionTypeDependenciesSatisfied:
+		return StatusConditionTypeDependenciesSatisfied
+	default:
+		panic(c)
 	}
 }

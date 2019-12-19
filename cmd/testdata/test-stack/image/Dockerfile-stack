@@ -2,7 +2,7 @@
 
 #See https://appsody.dev/docs/stacks/environment-variables for more information about each variable.
 
-ENV APPSODY_MOUNTS= #Mount directories
+ENV APPSODY_MOUNTS=.:/project/user-app
 ENV APPSODY_RUN="mvn -B -Dmaven.repo.local=/mvn/repository liberty:run"
 
 ENV APPSODY_WATCH_DIR= #Directories to watch for changes in.

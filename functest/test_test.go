@@ -16,6 +16,7 @@ package functest
 import (
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -46,7 +47,7 @@ func TestTestSimple(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", "../cmd/testdata/index.yaml")
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -65,6 +66,20 @@ func TestTestSimple(t *testing.T) {
 			log.Println("Running appsody test...")
 			_, err = cmdtest.RunAppsody(sandbox, "test")
 			runChannel <- err
+			close(runChannel)
+		}()
+
+		// defer the appsody stop to close the docker container
+		defer func() {
+			_, err = cmdtest.RunAppsody(sandbox, "stop")
+			if err != nil {
+				t.Logf("Ignoring error running appsody stop: %s", err)
+			}
+			// wait for the appsody command/goroutine to finish
+			runErr := <-runChannel
+			if runErr != nil {
+				t.Logf("Ignoring error from the appsody command: %s", runErr)
+			}
 		}()
 
 		waitForError := 20 // in seconds

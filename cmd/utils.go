@@ -91,25 +91,83 @@ func Exists(path string) (bool, error) {
 	return true, err
 }
 
-//ExtractDockerEnvVars returns a map with the env vars specified in docker options
-func ExtractDockerEnvVars(dockerOptions string) map[string]string {
-	tokens := strings.Split(dockerOptions, " ")
+//ExtractDockerEnvFile returns a map with the env vars specified in docker env file
+func ExtractDockerEnvFile(envFileName string) (map[string]string, error) {
 	envVars := make(map[string]string)
-	for idx, token := range tokens {
-		if token == "-e" || token == "--env" {
-			if len(tokens) > idx+1 {
-				nextToken := tokens[idx+1]
-				if strings.Contains(nextToken, "=") {
-					nextToken = strings.ReplaceAll(nextToken, "\"", "")
-					keyValuePair := strings.Split(nextToken, "=")
-					if len(keyValuePair) > 1 {
-						envVars[keyValuePair[0]] = keyValuePair[1]
-					}
+	file, err := os.Open(envFileName)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		equal := strings.Index(line, "=")
+		hash := strings.Index(line, "#")
+		if equal >= 0 && hash != 0 {
+			if key := strings.TrimSpace(line[:equal]); len(key) > 0 {
+				value := ""
+				if len(line) > equal {
+					value = strings.TrimSpace(line[equal+1:])
 				}
+				envVars[key] = value
 			}
 		}
 	}
-	return envVars
+
+	if err := scanner.Err(); err != nil {
+
+		return nil, err
+	}
+
+	return envVars, nil
+}
+
+//ExtractDockerEnvVars returns a map with the env vars specified in docker options
+func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
+	//Check whether there's --env-file, this needs to be processed first
+	var envVars map[string]string
+	envFilePos := strings.Index(dockerOptions, "--env-file=")
+	lenFlag := len("--env-file=")
+	if envFilePos < 0 {
+		envFilePos = strings.Index(dockerOptions, "--env-file")
+		lenFlag = len("--env-file")
+	}
+	if envFilePos >= 0 {
+		tokens := strings.Fields(dockerOptions[envFilePos+lenFlag:])
+		if len(tokens) > 0 {
+			var err error
+			envVars, err = ExtractDockerEnvFile(tokens[0])
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		envVars = make(map[string]string)
+	}
+	tokens := strings.Fields(dockerOptions)
+	for idx, token := range tokens {
+		nextToken := ""
+		if token == "-e" || token == "--env" {
+			if len(tokens) > idx+1 {
+				nextToken = tokens[idx+1]
+			}
+		} else if strings.Contains(token, "-e=") || strings.Contains(token, "-env=") {
+			posEqual := strings.Index(token, "=")
+			nextToken = token[posEqual+1:]
+		}
+		if nextToken != "" && strings.Contains(nextToken, "=") {
+			nextToken = strings.ReplaceAll(nextToken, "\"", "")
+			nextToken = strings.ReplaceAll(nextToken, "'", "")
+			//Note that Appsody doesn't support quotes in -e, use --env-file
+			keyValuePair := strings.Split(nextToken, "=")
+			if len(keyValuePair) > 1 {
+				envVars[keyValuePair[0]] = keyValuePair[1]
+			}
+		}
+	}
+	return envVars, nil
 }
 
 //GetEnvVar obtains a Stack environment variable from the Stack image
@@ -290,6 +348,7 @@ func mountExistsLocally(log *LoggingConfig, mount string) bool {
 	}
 	log.Debug.log("Checking for existence of local file or directory to mount: ", localFile[0])
 	fileExists, _ := Exists(localFile[0])
+	lintMountPathForSingleFile(localFile[0], log)
 	return fileExists
 }
 
@@ -501,6 +560,9 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 
 		}
 
+		// TODO We should consider refactoring the following code. There is a circular dependency between
+		// getProjectConfig(), getStackRegistry(), and setting config.StackRegistry which is especially
+		// concering with the `if config.ProjectConfig == nil` caching of this method.
 		stack := v.GetString("stack")
 		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
 		imageRepo := config.CliConfig.GetString("images")
@@ -512,10 +574,16 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 		}
 		//Override the stack registry URL
 		projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
-
 		if err != nil {
 			return &projectConfig, err
 		}
+
+		//Buildah cannot pull from index.docker.io - only pulls from docker.io
+		projectConfig.Stack, err = NormalizeImageName(projectConfig.Stack)
+		if err != nil {
+			return &projectConfig, err
+		}
+
 		config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
 		config.ProjectConfig = &projectConfig
 	}
@@ -627,7 +695,10 @@ func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
 }
 
 // CheckPrereqs checks the prerequisites to run the CLI
-func CheckPrereqs() error {
+func CheckPrereqs(config *RootCommandConfig) error {
+	if config.Buildah {
+		return nil
+	}
 	dockerCmd := "docker"
 	dockerArgs := []string{"ps"}
 	checkDockerCmd := exec.Command(dockerCmd, dockerArgs...)
@@ -1574,12 +1645,6 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 		config.imagePulled = make(map[string]bool)
 	}
 
-	//Buildah cannot pull from index.docker.io - only pulls from docker.io
-	imageToPull, imageNameErr := NormalizeImageName(imageToPull)
-	if imageNameErr != nil {
-		return imageNameErr
-	}
-
 	config.Debug.logf("%s image pulled status: %t", imageToPull, config.imagePulled[imageToPull])
 	if config.imagePulled[imageToPull] {
 		config.Debug.log("Image has been pulled already: ", imageToPull)
@@ -2112,4 +2177,20 @@ func checkValidLicense(log *LoggingConfig, license string) error {
 		return nil
 	}
 	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
+}
+func lintMountPathForSingleFile(path string, log *LoggingConfig) {
+
+	file, err := os.Stat(path)
+	if err != nil {
+		log.Warning.logf("Could not stat mount path: %s", path)
+
+	} else {
+		if file.Mode().IsDir() {
+			log.Debug.logf("Path %s for mount is a directory", path)
+		} else {
+
+			log.Warning.logf("Path %s for mount points to a single file.  Single file Docker mount paths cause unexpected behavior and will be deprecated in the future.", path)
+		}
+
+	}
 }
