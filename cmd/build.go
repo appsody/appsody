@@ -225,7 +225,7 @@ func getLabels(config *RootCommandConfig) (map[string]string, error) {
 		return labels, projectConfigErr
 	}
 
-	configLabels, err := getConfigLabels(*projectConfig, ".appsody-config.yaml")
+	configLabels, err := getConfigLabels(*projectConfig, ".appsody-config.yaml", config.LoggingConfig)
 	if err != nil {
 		return labels, err
 	}
@@ -338,12 +338,12 @@ func generateDeploymentConfig(config *buildCommandConfig, imageName string, labe
 	if configErr != nil {
 		return configErr
 	}
-	if !config.Buildah {
-		err := CheckPrereqs()
-		if err != nil {
-			config.Warning.logf("Failed to check prerequisites: %v\n", err)
-		}
+
+	err := CheckPrereqs(config.RootCommandConfig)
+	if err != nil {
+		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
+
 	stackImage := projectConfig.Stack
 	config.Debug.log("Stack image: ", stackImage)
 	config.Debug.log("Config directory: ", containerConfigDir)
