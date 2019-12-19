@@ -21,9 +21,11 @@ import (
 )
 
 func TestRepoRemoveError(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	args := []string{"repo", "remove"}
-	output, _ := cmdtest.RunAppsodyCmd(args, ".", t)
+	output, _ := cmdtest.RunAppsody(sandbox, args...)
 
 	if !strings.Contains(output, "Error, you must specify repository name") {
 		t.Error("String \"Error, you must specify repository name\" not found in output")
