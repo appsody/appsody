@@ -154,6 +154,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		stackFound := false
 		var stackReqs StackRequirement
 
+		// we should remove this as we no longer have use for the v1 index and it is bringing down our code coverage
 		if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 			config.Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
 		}

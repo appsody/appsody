@@ -115,7 +115,7 @@ func TestRepoAddErrors(t *testing.T) {
 			if !strings.Contains(output, tt.expectedError) {
 				t.Errorf("Did not find expected error '%s' in output", tt.expectedError)
 			}
-			// } else if len(startRepos) != len(endRepos) {
+			//  else if len(startRepos) != len(endRepos) {
 			// 	t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
 			// }
 		})
