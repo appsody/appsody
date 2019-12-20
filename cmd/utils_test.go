@@ -1102,6 +1102,9 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	}
 	testDockerOptions2 := []string{
 		"--env A=Val1 -e B=Val2",
+		"--env=A=Val1 -e=B=Val2",
+		"--env A=Val1 -e=B=Val2",
+		"--env=A=Val1 -e B=Val2",
 		"-w /path/to/dir -e A=Val1 -e B=Val2",
 		"-w /path/to/dir     -e A=Val1    -e     B=Val2",
 		"--workdir /path/to/dir -e A=Val1 -e B=Val2",
@@ -1121,6 +1124,7 @@ func TestExtractDockerEnvVars(t *testing.T) {
 
 	testDockerOptions4 := []string{
 		"--env-file ./testdata/test_docker_options/test_docker_options.env",
+		"--env-file=./testdata/test_docker_options/test_docker_options.env",
 		"--env-file ./testdata/test_docker_options/test_docker_options.env -w /whatever/it/is",
 		" --env-file ./testdata/test_docker_options/test_docker_options.env   -w     /whatever/it/is",
 	}
@@ -1142,6 +1146,8 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	result3["VAR2"] = "VAL2"
 	result3["VAR3"] = ""
 	result3["VAR4"] = "VAL4"
+	result3["VAR7"] = "VAL\"7"
+	result3["VAR'8"] = "VAL'8"
 
 	result4 := make(map[string]string)
 	result4["VAR1"] = "Override"
@@ -1149,6 +1155,8 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	result4["VAR3"] = ""
 	result4["VAR4"] = "Override"
 	result4["VAR6"] = "VAL6"
+	result4["VAR7"] = "VAL\"7"
+	result4["VAR'8"] = "VAL'8"
 
 	for _, dockerOption := range testDockerOptions1 {
 
@@ -1159,11 +1167,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 			if len(envVars) != len(result1) {
-				t.Errorf("Expected %d element(s) and got %d - %v", len(result1), len(envVars), envVars)
+				t.Errorf("TEST 1 - Expected %d element(s) and got %d - %v", len(result1), len(envVars), envVars)
 			}
 			for key, value := range envVars {
 				if value != result2[key] {
-					t.Errorf("Expected %s for env var %s and got %s - %v", result2[key], key, value, envVars)
+					t.Errorf("TEST 1 - Expected %s for env var %s and got %s - %v", result2[key], key, value, envVars)
 				}
 			}
 		})
@@ -1177,11 +1185,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 			if len(envVars) != len(result2) {
-				t.Errorf("Expected %d element(s) and got %d - %v", len(result2), len(envVars), envVars)
+				t.Errorf("TEST 2 - Expected %d element(s) and got %d - %v", len(result2), len(envVars), envVars)
 			}
 			for key, value := range envVars {
 				if value != result2[key] {
-					t.Errorf("Expected %s for env var %s and got %s - %v", result2[key], key, value, envVars)
+					t.Errorf("TEST 2 - Expected %s for env var %s and got %s - %v", result2[key], key, value, envVars)
 				}
 			}
 		})
@@ -1195,7 +1203,7 @@ func TestExtractDockerEnvVars(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 			if len(envVars) != 0 {
-				t.Errorf("Expected 0 element(s) and got %d - %v", len(envVars), envVars)
+				t.Errorf("TEST 3 - Expected 0 element(s) and got %d - %v", len(envVars), envVars)
 			}
 
 		})
@@ -1209,11 +1217,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 			if len(envVars) != len(result3) {
-				t.Errorf("Expected %d element(s) and got %d - %v", len(result3), len(envVars), envVars)
+				t.Errorf("TEST 4 - Expected %d element(s) and got %d - %v", len(result3), len(envVars), envVars)
 			}
 			for key, value := range envVars {
 				if value != result3[key] {
-					t.Errorf("Expected %s for env var %s and got %s - %v", result3[key], key, value, envVars)
+					t.Errorf("TEST 4 - Expected %s for env var %s and got %s - %v", result3[key], key, value, envVars)
 				}
 			}
 
@@ -1228,11 +1236,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 			if len(envVars) != len(result4) {
-				t.Errorf("Expected %d element(s) and got %d - %v", len(result4), len(envVars), envVars)
+				t.Errorf("TEST 5 - Expected %d element(s) and got %d - %v", len(result4), len(envVars), envVars)
 			}
 			for key, value := range envVars {
 				if value != result4[key] {
-					t.Errorf("Expected %s for env var %s and got %s - %v", result4[key], key, value, envVars)
+					t.Errorf("TEST 5 - Expected %s for env var %s and got %s - %v", result4[key], key, value, envVars)
 				}
 			}
 

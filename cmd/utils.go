@@ -127,9 +127,14 @@ func ExtractDockerEnvFile(envFileName string) (map[string]string, error) {
 func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
 	//Check whether there's --env-file, this needs to be processed first
 	var envVars map[string]string
-	envFilePos := strings.Index(dockerOptions, "--env-file")
+	envFilePos := strings.Index(dockerOptions, "--env-file=")
+	lenFlag := len("--env-file=")
+	if envFilePos < 0 {
+		envFilePos = strings.Index(dockerOptions, "--env-file")
+		lenFlag = len("--env-file")
+	}
 	if envFilePos >= 0 {
-		tokens := strings.Fields(dockerOptions[envFilePos+len("--env-file"):])
+		tokens := strings.Fields(dockerOptions[envFilePos+lenFlag:])
 		if len(tokens) > 0 {
 			var err error
 			envVars, err = ExtractDockerEnvFile(tokens[0])
@@ -142,16 +147,22 @@ func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
 	}
 	tokens := strings.Fields(dockerOptions)
 	for idx, token := range tokens {
+		nextToken := ""
 		if token == "-e" || token == "--env" {
 			if len(tokens) > idx+1 {
-				nextToken := tokens[idx+1]
-				if strings.Contains(nextToken, "=") {
-					nextToken = strings.ReplaceAll(nextToken, "\"", "")
-					keyValuePair := strings.Split(nextToken, "=")
-					if len(keyValuePair) > 1 {
-						envVars[keyValuePair[0]] = keyValuePair[1]
-					}
-				}
+				nextToken = tokens[idx+1]
+			}
+		} else if strings.Contains(token, "-e=") || strings.Contains(token, "-env=") {
+			posEqual := strings.Index(token, "=")
+			nextToken = token[posEqual+1:]
+		}
+		if nextToken != "" && strings.Contains(nextToken, "=") {
+			nextToken = strings.ReplaceAll(nextToken, "\"", "")
+			nextToken = strings.ReplaceAll(nextToken, "'", "")
+			//Note that Appsody doesn't support quotes in -e, use --env-file
+			keyValuePair := strings.Split(nextToken, "=")
+			if len(keyValuePair) > 1 {
+				envVars[keyValuePair[0]] = keyValuePair[1]
 			}
 		}
 	}
