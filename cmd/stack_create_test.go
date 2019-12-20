@@ -277,7 +277,7 @@ func TestStackCreateSampleStackDryrun(t *testing.T) {
 		t.Errorf("Error running dry run mode: %v", err)
 	} else {
 		if !strings.Contains(output, "Dry run complete") {
-			t.Errorf("String \"Dry run complete\" not found in output: '%v'", err.Error())
+			t.Error("String \"Dry run complete\" not found in output")
 		}
 	}
 }
