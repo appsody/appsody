@@ -415,12 +415,12 @@ func (r *RepositoryFile) GetDefaultRepoName(rootConfig *RootCommandConfig) (stri
 	return repoName, nil
 }
 
-func (r *RepositoryFile) Remove(name string, rootConfig *RootCommandConfig) {
+func (r *RepositoryFile) Remove(name string, log *LoggingConfig) {
 	for index, rf := range r.Repositories {
 		if rf.Name == name {
 			r.Repositories[index] = r.Repositories[0]
 			r.Repositories = r.Repositories[1:]
-			rootConfig.Info.logf("The %v repository has been removed from your configured list of repositories.", name)
+			log.Info.logf("The %v repository has been removed from your configured list of repositories.", name)
 			return
 		}
 	}

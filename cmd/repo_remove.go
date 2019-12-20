@@ -52,7 +52,7 @@ You cannot remove the default repository, but you can make a different repositor
 						return err
 					}
 					if repoName != defaultRepoName {
-						repoFile.Remove(repoName, config)
+						repoFile.Remove(repoName, config.LoggingConfig)
 					} else {
 						return errors.New("You cannot remove the default repository " + repoName)
 					}
