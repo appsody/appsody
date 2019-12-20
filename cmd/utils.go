@@ -69,7 +69,6 @@ func (e NotAnAppsodyProject) Error() string { return string(e) }
 const ConfigFile = ".appsody-config.yaml"
 
 const LatestVersionURL = "https://github.com/appsody/appsody/releases/latest"
-
 const workDirNotSet = ""
 
 const ociKeyPrefix = "org.opencontainers.image."
@@ -631,11 +630,11 @@ func CopyFile(log *LoggingConfig, source string, dest string) error {
 		execCmd = "cp"
 	}
 	copyCmd := exec.Command(execCmd, execArgs...)
-	cmdOutput, cmdErr := copyCmd.Output()
+	cmdOutput, cmdErr := SeparateOutput(copyCmd)
 	_, err = os.Stat(dest)
 	if err != nil {
 		log.Error.logf("Could not copy %s to %s - output of copy command %s %s\n", source, dest, cmdOutput, cmdErr)
-		return errors.New("Error in copy: " + cmdErr.Error())
+		return errors.New("Error in copy: " + cmdOutput)
 	}
 	log.Debug.logf("Copy of %s to %s was successful \n", source, dest)
 	return nil
@@ -648,7 +647,6 @@ func MoveDir(log *LoggingConfig, fromDir string, toDir string) error {
 	err := os.Rename(fromDir, toDir)
 	if err == nil {
 		// We did it - returning
-		//Error.log("Could not move ", extractDir, " to ", targetDir, " ", err)
 		return nil
 	}
 	// If we are here, we need to use copy
@@ -684,11 +682,14 @@ func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
 	}
 	log.Debug.log("About to run: ", execCmd, execArgs)
 	copyCmd := exec.Command(execCmd, execArgs...)
-	cmdOutput, cmdErr := copyCmd.Output()
+	cmdOutput, cmdErr := SeparateOutput(copyCmd)
+	if cmdErr != nil {
+		return errors.Errorf("Could not copy %s to %s: %v", fromDir, toDir, cmdOutput)
+	}
 	_, err = os.Stat(toDir)
 	if err != nil {
 		log.Error.logf("Could not copy %s to %s - output of copy command %s %s\n", fromDir, toDir, cmdOutput, cmdErr)
-		return errors.New("Error in copy: " + cmdErr.Error())
+		return errors.New("Error in copy: " + err.Error())
 	}
 	log.Debug.logf("Directory copy of %s to %s was successful \n", fromDir, toDir)
 	return nil
@@ -1391,24 +1392,6 @@ func getIngressPort(config *RootCommandConfig) int {
 	return 0
 }
 
-// DockerTag tags a docker image
-func DockerTag(log *LoggingConfig, imageToTag string, tag string, dryrun bool) error {
-	log.Info.log("Tagging Docker image as ", tag)
-	cmdName := "docker"
-	cmdArgs := []string{"image", "tag", imageToTag, tag}
-	if dryrun {
-		log.Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
-		return nil
-	}
-	tagCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := SeparateOutput(tagCmd)
-	if kerr != nil {
-		return errors.Errorf("docker image tag failed: %s", kout)
-	}
-	log.Debug.log("Docker tag command output: ", kout)
-	return kerr
-}
-
 //ImagePush pushes a docker image to a docker registry (assumes that the user has done docker login)
 func ImagePush(log *LoggingConfig, imageToPush string, buildah bool, dryrun bool) error {
 	log.Info.log("Pushing image ", imageToPush)
@@ -1425,13 +1408,15 @@ func ImagePush(log *LoggingConfig, imageToPush string, buildah bool, dryrun bool
 
 	pushCmd := exec.Command(cmdName, cmdArgs...)
 
-	pushOut, pushErr := pushCmd.Output()
+	pushOut, pushErr := SeparateOutput(pushCmd)
 	if pushErr != nil {
 		if !(strings.Contains(pushErr.Error(), "[DEPRECATION NOTICE] registry v2") || strings.Contains(string(pushOut[:]), "[DEPRECATION NOTICE] registry v2")) {
 			log.Error.log("Could not push the image: ", pushErr, " ", string(pushOut[:]))
 
-			return pushErr
+			return errors.New("Error in pushing image: " + pushOut)
 		}
+		return errors.New("Error in pushing image: " + pushOut)
+
 	}
 	return pushErr
 }
