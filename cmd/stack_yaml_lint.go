@@ -112,13 +112,13 @@ func (stackDetails *StackYaml) checkTemplatingData(log *LoggingConfig) (int, int
 	stackLintWarningCount := 0
 	keyRegex := regexp.MustCompile("^[a-zA-Z0-9]*$")
 
-	if len(stackDetails.TemplatingData) == 0 {
+	if len(stackDetails.StackVariables) == 0 {
 		log.Warning.log("No custom templating variables defined - You will not be able to reuse variables across the stack")
 		stackLintWarningCount++
 		return stackLintErrorCount, stackLintWarningCount
 	}
 
-	for key := range stackDetails.TemplatingData {
+	for key := range stackDetails.StackVariables {
 		checkKey := keyRegex.FindString(string(key))
 
 		if checkKey == "" {

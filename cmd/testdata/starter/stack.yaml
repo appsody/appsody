@@ -8,6 +8,6 @@ maintainers:
   email: henry.nash@uk.ibm.com
   github-id: henrynash
 default-template: simple
-templating-data:
+stack-variables:
   variable1: value1
   variable2: value2

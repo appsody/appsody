@@ -38,7 +38,7 @@ type StackYaml struct {
 	Language        string `yaml:"language"`
 	Maintainers     []Maintainer
 	DefaultTemplate string            `yaml:"default-template"`
-	TemplatingData  map[string]string `yaml:"templating-data"`
+	StackVariables  map[string]string `yaml:"stack-variables"`
 	Requirements    StackRequirement  `yaml:"requirements,omitempty"`
 }
 type Maintainer struct {
@@ -516,7 +516,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	templateMetadata["image"] = image
 
 	// loop through user variables and add them to map, must begin with alphanumeric character
-	for key, value := range stackYaml.TemplatingData {
+	for key, value := range stackYaml.StackVariables {
 
 		// validates that key starts with alphanumeric character
 		runes := []rune(key)
