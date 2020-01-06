@@ -275,6 +275,85 @@ func TestAppsodyRegexValue(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestIncorrectMountSeparator(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	args := []string{"stack", "lint", testStackPath}
+
+	dockerfilestackPath := filepath.Join(testStackPath, "image", "Dockerfile-stack")
+
+	file, readErr := ioutil.ReadFile(dockerfilestackPath)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+
+	lines := strings.Split(string(file), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "ENV APPSODY_MOUNTS") {
+			lines[i] = "ENV APPSODY_MOUNTS=.,/project/user-app"
+		}
+	}
+
+	invalidDockerfile := strings.Join(lines, "\n")
+	writeErr := ioutil.WriteFile(dockerfilestackPath, []byte(invalidDockerfile), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+
+	restoreYaml := ioutil.WriteFile(dockerfilestackPath, []byte(file), 0644)
+	if restoreYaml != nil {
+		t.Fatal(restoreYaml)
+	}
+
+	if !strings.Contains(output, "Mount is not properly formatted") {
+		t.Fatal(err, ": Expected failure - Mounts is using an invalid separator")
+	}
+}
+
+func TestInvalidMounts(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	args := []string{"stack", "lint", testStackPath}
+
+	dockerfilestackPath := filepath.Join(testStackPath, "image", "Dockerfile-stack")
+
+	file, readErr := ioutil.ReadFile(dockerfilestackPath)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+
+	lines := strings.Split(string(file), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "ENV APPSODY_MOUNTS") {
+			lines[i] = "ENV APPSODY_MOUNTS=a:abcde"
+		}
+	}
+
+	invalidDockerfile := strings.Join(lines, "\n")
+	writeErr := ioutil.WriteFile(dockerfilestackPath, []byte(invalidDockerfile), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+
+	restoreYaml := ioutil.WriteFile(dockerfilestackPath, []byte(file), 0644)
+	if restoreYaml != nil {
+		t.Fatal(restoreYaml)
+	}
+
+	if !strings.Contains(output, "Could not stat path") {
+		t.Fatal(err, ": Expected failure - Mounts path is invalid")
+	}
+}
+
 func TestLintWithValidStack(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
