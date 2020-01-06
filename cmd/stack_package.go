@@ -355,7 +355,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				// the repo is setup wrong, delete and recreate it
 				if repo != nil {
 					log.Info.logf("Appsody repo %s is configured with the wrong URL. Deleting and recreating it.", repoName)
-					repos.Remove(repoName)
+					repos.Remove(repoName, rootConfig.LoggingConfig)
 				}
 				// check for a different repo with the same file url
 				var repoNameToDelete string
@@ -367,7 +367,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				}
 				if repoNameToDelete != "" {
 					log.Info.logf("Appsody repo %s is configured with %s's URL. Deleting it to setup %s.", repoNameToDelete, repoName, repoName)
-					repos.Remove(repoNameToDelete)
+					repos.Remove(repoNameToDelete, rootConfig.LoggingConfig)
 				}
 				err = repos.WriteFile(getRepoFileLocation(rootConfig))
 				if err != nil {
