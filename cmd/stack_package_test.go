@@ -270,10 +270,15 @@ func TestPackageNoStackYamlFail(t *testing.T) {
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "stack.yaml: no such file or directory") {
-			t.Errorf("String \"stack.yaml: no such file or directory\" not found in output: '%v'", err.Error())
+		if runtime.GOOS == "windows" {
+			if !strings.Contains(err.Error(), "stack.yaml: The system cannot find the file specified") {
+				t.Errorf("String \"stack.yaml: The system cannot find the file specified\" not found in output: '%v'", err.Error())
+			}
+		} else {
+			if !strings.Contains(err.Error(), "stack.yaml: no such file or directory") {
+				t.Errorf("String \"stack.yaml: no such file or directory\" not found in output: '%v'", err.Error())
+			}
 		}
-
 	} else {
 		t.Fatal("Stack package command unexpectedly passed with no stack.yaml present")
 	}
