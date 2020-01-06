@@ -311,11 +311,7 @@ func TestLintWithMissingStackYaml(t *testing.T) {
 		t.Fatal("Expected failure - Missing stack.yaml")
 	}
 
-	RestoreSampleStack(removeArray, testStackPath)
-	writeErr := ioutil.WriteFile(removeYaml, []byte(file), 0644)
-	if writeErr != nil {
-		t.Fatal(writeErr)
-	}
+	defer RestoreSampleStack(removeArray, testStackPath, file)
 }
 
 func TestLintWithMissingImageProjectAndConfigDir(t *testing.T) {
@@ -338,11 +334,7 @@ func TestLintWithMissingImageProjectAndConfigDir(t *testing.T) {
 
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 
-	RestoreSampleStack(removeArray, testStackPath)
-	writeErr := ioutil.WriteFile(filepath.Join(removeImage, "Dockerfile-stack"), []byte(file), 0644)
-	if writeErr != nil {
-		t.Fatal(writeErr)
-	}
+	defer RestoreSampleStack(removeArray, testStackPath, file)
 
 	if !strings.Contains(output, "Missing image directory") {
 		t.Fatal(err, ": Expected failure - Missing image directory")
@@ -365,7 +357,8 @@ func TestLintWithMissingREADME(t *testing.T) {
 
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 
-	RestoreSampleStack(removeArray, testStackPath)
+	var b []byte
+	defer RestoreSampleStack(removeArray, testStackPath, b)
 
 	if !strings.Contains(output, "Missing README.md") {
 		t.Fatal(err, ": Expected failure - Missing README")
@@ -389,7 +382,8 @@ func TestLintWithMissingTemplatesDirectory(t *testing.T) {
 
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 
-	RestoreSampleStack(removeArray, testStackPath)
+	var b []byte
+	RestoreSampleStack(removeArray, testStackPath, b)
 
 	if !strings.Contains(output, "Missing template directory") && !strings.Contains(output, "No templates found in") {
 		t.Fatal(err, ": Expected failure - Missing templates directory")
@@ -596,7 +590,7 @@ func TestLintWithInvalidRequirements(t *testing.T) {
 
 }
 
-func RestoreSampleStack(fixStack []string, testStackPath string) {
+func RestoreSampleStack(fixStack []string, testStackPath string, writeContents []byte) {
 	for _, missingContent := range fixStack {
 		if missingContent == filepath.Join(testStackPath, "image") || missingContent == filepath.Join(testStackPath, "image", "config") || missingContent == filepath.Join(testStackPath, "image/project") || missingContent == filepath.Join(testStackPath, "templates") || missingContent == filepath.Join(testStackPath, "templates", "default") {
 			osErr := os.Mkdir(missingContent, os.ModePerm)
@@ -607,6 +601,12 @@ func RestoreSampleStack(fixStack []string, testStackPath string) {
 			_, osErr := os.Create(missingContent)
 			if osErr != nil {
 				fmt.Println(osErr)
+			}
+			if missingContent == filepath.Join(testStackPath, "image", "Dockerfile-stack") || missingContent == filepath.Join(testStackPath, "stack.yaml") {
+				writeErr := ioutil.WriteFile(missingContent, []byte(writeContents), 0644)
+				if writeErr != nil {
+					fmt.Println(writeErr)
+				}
 			}
 		}
 	}
