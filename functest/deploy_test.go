@@ -14,6 +14,7 @@
 package functest
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -162,47 +163,50 @@ func TestDeployDeleteNotFound(t *testing.T) {
 }
 
 // // Testing deploy delete when given a file that exists, but can't be read
-//
-//
-//
-//	TODO: This test does work, but as Travis can't currently run kubectl commands
-//		  so it doesn't throw the correct error
-//
-// func TestDeployDeleteKubeFail(t *testing.T) {
-// 	filename := "fake.yaml"
+func TestDeployDeleteKubeFail(t *testing.T) {
 
-// 	// Ensure that the fake yaml file is deleted
-// 	defer func() {
-// 		err := os.Remove(filename)
-// 		if err != nil {
-// 			t.Errorf("Error removing the file: %s", err)
-// 		}
-// 	}()
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
 
-// 	// Attempt to create the fake file
-// 	file, err := os.Create(filename)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
-// 	if err != nil {
-// 		t.Errorf("Error creating the file: %s", err)
-// 	}
+	filename := "fake.yaml"
 
-// 	// Change the fake file to lack read permissions
-// 	err = file.Chmod(0333)
-// 	if err != nil {
-// 		t.Errorf("Error changing file permissions: %s", err)
-// 	}
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(filename)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
 
-// 	// Pass the file to deploy delete, which should fail
-// 	_, err = cmdtest.RunAppsodyCmd([]string{"deploy", "delete", "-f", filename}, ".", t)
-// 	if err != nil {
+	// Attempt to create the fake file
+	file, err := os.Create(filename)
 
-// 		// If the error is not what expected, fail the test
-// 		if !strings.Contains(err.Error(), "kubectl delete failed: exit status 1: error: open "+filename+": permission denied") {
-// 			t.Error("String \"kubectl delete failed: exit status 1: error: open ", filename, ": permission denied\" not found in output")
-// 		}
+	if err != nil {
+		t.Errorf("Error creating the file: %s", err)
+	}
 
-// 		// If there was not an error returned, fail the test
-// 	} else {
-// 		t.Error("Deploy delete did not fail as expected")
-// 	}
-// }
+	// Change the fake file to lack read permissions
+	err = file.Chmod(0333)
+	if err != nil {
+		t.Errorf("Error changing file permissions: %s", err)
+	}
+
+	args := []string{"deploy", "delete", "-f", filename}
+	// Pass the file to deploy delete, which should fail
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+
+		// If the error is not what expected, fail the test
+		if !strings.Contains(err.Error(), "kubectl delete failed: exit status 1: error: open "+filename+": permission denied") {
+			t.Error("String \"kubectl delete failed: exit status 1: error: open ", filename, ": permission denied\" not found in output")
+		}
+
+		// If there was not an error returned, fail the test
+	} else {
+		t.Error("Deploy delete did not fail as expected")
+	}
+}
