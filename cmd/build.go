@@ -54,7 +54,7 @@ var supportedKubeLabels = []string{
 	"app.appsody.dev/name",
 }
 
-func checkDockerBuildOptions(options []string) error {
+func CheckDockerBuildOptions(options []string) error {
 	buildOptionsTest := "(^((-t)|(--tag)|(--help)|(-f)|(--file))((=?$)|(=.*)))"
 
 	blackListedBuildOptionsRegexp := regexp.MustCompile(buildOptionsTest)
@@ -162,7 +162,7 @@ func build(config *buildCommandConfig) error {
 
 	if buildOptions != "" {
 		options := strings.Split(buildOptions, " ")
-		err := checkDockerBuildOptions(options)
+		err := CheckDockerBuildOptions(options)
 		if err != nil {
 			return err
 		}

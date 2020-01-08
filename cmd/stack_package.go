@@ -29,6 +29,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type packageCommandConfig struct {
+	*RootCommandConfig
+	buildahBuildOptions string
+}
+
 // structs for parsing the yaml files
 type StackYaml struct {
 	Name            string `yaml:"name"`
@@ -69,6 +74,14 @@ type IndexYamlStackTemplate struct {
 }
 
 func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	config := &packageCommandConfig{RootCommandConfig: rootConfig}
+	buildOptions := ""
+	if config.buildahBuildOptions != "" {
+		if !config.Buildah {
+			errors.New("Cannot specify --buildah-options flag without --buildah")
+		}
+		buildOptions = strings.TrimSpace(config.buildahBuildOptions)
+	}
 
 	// stack package is a tool for local stack developers to package their stack
 	// the stack package command does the following...
@@ -239,11 +252,25 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
 			log.Debug.Log("cmdArgs is: ", cmdArgs)
 
-			log.Info.Log("Running docker build")
+			if buildOptions != "" {
+				options := strings.Split(buildOptions, " ")
+				err := CheckDockerBuildOptions(options)
+				if err != nil {
+					return err
+				}
+				cmdArgs = append(cmdArgs, options...)
+			}
 
-			err = DockerBuild(rootConfig, cmdArgs, rootConfig.DockerLog)
+			if !config.Buildah {
+				log.Info.Log("Running docker build")
+				err = DockerBuild(config.RootCommandConfig, cmdArgs, config.DockerLog)
+			} else {
+				log.Info.Log("Running buildah build")
+				err = BuildahBuild(config.RootCommandConfig, cmdArgs, config.BuildahLog)
+			}
+
 			if err != nil {
-				return errors.Errorf("Error during docker build: %v", err)
+				return err
 			}
 
 			// build up stack struct for the new stack
@@ -389,6 +416,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "appsody", "Namespace used for creating the images.")
 	stackPackageCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "dev.local", "Registry used for creating the images.")
+	stackPackageCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of Docker.")
+	stackPackageCmd.PersistentFlags().StringVar(&config.buildahBuildOptions, "buildah-options", "", "Specify the buildah build options to use. Value must be in \"\".")
 
 	return stackPackageCmd
 }
