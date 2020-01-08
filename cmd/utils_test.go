@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
+	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
 var validProjectNameTests = []string{
@@ -39,8 +40,6 @@ var validProjectNameTests = []string{
 	// 68 chars is valid
 	"a2345678901234567890123456789012345678901234567890123456789012345678",
 }
-
-const TravisTesting = false
 
 func TestValidProjectNames(t *testing.T) {
 
@@ -637,7 +636,7 @@ func TestCopyDirFailFNF(t *testing.T) {
 // }
 
 func TestImagePushDryrun(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -654,7 +653,7 @@ func TestImagePushDryrun(t *testing.T) {
 }
 
 func TestImagePushNoReg(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -675,7 +674,7 @@ func TestImagePushNoReg(t *testing.T) {
 }
 
 func TestKubeGetFailNoRes(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -695,7 +694,7 @@ func TestKubeGetFailNoRes(t *testing.T) {
 }
 
 func TestKubeGetFailIncorrectRes(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -715,7 +714,7 @@ func TestKubeGetFailIncorrectRes(t *testing.T) {
 }
 
 func TestKubeApplyDryrun(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -732,7 +731,7 @@ func TestKubeApplyDryrun(t *testing.T) {
 }
 
 func TestKubeApplyFailFNF(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -753,7 +752,7 @@ func TestKubeApplyFailFNF(t *testing.T) {
 }
 
 func TestKubeApplyFailFileInvalid(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -788,7 +787,7 @@ func TestKubeApplyFailFileInvalid(t *testing.T) {
 }
 
 func TestKubeApplyFailPermission(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -828,7 +827,7 @@ func TestKubeApplyFailPermission(t *testing.T) {
 }
 
 func TestKubeDeleteDryrun(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -845,7 +844,7 @@ func TestKubeDeleteDryrun(t *testing.T) {
 }
 
 func TestKubeDeleteFailFNF(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 
@@ -867,7 +866,7 @@ func TestKubeDeleteFailFNF(t *testing.T) {
 }
 
 func TestKubeDeleteFailPermission(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -907,7 +906,7 @@ func TestKubeDeleteFailPermission(t *testing.T) {
 }
 
 func TestKubeGetNodePortURLFailNoService(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -926,7 +925,7 @@ func TestKubeGetNodePortURLFailNoService(t *testing.T) {
 }
 
 func TestKubeGetNodePortURLFailInvalidService(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -947,7 +946,7 @@ func TestKubeGetNodePortURLFailInvalidService(t *testing.T) {
 }
 
 func TestKubeGetNodePortURLDryrun(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -964,7 +963,7 @@ func TestKubeGetNodePortURLDryrun(t *testing.T) {
 }
 
 func TestKubeGetDeploymentURLFailNoService(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -983,7 +982,7 @@ func TestKubeGetDeploymentURLFailNoService(t *testing.T) {
 }
 
 func TestKubeGetDeploymentURLFailInvalidService(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -1004,7 +1003,7 @@ func TestKubeGetDeploymentURLFailInvalidService(t *testing.T) {
 }
 
 func TestKubeGetDeploymentURLDryrun(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -1021,7 +1020,7 @@ func TestKubeGetDeploymentURLDryrun(t *testing.T) {
 }
 
 func TestKubeGetRouteURLFailInvalidService(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -1040,7 +1039,7 @@ func TestKubeGetRouteURLFailInvalidService(t *testing.T) {
 }
 
 func TestKubeGetRouteURLDryrun(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -1057,7 +1056,7 @@ func TestKubeGetRouteURLDryrun(t *testing.T) {
 }
 
 func TestKubeGetKnativeURLFailInvalidService(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer
@@ -1076,7 +1075,7 @@ func TestKubeGetKnativeURLFailInvalidService(t *testing.T) {
 }
 
 func TestKubeGetKnativeURLDryrun(t *testing.T) {
-	if !TravisTesting {
+	if !cmdtest.TravisTesting {
 		t.Skip()
 	}
 	var outBuffer bytes.Buffer

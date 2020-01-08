@@ -14,6 +14,7 @@
 package functest
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -40,14 +41,6 @@ func TestParser(t *testing.T) {
 
 	for i := range stackRaw {
 		t.Log("stackRaw is: ", stackRaw[i])
-
-		// code to sepearate the repos and stacks...
-		// stageStack := strings.Split(stackRaw[i], "/")
-		// stage := stageStack[0]
-		// stack := stageStack[1]
-		// t.Log("stage is: ", stage)
-		// t.Log("stack is: ", stack)
-
 	}
 
 }
@@ -144,5 +137,76 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 		}
 
 		checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, true)
+	}
+}
+
+// Testing deploy delete when the required config file cannot be found
+func TestDeployDeleteNotFound(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// Not passing a config file so it will use the default, which shouldn't exist
+	args := []string{"deploy", "delete"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+
+		// Because the config doesn't exist, this error should be returned (without -v)
+		if !strings.Contains(err.Error(), "Deployment manifest not found") {
+			t.Error("String \"Deployment manifest not found\" not found in output")
+		}
+
+		// If an error is not returned, the test should fail
+	} else {
+		t.Error("Deploy delete did not fail as expected")
+	}
+}
+
+// // Testing deploy delete when given a file that exists, but can't be read
+func TestDeployDeleteKubeFail(t *testing.T) {
+
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	filename := "fake.yaml"
+
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(filename)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
+
+	// Attempt to create the fake file
+	file, err := os.Create(filename)
+
+	if err != nil {
+		t.Errorf("Error creating the file: %s", err)
+	}
+
+	// Change the fake file to lack read permissions
+	err = file.Chmod(0333)
+	if err != nil {
+		t.Errorf("Error changing file permissions: %s", err)
+	}
+
+	args := []string{"deploy", "delete", "-f", filename}
+	// Pass the file to deploy delete, which should fail
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+
+		// If the error is not what expected, fail the test
+		if !strings.Contains(err.Error(), "kubectl delete failed: exit status 1: error: open "+filename+": permission denied") {
+			t.Error("String \"kubectl delete failed: exit status 1: error: open ", filename, ": permission denied\" not found in output")
+		}
+
+		// If there was not an error returned, fail the test
+	} else {
+		t.Error("Deploy delete did not fail as expected")
 	}
 }

@@ -259,3 +259,20 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 
 	return stackAddToRepoCmd
 }
+
+func getStackData(stackPath string) (StackYaml, error) {
+	// get the necessary data from the current stack.yaml
+	var stackYaml StackYaml
+
+	source, err := ioutil.ReadFile(filepath.Join(stackPath, "stack.yaml"))
+	if err != nil {
+		return stackYaml, errors.Errorf("Error trying to read: %v", err)
+	}
+
+	err = yaml.Unmarshal(source, &stackYaml)
+	if err != nil {
+		return stackYaml, errors.Errorf("Error trying to unmarshall: %v", err)
+	}
+
+	return stackYaml, nil
+}
