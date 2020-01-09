@@ -72,7 +72,9 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	sandbox := &TestSandbox{T: t, Verbose: true}
 
 	// create a temporary dir to create the project and run the test
-	dirPrefix := strings.ReplaceAll("appsody-"+t.Name()+"-", "/", "-")
+	dirPrefix := "appsody-" + t.Name() + "-"
+	dirPrefix = strings.ReplaceAll(dirPrefix, "/", "-")
+	dirPrefix = strings.ReplaceAll(dirPrefix, "\\", "-")
 	testDir, err := ioutil.TempDir("", dirPrefix)
 	if err != nil {
 		t.Fatal("Error creating temporary directory: ", err)
