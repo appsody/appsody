@@ -262,7 +262,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			if buildOptions != "" {
 				options := strings.Split(buildOptions, " ")
-				err := CheckDockerBuildOptions(options)
+				err := checkBuildOptions(options)
 				if err != nil {
 					return err
 				}
