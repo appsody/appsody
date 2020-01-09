@@ -29,6 +29,14 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+type expectedDeploymentConfig struct {
+	deployFile string
+	pullURL    string
+	imageTag   string
+	namespace  string
+	knative    bool
+}
+
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
 func TestBuildSimple(t *testing.T) {
 
@@ -185,7 +193,7 @@ func TestBuildLabels(t *testing.T) {
 		t.Errorf("Expected commit message \"%s\" but found \"%s\"", commitMessage, labelsMap[appsodyCommitKey+"message"])
 	}
 
-	checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, false)
+	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, "", false})
 
 	//delete the image
 	deleteImage(imageName, t)
@@ -239,14 +247,16 @@ func TestDeploymentConfig(t *testing.T) {
 		if err != nil {
 			t.Error("appsody build command returned err: ", err)
 		}
-		checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, true)
+
+		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, "", true})
 
 		//delete the image
 		deleteImage(imageName, t)
 	}
 }
 
-func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imageTag string, knative bool) {
+func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploymentConfig) {
+	deployFile := expectedDeploymentConfig.deployFile
 	_, err := os.Stat(deployFile)
 	if err != nil && os.IsNotExist(err) {
 		t.Errorf("Could not find %s", deployFile)
@@ -264,20 +274,24 @@ func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imag
 		t.Logf("app-deploy.yaml formatting error: %s", err)
 	}
 
-	expectedApplicationImage := imageTag
-	if pullURL != "" {
-		expectedApplicationImage = pullURL + "/" + imageTag
+	expectedApplicationImage := expectedDeploymentConfig.imageTag
+	if expectedDeploymentConfig.pullURL != "" {
+		expectedApplicationImage = expectedDeploymentConfig.pullURL + "/" + expectedDeploymentConfig.imageTag
 	}
 
 	if appsodyApplication.Spec.ApplicationImage != expectedApplicationImage {
 		t.Errorf("Incorrect ApplicationImage in app-deploy.yaml. Expected %s but found %s", expectedApplicationImage, appsodyApplication.Spec.ApplicationImage)
 	}
 
-	if *appsodyApplication.Spec.CreateKnativeService != knative {
+	if *appsodyApplication.Spec.CreateKnativeService != expectedDeploymentConfig.knative {
 		t.Error("CreateKnativeService not set to true in the app-deploy.yaml when using --knative flag")
 	}
 
-	verifyImageAndConfigLabelsMatch(t, appsodyApplication, imageTag)
+	if appsodyApplication.Namespace != expectedDeploymentConfig.namespace {
+		t.Errorf("Incorrect Namespace in app-deploy.yaml. Expected %s but found %s", expectedDeploymentConfig.namespace, appsodyApplication.Namespace)
+	}
+
+	verifyImageAndConfigLabelsMatch(t, appsodyApplication, expectedDeploymentConfig.imageTag)
 }
 
 func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.AppsodyApplication, imageTag string) {

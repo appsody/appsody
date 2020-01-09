@@ -41,6 +41,7 @@ type buildCommandConfig struct {
 	pullURL             string
 	appDeployFile       string
 	knative             bool
+	namespace           string
 }
 
 //These are the current supported labels for Kubernetes,
@@ -533,6 +534,10 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 	}
 
 	appsodyApplication.Spec.ApplicationImage = imageName
+
+	if appsodyApplication.Namespace == "" {
+		appsodyApplication.Namespace = config.namespace
+	}
 
 	err = writeAppsodyApplication(appsodyApplication, config)
 	if err != nil {

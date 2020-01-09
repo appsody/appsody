@@ -127,17 +127,54 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 
 		imageTag := "testdeploy/testimage"
 		pullURL := "my-pull-url"
+		namespace := "myNamespace"
 		// appsody deploy
 		t.Log("Running appsody deploy...")
-		_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative")
+		_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative", "-n", namespace)
 		if err != nil {
 			t.Log("WARNING: deploy dryrun failed. Ignoring for now until that gets fixed.")
 			// TODO We need to fix the deploy --dryrun option so it doesn't fail, then uncomment the line below
 			// t.Fatal(err)
 		}
 
-		checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, true)
+		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, namespace, true})
 	}
+}
+
+func TestDeployNamespaceMismatch(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// first add the test repo index
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// appsody init
+	t.Log("Running appsody init...")
+	_, err = cmdtest.RunAppsody(sandbox, "init", "nodejs-express")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	firstNamespace := "firstNamespace"
+	// appsody deploy
+	t.Log("Running appsody deploy...")
+	_, err = cmdtest.RunAppsody(sandbox, "deploy", "--generate-only", "-n", firstNamespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secondNamespace := "secondNamespace"
+	// appsody deploy
+	t.Log("Running appsody deploy...")
+	_, err = cmdtest.RunAppsody(sandbox, "deploy", "--generate-only", "-n", secondNamespace)
+
+	if err != nil && !strings.Contains(err.Error(), "the namespace \""+firstNamespace+"\" from the deployment manifest does not match the namespace \""+secondNamespace+"\" passed as an argument.") {
+		t.Fatal(err)
+	}
+
 }
 
 // Testing deploy delete when the required config file cannot be found
