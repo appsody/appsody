@@ -106,7 +106,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	data := []byte("home: " + sandbox.ConfigDir + "\n" + "generated-by-tests: Yes" + "\n")
 	err = ioutil.WriteFile(sandbox.ConfigFile, data, 0644)
 	if err != nil {
-		t.Fatal("Error writing config file: ", err)
+		t.Error("Error writing config file: ", err)
 	}
 
 	var outBuffer bytes.Buffer
@@ -115,18 +115,17 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 
 	_, err = os.Stat(TestDirPath)
 	if err != nil {
-		t.Logf("Cannot find source directory %s to copy", TestDirPath)
+		t.Errorf("Cannot find source directory %s to copy", TestDirPath)
 	}
 
 	err = cmd.CopyDir(loggingConfig, TestDirPath, sandbox.TestDataPath)
 	if err != nil {
-		t.Logf("Could not copy %s to %s - output of copy command %s\n", TestDirPath, testDir, err)
+		t.Errorf("Could not copy %s to %s - output of copy command %s\n", TestDirPath, testDir, err)
 	}
 	t.Logf("Directory copy of %s to %s was successful \n", TestDirPath, testDir)
 
 	if _, err := os.Stat(sandbox.TestDataPath); os.IsNotExist(err) {
 		t.Errorf("%s does not exist", sandbox.TestDataPath)
-
 	}
 
 	cleanupFunc := func() {
