@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/appsody/appsody/cmd"
@@ -145,6 +146,8 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 
 	// copy the output to the buffer, and also to the test log
 	outScanner := bufio.NewScanner(outReader)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for outScanner.Scan() {
 			out := outScanner.Bytes()
@@ -152,6 +155,7 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 			outBuffer.WriteByte('\n')
 			t.Log(string(out))
 		}
+		wg.Done()
 	}()
 
 	t.Log("Running appsody in the test sandbox with args: ", args)
@@ -161,8 +165,10 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 	}
 
 	// close the reader and writer
+	// Make sure to close the writer first or this will hang on Windows
 	outWriter.Close()
 	outReader.Close()
+	wg.Wait()
 
 	return outBuffer.String(), err
 }
@@ -293,15 +299,13 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		// Make sure to close the writer first or this will hang on Windows
-		outWriter.Close()
-		outReader.Close()
-	}()
+
 	execCmd.Stdout = outWriter
 	execCmd.Stderr = outWriter
 	outScanner := bufio.NewScanner(outReader)
 	var outBuffer bytes.Buffer
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for outScanner.Scan() {
 			out := outScanner.Bytes()
@@ -309,6 +313,7 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 			outBuffer.WriteByte('\n')
 			t.Log(string(out))
 		}
+		wg.Done()
 	}()
 
 	err = execCmd.Start()
@@ -316,9 +321,12 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 		return "", err
 	}
 
-	// replace the original working directory when this function completes
-
 	err = execCmd.Wait()
+
+	// Make sure to close the writer first or this will hang on Windows
+	outWriter.Close()
+	outReader.Close()
+	wg.Wait()
 
 	return outBuffer.String(), err
 }
