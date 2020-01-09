@@ -72,7 +72,8 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	sandbox := &TestSandbox{T: t, Verbose: true}
 
 	// create a temporary dir to create the project and run the test
-	testDir, err := ioutil.TempDir("", "appsody-"+t.Name()+"-")
+	dirPrefix := strings.ReplaceAll("appsody-"+t.Name()+"-", "/", "-")
+	testDir, err := ioutil.TempDir("", dirPrefix)
 	if err != nil {
 		t.Fatal("Error creating temporary directory: ", err)
 	}
@@ -84,6 +85,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error evaluating symlinks: ", err)
 	}
+
 	sandbox.ProjectName = strings.ToLower(strings.Replace(filepath.Base(testDir), "appsody-", "", 1))
 	sandbox.ProjectDir = filepath.Join(testDir, sandbox.ProjectName)
 	sandbox.ConfigDir = filepath.Join(testDir, "config")
@@ -91,11 +93,12 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
 	}
+	t.Log("Created testing project dir: ", sandbox.ProjectDir)
+
 	err = os.MkdirAll(sandbox.ConfigDir, 0755)
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
 	}
-	t.Log("Created testing project dir: ", sandbox.ProjectDir)
 	t.Log("Created testing config dir: ", sandbox.ConfigDir)
 
 	// Create the config file if it does not already exist.
@@ -148,7 +151,8 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 			t.Log(string(out))
 		}
 	}()
-
+	
+	t.Log("Running appsody in the test sandbox with args: ", args)
 	err := cmd.ExecuteE("vlatest", "latest", t.ProjectDir, outWriter, outWriter, args)
 
 	// close the reader and writer
