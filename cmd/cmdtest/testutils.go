@@ -116,25 +116,9 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 		t.Logf("Cannot find source directory %s to copy", TestDirPath)
 	}
 
-	var execCmd string
-	var execArgs = []string{TestDirPath, testDir}
-
-	if runtime.GOOS == "windows" {
-		execCmd = "CMD"
-		winArgs := []string{"/C", "XCOPY", "I", "/F", "/E", "/H", "/K"}
-		execArgs = append(winArgs[0:], execArgs...)
-
-	} else {
-		execCmd = "cp"
-		bashArgs := []string{"-rf"}
-		execArgs = append(bashArgs[0:], execArgs...)
-	}
-	t.Log("About to run: ", execCmd, execArgs)
-	copyCmd := exec.Command(execCmd, execArgs...)
-	cmdOutput, cmdErr := copyCmd.Output()
-	_, err = os.Stat(testDir)
+	err = cmd.CopyDir(loggingConfig, TestDirPath, testDir)
 	if err != nil {
-		t.Logf("Could not copy %s to %s - output of copy command %s %s\n", TestDirPath, testDir, cmdOutput, cmdErr)
+		t.Logf("Could not copy %s to %s - output of copy command %s\n", TestDirPath, testDir, err)
 	}
 	t.Logf("Directory copy of %s to %s was successful \n", TestDirPath, testDir)
 
