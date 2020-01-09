@@ -151,7 +151,7 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 			t.Log(string(out))
 		}
 	}()
-	
+
 	t.Log("Running appsody in the test sandbox with args: ", args)
 	err := cmd.ExecuteE("vlatest", "latest", t.ProjectDir, outWriter, outWriter, args)
 
