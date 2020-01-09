@@ -156,6 +156,9 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 
 	t.Log("Running appsody in the test sandbox with args: ", args)
 	err := cmd.ExecuteE("vlatest", "latest", t.ProjectDir, outWriter, outWriter, args)
+	if err != nil {
+		t.Log("Error returned from appsody command: ", err)
+	}
 
 	// close the reader and writer
 	outWriter.Close()
