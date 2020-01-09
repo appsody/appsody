@@ -75,13 +75,6 @@ type IndexYamlStackTemplate struct {
 
 func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	config := &packageCommandConfig{RootCommandConfig: rootConfig}
-	buildOptions := ""
-	if config.buildahBuildOptions != "" {
-		if !config.Buildah {
-			errors.New("Cannot specify --buildah-options flag without --buildah")
-		}
-		buildOptions = strings.TrimSpace(config.buildahBuildOptions)
-	}
 
 	// stack package is a tool for local stack developers to package their stack
 	// the stack package command does the following...
@@ -112,6 +105,18 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			log.Info.Log("******************************************")
 			log.Info.Log("Running appsody stack package")
 			log.Info.Log("******************************************")
+			var err error
+			buildOptions := ""
+			if config.buildahBuildOptions != "" {
+				if !config.Buildah {
+					err = errors.New("Cannot specify --buildah-options flag without --buildah")
+				}
+				buildOptions = strings.TrimSpace(config.buildahBuildOptions)
+			}
+
+			if err != nil {
+				return err
+			}
 
 			projectPath := rootConfig.ProjectDir
 
@@ -124,7 +129,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			log.Debug.Log("stackPath is: ", stackPath)
 
 			// creates stackPath dir if it doesn't exist
-			err := os.MkdirAll(filepath.Dir(stackPath), 0777)
+			err = os.MkdirAll(filepath.Dir(stackPath), 0777)
 
 			if err != nil {
 				return errors.Errorf("Error creating stackPath: %v", err)
