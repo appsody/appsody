@@ -111,6 +111,7 @@ func TestListYaml(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	t.Log("Parsing yaml output: \n", output)
 	list, err := cmdtest.ParseListYAML(cmdtest.ParseYAML(output))
 
 	if err != nil {

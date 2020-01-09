@@ -34,12 +34,17 @@ var repoSetDefaultLogsTests = []struct {
 }
 
 func TestRepoSetDefaultLogs(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
 
-	for _, tt := range repoSetDefaultLogsTests {
+	for _, testData := range repoSetDefaultLogsTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 
 			args := append([]string{"repo", "set-default"}, tt.args...)
 			output, err := cmdtest.RunAppsody(sandbox, args...)
