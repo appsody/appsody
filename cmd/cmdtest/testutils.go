@@ -137,9 +137,23 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 		t.Logf("Could not copy %s to %s - output of copy command %s %s\n", TestDirPath, testDir, cmdOutput, cmdErr)
 	}
 	t.Logf("Directory copy of %s to %s was successful \n", TestDirPath, testDir)
-	if runtime.GOOS == "windows" {
 
-		t.Logf("OUTPUT: %s", cmdOutput)
+	if _, err := os.Stat(sandbox.TestDataPath); os.IsNotExist(err) {
+		t.Errorf("%s does not exist", sandbox.TestDataPath)
+	} else {
+		var files []string
+
+		root := filepath.Join(sandbox.TestDataPath)
+		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			files = append(files, path)
+			return nil
+		})
+		if err != nil {
+			panic(err)
+		}
+		for _, file := range files {
+			t.Log(file)
+		}
 	}
 
 	cleanupFunc := func() {
