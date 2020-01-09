@@ -1,4 +1,4 @@
-// Copyright © 2019 IBM Corporation and others.
+// Copyright © 2019, 2020 IBM Corporation and others.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,5 +29,6 @@ func newStackCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	stackCmd.AddCommand(newStackValidateCmd(rootConfig))
 	stackCmd.AddCommand(newStackPackageCmd(rootConfig))
 	stackCmd.AddCommand(newStackAddToRepoCmd(rootConfig))
+	stackCmd.AddCommand(newStackRemoveFromRepoCmd(rootConfig))
 	return stackCmd
 }

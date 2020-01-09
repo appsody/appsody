@@ -16,11 +16,12 @@ package functest
 
 import (
 	"errors"
-	"github.com/appsody/appsody/cmd/cmdtest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
 var initResultsCheckTests = []struct {
@@ -35,12 +36,17 @@ var initResultsCheckTests = []struct {
 }
 
 func TestInitResultsCheck(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
 
-	for _, tt := range initResultsCheckTests {
+	for _, testData := range initResultsCheckTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
 
 		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
 			testDir := filepath.Join(sandbox.ProjectDir, tt.testName)
 			err := os.Mkdir(testDir, os.FileMode(0755))
 			if err != nil {
@@ -81,12 +87,17 @@ var initErrorsTests = []struct {
 }
 
 func TestInitErrors(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
 
-	for _, tt := range initErrorsTests {
+	for _, testData := range initErrorsTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 			args := append([]string{"init"}, tt.args...)
 			// appsody init nodejs-express
 
@@ -111,15 +122,20 @@ var initTemplateShouldNotExistTests = []struct {
 }
 
 func TestInitTemplateShouldNotExistTests(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
 
-	for _, tt := range initTemplateShouldNotExistTests {
-
-		packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
-		packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
+	for _, testData := range initTemplateShouldNotExistTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
 
 		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
+			packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
+			packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
+
 			testDir := filepath.Join(sandbox.ProjectDir, tt.testName)
 			err := os.Mkdir(testDir, os.FileMode(0755))
 			if err != nil {
