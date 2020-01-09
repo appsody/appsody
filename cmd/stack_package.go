@@ -99,7 +99,10 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
   Packages the stack in the current directory, tags the built image with the default registry and namespace, and adds the stack to the "dev.local" repository.
   
   appsody stack package --image-namespace my-namespace
-  Packages the stack in the current directory, tags the built image with the default registry and "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
+  Packages the stack in the current directory, tags the built image with the default registry and "my-namespace" namespace, and adds the stack to the "dev.local" repository.
+  
+  appsody stack package --buildah --buildah-options "--format=docker"
+  Packages the stack in the current directory, builds project using buildah primitives in Docker format, tags the built image with the default registry and namespace, and adds the stack to the "dev.local" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			log.Info.Log("******************************************")
