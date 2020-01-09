@@ -32,12 +32,17 @@ var repoListTests = []struct {
 
 func TestRepoList(t *testing.T) {
 
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
+	for _, testData := range repoListTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
 
-	for _, tt := range repoListTests {
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.configFile, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
 			args := []string{"repo", "list"}
 			if tt.configFile != "" {
 				args = append(args, "--config", tt.configFile)
