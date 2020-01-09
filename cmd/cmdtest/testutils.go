@@ -116,7 +116,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 		t.Logf("Cannot find source directory %s to copy", TestDirPath)
 	}
 
-	err = cmd.CopyDir(loggingConfig, TestDirPath, testDir)
+	err = cmd.CopyDir(loggingConfig, TestDirPath, sandbox.TestDataPath)
 	if err != nil {
 		t.Logf("Could not copy %s to %s - output of copy command %s\n", TestDirPath, testDir, err)
 	}
