@@ -140,6 +140,20 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 
 	if _, err := os.Stat(sandbox.TestDataPath); os.IsNotExist(err) {
 		t.Errorf("%s does not exist", sandbox.TestDataPath)
+		var files []string
+
+		root := filepath.Join(testDir)
+		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			files = append(files, path)
+			return nil
+		})
+		if err != nil {
+			panic(err)
+		}
+		for _, file := range files {
+			t.Log(file)
+		}
+
 	} else {
 		var files []string
 
