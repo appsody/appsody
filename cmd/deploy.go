@@ -86,6 +86,10 @@ The command performs the following steps:
 				buildConfig.knative = config.knative
 				buildConfig.appDeployFile = configFile
 
+				if (buildConfig.push || buildConfig.pushURL != "") && buildConfig.tag == "" {
+					return errors.New("Tag missing from deploy command.  Use the --t or --tag flags using mynamespace/myrepository[:tag] to tag your image")
+				}
+
 				buildErr := build(buildConfig)
 				if buildErr != nil {
 					return buildErr
