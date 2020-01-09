@@ -14,24 +14,100 @@
 package cmd_test
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestRepoSetDefaultErrors(t *testing.T) {
+var repoSetDefaultLogsTests = []struct {
+	testName     string
+	args         []string // input
+	expectedLogs string   // logs that are expected in the output
+}{
+	{"No args", nil, "must specify desired default repository"},
+	{"Existing default repo", []string{"incubator"}, "default repository has already been set to"},
+	{"Non-existing repo", []string{"test"}, "not in your configured list of repositories"},
+	{"Badly formatted repo config", []string{"test", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
+}
 
+func TestRepoSetDefaultLogs(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"repo", "set-default"}
-	output, _ := cmdtest.RunAppsody(sandbox, args...)
+	for _, tt := range repoSetDefaultLogsTests {
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
 
-	if !strings.Contains(output, "Error, you must specify desired default repository") {
-		t.Error("String \"Error, you must specify desired default repository\" not found in output")
+			args := append([]string{"repo", "set-default"}, tt.args...)
+			output, err := cmdtest.RunAppsody(sandbox, args...)
+			if err == nil {
+				t.Error("Expected non-zero exit code.")
+			}
+			if !strings.Contains(output, tt.expectedLogs) {
+				t.Errorf("Did not find expected error '%s' in output", tt.expectedLogs)
+			}
 
-	} else {
-		t.Log("Found the correct error string")
+			// check default repo is unchanged and is still incubator
+			output, err = cmdtest.RunAppsody(sandbox, "repo", "list")
+			if err != nil {
+				t.Fatal(err)
+			}
+			checkExpectedDefaultRepo(t, output, "*incubator")
+		})
+	}
+}
+
+func TestRepoSetDefault(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"repo", "set-default", "localhub", "--config", "testdata/multiple_repository_config/config.yaml"}
+	removeRepo := filepath.Join("testdata", "multiple_repository_config", "repository", "repository.yaml")
+	file, readErr := ioutil.ReadFile(removeRepo)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// check default repo has been changed to localhub
+	output, err := cmdtest.RunAppsody(sandbox, "repo", "list", "--config", "testdata/multiple_repository_config/config.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkExpectedDefaultRepo(t, output, "*localhub")
+	writeErr := ioutil.WriteFile(filepath.Join(removeRepo), []byte(file), 0644)
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+}
+
+func TestRepoSetDefaultDryRun(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"repo", "set-default", "localhub", "--config", "testdata/multiple_repository_config/config.yaml", "--dryrun"}
+
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check default repo is unchanged and is still incubator
+	output, err := cmdtest.RunAppsody(sandbox, "repo", "list")
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkExpectedDefaultRepo(t, output, "*incubator")
+}
+
+func checkExpectedDefaultRepo(t *testing.T, output string, checkRepo string) {
+	if !strings.Contains(output, checkRepo) {
+		t.Errorf("Expected default repo to be %v", checkRepo)
 	}
 }

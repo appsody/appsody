@@ -320,3 +320,37 @@ func TestStackAlreadyExists(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestStackCreateMissingArgumentsFail(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"stack", "create"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "Required parameter missing. You must specify a stack name") {
+			t.Errorf("String \"Required parameter missing. You must specify a stack name\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+
+}
+
+func TestStackCreateSampleStackDryrun(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"stack", "create", "testing-stack", "--dryrun", "--config", "testdata/default_repository_config/config.yaml"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+
+	if err != nil {
+		t.Errorf("Error running dry run mode: %v", err)
+	} else {
+		if !strings.Contains(output, "Dry run complete") {
+			t.Error("String \"Dry run complete\" not found in output")
+		}
+	}
+}

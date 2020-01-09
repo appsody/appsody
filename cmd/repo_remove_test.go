@@ -20,18 +20,83 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestRepoRemoveError(t *testing.T) {
+var repoRemoveLogsTests = []struct {
+	testName     string
+	args         []string // input
+	expectedLogs string   // expected to be in the error message
+}{
+	{"No args", nil, "you must specify repository name"},
+	{"Existing default repo", []string{"incubator"}, "cannot remove the default repository"},
+	{"Non-existing repo", []string{"test"}, "not in configured list of repositories"},
+	{"Badly formatted repo config", []string{"test", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
+}
+
+func TestRepoRemoveLogs(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+	for _, tt := range repoRemoveLogsTests {
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+			// see how many repos we currently have
+			//startRepos := getRepoListOutput(t, sandbox)
+
+			args := append([]string{"repo", "remove"}, tt.args...)
+			output, err := cmdtest.RunAppsody(sandbox, args...)
+			if err == nil {
+				t.Fatalf("Expected non-zero exit code: %v", tt.expectedLogs)
+			}
+			// see how many repos we have after running repo add
+			//endRepos := getRepoListOutput(t, sandbox)
+			if !strings.Contains(output, tt.expectedLogs) {
+				t.Errorf("Did not find expected error '%s' in output", tt.expectedLogs)
+			}
+			// else if len(startRepos) != len(endRepos) {
+			// 	t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
+			// }
+		})
+	}
+}
+
+func TestRepoRemove(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"repo", "remove"}
-	output, _ := cmdtest.RunAppsody(sandbox, args...)
+	args := []string{"repo", "remove", "experimental"}
 
-	if !strings.Contains(output, "Error, you must specify repository name") {
-		t.Error("String \"Error, you must specify repository name\" not found in output")
+	// see how many repos we currently have
+	//startRepos := getRepoListOutput(t, sandbox)
 
-	} else {
-		t.Log("Found the correct error string")
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	// see how many repos we have after running repo add
+	//endRepos := getRepoListOutput(t, sandbox)
+
+	if !strings.Contains(output, "repository has been removed") {
+		t.Fatal(err)
 	}
+	// else if (len(startRepos) - 1) != len(endRepos) {
+	// 	t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
+	// }
+}
 
+func TestRepoRemoveDryRun(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// see how many repos we currently have
+	//startRepos := getRepoListOutput(t, sandbox)
+
+	args := []string{"repo", "remove", "localhub", "--config", "testdata/multiple_repository_config/config.yaml", "--dryrun"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Error(err)
+	}
+	if !strings.Contains(output, "Dry Run - Skip") {
+		t.Error("Did not find expected error 'Dry Run - Skip' in output")
+	}
+	// see how many repos we have after running repo add
+	//endRepos := getRepoListOutput(t, sandbox)
+
+	// if len(startRepos) != len(endRepos) {
+	// 	t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
+	// }
 }

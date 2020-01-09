@@ -31,6 +31,8 @@ import (
 
 const CLEANUP = true
 
+const TravisTesting = false
+
 var TestDirPath = filepath.Join("..", "cmd", "testdata")
 
 // Repository struct represents an appsody repository
