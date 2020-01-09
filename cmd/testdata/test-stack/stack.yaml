@@ -12,3 +12,5 @@ templating-data:
   key1: value1
   key2: value2
   key3: value3
+requirements:
+  appsody-version: ">= 17.09.0"

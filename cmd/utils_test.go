@@ -17,11 +17,14 @@ package cmd_test
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
+	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
 var validProjectNameTests = []string{
@@ -304,6 +307,787 @@ func TestValidateHostName(t *testing.T) {
 			}
 		})
 
+	}
+}
+
+func TestCopy(t *testing.T) {
+
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	existingFile := "idoexist.bbb"
+	nonExistentFile := "idontexistyet.aaa"
+
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(existingFile)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+		err = os.Remove(nonExistentFile)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
+
+	_, err := os.Create(existingFile)
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
+
+	err = cmd.CopyFile(log, existingFile, nonExistentFile)
+
+	if err != nil {
+		t.Errorf(": '%v'", err.Error())
+	}
+}
+
+func TestCopyFailFNF(t *testing.T) {
+
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	existingFile := "idoexist.bbb"
+	nonExistentFile := "idontexist.aaa"
+
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(existingFile)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
+
+	// Attempt to create the fake file
+	_, err := os.Create(existingFile)
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
+
+	err = cmd.CopyFile(log, nonExistentFile, existingFile)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
+			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Errorf("Error: %v", err)
+	}
+}
+
+func TestCopyFailPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	existingFile := "idoexist.bbb"
+	nonExistentFile := "idontexist.aaa"
+
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(existingFile)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
+
+	// Attempt to create the fake file
+	file, err := os.Create(existingFile)
+	if err != nil {
+		t.Errorf("Error creating the file: %s", err)
+	}
+
+	err = file.Chmod(0333)
+	if err != nil {
+		t.Errorf("Error changing file permissions: %s", err)
+	}
+
+	err = cmd.CopyFile(log, existingFile, nonExistentFile)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "Permission denied") {
+			t.Errorf("String \"Permission denied\" not found in output: '%v'", err.Error())
+		}
+
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestMoveFailFNF(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	nonExistentFile := "idontexist.aaa"
+
+	err := cmd.MoveDir(log, nonExistentFile, "../")
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
+			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestMove(t *testing.T) {
+
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	existingFile := "iamafile"
+	newFileName := "iamachangedfile"
+
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+
+		if _, err := os.Stat(existingFile); err == nil {
+			err := os.Remove(existingFile)
+			if err != nil {
+				t.Errorf("Error removing the file: %s", err)
+			}
+		}
+		if _, err := os.Stat(newFileName); err == nil {
+			err := os.Remove(newFileName)
+			if err != nil {
+				t.Errorf("Error removing the file: %s", err)
+			}
+		}
+
+	}()
+
+	// Attempt to create the fake file
+	_, err := os.Create(existingFile)
+
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
+
+	err = cmd.MoveDir(log, existingFile, newFileName)
+
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
+}
+
+func TestMoveFailPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	existingFile := "iamafile"
+	existingDir := "iamadir/"
+
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(existingFile)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+
+		err = os.RemoveAll(existingDir)
+		if err != nil {
+			t.Errorf("Error removing the directory: %s", err)
+		}
+	}()
+
+	// Attempt to create the fake file
+	_, err := os.Create(existingFile)
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
+
+	err = os.Mkdir(existingDir, 4440)
+
+	if err != nil {
+		t.Errorf("Error creating the directory: %v", err)
+	}
+
+	err = cmd.MoveDir(log, existingFile, existingDir)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "Permission denied") {
+			t.Errorf("String \"Could not copy "+existingFile+" to"+existingDir+"\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestCopyDirFailFNF(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	existingFile := "idoexist.bbb"
+	nonExistentFile := "idontexist.aaa"
+
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(existingFile)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
+
+	// Attempt to create the fake file
+	_, err := os.Create(existingFile)
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
+
+	err = cmd.CopyDir(log, nonExistentFile, existingFile)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
+			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+// func TestGetGitLables(t *testing.T)
+
+// 	var outBuffer bytes.Buffer
+// 	loggingConfig := &cmd.LoggingConfig{}
+// 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+// 	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+
+// 	gitLabels, err := cmd.GetGitLabels(config)
+
+// 	if err != nil {
+// 		t.Error("Error: ", err)
+// 	}
+
+// 	for key, value := range gitLabels {
+// 		switch key {
+// 		case "dev.appsody.image.commit.author", "dev.appsody.image.commit.committer":
+// 			matched, err := regexp.MatchString(`^[a-zA-Z0-9-_\s]*\s<([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})>$`, value)
+// 			if err != nil {
+// 				t.Errorf("Error performing regular expression: %v", err)
+// 			}
+// 			if !matched {
+// 				t.Errorf("The value '%s' in the label '%s' was not in the expected format", value, key)
+// 			}
+// 		case "dev.appsody.image.commit.date":
+// 			matched, err := regexp.MatchString(`^[a-zA-Z]{3}\s[a-zA-Z]{3}\s[0-9]{1,2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s[0-9]{4}\s\+[0-9]{4}$`, value)
+// 			if err != nil {
+// 				t.Errorf("Error performing regular expression: %v", err)
+// 			}
+// 			if !matched {
+// 				t.Errorf("The value '%s' in the label '%s' was not in the expected format", value, key)
+// 			}
+// 		case "dev.appsody.image.commit.message":
+// 			matched, err := regexp.MatchString(`^[A-Za-z0-9\W\s]*$`, value)
+// 			if err != nil {
+// 				t.Errorf("Error performing regular expression: %v", err)
+// 			}
+// 			if !matched {
+// 				t.Errorf("The value '%s' in the label '%s' was not in the expected format", value, key)
+// 			}
+// 		case "org.opencontainers.image.documentation", "org.opencontainers.image.source", "org.opencontainers.image.url":
+// 			matched, err := regexp.MatchString(`https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)`, value)
+// 			if err != nil {
+// 				t.Errorf("Error performing regular expression: %v", err)
+// 			}
+// 			if !matched {
+// 				t.Errorf("The value '%s' in the label '%s' was not in the expected format", value, key)
+// 			}
+// 		case "org.opencontainers.image.revision":
+// 			matched, err := regexp.MatchString(`^[0-9a-z]*(-modified)?$`, value)
+// 			if err != nil {
+// 				t.Errorf("Error performing regular expression: %v", err)
+// 			}
+// 			if !matched {
+// 				t.Errorf("The value '%s' in the label '%s' was not in the expected format", value, key)
+// 			}
+// 		default:
+// 			t.Errorf("Unexpected value returned from GetGitLabels(): {%s:%s}", key, value)
+// 		}
+// 	}
+// }
+
+func TestImagePushDryrun(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	imageName := "irrelevant"
+
+	err := cmd.ImagePush(loggingConfig, imageName, false, true)
+
+	if err != nil {
+		t.Errorf("Unexpected error when pretending to push the image: %s", err)
+	}
+}
+
+func TestImagePushNoReg(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	imageName := "notvalid"
+
+	err := cmd.ImagePush(loggingConfig, imageName, false, false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "An image does not exist locally with the tag: "+imageName) {
+			t.Errorf("String \"An image does not exist locally with the tag: %s, \" not found in output: '%v'", imageName, err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeGetFailNoRes(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	cmdParms := []string{}
+	_, err := cmd.KubeGet(loggingConfig, cmdParms, "", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "exit status 1: You must specify the type of resource to get.") {
+			t.Errorf("String \"exit status 1: You must specify the type of resource to get.\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeGetFailIncorrectRes(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	cmdParms := []string{"invalid"}
+	_, err := cmd.KubeGet(loggingConfig, cmdParms, "", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl get failed: exit status 1: error: the server doesn't have a resource type \"invalid\"") {
+			t.Errorf("String \"kubectl get failed: exit status 1: error: the server doesn't have a resource type \"invalid\"\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeApplyDryrun(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	fileName := "file"
+
+	err := cmd.KubeApply(loggingConfig, fileName, "namespace", true)
+
+	if err != nil {
+		t.Errorf("Unexpected error from kube apply: %v", err)
+	}
+}
+
+func TestKubeApplyFailFNF(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	fileName := "file"
+
+	err := cmd.KubeApply(loggingConfig, fileName, "", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl apply failed: exit status 1: error: the path \""+fileName+"\" does not exist") {
+			t.Errorf("String \"kubectl apply failed: exit status 1: error: the path \"%s\" does not exist\" not found in output: '%v'", fileName, err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeApplyFailFileInvalid(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	fileName := "file"
+
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(fileName)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
+
+	// Attempt to create the fake file
+	_, err := os.Create(fileName)
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
+
+	err = cmd.KubeApply(loggingConfig, fileName, "", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl apply failed: exit status 1: error: no objects passed to apply") {
+			t.Errorf("String \"kubectl apply failed: exit status 1: error: no objects passed to apply\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeApplyFailPermission(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	fileName := "file"
+
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(fileName)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
+
+	// Attempt to create the fake file
+	file, err := os.Create(fileName)
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
+
+	err = file.Chmod(0333)
+	if err != nil {
+		t.Errorf("Error changing file permissions: %s", err)
+	}
+
+	err = cmd.KubeApply(loggingConfig, fileName, "", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl apply failed: exit status 1: error: open file: permission denied") {
+			t.Errorf("String \"kubectl apply failed: exit status 1: error: open file: permission denied\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeDeleteDryrun(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	fileName := "file"
+
+	err := cmd.KubeDelete(loggingConfig, fileName, "namespace", true)
+
+	if err != nil {
+		t.Errorf("Unexpected error from kube apply: %v", err)
+	}
+}
+
+func TestKubeDeleteFailFNF(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	fileName := "file"
+
+	err := cmd.KubeDelete(loggingConfig, fileName, "", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl delete failed: exit status 1: error: the path \""+fileName+"\" does not exist") {
+			t.Errorf("String \"kubectl delete failed: exit status 1: error: the path \"%s\" does not exist\" not found in output: '%v'", fileName, err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeDeleteFailPermission(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	fileName := "file"
+
+	// Ensure that the fake yaml file is deleted
+	defer func() {
+		err := os.Remove(fileName)
+		if err != nil {
+			t.Errorf("Error removing the file: %s", err)
+		}
+	}()
+
+	// Attempt to create the fake file
+	file, err := os.Create(fileName)
+	if err != nil {
+		t.Errorf("Error creating the file: %v", err)
+	}
+
+	err = file.Chmod(0333)
+	if err != nil {
+		t.Errorf("Error changing file permissions: %s", err)
+	}
+
+	err = cmd.KubeDelete(loggingConfig, fileName, "", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl delete failed: exit status 1: error: open file: permission denied") {
+			t.Errorf("String \"kubectl delete failed: exit status 1: error: open file: permission denied\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeGetNodePortURLFailNoService(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	_, err := cmd.KubeGetNodePortURL(loggingConfig, "", "namespace", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty") {
+			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeGetNodePortURLFailInvalidService(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	service := "definitelynotaservice"
+
+	_, err := cmd.KubeGetNodePortURL(loggingConfig, service, "", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \""+service+"\" not found") {
+			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \"%s\" not found\" not found in output: '%v'", service, err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeGetNodePortURLDryrun(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	service := "svc"
+
+	_, err := cmd.KubeGetNodePortURL(loggingConfig, service, "", true)
+
+	if err != nil {
+		t.Errorf("Unexpected error from kube get: %v", err)
+	}
+}
+
+func TestKubeGetDeploymentURLFailNoService(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	_, err := cmd.KubeGetDeploymentURL(loggingConfig, "", "namespace", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty") {
+			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeGetDeploymentURLFailInvalidService(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	service := "definitelynotaservice"
+
+	_, err := cmd.KubeGetDeploymentURL(loggingConfig, service, "", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \""+service+"\" not found") {
+			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \"%s\" not found\" not found in output: '%v'", service, err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeGetDeploymentURLDryrun(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	service := "svc"
+
+	_, err := cmd.KubeGetDeploymentURL(loggingConfig, service, "", true)
+
+	if err != nil {
+		t.Errorf("Unexpected error from kube get: %v", err)
+	}
+}
+
+func TestKubeGetRouteURLFailInvalidService(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	_, err := cmd.KubeGetRouteURL(loggingConfig, "", "namespace", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: the server doesn't have a resource type") {
+			t.Errorf("String \"Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: the server doesn't have a resource type\" not found\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeGetRouteURLDryrun(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	service := "svc"
+
+	_, err := cmd.KubeGetRouteURL(loggingConfig, service, "", true)
+
+	if err != nil {
+		t.Errorf("Unexpected error from kube get: %v", err)
+	}
+}
+
+func TestKubeGetKnativeURLFailInvalidService(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	_, err := cmd.KubeGetKnativeURL(loggingConfig, "", "namespace", false)
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "kubectl get failed: exit status 1: error: the server doesn't have a resource type") {
+			t.Errorf("String \"kubectl get failed: exit status 1: error: the server doesn't have a resource type\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+}
+
+func TestKubeGetKnativeURLDryrun(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+
+	service := "svc"
+
+	_, err := cmd.KubeGetKnativeURL(loggingConfig, service, "", true)
+
+	if err != nil {
+		t.Errorf("Unexpected error from kube get: %v", err)
 	}
 }
 
