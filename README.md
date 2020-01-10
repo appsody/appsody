@@ -22,7 +22,7 @@ For information on building the Appsody CLI from source, see [Building from Sour
 ## Contributing
 
 We welcome all contributions to the Appsody project. Please see our [Contributing guidelines](https://github.com/appsody/website/blob/master/CONTRIBUTING.md)
-and our [Developer Best Practices](https://github.com/appsody/appsody/blob/master/DEVELOPER-BEST-PRACTICES.md)
+and our [Developer Guide](https://github.com/appsody/appsody/blob/master/docs/DEVELOPER-GUIDE.md)
 
 ## Community
 

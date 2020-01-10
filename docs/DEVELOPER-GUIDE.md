@@ -1,8 +1,11 @@
-# Developer Best Practices
+# Developer Guide
+This document describes how to set up a macOS development environment for contributing to Appsody. The git and go sections are intended for new/inexperienced developers. The testing section is intended for all developers. 
 ## go:
+This section describes how to create the appropriate directory for go and how to install go.
 * mkdir -p $HOME/go/src/github.com/appsody
 * brew install go (mac only)
 ## git:
+This section describes how to install and setup git.
 * brew install git (mac only)
 * ssh keys
     * check for existing keys
@@ -23,6 +26,7 @@
                 * paste in the copied key from clipboard
                 * click "Add SSH Key" button
 ## fork setup
+This section describes how to create and setup a fork of the Appsody repo.
 * create a fork for the appsody repo, ex:
     * https://github.com/appsody/appsody
         * click on the Fork button
@@ -39,7 +43,8 @@
     * git remote add upstream git@github.com:appsody/appsody.git
 * set master to point to upstream
     * git branch master -u upstream/master
-## branch setup (every time you work on a new issue/PR)
+## branch setup
+This section describes how to create and setup a branch for working on a new issue/PR
 * checkout and update master
     * git checkout master
     * git pull master
@@ -51,23 +56,27 @@
     * git add .
 * commit the changes
     * git commit -m "commit message"
-* push the changes and set tracking of the branch
+* push the changes and set tracking of the branch, ex:
     * git push -u tnixa testbranch
+        * the `-u <fork> <branch>` is only needed for the initial push to set tracking, use `git push` for additional pushes
     * verify the tracking 
         * git branch -avv
 ## create pull requests:
+This section describes how to create a pull request.
 * the github webpage for the upstream repo should show an indicator after pushing your changes, click the "Compare & pull request" button
 ![image info](pull-request.png)
 
 * if you would like your code changes to be known/tracked but are not ready for them to be reviewed/approved you can create a draft pull request using the pull-down
 ![image info](draft-pull-request.png)
 
-## sync changes from upstream to fork master branch
+## sync changes from upstream master
+This section describes how to sync the upstream master and your branch. You may want to do this to check for merge conflicts.
 * git checkout master
 * git pull master
-* git checkout <branch>
+* git checkout `<branch>`
 * git merge master (some people prefer rebase here, but that should only be used if you haven't created a PR yet)
 ## testing:
+This section describes various ways to test both your code and other's code.
 * test your code changes against the test bucket
     * make test
 * build the appsody binary files for the various platforms
