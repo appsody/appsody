@@ -15,7 +15,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -140,19 +139,31 @@ Runs the following validation tests against the stack and its templates:
 					continue
 				}
 
-				// create a temporary dir to create the project and run the test
-				projectDir, err := ioutil.TempDir("", "appsody-build-simple-test")
+				// create temp project directory in the .appsody directory
+				projectDir := filepath.Join(getHome(rootConfig), "stacks", "validating-"+stackName)
+				rootConfig.Debug.Log("projectDir is: ", projectDir)
+
+				projectDirExists, err := Exists(projectDir)
 				if err != nil {
-					return err
+					return errors.Errorf("Error checking directory: %v", err)
 				}
 
-				// set file permission to writable to allow init
-				err = os.Chmod(projectDir, 0777)
+				// remove projectDir if it exists
+				if projectDirExists {
+					rootConfig.Debug.Log("Deleting project dir: ", projectDir)
+					os.RemoveAll(projectDir)
+				}
+
+				// creates projectDir dir if it doesn't exist
+				err = os.MkdirAll(projectDir, 0777)
 				if err != nil {
-					return errors.Errorf("Error changing file permision: %v", err)
+					return errors.Errorf("Error creating projectDir: %v", err)
 				}
 
 				rootConfig.Info.Log("Created project dir: " + projectDir)
+
+				defer os.RemoveAll(projectDir)
+
 				stack := "dev.local/" + stackName
 
 				// init
@@ -209,12 +220,6 @@ Runs the following validation tests against the stack and its templates:
 						passCount++
 					}
 				}
-
-				//cleanup
-				rootConfig.Info.Log("Removing project dir: " + projectDir)
-				os.RemoveAll(projectDir)
-
-				//}
 			}
 
 			rootConfig.Info.Log("@@@@@@@@@@@@@@@ Validate Summary Start @@@@@@@@@@@@@@@@")
