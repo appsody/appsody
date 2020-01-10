@@ -34,7 +34,7 @@ func newBuildDeleteCmd(config *buildCommandConfig) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) > 0 {
-				return errors.New("Expected no additional arguments.")
+				return errors.New("expected no additional arguments")
 			}
 			projectName, perr := getProjectName(config.RootCommandConfig)
 			if perr != nil {

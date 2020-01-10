@@ -37,7 +37,7 @@ To see a list of all your running Appsody containers, run the command 'appsody p
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return errors.New("Expected no additional arguments.")
+				return errors.New("expected no additional arguments")
 			}
 			if !rootConfig.Buildah {
 				rootConfig.Info.log("Stopping development environment")

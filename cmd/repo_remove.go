@@ -36,7 +36,7 @@ You cannot remove the default repository, but you can make a different repositor
 				return errors.New("Error, you must specify repository name")
 			}
 			if len(args) > 1 {
-				return errors.New("Expected exactly one argument: <repository>.")
+				return errors.New("expected exactly one argument: <repository>")
 			}
 			var repoName = args[0]
 

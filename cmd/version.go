@@ -27,7 +27,7 @@ func newVersionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command {
 		Long:  `Show the version of the Appsody CLI that is currently in use.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return errors.New("Expected no additional arguments.")
+				return errors.New("expected no additional arguments")
 			}
 			log.Info.log(rootCmd.Use, " ", VERSION)
 			return nil

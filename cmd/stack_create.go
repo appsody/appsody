@@ -55,7 +55,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return errors.New("Required parameter missing. You must specify a stack name")
 			}
 			if len(args) > 1 {
-				return errors.New("Expected exactly one argument: <name>.")
+				return errors.New("expected exactly one argument: <name>")
 			}
 
 			stack := args[0]

@@ -81,8 +81,8 @@ var repoAddErrorTests = []struct {
 	args          []string // input
 	expectedError string   // expected to be in the error message
 }{
-	{"No args", nil, "You must specify a repository name and URL"},
-	{"One arg", []string{"reponame"}, "You must specify a repository name and URL"},
+	{"No args", nil, "you must specify a repository name and URL"},
+	{"One arg", []string{"reponame"}, "you must specify a repository name and URL"},
 	{"No url scheme", []string{"test", "localhost"}, "unsupported protocol scheme"},
 	{"Non-existing url", []string{"test", "http://localhost/doesnotexist"}, "refused"},
 	{"Repo name over 50 characters", []string{"reponametoolongtestreponametoolongtestreponametoolongtest", "http://localhost/doesnotexist"}, "must be less than 50 characters"},

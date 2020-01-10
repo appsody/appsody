@@ -47,7 +47,7 @@ Run this command from the root directory of your Appsody project.`,
   Extracts your project from the container to the local '$HOME/my-extract/directory' on your system.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return errors.New("Expected no additional arguments.")
+				return errors.New("expected no additional arguments")
 			}
 			return extract(config)
 		},
