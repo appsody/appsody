@@ -95,6 +95,9 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
   appsody stack package --image-namespace my-namespace
   Packages the stack in the current directory, tags the built image with the default registry and "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return errors.New("Expected no additional arguments.")
+			}
 
 			log.Info.Log("******************************************")
 			log.Info.Log("Running appsody stack package")

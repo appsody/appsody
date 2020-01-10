@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"errors"
 	"github.com/spf13/cobra"
 )
 
@@ -24,8 +25,12 @@ func newVersionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command {
 		Use:   "version",
 		Short: "Show the version of the Appsody CLI.",
 		Long:  `Show the version of the Appsody CLI that is currently in use.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return errors.New("Expected no additional arguments.")
+			}
 			log.Info.log(rootCmd.Use, " ", VERSION)
+			return nil
 		},
 	}
 

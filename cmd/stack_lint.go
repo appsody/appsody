@@ -24,7 +24,7 @@ import (
 
 func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var lintCmd = &cobra.Command{
-		Use:   "lint",
+		Use:   "lint [path]",
 		Short: "Check your stack structure.",
 		Long: `Check that the structure of your stack is valid. Error messages indicate critical issues in your stack structure, such as missing files, directories, or stack variables. Warning messages suggest optional stack enhancements.
 
@@ -43,6 +43,9 @@ Run this command from the root directory of your stack, or specify the path to y
 
 			if len(args) > 0 {
 				stackPath = args[0]
+			}
+			if len(args) > 1 {
+				return errors.New("Expected at most one argument: [path].")
 			}
 
 			imagePath := filepath.Join(stackPath, "image")

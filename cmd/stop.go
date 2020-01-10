@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"errors"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +36,9 @@ To see a list of all your running Appsody containers, run the command 'appsody p
   Stops the running Appsody container with the name "nodejs-express-dev".`,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return errors.New("Expected no additional arguments.")
+			}
 			if !rootConfig.Buildah {
 				rootConfig.Info.log("Stopping development environment")
 				err := dockerStop(rootConfig, containerName, rootConfig.Dryrun)

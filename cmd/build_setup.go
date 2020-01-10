@@ -27,7 +27,7 @@ import (
 func newSetupCmd(config *buildCommandConfig) *cobra.Command {
 	// setupCmd allows you to setup a GitHook to drive a Tekton build pipeline for the Appsodys project in Git
 	var setupCmd = &cobra.Command{
-		Use: "setup",
+		Use: "setup <url",
 		// disable this command until we have a better plan on how to support ci pipelines
 		Hidden: true,
 		Short:  "Setup a Githook and build pipeline for your Appsody project",
@@ -38,7 +38,9 @@ func newSetupCmd(config *buildCommandConfig) *cobra.Command {
 			// TODO: add validation of the supplied Git URL
 			if len(args) < 1 {
 				return errors.New("error, you must specify a Git project URL")
-
+			}
+			if len(args) > 1 {
+				return errors.New("Expected only one argument: <Git project URL>.")
 			}
 			gitProject := args[0]
 

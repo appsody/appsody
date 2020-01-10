@@ -79,13 +79,18 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 By default, the built image is tagged with the project name that you specified when you initialised your Appsody project. If you did not specify a name, the image is tagged with the name of the root directory of your Appsody project.
 
-If you want to push the built image to an image repository using the [--push] options, you must specify the relevant image tag.`,
+If you want to push the built image to an image repository using the [--push] options, you must specify the relevant image tag.
+
+Run this command from the root directory of your Appsody project.`,
 		Example: `  appsody build -t my-repo/nodejs-express --push
   Builds the container image, tags it with my-repo/nodejs-express, and pushes it to the container registry the Docker CLI is currently logged into.
 
   appsody build -t my-repo/nodejs-express:0.1 --push-url my-registry-url
   Builds the container image, tags it with my-repo/nodejs-express, and pushes it to my-registry-url/my-repo/nodejs-express:0.1.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return errors.New("Expected no additional arguments.")
+			}
 
 			projectDir, err := getProjectDir(config.RootCommandConfig)
 			if err != nil {

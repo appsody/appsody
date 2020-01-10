@@ -34,11 +34,11 @@ func newStackRemoveFromRepoCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	log := rootConfig.LoggingConfig
 
 	var stackRemoveFromRepoCmd = &cobra.Command{
-		Use:   "remove-from-repo <repo-name> <stack-name>",
+		Use:   "remove-from-repo <repository> <stack>",
 		Short: "Remove stack information from an Appsody repository",
 		Long: `Removes stack information from an Appsody repository. 
 		
-Removes stack information, specified by <stack-name> from an Appsody repository, specified by the <repo-name> argument.
+Removes stack information, specified by <stack> from an Appsody repository, specified by the <repository> argument.
 
 The updated repository index file is created in  ~/.appsody/stacks/dev.local directory.`,
 
@@ -52,6 +52,9 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 
 			if len(args) < 2 {
 				return errors.New("Required parameter missing. You must specify a repository name and a stack name")
+			}
+			if len(args) > 2 {
+				return errors.New("Expected exactly 2 arguments: <repository> <stack>.")
 			}
 
 			repoName = args[0]

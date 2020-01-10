@@ -24,7 +24,7 @@ import (
 func newRepoRemoveCmd(config *RootCommandConfig) *cobra.Command {
 	// initCmd represents the init command
 	var removeCmd = &cobra.Command{
-		Use:   "remove <name>",
+		Use:   "remove <repository>",
 		Short: "Remove an Appsody repository.",
 		Long: `Remove an Appsody repository from your list of configured Appsody repositories.
 		
@@ -35,7 +35,9 @@ You cannot remove the default repository, but you can make a different repositor
 			if len(args) < 1 {
 				return errors.New("Error, you must specify repository name")
 			}
-
+			if len(args) > 1 {
+				return errors.New("Expected exactly one argument: <repository>.")
+			}
 			var repoName = args[0]
 
 			var repoFile RepositoryFile

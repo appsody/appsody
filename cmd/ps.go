@@ -43,6 +43,9 @@ func newPsCmd(log *LoggingConfig) *cobra.Command {
 Shows the following information about the Appsody containers that are currently running: container ID, container name, image and status.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			if len(args) > 0 {
+				return errors.New("Expected no additional arguments.")
+			}
 			containers, err := listContainers(log)
 			if err != nil {
 				return err

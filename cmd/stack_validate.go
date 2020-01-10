@@ -52,9 +52,14 @@ Runs the following validation tests against the stack and its templates:
   * appsody init 
   * appsody run 
   * appsody test 
-  * appsody build`,
+  * appsody build
+  
+Run this command from the root directory of your Appsody project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			if len(args) > 0 {
+				return errors.New("Expected no additional arguments.")
+			}
 			// vars to store test results
 			var testResults []string
 			var initFail bool // if init fails we can skip the rest of the tests

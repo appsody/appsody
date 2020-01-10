@@ -22,7 +22,7 @@ import (
 func newRepoDefaultCmd(config *RootCommandConfig) *cobra.Command {
 	// initCmd represents the init command
 	var setDefaultCmd = &cobra.Command{
-		Use:   "set-default <name>",
+		Use:   "set-default <repository>",
 		Short: "Set a default repository.",
 		Long: `Set your specified repository to be the default repository.
 
@@ -31,7 +31,10 @@ The default repository is used when you run the "appsody init" command without s
   Sets your default repository to "my-local-repo".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return errors.New("You must specify desired default repository")
+				return errors.New("You must specify desired default repository.")
+			}
+			if len(args) > 1 {
+				return errors.New("Expected exactly one arguments: <repository>.")
 			}
 
 			var repoName = args[0]

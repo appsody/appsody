@@ -41,6 +41,9 @@ func newOperatorUninstallCmd(operatorConfig *operatorCommandConfig) *cobra.Comma
   Uninstalls the Appsody Operator in the "my-namespace" namespace from your Kubernetes cluster.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			if len(args) > 0 {
+				return errors.New("Expected no additional arguments.")
+			}
 			operatorNamespace := "default"
 			if config.namespace != "" {
 				operatorNamespace = config.namespace
