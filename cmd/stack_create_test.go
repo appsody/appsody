@@ -29,13 +29,8 @@ func TestStackCreateSampleStack(t *testing.T) {
 
 	testStackName := "testing-create-sample-stack"
 
-	err := os.RemoveAll(testStackName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	args := []string{"stack", "create", testStackName, "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)
@@ -61,13 +56,8 @@ func TestStackCreateWithCopyTag(t *testing.T) {
 
 	testStackName := "testing-create-stack-with-copy"
 
-	err := os.RemoveAll(testStackName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	args := []string{"stack", "create", testStackName, "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml"), "--copy", "incubator/nodejs"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)
@@ -92,13 +82,9 @@ func TestStackCreateInvalidStackCase1(t *testing.T) {
 	defer cleanup()
 
 	testStackName := "testing-stack-create-invalid-1"
-	err := os.RemoveAll(testStackName)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	args := []string{"stack", "create", testStackName, "--copy", "incubator/nodej"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -124,13 +110,9 @@ func TestStackCreateInvalidStackCase2(t *testing.T) {
 	defer cleanup()
 
 	testStackName := "testing-stack-create-invalid-2"
-	err := os.RemoveAll(testStackName)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	args := []string{"stack", "create", testStackName, "--copy", "nodejs"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -157,13 +139,8 @@ func TestStackCreateInvalidStackCase3(t *testing.T) {
 
 	testStackName := "testing-stack-create-invalid-3"
 
-	err := os.RemoveAll(testStackName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	args := []string{"stack", "create", testStackName, "--copy", "experimental/nodejs"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -190,13 +167,8 @@ func TestStackCreateInvalidStackCase4(t *testing.T) {
 
 	testStackName := "testing-stack-create-invalid-4"
 
-	err := os.RemoveAll(testStackName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	args := []string{"stack", "create", testStackName, "--copy", "exp/java-microprofile"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -222,13 +194,9 @@ func TestStackCreateInvalidStackName(t *testing.T) {
 	defer cleanup()
 
 	testStackName := "testing_stack_invalid_name"
-	err := os.RemoveAll(testStackName)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	args := []string{"stack", "create", testStackName}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
 		t.Fatal(err)
@@ -283,14 +251,8 @@ func TestStackAlreadyExists(t *testing.T) {
 
 	testStackName := "test-stack-already-exists"
 
-	err := os.RemoveAll(testStackName)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	args := []string{"stack", "create", testStackName, "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
 		t.Fatal(err)

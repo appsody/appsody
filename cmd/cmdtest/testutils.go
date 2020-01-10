@@ -113,20 +113,17 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-	_, err = os.Stat(TestDirPath)
+	_, err = cmd.Exists(TestDirPath)
 	if err != nil {
 		t.Errorf("Cannot find source directory %s to copy", TestDirPath)
 	}
 
 	err = cmd.CopyDir(loggingConfig, TestDirPath, sandbox.TestDataPath)
 	if err != nil {
-		t.Errorf("Could not copy %s to %s - output of copy command %s\n", TestDirPath, testDir, err)
+		t.Errorf("Could not copy %s to %s - output of copy command %s", TestDirPath, testDir, err)
 	}
 	t.Logf("Directory copy of %s to %s was successful \n", TestDirPath, testDir)
-
-	if _, err := os.Stat(sandbox.TestDataPath); os.IsNotExist(err) {
-		t.Errorf("%s does not exist", sandbox.TestDataPath)
-	}
+	t.Log(outBuffer.String())
 
 	configFolders := []string{"bad_format_repository_config", "default_repository_config", "empty_repository_config", "multiple_repository_config"}
 
