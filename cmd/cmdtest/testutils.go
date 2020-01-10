@@ -128,6 +128,34 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 		t.Errorf("%s does not exist", sandbox.TestDataPath)
 	}
 
+	configFolders := []string{"bad_format_repository_config", "default_repository_config", "empty_repository_config", "multiple_repository_config"}
+
+	for _, config := range configFolders {
+		file, err := ioutil.ReadFile(filepath.Join(sandbox.TestDataPath, config, "config.yaml"))
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		lines := strings.Split(string(file), "\n")
+
+		for i, line := range lines {
+			if strings.Contains(line, "home:") {
+				t.Log("line = ", line)
+				restoreLine := strings.SplitN(line, " ", -1)
+				t.Log("rl ", restoreLine)
+				lines[i] = "home: " + filepath.Join(testDir, restoreLine[1])
+			}
+		}
+
+		output := strings.Join(lines, "\n")
+		err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, config, "config.yaml"), []byte(output), 0644)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	cleanupFunc := func() {
 		if CLEANUP {
 			err := os.RemoveAll(testDir)

@@ -343,7 +343,7 @@ func TestStackCreateSampleStackDryrun(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"stack", "create", "testing-stack", "--dryrun", "--config", "testdata/default_repository_config/config.yaml"}
+	args := []string{"stack", "create", "testing-stack", "--dryrun", "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {

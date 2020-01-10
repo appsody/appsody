@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -1092,6 +1093,9 @@ func TestKubeGetKnativeURLDryrun(t *testing.T) {
 }
 
 func TestExtractDockerEnvVars(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	testDockerOptions1 := []string{
 		"-w /path/to/dir -e A=Val1",
 		"-w /path/to/dir    -e     A=Val1  ",
@@ -1122,15 +1126,15 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	}
 
 	testDockerOptions4 := []string{
-		"--env-file ./testdata/test_docker_options/test_docker_options.env",
-		"--env-file=./testdata/test_docker_options/test_docker_options.env",
-		"--env-file ./testdata/test_docker_options/test_docker_options.env -w /whatever/it/is",
-		" --env-file ./testdata/test_docker_options/test_docker_options.env   -w     /whatever/it/is",
+		"--env-file " + filepath.Join(sandbox.TestDataPath, "test_docker_options", "test_docker_options.env"),
+		"--env-file=" + filepath.Join(sandbox.TestDataPath, "test_docker_options", "test_docker_options.env"),
+		"--env-file " + filepath.Join(sandbox.TestDataPath, "test_docker_options", "test_docker_options.env") + " -w /whatever/it/is",
+		" --env-file " + filepath.Join(sandbox.TestDataPath, "test_docker_options", "test_docker_options.env") + "   -w     /whatever/it/is",
 	}
 
 	testDockerOptions5 := []string{
-		"--env-file ./testdata/test_docker_options/test_docker_options.env -e VAR1=Override -e VAR4=Override -e VAR6=VAL6",
-		"-e VAR1=Override -e VAR4=Override --env-file ./testdata/test_docker_options/test_docker_options.env -e VAR1=Override -e VAR4=Override -e VAR6=VAL6",
+		"--env-file " + filepath.Join(sandbox.TestDataPath, "test_docker_options", "test_docker_options.env") + " -e VAR1=Override -e VAR4=Override -e VAR6=VAL6",
+		"-e VAR1=Override -e VAR4=Override --env-file " + filepath.Join(sandbox.TestDataPath, "test_docker_options", "test_docker_options.env") + " -e VAR1=Override -e VAR4=Override -e VAR6=VAL6",
 	}
 
 	result1 := make(map[string]string)

@@ -60,7 +60,7 @@ func TestRepoAddDryRun(t *testing.T) {
 	// see how many repos we currently have
 	//startRepos := getRepoListOutput(t, sandbox)
 
-	args := []string{"repo", "add", "experimental", "https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml", "--dryrun", "--config", "testdata/default_repository_config/config.yaml"}
+	args := []string{"repo", "add", "experimental", "https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml", "--dryrun", "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Error(err)
@@ -76,25 +76,25 @@ func TestRepoAddDryRun(t *testing.T) {
 	// }
 }
 
-var repoAddErrorTests = []struct {
-	testName      string
-	args          []string // input
-	expectedError string   // expected to be in the error message
-}{
-	{"No args", nil, "you must specify repository name and URL"},
-	{"One arg", []string{"reponame"}, "you must specify repository name and URL"},
-	{"No url scheme", []string{"test", "localhost"}, "unsupported protocol scheme"},
-	{"Non-existing url", []string{"test", "http://localhost/doesnotexist"}, "refused"},
-	{"Repo name over 50 characters", []string{"reponametoolongtestreponametoolongtestreponametoolongtest", "http://localhost/doesnotexist"}, "must be less than 50 characters"},
-	{"Repo name is invalid", []string{"test!", "http://localhost/doesnotexist"}, "Invalid repository name"},
-	{"Repo name already exists", []string{"incubator", "http://localhost/doesnotexist"}, "already exists"},
-	{"Url already exists", []string{"test", "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"}, "already exists"},
-	{"Badly formatted repo config", []string{"test", "http://localhost/doesnotexist", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
-}
-
 func TestRepoAddErrors(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
+
+	var repoAddErrorTests = []struct {
+		testName      string
+		args          []string // input
+		expectedError string   // expected to be in the error message
+	}{
+		{"No args", nil, "you must specify repository name and URL"},
+		{"One arg", []string{"reponame"}, "you must specify repository name and URL"},
+		{"No url scheme", []string{"test", "localhost"}, "unsupported protocol scheme"},
+		{"Non-existing url", []string{"test", "http://localhost/doesnotexist"}, "refused"},
+		{"Repo name over 50 characters", []string{"reponametoolongtestreponametoolongtestreponametoolongtest", "http://localhost/doesnotexist"}, "must be less than 50 characters"},
+		{"Repo name is invalid", []string{"test!", "http://localhost/doesnotexist"}, "Invalid repository name"},
+		{"Repo name already exists", []string{"incubator", "http://localhost/doesnotexist"}, "already exists"},
+		{"Url already exists", []string{"test", "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"}, "already exists"},
+		{"Badly formatted repo config", []string{"test", "http://localhost/doesnotexist", "--config", filepath.Join(sandbox.TestDataPath, "bad_format_repository_config", "config.yaml")}, "Failed to parse repository file yaml"},
+	}
 
 	for _, tt := range repoAddErrorTests {
 		// call t.Run so that we can name and report on individual tests
