@@ -532,6 +532,42 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 	config.Info.log("Your Appsody project name has been set to ", projectName)
 	return nil
 }
+func setStackRegistry(stackRegistry string, config *RootCommandConfig) error {
+	valid, err := ValidateHostNameAndPort(stackRegistry)
+	if !valid {
+		return err
+	}
+
+	// update the in-memory project name
+
+	if err != nil {
+		return err
+	}
+
+	// Read in the config
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err = v.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	stackImageName, err := OverrideStackRegistry(stackRegistry, v.Get("stack").(string))
+	if err != nil {
+		return err
+	}
+	stackImageName, err = NormalizeImageName(stackImageName)
+	if err != nil {
+		return err
+	}
+	v.Set("stack", stackImageName)
+	err = v.WriteConfig()
+	if err != nil {
+		return err
+	}
+	config.Info.log("Your Appsody project stack has been set to ", stackImageName)
+	return nil
+}
 
 func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 

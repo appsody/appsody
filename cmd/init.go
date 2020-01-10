@@ -82,7 +82,7 @@ Use 'appsody list' to see the available stacks and templates.`,
 		},
 	}
 	// TODO - add the registry override flag, and the logic behind it
-	//addStackRegistryFlag(initCmd, &rootConfig.StackRegistry, rootConfig)
+	addStackRegistryFlag(initCmd, &rootConfig.StackRegistry, rootConfig)
 
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
@@ -308,7 +308,11 @@ func install(config *initCommandConfig) error {
 
 	// reset config.StackRegistry and get it again from the newly untarred .appsody-config.yaml
 	// this will need to be updated when we support --stack-registry on the init command
-	config.StackRegistry = ""
+	//config.StackRegistry = ""
+	if config.StackRegistry != "" { //The --stack-registry flag was set
+		setStackRegistry(config.StackRegistry, config.RootCommandConfig)
+	}
+
 	var stackErr error
 	config.StackRegistry, stackErr = getStackRegistry(config.RootCommandConfig)
 	if stackErr != nil {
