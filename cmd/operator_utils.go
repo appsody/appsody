@@ -148,9 +148,14 @@ func operatorExistsInNamespace(log *LoggingConfig, operatorNamespace string, dry
 }
 
 // Check to see if any other operator is watching the watchNameSpace
-func operatorExistsWithWatchspace(log *LoggingConfig, watchNamespace string, dryrun bool) (bool, string, error) {
+func operatorExistsWithWatchspace(log *LoggingConfig, watchNamespace string, dryrun bool, noCheck bool) (bool, string, error) {
 	log.Debug.log("Looking for an operator matching watchspace: ", watchNamespace)
-	var namespacesWithOperatorsGetArgs = []string{"pods", "-o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}'", "--all-namespaces"}
+	var namespacesWithOperatorsGetArgs []string
+	if noCheck {
+		namespacesWithOperatorsGetArgs = []string{"pods", "-o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}'", "-n", watchNamespace}
+	} else {
+		namespacesWithOperatorsGetArgs = []string{"pods", "-o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}'", "--all-namespaces"}
+	}
 	getNamespacesOutput, getNamespacesErr := RunKubeGet(log, namespacesWithOperatorsGetArgs, dryrun)
 
 	if getNamespacesErr != nil {
