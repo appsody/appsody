@@ -31,6 +31,7 @@ import (
 
 type packageCommandConfig struct {
 	*RootCommandConfig
+	dockerBuildOptions  string
 	buildahBuildOptions string
 }
 
@@ -115,6 +116,13 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					err = errors.New("Cannot specify --buildah-options flag without --buildah")
 				}
 				buildOptions = strings.TrimSpace(config.buildahBuildOptions)
+			}
+
+			if config.dockerBuildOptions != "" {
+				if config.Buildah {
+					err = errors.New("Cannot specify --docker-options flag with --buildah")
+				}
+				buildOptions = strings.TrimSpace(config.dockerBuildOptions)
 			}
 
 			if err != nil {
@@ -425,6 +433,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "appsody", "Namespace used for creating the images.")
 	stackPackageCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "dev.local", "Registry used for creating the images.")
 	stackPackageCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of Docker.")
+	stackPackageCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the Docker build options to use. Value must be in \"\". The following Docker options are not supported: '--help','-t','--tag','-f','--file'.")
 	stackPackageCmd.PersistentFlags().StringVar(&config.buildahBuildOptions, "buildah-options", "", "Specify the buildah build options to use. Value must be in \"\".")
 
 	return stackPackageCmd
