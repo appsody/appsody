@@ -310,7 +310,10 @@ func install(config *initCommandConfig) error {
 
 	if config.StackRegistry != "" {
 		config.Debug.Log("The will be set to be: ", config.StackRegistry)
-		setStackRegistry(config.StackRegistry, config.RootCommandConfig)
+		err := setStackRegistry(config.StackRegistry, config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
 	}
 
 	var stackErr error
