@@ -307,9 +307,9 @@ func install(config *initCommandConfig) error {
 	config.Info.log("Setting up the development environment")
 
 	// reset config.StackRegistry and get it again from the newly untarred .appsody-config.yaml
-	// this will need to be updated when we support --stack-registry on the init command
-	//config.StackRegistry = ""
-	if config.StackRegistry != "" { //The --stack-registry flag was set
+
+	if config.StackRegistry != "" {
+		config.Debug.Log("The will be set to be: ", config.StackRegistry)
 		setStackRegistry(config.StackRegistry, config.RootCommandConfig)
 	}
 

@@ -479,7 +479,12 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 	return projectName, nil
 }
 func getStackRegistry(config *RootCommandConfig) (string, error) {
-	defaultStackRegistry := "docker.io"
+	defaultStackRegistry := config.CliConfig.Get("images").(string)
+	if defaultStackRegistry == "" {
+		config.Debug.Log("Appsody config file does not contain a default stack registry images property - setting it to docker.io")
+		defaultStackRegistry = "docker.io"
+	}
+	config.Debug.Log("Default stack registry set to: ", defaultStackRegistry)
 	_, err := getProjectDir(config)
 	if err != nil {
 		return defaultStackRegistry, err
