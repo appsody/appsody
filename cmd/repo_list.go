@@ -37,7 +37,7 @@ func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) > 0 {
-				return errors.New("expected no additional arguments")
+				return errors.New("Expected no additional arguments")
 			}
 			var repos RepositoryFile
 

@@ -48,7 +48,7 @@ An asterisk in the repository column denotes the default repository. An asterisk
 				return err
 			}
 			if len(args) > 1 {
-				return errors.New("expected at most one argument: [repository]")
+				return errors.Errorf("Expected at most one argument: %v", cmd.Use)
 			}
 			//var index RepoIndex
 			if len(args) < 1 {

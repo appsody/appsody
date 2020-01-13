@@ -35,7 +35,7 @@ Run this command from the root directory of your Appsody project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) > 0 {
-				return errors.New("expected no additional arguments")
+				return errors.New("Expected no additional arguments")
 			}
 			config.Info.log("Running debug environment")
 			return commonCmd(config, "debug")

@@ -34,7 +34,7 @@ The default repository is used when you run the "appsody init" command without s
 				return errors.New("you must specify desired default repository")
 			}
 			if len(args) > 1 {
-				return errors.New("expected exactly one arguments: <repository>")
+				return errors.Errorf("Expected exactly one arguments: %v", cmd.Use)
 			}
 
 			var repoName = args[0]

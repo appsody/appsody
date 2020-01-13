@@ -45,7 +45,7 @@ Run this command from the root directory of your stack, or specify the path to y
 				stackPath = args[0]
 			}
 			if len(args) > 1 {
-				return errors.New("expected at most one argument: [path]")
+				return errors.Errorf("Expected at most one argument: %v", cmd.Use)
 			}
 
 			imagePath := filepath.Join(stackPath, "image")

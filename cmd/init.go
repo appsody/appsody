@@ -79,7 +79,7 @@ Use 'appsody list' to see the available stacks and templates.`,
 				template = args[1]
 			}
 			if len(args) > 2 {
-				return errors.New("expected at most two arguments: [stack] or [repository]/[stack] [template]")
+				return errors.Errorf("Expected at most two arguments: %v", cmd.Use)
 			}
 			return initAppsody(stack, template, config)
 		},
