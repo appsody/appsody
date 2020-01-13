@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -142,7 +143,7 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 	var outBuffer bytes.Buffer
 
 	// Direct cmd console output to a buffer
-	outReader, outWriter, _ := os.Pipe()
+	outReader, outWriter := io.Pipe()
 
 	// copy the output to the buffer, and also to the test log
 	outScanner := bufio.NewScanner(outReader)
@@ -164,11 +165,11 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 		t.Log("Error returned from appsody command: ", err)
 	}
 
-	// close the reader and writer
-	// Make sure to close the writer first or this will hang on Windows
+	// close the writer first, so it sends an EOF to the scanner above,
+	// then wait for the scanner to finish before closing the reader
 	outWriter.Close()
-	outReader.Close()
 	wg.Wait()
+	outReader.Close()
 
 	return outBuffer.String(), err
 }
@@ -295,10 +296,7 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 	t.Log(cmdArgs)
 
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	outReader, outWriter, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
+	outReader, outWriter := io.Pipe()
 
 	execCmd.Stdout = outWriter
 	execCmd.Stderr = outWriter
@@ -316,17 +314,18 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 		wg.Done()
 	}()
 
-	err = execCmd.Start()
+	err := execCmd.Start()
 	if err != nil {
 		return "", err
 	}
 
 	err = execCmd.Wait()
 
-	// Make sure to close the writer first or this will hang on Windows
+	// close the writer first, so it sends an EOF to the scanner above,
+	// then wait for the scanner to finish before closing the reader
 	outWriter.Close()
-	outReader.Close()
 	wg.Wait()
+	outReader.Close()
 
 	return outBuffer.String(), err
 }
