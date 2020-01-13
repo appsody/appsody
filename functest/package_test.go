@@ -16,6 +16,7 @@ package functest
 import (
 	"bytes"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
@@ -72,9 +73,13 @@ func TestPackageDockerOptions(t *testing.T) {
 	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
 
 	args := []string{"stack", "package", "--docker-options", "-q"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
+	} else {
+		if strings.Contains(output, "[Docker] Sending build context to Docker daemon") {
+			t.Errorf("String \"[Docker] Sending build context to Docker daemon\" found in output")
+		}
 	}
 }
 
