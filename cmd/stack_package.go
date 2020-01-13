@@ -109,24 +109,19 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			log.Info.Log("******************************************")
 			log.Info.Log("Running appsody stack package")
 			log.Info.Log("******************************************")
-			var err error
 			buildOptions := ""
 			if config.buildahBuildOptions != "" {
 				if !config.Buildah {
-					err = errors.New("Cannot specify --buildah-options flag without --buildah")
+					return errors.New("Cannot specify --buildah-options flag without --buildah")
 				}
 				buildOptions = strings.TrimSpace(config.buildahBuildOptions)
 			}
 
 			if config.dockerBuildOptions != "" {
 				if config.Buildah {
-					err = errors.New("Cannot specify --docker-options flag with --buildah")
+					return errors.New("Cannot specify --docker-options flag with --buildah")
 				}
 				buildOptions = strings.TrimSpace(config.dockerBuildOptions)
-			}
-
-			if err != nil {
-				return err
 			}
 
 			projectPath := rootConfig.ProjectDir
@@ -140,7 +135,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			log.Debug.Log("stackPath is: ", stackPath)
 
 			// creates stackPath dir if it doesn't exist
-			err = os.MkdirAll(filepath.Dir(stackPath), 0777)
+			err := os.MkdirAll(filepath.Dir(stackPath), 0777)
 
 			if err != nil {
 				return errors.Errorf("Error creating stackPath: %v", err)
