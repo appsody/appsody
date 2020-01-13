@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/appsody/appsody/cmd"
@@ -33,7 +34,7 @@ const CLEANUP = true
 
 const TravisTesting = false
 
-var TestDirPath = filepath.Join("..", "cmd", "testdata")
+var TestDirPath, _ = filepath.Abs(filepath.Join("..", "cmd", "testdata"))
 
 // Repository struct represents an appsody repository
 type Repository struct {
@@ -73,7 +74,10 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	sandbox := &TestSandbox{T: t, Verbose: true}
 
 	// create a temporary dir to create the project and run the test
-	testDir, err := ioutil.TempDir("", "appsody-"+t.Name()+"-")
+	dirPrefix := "appsody-" + t.Name() + "-"
+	dirPrefix = strings.ReplaceAll(dirPrefix, "/", "-")
+	dirPrefix = strings.ReplaceAll(dirPrefix, "\\", "-")
+	testDir, err := ioutil.TempDir("", dirPrefix)
 	if err != nil {
 		t.Fatal("Error creating temporary directory: ", err)
 	}
@@ -85,6 +89,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error evaluating symlinks: ", err)
 	}
+
 	sandbox.ProjectName = strings.ToLower(strings.Replace(filepath.Base(testDir), "appsody-", "", 1))
 	sandbox.ProjectDir = filepath.Join(testDir, sandbox.ProjectName)
 	sandbox.ConfigDir = filepath.Join(testDir, "config")
@@ -93,6 +98,8 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
 	}
+	t.Log("Created testing project dir: ", sandbox.ProjectDir)
+
 	err = os.MkdirAll(sandbox.ConfigDir, 0755)
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
@@ -110,15 +117,15 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	}
 
 	var outBuffer bytes.Buffer
-	loggingConfig := &cmd.LoggingConfig{}
-	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
 
 	_, err = cmd.Exists(TestDirPath)
 	if err != nil {
 		t.Errorf("Cannot find source directory %s to copy", TestDirPath)
 	}
 
-	err = cmd.CopyDir(loggingConfig, TestDirPath, sandbox.TestDataPath)
+	err = cmd.CopyDir(log, TestDirPath, sandbox.TestDataPath)
 	if err != nil {
 		t.Errorf("Could not copy %s to %s - output of copy command %s", TestDirPath, testDir, err)
 	}
@@ -138,10 +145,8 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 
 		for i, line := range lines {
 			if strings.Contains(line, "home:") {
-				t.Log("line = ", line)
-				restoreLine := strings.SplitN(line, " ", -1)
-				t.Log("rl ", restoreLine)
-				lines[i] = "home: " + filepath.Join(testDir, restoreLine[1])
+				oldLine := strings.SplitN(line, " ", -1)
+				lines[i] = "home: " + filepath.Join(testDir, oldLine[1])
 			}
 		}
 
@@ -162,6 +167,13 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 		}
 	}
 	return sandbox, cleanupFunc
+}
+
+func (s *TestSandbox) SetConfigInTestData(pathUnderTestdata string) {
+	if pathUnderTestdata != "" {
+		s.ConfigDir = filepath.Join(s.TestDataPath, pathUnderTestdata)
+		s.ConfigFile = filepath.Join(s.ConfigDir, "config.yaml")
+	}
 }
 
 // RunAppsody runs the appsody CLI with the given args, using
@@ -187,6 +199,8 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 
 	// copy the output to the buffer, and also to the test log
 	outScanner := bufio.NewScanner(outReader)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for outScanner.Scan() {
 			out := outScanner.Bytes()
@@ -194,13 +208,20 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 			outBuffer.WriteByte('\n')
 			t.Log(string(out))
 		}
+		wg.Done()
 	}()
 
+	t.Log("Running appsody in the test sandbox with args: ", args)
 	err := cmd.ExecuteE("vlatest", "latest", t.ProjectDir, outWriter, outWriter, args)
+	if err != nil {
+		t.Log("Error returned from appsody command: ", err)
+	}
 
 	// close the reader and writer
+	// Make sure to close the writer first or this will hang on Windows
 	outWriter.Close()
 	outReader.Close()
+	wg.Wait()
 
 	return outBuffer.String(), err
 }
@@ -331,15 +352,13 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		// Make sure to close the writer first or this will hang on Windows
-		outWriter.Close()
-		outReader.Close()
-	}()
+
 	execCmd.Stdout = outWriter
 	execCmd.Stderr = outWriter
 	outScanner := bufio.NewScanner(outReader)
 	var outBuffer bytes.Buffer
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for outScanner.Scan() {
 			out := outScanner.Bytes()
@@ -347,6 +366,7 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 			outBuffer.WriteByte('\n')
 			t.Log(string(out))
 		}
+		wg.Done()
 	}()
 
 	err = execCmd.Start()
@@ -354,9 +374,12 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 		return "", err
 	}
 
-	// replace the original working directory when this function completes
-
 	err = execCmd.Wait()
+
+	// Make sure to close the writer first or this will hang on Windows
+	outWriter.Close()
+	outReader.Close()
+	wg.Wait()
 
 	return outBuffer.String(), err
 }

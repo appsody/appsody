@@ -36,12 +36,17 @@ var initResultsCheckTests = []struct {
 }
 
 func TestInitResultsCheck(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
 
-	for _, tt := range initResultsCheckTests {
+	for _, testData := range initResultsCheckTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
 
 		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
 			testDir := filepath.Join(sandbox.ProjectDir, tt.testName)
 			err := os.Mkdir(testDir, os.FileMode(0755))
 			if err != nil {
@@ -62,34 +67,42 @@ func TestInitResultsCheck(t *testing.T) {
 }
 
 func TestInitErrors(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
 
 	var initErrorsTests = []struct {
 		testName     string
 		args         []string //input
-		expectedLogs string   //expected output
-		outputError  string   //error output if test fails
+		configDir    string
+		expectedLogs string //expected output
+		outputError  string //error output if test fails
 	}{
-		{"TestInitV2WithBadStackSpecified", []string{"badnodejs-express"}, "Could not find a stack with the id", "Should have flagged non existing stack"},
-		{"TestInitV2WithBadRepoSpecified", []string{"badrepo/nodejs-express"}, "is not in configured list of repositories", "Bad repo not flagged"},
-		{"TestInitWithBadTemplateSpecified", []string{"nodejs-express", "badtemplate"}, "Could not find a template", "Should have flagged non existing stack template"},
-		{"TestInitNoTemplateAndSimple", []string{"nodejs-express", "simple", "--no-template"}, "with both a template and --no-template", "Correct error message not given"},
-		{"TestInitWithBadProjectName", []string{"nodejs-express", "--project-name", "badprojectname!"}, "Invalid project-name", "Correct error message not given"},
-		{"TestInitWithBadlyFormattedConfig", []string{"nodejs-express", "--config", filepath.Join(sandbox.TestDataPath, "bad_format_repository_config", "config.yaml")}, "Failed to parse repository file yaml", "Correct error message not given"},
-		{"TestInitWithEmptyConfig", []string{"nodejs-express", "--config", filepath.Join(sandbox.TestDataPath, "empty_repository_config", "config.yaml")}, "Your stack repository is empty", "Correct error message not given"},
-		{"TestInitWithBadRepoUrlConfig", []string{"nodejs-express", "--config", filepath.Join(sandbox.TestDataPath, "bad_repo_url_repository_config", "config.yaml")}, "The following indices could not be read, skipping", "Correct error message not given"},
-		{"TestInitV2WithStackHasInitScriptDryrun", []string{"java-microprofile", "--dryrun"}, "Dry Run - Skipping", "Commands should be skipped on dry run"},
-		{"TestInitDryRun", []string{"nodejs-express", "--dryrun"}, "Dry Run - Skipping", "Commands should be skipped on dry run"},
-		{"TestInitMalformedStackParm", []string{"/nodejs-express"}, "malformed project parameter - slash at the beginning or end should be removed", "Malformed stack parameter should be flagged."},
-		{"TestInitStackParmTooManySlashes", []string{"incubator/nodejs-express/bad"}, "malformed project parameter - too many slashes", "Malformed stack parameter with too many slashes should be flagged."},
+		{"TestInitV2WithBadStackSpecified", []string{"badnodejs-express"}, "", "Could not find a stack with the id", "Should have flagged non existing stack"},
+		{"TestInitV2WithBadRepoSpecified", []string{"badrepo/nodejs-express"}, "", "is not in configured list of repositories", "Bad repo not flagged"},
+		{"TestInitWithBadTemplateSpecified", []string{"nodejs-express", "badtemplate"}, "", "Could not find a template", "Should have flagged non existing stack template"},
+		{"TestInitNoTemplateAndSimple", []string{"nodejs-express", "simple", "--no-template"}, "", "with both a template and --no-template", "Correct error message not given"},
+		{"TestInitWithBadProjectName", []string{"nodejs-express", "--project-name", "badprojectname!"}, "", "Invalid project-name", "Correct error message not given"},
+		{"TestInitWithBadlyFormattedConfig", []string{"nodejs-express"}, "bad_format_repository_config", "Failed to parse repository file yaml", "Correct error message not given"},
+		{"TestInitWithEmptyConfig", []string{"nodejs-express"}, "empty_repository_config", "Your stack repository is empty", "Correct error message not given"},
+		{"TestInitWithBadRepoUrlConfig", []string{"nodejs-express"}, "bad_repo_url_repository_config", "The following indices could not be read, skipping", "Correct error message not given"},
+		{"TestInitV2WithStackHasInitScriptDryrun", []string{"java-microprofile", "--dryrun"}, "Dry Run - Skipping", "", "Commands should be skipped on dry run"},
+		{"TestInitDryRun", []string{"nodejs-express", "--dryrun"}, "Dry Run - Skipping", "", "Commands should be skipped on dry run"},
+		{"TestInitMalformedStackParm", []string{"/nodejs-express"}, "", "malformed project parameter - slash at the beginning or end should be removed", "Malformed stack parameter should be flagged."},
+		{"TestInitStackParmTooManySlashes", []string{"incubator/nodejs-express/bad"}, "", "malformed project parameter - too many slashes", "Malformed stack parameter with too many slashes should be flagged."},
 	}
 
-	for _, tt := range initErrorsTests {
+	for _, testData := range initErrorsTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 			args := append([]string{"init"}, tt.args...)
 			// appsody init nodejs-express
+
+			sandbox.SetConfigInTestData(tt.configDir)
 
 			output, err := cmdtest.RunAppsody(sandbox, args...)
 			if !strings.Contains(output, tt.expectedLogs) {
@@ -112,15 +125,20 @@ var initTemplateShouldNotExistTests = []struct {
 }
 
 func TestInitTemplateShouldNotExistTests(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
 
-	for _, tt := range initTemplateShouldNotExistTests {
-
-		packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
-		packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
+	for _, testData := range initTemplateShouldNotExistTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
 
 		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
+			packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
+			packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
+
 			testDir := filepath.Join(sandbox.ProjectDir, tt.testName)
 			err := os.Mkdir(testDir, os.FileMode(0755))
 			if err != nil {

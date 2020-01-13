@@ -44,7 +44,12 @@ var validProjectNameTests = []string{
 
 func TestValidProjectNames(t *testing.T) {
 
-	for _, test := range validProjectNameTests {
+	for _, testData := range validProjectNameTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
 		t.Run(fmt.Sprintf("Test Valid Project Name \"%s\"", test), func(t *testing.T) {
 			isValid, err := cmd.IsValidProjectName(test)
 			if err != nil {
@@ -89,7 +94,12 @@ var invalidProjectNameTests = []struct {
 
 func TestInvalidProjectNames(t *testing.T) {
 
-	for _, test := range invalidProjectNameTests {
+	for _, testData := range invalidProjectNameTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
 		t.Run(fmt.Sprintf("Test Invalid Project Name \"%s\"", test.input), func(t *testing.T) {
 			isValid, err := cmd.IsValidProjectName(test.input)
 			if err == nil {
@@ -140,11 +150,14 @@ var invalidCmdsTest = []struct {
 
 func TestInvalidCmdOutput(t *testing.T) {
 
-	for _, test := range invalidCmdsTest {
-
-		invalidCmd := exec.Command(test.cmd, test.args...)
+	for _, testData := range invalidCmdsTest {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
 
 		t.Run(fmt.Sprintf("Test Invalid "+test.cmd+" Command"), func(t *testing.T) {
+			invalidCmd := exec.Command(test.cmd, test.args...)
 			out, err := cmd.SeparateOutput(invalidCmd)
 			if err == nil {
 				t.Error("Expected an error from '", test.cmd, strings.Join(test.args, " "), "' but it did not return one.")
@@ -176,7 +189,13 @@ var convertLabelTests = []struct {
 }
 
 func TestConvertLabelToKubeFormat(t *testing.T) {
-	for _, test := range convertLabelTests {
+
+	for _, testData := range convertLabelTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
 		t.Run(test.input, func(t *testing.T) {
 			output, err := cmd.ConvertLabelToKubeFormat(test.input)
 			if err != nil {
@@ -197,7 +216,13 @@ var invalidConvertLabelTests = []string{
 }
 
 func TestInvalidConvertLabelToKubeFormat(t *testing.T) {
-	for _, test := range invalidConvertLabelTests {
+
+	for _, testData := range invalidConvertLabelTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
 		t.Run(test, func(t *testing.T) {
 			_, err := cmd.ConvertLabelToKubeFormat(test)
 			if err == nil {
@@ -219,7 +244,13 @@ var getUpdateStringTests = []struct {
 }
 
 func TestGetUpdateString(t *testing.T) {
-	for _, test := range getUpdateStringTests {
+
+	for _, testData := range getUpdateStringTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
 		t.Run(test.input, func(t *testing.T) {
 			output := cmd.GetUpdateString(test.input, test.version, test.latest)
 			expectedOutput := fmt.Sprintf("\n*\n*\n*\n\nA new CLI update is available.\n%s from %s --> %s.\n\n*\n*\n*\n", test.updateString, test.version, test.latest)
@@ -234,7 +265,13 @@ func TestGetUpdateString(t *testing.T) {
 func TestNormalizeImageName(t *testing.T) {
 	testImageNames := []string{"ubuntu", "ubuntu:latest", "ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "index.docker.io/appsody/nodejs-express:0.2", "myregistry.com:8080/appsody/nodejs-express:0.2", "yada/yada/yada/yada"}
 	normalizedTestImageNames := []string{"docker.io/ubuntu", "docker.io/ubuntu:latest", "docker.io/ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "myregistry.com:8080/appsody/nodejs-express:0.2"}
-	for idx, imageName := range testImageNames {
+
+	for index, testData := range testImageNames {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		imageName := testData
+		idx := index
 
 		t.Run(imageName, func(t *testing.T) {
 			output, err := cmd.NormalizeImageName(imageName)
@@ -257,7 +294,13 @@ func TestOverrideStackRegistry(t *testing.T) {
 	testImageNames := []string{"ubuntu", "ubuntu:latest", "ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "index.docker.io/appsody/nodejs-express:0.2", "another-registry.com:8080/appsody/nodejs-express:0.2", "yada/yada/yada/yada"}
 	override := "my-registry.com:8080"
 	normalizedTestImageNames := []string{"my-registry.com:8080/ubuntu", "my-registry.com:8080/ubuntu:latest", "my-registry.com:8080/ubuntu:17.1", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2"}
-	for idx, imageName := range testImageNames {
+
+	for index, testData := range testImageNames {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		imageName := testData
+		idx := index
 
 		t.Run(imageName, func(t *testing.T) {
 			output, err := cmd.OverrideStackRegistry(override, imageName)
@@ -273,14 +316,14 @@ func TestOverrideStackRegistry(t *testing.T) {
 				}
 			}
 		})
-		t.Run("No override", func(t *testing.T) {
-			output, err := cmd.OverrideStackRegistry("", "test")
-			if err != nil || output != "test" {
-				t.Errorf("Test with empty image override failed. Error: %v, output: %s", err, output)
-			}
-		})
-
 	}
+
+	t.Run("No override", func(t *testing.T) {
+		output, err := cmd.OverrideStackRegistry("", "test")
+		if err != nil || output != "test" {
+			t.Errorf("Test with empty image override failed. Error: %v, output: %s", err, output)
+		}
+	})
 }
 func TestValidateHostName(t *testing.T) {
 	testHostNames := make(map[string]bool)
@@ -298,7 +341,13 @@ func TestValidateHostName(t *testing.T) {
 	testHostNames["host-name.my-company-"] = false
 	testHostNames["host-name.-my-company"] = false
 	testHostNames["-host-name.-my-company"] = false
-	for hostName, val := range testHostNames {
+
+	for key, value := range testHostNames {
+		// need to set key and value to new variables scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		hostName := key
+		val := value
 
 		t.Run(hostName, func(t *testing.T) {
 			match, err := cmd.ValidateHostNameAndPort(hostName)
@@ -1161,7 +1210,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	result4["VAR7"] = "VAL\"7"
 	result4["VAR'8"] = "VAL'8"
 
-	for _, dockerOption := range testDockerOptions1 {
+	for _, testData := range testDockerOptions1 {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		dockerOption := testData
 
 		t.Run(dockerOption, func(t *testing.T) {
 			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
@@ -1179,7 +1232,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 			}
 		})
 	}
-	for _, dockerOption := range testDockerOptions2 {
+	for _, testData := range testDockerOptions2 {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		dockerOption := testData
 
 		t.Run(dockerOption, func(t *testing.T) {
 			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
@@ -1197,7 +1254,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 			}
 		})
 	}
-	for _, dockerOption := range testDockerOptions3 {
+	for _, testData := range testDockerOptions3 {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		dockerOption := testData
 
 		t.Run(dockerOption, func(t *testing.T) {
 			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
@@ -1211,7 +1272,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 
 		})
 	}
-	for _, dockerOption := range testDockerOptions4 {
+	for _, testData := range testDockerOptions4 {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		dockerOption := testData
 
 		t.Run(dockerOption, func(t *testing.T) {
 			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
@@ -1230,7 +1295,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 
 		})
 	}
-	for _, dockerOption := range testDockerOptions5 {
+	for _, testData := range testDockerOptions5 {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		dockerOption := testData
 
 		t.Run(dockerOption, func(t *testing.T) {
 			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)

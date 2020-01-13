@@ -29,15 +29,23 @@ func TestRepoSetDefaultLogs(t *testing.T) {
 	var repoSetDefaultLogsTests = []struct {
 		testName     string
 		args         []string // input
-		expectedLogs string   // logs that are expected in the output
+		configDir    string
+		expectedLogs string // logs that are expected in the output
 	}{
-		{"No args", nil, "must specify desired default repository"},
-		{"Existing default repo", []string{"incubator"}, "default repository has already been set to"},
-		{"Non-existing repo", []string{"test"}, "not in your configured list of repositories"},
-		{"Badly formatted repo config", []string{"test", "--config", filepath.Join(sandbox.TestDataPath, "bad_format_repository_config", "config.yaml")}, "Failed to parse repository file yaml"},
+		{"No args", nil, "", "must specify desired default repository"},
+		{"Existing default repo", []string{"incubator"}, "", "default repository has already been set to"},
+		{"Non-existing repo", []string{"test"}, "", "not in your configured list of repositories"},
+		{"Badly formatted repo config", []string{"test"}, "bad_format_repository_config", "Failed to parse repository file yaml"},
 	}
 
-	for _, tt := range repoSetDefaultLogsTests {
+	for _, testData := range repoSetDefaultLogsTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+
+		sandbox.SetConfigInTestData(tt.configDir)
+
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.testName, func(t *testing.T) {
 
@@ -50,12 +58,15 @@ func TestRepoSetDefaultLogs(t *testing.T) {
 				t.Errorf("Did not find expected error '%s' in output", tt.expectedLogs)
 			}
 
-			// check default repo is unchanged and is still incubator
-			output, err = cmdtest.RunAppsody(sandbox, "repo", "list")
-			if err != nil {
-				t.Fatal(err)
+			// If the configDir isn't "" then it is the bad_format_repo which fails to parse when executing repo list
+			if tt.configDir == "" {
+				// check default repo is unchanged and is still incubator
+				output, err = cmdtest.RunAppsody(sandbox, "repo", "list")
+				if err != nil {
+					t.Fatal(err)
+				}
+				checkExpectedDefaultRepo(t, output, "*incubator")
 			}
-			checkExpectedDefaultRepo(t, output, "*incubator")
 		})
 	}
 }

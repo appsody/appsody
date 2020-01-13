@@ -130,6 +130,11 @@ func build(config *buildCommandConfig) error {
 		buildOptions = strings.TrimSpace(config.buildahBuildOptions)
 	}
 
+	// Issue 529 - if you specify --push or --push-url without --tag, error out
+	if config.tag == "" && (config.push || config.pushURL != "") {
+		return errors.New("Cannot specify --push or --push-url without a --tag")
+	}
+
 	extractConfig := &extractCommandConfig{RootCommandConfig: config.RootCommandConfig}
 
 	projectName, perr := getProjectName(config.RootCommandConfig)
