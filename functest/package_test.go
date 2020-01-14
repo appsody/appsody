@@ -16,6 +16,7 @@ package functest
 import (
 	"bytes"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
@@ -49,3 +50,65 @@ func TestPackage(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestPackageDockerOptions(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	err := cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
+	if err != nil {
+		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+	} else {
+		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+	}
+
+	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
+	// folder within the temp directory that has been generated for sandboxing purposes, rather than
+	// the usual core temp directory
+	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+
+	args := []string{"stack", "package", "--docker-options", "-q"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		if strings.Contains(output, "[Docker] Sending build context to Docker daemon") {
+			t.Errorf("String \"[Docker] Sending build context to Docker daemon\" found in output")
+		}
+	}
+}
+
+/*
+func TestPackageBuildahOptions(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	err := cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
+	if err != nil {
+		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+	} else {
+		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+	}
+
+	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
+	// folder within the temp directory that has been generated for sandboxing purposes, rather than
+	// the usual core temp directory
+	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+
+	args := []string{"stack", "package", "--buildah", "--buildah-options", "--format=docker"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+*/
