@@ -30,7 +30,7 @@ func TestPackage(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	err := cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
 	if err != nil {
 		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)

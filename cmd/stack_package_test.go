@@ -32,14 +32,17 @@ import (
 // Tests all templating variables with a starter stack in testdata.  Does not test for .stack.created.
 func TestTemplatingAllVariables(t *testing.T) {
 
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	// gets all the necessary data from a setup function
-	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests(sandbox.TestDataPath)
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
 
 	// creates templating.txt file where templating variables will appear
-	templatingPath := filepath.Join(cmdtest.TestDirPath, "templating", "templating.txt")
+	templatingPath := filepath.Join(sandbox.TestDataPath, "templating", "templating.txt")
 	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
 	if err != nil {
 		t.Fatalf("Error creating templating dir: %v", err)
@@ -91,14 +94,17 @@ func TestTemplatingAllVariables(t *testing.T) {
 // Test templating with an incorrect variable name
 func TestTemplatingWrongVariablesFail(t *testing.T) {
 
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	// gets all the necessary data from a setup function
-	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests(sandbox.TestDataPath)
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
 
 	// creates templating.txt file where templating variables will appear
-	templatingPath := filepath.Join(cmdtest.TestDirPath, "templating", "templating.txt")
+	templatingPath := filepath.Join(sandbox.TestDataPath, "templating", "templating.txt")
 	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
 	if err != nil {
 		t.Fatalf("Error creating templating dir: %v", err)
@@ -155,14 +161,17 @@ func TestTemplatingFilePermissionsFail(t *testing.T) {
 		t.Skip()
 	}
 
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
 	// gets all the necessary data from a setup function
-	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests()
+	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests(sandbox.TestDataPath)
 	if err != nil {
 		t.Fatalf("Error during setup: %v", err)
 	}
 
 	// creates templating.txt file where templating variables will appear
-	templatingPath := filepath.Join(cmdtest.TestDirPath, "templating", "templating.txt")
+	templatingPath := filepath.Join(sandbox.TestDataPath, "templating", "templating.txt")
 	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
 	if err != nil {
 		t.Fatalf("Error creating templating dir: %v", err)
@@ -231,7 +240,7 @@ func TestPackageNoStackYamlFail(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	var err error
 	if runtime.GOOS == "windows" {
 		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
@@ -294,7 +303,7 @@ func TestPackageInvalidStackYamlFail(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	var err error
 	if runtime.GOOS == "windows" {
 		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
@@ -374,7 +383,7 @@ func TestPackageNoTemplates(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	var err error
 	if runtime.GOOS == "windows" {
 		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
@@ -432,7 +441,7 @@ func TestPackageInvalidCustomVars(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	var err error
 	if runtime.GOOS == "windows" {
 		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
@@ -512,7 +521,7 @@ func TestPackageInvalidCustomVarMap(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	var err error
 	if runtime.GOOS == "windows" {
 		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
@@ -592,7 +601,7 @@ func TestPackageInvalidVersion(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	var err error
 	if runtime.GOOS == "windows" {
 		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
@@ -676,7 +685,7 @@ func canWrite(filepath string) (bool, error) {
 
 }
 
-func setupStackPackageTests() (string, string, cmd.StackYaml, map[string]string, error) {
+func setupStackPackageTests(testDataPath string) (string, string, cmd.StackYaml, map[string]string, error) {
 	var loggingConfig = &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(os.Stdout, os.Stderr)
 	var rootConfig = &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
@@ -686,7 +695,7 @@ func setupStackPackageTests() (string, string, cmd.StackYaml, map[string]string,
 	imageNamespace := "appsody"
 	imageRegistry := "dev.local"
 	buildImage := imageNamespace + "/" + stackID + ":SNAPSHOT"
-	projectPath := filepath.Join(cmdtest.TestDirPath, "starter")
+	projectPath := filepath.Join(testDataPath, "starter")
 
 	rootConfig.ProjectDir = projectPath
 	rootConfig.Dryrun = false

@@ -35,8 +35,6 @@ const CLEANUP = true
 
 const TravisTesting = false
 
-var TestDirPath = filepath.Join("..", "cmd", "testdata")
-
 // Repository struct represents an appsody repository
 type Repository struct {
 	Name string
@@ -69,6 +67,9 @@ func TestSetup(t *testing.T, parallel bool) {
 }
 
 func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
+
+	var TestDirPath = filepath.Join("..", "cmd", "testdata")
+
 	TestSetup(t, parallel)
 
 	// default to verbose mode

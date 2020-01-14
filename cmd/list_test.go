@@ -27,7 +27,7 @@ func TestList(t *testing.T) {
 	defer cleanup()
 
 	// first add the test repo index
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestListV2(t *testing.T) {
 	defer cleanup()
 
 	// first add the test repo index
-	_, err := cmdtest.AddLocalRepo(sandbox, "incubatortest", filepath.Join(cmdtest.TestDirPath, "kabanero.yaml"))
+	_, err := cmdtest.AddLocalRepo(sandbox, "incubatortest", filepath.Join(sandbox.TestDataPath, "kabanero.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
