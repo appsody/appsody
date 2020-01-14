@@ -109,9 +109,6 @@ func TestRepoAddErrors(t *testing.T) {
 
 			sandbox.SetConfigInTestData(tt.configDir)
 
-			// see how many repos we currently have
-			//startRepos := getRepoListOutput(t, sandbox)
-
 			args := append([]string{"repo", "add"}, tt.args...)
 			output, err := cmdtest.RunAppsody(sandbox, args...)
 
@@ -122,12 +119,6 @@ func TestRepoAddErrors(t *testing.T) {
 			if !strings.Contains(output, tt.expectedError) {
 				t.Errorf("Did not find expected error '%s' in output", tt.expectedError)
 			}
-
-			// see how many repos we have after running repo add
-			//endRepos := getRepoListOutput(t, sandbox)
-			//if len(startRepos) != len(endRepos) {
-			// t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
-			// }
 		})
 	}
 }
