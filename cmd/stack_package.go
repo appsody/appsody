@@ -96,7 +96,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
   Packages the stack in the current directory, tags the built image with the default registry and "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return errors.New("Expected no arguments")
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
 
 			log.Info.Log("******************************************")

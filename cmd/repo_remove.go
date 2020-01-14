@@ -36,7 +36,7 @@ You cannot remove the default repository, but you can make a different repositor
 				return errors.New("You must specify repository name")
 			}
 			if len(args) > 1 {
-				return errors.Errorf("Expected exactly one argument: %v", cmd.Use)
+				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
 			}
 			var repoName = args[0]
 

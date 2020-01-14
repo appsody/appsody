@@ -42,7 +42,7 @@ func newOperatorUninstallCmd(operatorConfig *operatorCommandConfig) *cobra.Comma
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) > 0 {
-				return errors.New("Expected no arguments")
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
 			operatorNamespace := "default"
 			if config.namespace != "" {

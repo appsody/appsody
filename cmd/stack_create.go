@@ -55,7 +55,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return errors.New("Required parameter missing. You must specify a stack name")
 			}
 			if len(args) > 1 {
-				return errors.Errorf("Expected exactly one argument: %v", cmd.Use)
+				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
 			}
 
 			stack := args[0]

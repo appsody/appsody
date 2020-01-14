@@ -61,7 +61,7 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.New("Required parameter missing. You must specify a repository name")
 			}
 			if len(args) > 1 {
-				return errors.Errorf("Expected exactly one argument: %v", cmd.Use)
+				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
 			}
 
 			repoName = args[0]

@@ -45,7 +45,7 @@ Run this command from the root directory of your stack, or specify the path to y
 				stackPath = args[0]
 			}
 			if len(args) > 1 {
-				return errors.Errorf("Expected at most one argument: %v", cmd.Use)
+				return errors.Errorf("Too many arguments. Use 'appsody [command] --help' for more information about a command")
 			}
 
 			imagePath := filepath.Join(stackPath, "image")

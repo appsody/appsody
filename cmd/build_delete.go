@@ -34,7 +34,7 @@ func newBuildDeleteCmd(config *buildCommandConfig) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) > 0 {
-				return errors.New("Expected no arguments")
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
 			projectName, perr := getProjectName(config.RootCommandConfig)
 			if perr != nil {

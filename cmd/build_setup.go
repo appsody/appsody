@@ -40,7 +40,7 @@ func newSetupCmd(config *buildCommandConfig) *cobra.Command {
 				return errors.New("error, you must specify a Git project URL")
 			}
 			if len(args) > 1 {
-				return errors.Errorf("Expected exactly one argument: %v", cmd.Use)
+				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
 			}
 			gitProject := args[0]
 

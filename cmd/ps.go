@@ -44,7 +44,7 @@ Shows the following information about the Appsody containers that are currently 
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) > 0 {
-				return errors.New("Expected no arguments")
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
 			containers, err := listContainers(log)
 			if err != nil {

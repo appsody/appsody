@@ -79,7 +79,7 @@ Use 'appsody list' to see the available stacks and templates.`,
 				template = args[1]
 			}
 			if len(args) > 2 {
-				return errors.Errorf("Expected at most two arguments: %v", cmd.Use)
+				return errors.Errorf("Too many arguments. Use 'appsody [command] --help' for more information about a command")
 			}
 			return initAppsody(stack, template, config)
 		},

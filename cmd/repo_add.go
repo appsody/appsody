@@ -36,7 +36,7 @@ func newRepoAddCmd(config *RootCommandConfig) *cobra.Command {
 				return errors.New("you must specify a repository name and URL")
 			}
 			if len(args) > 2 {
-				return errors.Errorf("Expected exactly two arguments: %v", cmd.Use)
+				return errors.Errorf("Two arguments expected. Use 'appsody [command] --help' for more information about a command")
 			}
 			return repoAdd(args[0], args[1], config)
 		},
