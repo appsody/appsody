@@ -83,6 +83,7 @@ func TestPackageDockerOptions(t *testing.T) {
 	}
 }
 
+/*
 func TestPackageBuildahOptions(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
@@ -110,3 +111,4 @@ func TestPackageBuildahOptions(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+*/
