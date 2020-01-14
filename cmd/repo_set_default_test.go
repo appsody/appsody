@@ -27,7 +27,7 @@ var repoSetDefaultLogsTests = []struct {
 	args         []string // input
 	expectedLogs string   // logs that are expected in the output
 }{
-	{"No args", nil, "must specify desired default repository"},
+	{"No args", nil, "must specify the repository to set as the default"},
 	{"Existing default repo", []string{"incubator"}, "default repository has already been set to"},
 	{"Non-existing repo", []string{"test"}, "not in your configured list of repositories"},
 	{"Badly formatted repo config", []string{"test", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},

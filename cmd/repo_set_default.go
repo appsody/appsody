@@ -31,10 +31,10 @@ The default repository is used when you run the "appsody init" command without s
   Sets your default repository to "my-local-repo".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return errors.New("you must specify desired default repository")
+				return errors.New("You must specify the repository to set as the default")
 			}
 			if len(args) > 1 {
-				return errors.Errorf("Expected exactly one arguments: %v", cmd.Use)
+				return errors.Errorf("Expected exactly one argument: %v", cmd.Use)
 			}
 
 			var repoName = args[0]

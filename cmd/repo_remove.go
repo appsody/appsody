@@ -33,7 +33,7 @@ You cannot remove the default repository, but you can make a different repositor
   Removes the "my-local-repo" repository from your list of configured repositories.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return errors.New("Error, you must specify repository name")
+				return errors.New("You must specify repository name")
 			}
 			if len(args) > 1 {
 				return errors.Errorf("Expected exactly one argument: %v", cmd.Use)

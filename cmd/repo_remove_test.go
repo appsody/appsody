@@ -25,7 +25,7 @@ var repoRemoveLogsTests = []struct {
 	args         []string // input
 	expectedLogs string   // expected to be in the error message
 }{
-	{"No args", nil, "you must specify repository name"},
+	{"No args", nil, "You must specify repository name"},
 	{"Existing default repo", []string{"incubator"}, "cannot remove the default repository"},
 	{"Non-existing repo", []string{"test"}, "not in configured list of repositories"},
 	{"Badly formatted repo config", []string{"test", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},

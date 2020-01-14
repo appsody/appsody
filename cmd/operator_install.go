@@ -43,7 +43,7 @@ By default, the operator watches a single namespace. You can specify the ‘--wa
   Installs the Appsody Operator into your Kubernetes cluster in the "my-namespace" namespace, and sets it to watch for AppsodyApplication resources in the "my-watchspace" namespace.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return errors.New("Expected no additional arguments")
+				return errors.New("Expected no arguments")
 			}
 			return operatorInstall(config)
 		},

@@ -89,7 +89,7 @@ Run this command from the root directory of your Appsody project.`,
   Builds the container image, tags it with my-repo/nodejs-express, and pushes it to my-registry-url/my-repo/nodejs-express:0.1.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return errors.New("Expected no additional arguments")
+				return errors.New("Expected no arguments")
 			}
 
 			projectDir, err := getProjectDir(config.RootCommandConfig)

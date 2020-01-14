@@ -54,7 +54,7 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 				return errors.New("Required parameter missing. You must specify a repository name and a stack name")
 			}
 			if len(args) > 2 {
-				return errors.Errorf("Expected exactly 2 arguments: %v", cmd.Use)
+				return errors.Errorf("Expected exactly two arguments: %v", cmd.Use)
 			}
 
 			repoName = args[0]
