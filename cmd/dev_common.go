@@ -75,12 +75,14 @@ func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig)
 }
 
 func addStackRegistryFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
-	defaultRegistry, err := getStackRegistry(config)
-	if err != nil && defaultRegistry == "" {
-		config.Debug.Logf("Error retrieving the configured registry name: %v", err)
-		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", "", "Specify the URL of the registry that hosts your stack images. [WARNING] Your current settings are incorrect - change your project config or use this flag to override the image registry.")
+	//defaultRegistry, err := getStackRegistry(config)
+	defaultRegistry := getDefaultStackRegistry(config)
+	stackRegistryInConfigFile, err := getStackRegistryFromConfigFile(config)
+	if err != nil {
+		config.Debug.Logf("Error retrieving the stack registry from config file: %v", err)
+		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images. [WARNING] Your current settings are incorrect - change your project config or use this flag to override the image registry.")
 	} else {
-		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images.")
+		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", stackRegistryInConfigFile, "Specify the URL of the registry that hosts your stack images.")
 	}
 }
 
