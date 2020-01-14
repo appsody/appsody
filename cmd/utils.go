@@ -487,20 +487,6 @@ func getDefaultStackRegistry(config *RootCommandConfig) string {
 	config.Debug.Log("Default stack registry set to: ", defaultStackRegistry)
 	return defaultStackRegistry
 }
-func getStackRegistry(config *RootCommandConfig) (string, error) {
-
-	_, err := getProjectDir(config)
-	if err != nil {
-		return "", err
-	}
-	// check to see if project-name is set in .appsody-config.yaml
-	stackRegistry, err := getStackRegistryFromConfigFile(config)
-
-	if stackRegistry == "" {
-		return getDefaultStackRegistry(config), nil
-	}
-	return "", err
-}
 
 func saveProjectNameToConfig(projectName string, config *RootCommandConfig) error {
 	valid, err := IsValidProjectName(projectName)
@@ -619,13 +605,7 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO We should consider refactoring the following code. There is a circular dependency between
-	// getProjectConfig(), getStackRegistry(), and setting config.StackRegistry which is especially
-	// concering with the `if config.ProjectConfig == nil` caching of this method.
-	//stack := v.GetString("stack")
-	//config.Debug.log("Project stack from config file: ", projectConfig.Stack)
 
-	//projectConfig.Stack = stack
 	imageComponents := strings.Split(projectConfig.Stack, "/")
 	if len(imageComponents) < 3 {
 		imageRepo := config.CliConfig.GetString("images")

@@ -327,12 +327,6 @@ func install(config *initCommandConfig) error {
 		return err
 	}
 
-	var stackErr error
-	config.StackRegistry, stackErr = getStackRegistry(config.RootCommandConfig)
-	if stackErr != nil {
-		return stackErr
-	}
-
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
 		return perr

@@ -75,7 +75,7 @@ func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig)
 }
 
 func addStackRegistryFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
-	//defaultRegistry, err := getStackRegistry(config)
+
 	defaultRegistry := getDefaultStackRegistry(config)
 	stackRegistryInConfigFile, err := getStackRegistryFromConfigFile(config)
 	if err != nil {
