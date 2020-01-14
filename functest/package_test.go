@@ -104,7 +104,7 @@ func TestPackageBuildahOptions(t *testing.T) {
 	// the usual core temp directory
 	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
 
-	args := []string{"stack", "package", "--buildah-options", "--format=docker"}
+	args := []string{"stack", "package", "--buildah", "--buildah-options", "--format=docker"}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
