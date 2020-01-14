@@ -68,7 +68,7 @@ func TestSetup(t *testing.T, parallel bool) {
 
 func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 
-	var TestDirPath = filepath.Join("..", "cmd", "testdata")
+	var TestDirPath, _ = filepath.Abs(filepath.Join("..", "cmd", "testdata"))
 
 	TestSetup(t, parallel)
 
