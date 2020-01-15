@@ -518,22 +518,12 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 	return nil
 }
 func setStackRegistry(stackRegistry string, config *RootCommandConfig) error {
-	valid, err := ValidateHostNameAndPort(stackRegistry)
-	if !valid {
-		return err
-	}
-
-	// update the in-memory project name
-
-	if err != nil {
-		return err
-	}
 
 	// Read in the config
 	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
-	err = v.ReadInConfig()
+	err := v.ReadInConfig()
 	if err != nil {
 		return err
 	}
@@ -600,7 +590,9 @@ func getStackRegistryFromConfigFile(config *RootCommandConfig) (string, error) {
 
 }
 func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
-
+	if config.ProjectConfig != nil {
+		return config.ProjectConfig, nil
+	}
 	projectConfig, err := getProjectConfigFileContents(config)
 	if err != nil {
 		return nil, err
