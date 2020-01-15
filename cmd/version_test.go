@@ -37,5 +37,20 @@ func TestVersion(t *testing.T) {
 	if !strings.Contains(output, cmd.VERSION) {
 		t.Fatal("Output does not contain version")
 	}
+}
 
+func TestVersionTooManyArgs(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"version", "too", "many", "arguments"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+
+	if err == nil {
+		t.Fatal("Expected non-zero exit code.")
+	}
+	if !strings.Contains(output, "Unexpected argument.") {
+		t.Fatal("Correct error message not given.")
+	}
 }

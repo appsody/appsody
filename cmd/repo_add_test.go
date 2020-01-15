@@ -90,6 +90,7 @@ var repoAddErrorTests = []struct {
 	{"Repo name already exists", []string{"incubator", "http://localhost/doesnotexist"}, "already exists"},
 	{"Url already exists", []string{"test", "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"}, "already exists"},
 	{"Badly formatted repo config", []string{"test", "http://localhost/doesnotexist", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
+	{"Too many arguments", []string{"too", "many", "arguments"}, "Two arguments expected."},
 }
 
 func TestRepoAddErrors(t *testing.T) {

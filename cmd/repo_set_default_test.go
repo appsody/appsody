@@ -31,6 +31,7 @@ var repoSetDefaultLogsTests = []struct {
 	{"Existing default repo", []string{"incubator"}, "default repository has already been set to"},
 	{"Non-existing repo", []string{"test"}, "not in your configured list of repositories"},
 	{"Badly formatted repo config", []string{"test", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
+	{"Too many arguments", []string{"too", "many", "arguments"}, "One argument expected."},
 }
 
 func TestRepoSetDefaultLogs(t *testing.T) {
