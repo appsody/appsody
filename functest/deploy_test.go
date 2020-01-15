@@ -145,22 +145,16 @@ func TestDeployNamespaceMismatch(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// first add the test repo index
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// appsody init
 	t.Log("Running appsody init...")
-	_, err = cmdtest.RunAppsody(sandbox, "init", "nodejs-express")
+	_, err := cmdtest.RunAppsody(sandbox, "init", "nodejs-express")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	firstNamespace := "firstNamespace"
 	// appsody deploy
-	t.Log("Running appsody deploy...")
+	t.Logf("Running appsody deploy with namespace: %s ...", firstNamespace)
 	_, err = cmdtest.RunAppsody(sandbox, "deploy", "--generate-only", "-n", firstNamespace)
 	if err != nil {
 		t.Fatal(err)
@@ -168,11 +162,15 @@ func TestDeployNamespaceMismatch(t *testing.T) {
 
 	secondNamespace := "secondNamespace"
 	// appsody deploy
-	t.Log("Running appsody deploy...")
+	t.Logf("Running appsody deploy with namespace: %s ...", secondNamespace)
 	_, err = cmdtest.RunAppsody(sandbox, "deploy", "--generate-only", "-n", secondNamespace)
 
-	if err != nil && !strings.Contains(err.Error(), "the namespace \""+firstNamespace+"\" from the deployment manifest does not match the namespace \""+secondNamespace+"\" passed as an argument.") {
-		t.Fatal(err)
+	if err != nil {
+		if !strings.Contains(err.Error(), "the namespace \""+firstNamespace+"\" from the deployment manifest does not match the namespace \""+secondNamespace+"\" passed as an argument.") {
+			t.Errorf("Expecting namespace error to be thrown, but another error was thrown: %s", err)
+		}
+	} else {
+		t.Error("Deploy with conflicting namespace did not fail as expected")
 	}
 
 }

@@ -74,7 +74,7 @@ The command performs the following steps:
 			configFile := filepath.Join(projectDir, config.appDeployFile)
 
 			exists, err := Exists(configFile)
-			if err != nil && !strings.Contains(err.Error(), "no such file") {
+			if err != nil {
 				return err
 			}
 
