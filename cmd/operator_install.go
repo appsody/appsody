@@ -24,8 +24,8 @@ import (
 
 type operatorInstallCommandConfig struct {
 	*operatorCommandConfig
-	all, nocheck bool
-	watchspace   string
+	all, noOperatorCheck bool
+	watchspace           string
 }
 
 func newOperatorInstallCmd(operatorConfig *operatorCommandConfig) *cobra.Command {
@@ -48,7 +48,7 @@ By default, the operator watches a single namespace. You can specify the ‘--wa
 
 	installCmd.PersistentFlags().StringVarP(&config.watchspace, "watchspace", "w", "", "The namespace that the operator watches.")
 	installCmd.PersistentFlags().BoolVar(&config.all, "watch-all", false, "Specifies that the operator watches all namespaces.")
-	installCmd.PersistentFlags().BoolVar(&config.nocheck, "no-check", false, "Suppresses check for operator existing in namespace")
+	installCmd.PersistentFlags().BoolVar(&config.noOperatorCheck, "no-operator-check", false, "Suppresses check for operator existing in namespace")
 	return installCmd
 }
 
@@ -86,7 +86,7 @@ func operatorInstall(config *operatorInstallCommandConfig) error {
 		return errors.Errorf("An operator already exists in namespace %s and it is watching the %s namespace.", operatorNamespace, existingOperatorWatchspace)
 	}
 
-	watchExists, existingNamespace, watchExistsErr := operatorExistsWithWatchspace(config.LoggingConfig, watchNamespace, config.Dryrun, config.nocheck)
+	watchExists, existingNamespace, watchExistsErr := operatorExistsWithWatchspace(config.LoggingConfig, watchNamespace, config.Dryrun, config.noOperatorCheck)
 	if watchExistsErr != nil {
 
 		return watchExistsErr

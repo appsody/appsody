@@ -148,10 +148,10 @@ func operatorExistsInNamespace(log *LoggingConfig, operatorNamespace string, dry
 }
 
 // Check to see if any other operator is watching the watchNameSpace
-func operatorExistsWithWatchspace(log *LoggingConfig, watchNamespace string, dryrun bool, noCheck bool) (bool, string, error) {
+func operatorExistsWithWatchspace(log *LoggingConfig, watchNamespace string, dryrun bool, noOperatorCheck bool) (bool, string, error) {
 	log.Debug.log("Looking for an operator matching watchspace: ", watchNamespace)
 	var namespacesWithOperatorsGetArgs []string
-	if noCheck {
+	if noOperatorCheck {
 		namespacesWithOperatorsGetArgs = []string{"pods", "-o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}'", "-n", watchNamespace}
 	} else {
 		namespacesWithOperatorsGetArgs = []string{"pods", "-o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}'", "--all-namespaces"}
@@ -159,7 +159,7 @@ func operatorExistsWithWatchspace(log *LoggingConfig, watchNamespace string, dry
 	getNamespacesOutput, getNamespacesErr := RunKubeGet(log, namespacesWithOperatorsGetArgs, dryrun)
 
 	if getNamespacesErr != nil {
-		return false, "", getNamespacesErr
+		return false, "", errors.Errorf("Unable to query namespaces. Please check with your cluster administrator if an operator is already watching the target namespace. If so, please use the --no-operator-install flag. Otherwise, try the --no-operator-check flag. %v", getNamespacesErr)
 	}
 	getNamespacesOutput = strings.Trim(getNamespacesOutput, "'’\n")
 
