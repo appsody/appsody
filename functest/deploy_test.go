@@ -210,33 +210,3 @@ func TestDeployDeleteKubeFail(t *testing.T) {
 		t.Error("Deploy delete did not fail as expected")
 	}
 }
-
-// Test that deploy fails when tag is missing
-func TestDeployMissingTagFail(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	// appsody init
-	t.Log("Running appsody init...")
-	_, err := cmdtest.RunAppsody(sandbox, "init", "starter")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// set push flag to true with no tag
-	args := []string{"deploy", "--push"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
-	if err != nil {
-
-		// As tag is missing, appsody verifies user input and shows error
-		if !strings.Contains(err.Error(), "Tag missing from deploy command") {
-			t.Error("String \"Tag missing from deploy command\" not found in output")
-		}
-
-		// If an error is not returned, the test should fail
-	} else {
-		t.Error("Deploy with missing tag did not fail as expected")
-	}
-
-}
