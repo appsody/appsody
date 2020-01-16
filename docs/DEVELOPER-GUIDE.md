@@ -19,11 +19,11 @@ There are various ways to test your own code or someone else’s pull request (o
 * test your code changes against the test bucket
     * make test
 * build the appsody binary files for the various platforms
+    * an appsody binary will be created in the build directory of the repo
     * make build-darwin (mac)
     * make build-windows (windows)
     * make build-linux (linux)
-        * this creates an apposdy binary in the build dir of the repo
-* test appsody binary file
+* test the local appsody binary file
     * fully qualify the appsody binary file for the command you want to test, for example:
         * ./Users/tnixa/go/src/github.com/appsody/appsody/build/appsody-0.0.0-darwin-amd64 list
     * to make this easier to run from any terminal window
