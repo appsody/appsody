@@ -535,6 +535,10 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 
 	appsodyApplication.Spec.ApplicationImage = imageName
 
+	// This only applies to the deploy command flow:
+	// - if the namespace doesn't exist in the manifest, and a namespace flag is not set: we write a "default" namespace
+	// - if the namespace does exist in the manifest, and a namespace flag is set: we verify that they are the same. If they are not we throw an error.
+	// - if the namespace doesn't exist in the manifest, and a namespace flag is set: we write the value passed an argument with the flag.
 	if appsodyApplication.Namespace == "" {
 		appsodyApplication.Namespace = config.namespace
 	}

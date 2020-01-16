@@ -163,10 +163,10 @@ func TestDeployNamespaceMismatch(t *testing.T) {
 	secondNamespace := "secondNamespace"
 	// appsody deploy
 	t.Logf("Running appsody deploy with namespace: %s ...", secondNamespace)
-	_, err = cmdtest.RunAppsody(sandbox, "deploy", "--generate-only", "-n", secondNamespace)
+	output, err := cmdtest.RunAppsody(sandbox, "deploy", "--generate-only", "-n", secondNamespace)
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "the namespace \""+firstNamespace+"\" from the deployment manifest does not match the namespace \""+secondNamespace+"\" passed as an argument.") {
+		if !strings.Contains(output, "the namespace \""+firstNamespace+"\" from the deployment manifest does not match the namespace \""+secondNamespace+"\" passed as an argument.") {
 			t.Errorf("Expecting namespace error to be thrown, but another error was thrown: %s", err)
 		}
 	} else {
