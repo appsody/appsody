@@ -33,6 +33,7 @@ jobs:
     - <<: *test-template
       name: Full Test on Linux
       os: linux
+      # installation instructions for Buildah taken from https://github.com/containers/buildah/blob/master/install.md
       dist: xenial
       before_install:
         - sudo apt-get update -qq
