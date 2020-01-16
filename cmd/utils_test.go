@@ -589,28 +589,153 @@ func TestMoveFailPermissions(t *testing.T) {
 	}
 }
 
-func TestCopyDirPass(t *testing.T) {
-	// TODO
-	// 1. cleanup: manually and uncomment the defered cleanup
-	// 2. test to verfiy the copy fails if the target directory exists
-	// 3. test to verify the copy fails if the source directory does not exist
-
-	// fail if target directory exists
-	// fail if source directory does not exist
-
-	// maybe the idea should be to create a source directory and put some files and directories in it and the copy them
-	// to the target directory and then try to delete the them from the target directory
-	// the deletes should be successful
-
-	// do we need to try a sym link file?
-
+func TestCopyDirFailSourceNotDir(t *testing.T) {
 	// set up logging
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	sandbox, _ := cmdtest.TestSetupWithSandbox(t, true)
-	// defer cleanup()
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// create the directories in the sandbox
+
+	// create a base directory from sandbox
+	baseDir := sandbox.ProjectDir
+	t.Log("baseDir is: ", baseDir)
+
+	// create a source directory but don't do the os.Mkdir
+	sourceDir := filepath.Join(baseDir, "sourceDir")
+	t.Log("sourceDir is: ", sourceDir)
+
+	// create a target directory
+	targetDir := filepath.Join(baseDir, "targetDir")
+	err := os.MkdirAll(targetDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating targetDir: ", err)
+	}
+	t.Log("Created targetDir: ", targetDir)
+
+	// copy the source directory into the target
+	// this should fail as the target can not be an existing directory
+	err = cmd.CopyDir(log, sourceDir, targetDir)
+	if err != nil {
+		if !strings.Contains(err.Error(), "stat "+sourceDir+": no such file or directory") {
+			t.Errorf("String \"stat "+sourceDir+": no such file or directory\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+
+}
+
+func TestCopyDirFailTargetDirExistsDir(t *testing.T) {
+	// set up logging
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// create the directories in the sandbox
+
+	// create a base directory from sandbox
+	baseDir := sandbox.ProjectDir
+	t.Log("baseDir is: ", baseDir)
+
+	// create a source directory
+	sourceDir := filepath.Join(baseDir, "sourceDir")
+	err := os.MkdirAll(sourceDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating sourceDir: ", err)
+	}
+	t.Log("Created sourceDir: ", sourceDir)
+
+	// Create test file1 <name.extension>
+	file1 := filepath.Join(sourceDir, "file1.test")
+	data := []byte("home: " + sourceDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(file1, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing file1: ", err)
+	}
+	t.Log("Created file1: ", file1)
+
+	// create a target directory
+	targetDir := filepath.Join(baseDir, "targetDir")
+	err = os.MkdirAll(targetDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating sourceDir: ", err)
+	}
+	t.Log("Created sourceDir: ", sourceDir)
+
+	// copy the source directory into the target
+	// this should fail as the target can not be an existing directory
+	err = cmd.CopyDir(log, sourceDir, targetDir)
+	if err != nil {
+		if !strings.Contains(err.Error(), "Target "+targetDir+" exists. It should only be the name of the target directory for the copy") {
+			t.Errorf("String \"Target "+targetDir+" exists. It should only be the name of the target directory for the copy\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+
+}
+
+func TestCopyDirFailTargetDirExistsFile(t *testing.T) {
+	// set up logging
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// create the directories in the sandbox
+
+	// create a base directory from sandbox
+	baseDir := sandbox.ProjectDir
+	t.Log("baseDir is: ", baseDir)
+
+	// create a source directory
+	sourceDir := filepath.Join(baseDir, "sourceDir")
+	err := os.MkdirAll(sourceDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating sourceDir: ", err)
+	}
+	t.Log("Created sourceDir: ", sourceDir)
+
+	// Create target file <name.extension>
+	targetFile := filepath.Join(baseDir, "targetFile.test")
+	data := []byte("home: " + baseDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(targetFile, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing targetFile: ", err)
+	}
+	t.Log("Created targetFile: ", targetFile)
+
+	// copy the source directory into the target
+	// this should fail as the target can not be an existing directory
+	err = cmd.CopyDir(log, sourceDir, targetFile)
+	if err != nil {
+		if !strings.Contains(err.Error(), "Target "+targetFile+" exists. It should only be the name of the target directory for the copy") {
+			t.Errorf("String \"Target "+targetFile+" exists. It should only be the name of the target directory for the copy\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+
+}
+
+func TestCopyDirPass(t *testing.T) {
+	// set up logging
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	// use sandbox directories and cleanup
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	// create the directories in the sandbox
 
@@ -678,8 +803,9 @@ func TestCopyDirPass(t *testing.T) {
 	}
 	t.Log("Created file5: ", file5)
 
-	// create a target directory string
+	// create a target directory string but don't create the directory
 	targetDir := filepath.Join(baseDir, "targetDir")
+	t.Log("targetDir is: ", targetDir)
 
 	// create the expected files
 	var copyExpectedFiles []string
@@ -691,18 +817,18 @@ func TestCopyDirPass(t *testing.T) {
 	if err != nil {
 		t.Fatal("Error walking expectedDir", err)
 	}
-	println("****source files:****")
-	for _, copyExpectedFiles := range copyExpectedFiles {
-		fmt.Println(copyExpectedFiles)
-	}
+	// println("****source files:****")
+	// for _, copyExpectedFiles := range copyExpectedFiles {
+	// 	fmt.Println(copyExpectedFiles)
+	// }
 	// replace sourceDir with targetDir as we expect the copy to just put the files from the sourceDir into the targetDir
 	for i := range copyExpectedFiles {
 		copyExpectedFiles[i] = strings.Replace(copyExpectedFiles[i], "sourceDir", "targetDir", -1)
 	}
-	println("****copyExpectedFiles files:****")
-	for _, copyExpectedFiles := range copyExpectedFiles {
-		fmt.Println(copyExpectedFiles)
-	}
+	// println("****copyExpectedFiles files:****")
+	// for _, copyExpectedFiles := range copyExpectedFiles {
+	// 	fmt.Println(copyExpectedFiles)
+	// }
 
 	// copy the source directory into the target
 	err = cmd.CopyDir(log, sourceDir, targetDir)
@@ -720,14 +846,14 @@ func TestCopyDirPass(t *testing.T) {
 	if err != nil {
 		t.Fatal("Error walking targetDir", err)
 	}
-	println("****copyResultFiles files:****")
-	for _, copyResultFiles := range copyResultFiles {
-		fmt.Println(copyResultFiles)
-	}
+	// println("****copyResultFiles files:****")
+	// for _, copyResultFiles := range copyResultFiles {
+	// 	fmt.Println(copyResultFiles)
+	// }
 
 	// compare the expected vs the results
 	if len(copyExpectedFiles) != len(copyResultFiles) {
-		t.Errorf("length of expected file %s array does not match length of result file array %s")
+		t.Errorf("length of expected file %s array does not match length of result file array %s", copyExpectedFiles, copyResultFiles)
 	}
 	for i := range copyExpectedFiles {
 		if copyExpectedFiles[i] != copyResultFiles[i] {
@@ -735,42 +861,6 @@ func TestCopyDirPass(t *testing.T) {
 		}
 	}
 
-}
-
-func TestCopyDirFailFNF(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip()
-	}
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	existingFile := "idoexist.bbb"
-	nonExistentFile := "idontexist.aaa"
-
-	// Ensure that the fake yaml file is deleted
-	defer func() {
-		err := os.Remove(existingFile)
-		if err != nil {
-			t.Errorf("Error removing the file: %s", err)
-		}
-	}()
-
-	// Attempt to create the fake file
-	_, err := os.Create(existingFile)
-	if err != nil {
-		t.Errorf("Error creating the file: %v", err)
-	}
-
-	err = cmd.CopyDir(log, nonExistentFile, existingFile)
-
-	if err != nil {
-		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
-		}
-	} else {
-		t.Error("Expected an error to be returned from command, but error was nil")
-	}
 }
 
 // func TestGetGitLables(t *testing.T)

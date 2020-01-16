@@ -661,10 +661,20 @@ func MoveDir(log *LoggingConfig, fromDir string, toDir string) error {
 
 // CopyDir Copies folder from source destination to target destination
 func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
+	// fail if fromDir does not exist on the file system
 	_, err := os.Stat(fromDir)
 	if err != nil {
 		log.Error.logf("Cannot find source directory %s to copy", fromDir)
 		return err
+	}
+
+	// fail if toDir exists on the file system
+	// toDir should just be the name of the target directory, not an existing file or directory
+	// if toDir is an existing file or directory it causes inconsistent results between windows and non-windows
+	_, err = os.Stat(toDir)
+	if err == nil {
+		log.Error.logf("Target %s exists. It must only be a name of the target directory for the copy.", toDir)
+		return errors.Errorf("Target %s exists. It should only be the name of the target directory for the copy", toDir)
 	}
 
 	var execCmd string
