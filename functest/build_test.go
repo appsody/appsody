@@ -316,3 +316,32 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.Ap
 	}
 
 }
+
+func TestBuildMissingTagFail(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// appsody init
+	t.Log("Running appsody init...")
+	_, err := cmdtest.RunAppsody(sandbox, "init", "starter")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// set push flag to true with no tag
+	args := []string{"build", "--push"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+
+		// As tag is missing, appsody verifies user input and shows error
+		if !strings.Contains(output, "Cannot specify --push or --push-url without a --tag") {
+			t.Errorf("String \"Cannot specify --push or --push-url without a --tag\" not found in output: %v", err)
+		}
+
+		// If an error is not returned, the test should fail
+	} else {
+		t.Error("Build with missing tag did not fail as expected")
+	}
+
+}
