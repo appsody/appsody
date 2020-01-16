@@ -188,7 +188,7 @@ The command performs the following steps:
 	deployCmd.PersistentFlags().BoolVar(&config.nobuild, "no-build", false, "Deploys the application without building a new image or modifying the deployment manifest file.")
 	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment manifest.")
 	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment manifest file if one exists.")
-	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "", "Target namespace in your Kubernetes cluster")
+	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "", "Target namespace in your Kubernetes cluster.")
 	deployCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of docker.")
 	deployCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use. Value must be in \"\". The following Docker options are not supported: '--help','-t','--tag','-f','--file'.")
