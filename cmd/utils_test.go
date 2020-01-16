@@ -17,8 +17,10 @@ package cmd_test
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -585,6 +587,154 @@ func TestMoveFailPermissions(t *testing.T) {
 	} else {
 		t.Error("Expected an error to be returned from command, but error was nil")
 	}
+}
+
+func TestCopyDirPass(t *testing.T) {
+	// TODO
+	// 1. cleanup: manually and uncomment the defered cleanup
+	// 2. test to verfiy the copy fails if the target directory exists
+	// 3. test to verify the copy fails if the source directory does not exist
+
+	// fail if target directory exists
+	// fail if source directory does not exist
+
+	// maybe the idea should be to create a source directory and put some files and directories in it and the copy them
+	// to the target directory and then try to delete the them from the target directory
+	// the deletes should be successful
+
+	// do we need to try a sym link file?
+
+	// set up logging
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	sandbox, _ := cmdtest.TestSetupWithSandbox(t, true)
+	// defer cleanup()
+
+	// create the directories in the sandbox
+
+	// create a base directory
+	baseDir := sandbox.ProjectDir
+	t.Log("baseDir is: ", baseDir)
+
+	// create a source directory
+	sourceDir := filepath.Join(baseDir, "sourceDir")
+	err := os.MkdirAll(sourceDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating sourceDir: ", err)
+	}
+	t.Log("Created sourceDir: ", sourceDir)
+
+	// Create test file1 <name.extension>
+	file1 := filepath.Join(sourceDir, "file1.test")
+	data := []byte("home: " + sourceDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(file1, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing file1: ", err)
+	}
+	t.Log("Created file1: ", file1)
+
+	// Create test file2 <.extension>
+	file2 := filepath.Join(sourceDir, ".file2")
+	data = []byte("home: " + sourceDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(file2, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing file2: ", err)
+	}
+	t.Log("Created file2: ", file2)
+
+	// create a source sub directory
+	sourceSubDir := filepath.Join(sourceDir, "sourceSubDir")
+	err = os.MkdirAll(sourceSubDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating source sub dir: ", err)
+	}
+	t.Log("Created sourceSubDir: ", sourceSubDir)
+
+	// Create test file3 <name.extension>
+	file3 := filepath.Join(sourceSubDir, "file3.test")
+	data = []byte("home: " + sourceSubDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(file3, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing file3: ", err)
+	}
+	t.Log("Created file3: ", file3)
+
+	// Create test file4 <.extension>
+	file4 := filepath.Join(sourceSubDir, ".file4")
+	data = []byte("home: " + sourceSubDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(file4, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing file4: ", err)
+	}
+	t.Log("Created file4: ", file4)
+
+	// Create test file5 symlink
+	file5 := filepath.Join(sourceSubDir, "file5")
+	err = os.Symlink(file1, file5)
+	if err != nil {
+		t.Fatal("Error writing file5: ", err)
+	}
+	t.Log("Created file5: ", file5)
+
+	// create a target directory string
+	targetDir := filepath.Join(baseDir, "targetDir")
+
+	// create the expected files
+	var copyExpectedFiles []string
+
+	err = filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+		copyExpectedFiles = append(copyExpectedFiles, path)
+		return nil
+	})
+	if err != nil {
+		t.Fatal("Error walking expectedDir", err)
+	}
+	println("****source files:****")
+	for _, copyExpectedFiles := range copyExpectedFiles {
+		fmt.Println(copyExpectedFiles)
+	}
+	// replace sourceDir with targetDir as we expect the copy to just put the files from the sourceDir into the targetDir
+	for i := range copyExpectedFiles {
+		copyExpectedFiles[i] = strings.Replace(copyExpectedFiles[i], "sourceDir", "targetDir", -1)
+	}
+	println("****copyExpectedFiles files:****")
+	for _, copyExpectedFiles := range copyExpectedFiles {
+		fmt.Println(copyExpectedFiles)
+	}
+
+	// copy the source directory into the target
+	err = cmd.CopyDir(log, sourceDir, targetDir)
+	if err != nil {
+		t.Fatal("Error copying sourceDir to targetDir ", err)
+	}
+
+	// create the result files
+	var copyResultFiles []string
+
+	err = filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
+		copyResultFiles = append(copyResultFiles, path)
+		return nil
+	})
+	if err != nil {
+		t.Fatal("Error walking targetDir", err)
+	}
+	println("****copyResultFiles files:****")
+	for _, copyResultFiles := range copyResultFiles {
+		fmt.Println(copyResultFiles)
+	}
+
+	// compare the expected vs the results
+	if len(copyExpectedFiles) != len(copyResultFiles) {
+		t.Errorf("length of expected file %s array does not match length of result file array %s")
+	}
+	for i := range copyExpectedFiles {
+		if copyExpectedFiles[i] != copyResultFiles[i] {
+			t.Errorf("expected file %s does not match result file %s", copyExpectedFiles[i], copyResultFiles[i])
+		}
+	}
+
 }
 
 func TestCopyDirFailFNF(t *testing.T) {
