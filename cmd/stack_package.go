@@ -255,14 +255,6 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["major"])
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo)
 
-			labelPairs := CreateLabelPairs(labels)
-			for _, label := range labelPairs {
-				cmdArgs = append(cmdArgs, "--label", label)
-			}
-
-			cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
-			log.Debug.Log("cmdArgs is: ", cmdArgs)
-
 			if buildOptions != "" {
 				options := strings.Split(buildOptions, " ")
 				err := checkBuildOptions(options)
@@ -271,6 +263,14 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				}
 				cmdArgs = append(cmdArgs, options...)
 			}
+
+			labelPairs := CreateLabelPairs(labels)
+			for _, label := range labelPairs {
+				cmdArgs = append(cmdArgs, "--label", label)
+			}
+
+			cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
+			log.Debug.Log("cmdArgs is: ", cmdArgs)
 
 			if !config.Buildah {
 				log.Info.Log("Running docker build")
