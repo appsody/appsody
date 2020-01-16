@@ -142,7 +142,7 @@ func TestPackageBuildahWithOptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	} else {
-		if !strings.Contains(output, "format=docker") {
+		if !strings.Contains(output, "--format=docker") {
 			t.Error("Buildah options not passed successfuly")
 		}
 		if !strings.Contains(output, "[Buildah] Writing manifest to image destination") {
