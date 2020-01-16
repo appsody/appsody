@@ -331,11 +331,11 @@ func TestBuildMissingTagFail(t *testing.T) {
 
 	// set push flag to true with no tag
 	args := []string{"build", "--push"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 
 		// As tag is missing, appsody verifies user input and shows error
-		if !strings.Contains(err.Error(), "Cannot specify --push or --push-url without a --tag") {
+		if !strings.Contains(output, "Cannot specify --push or --push-url without a --tag") {
 			t.Errorf("String \"Cannot specify --push or --push-url without a --tag\" not found in output: %v", err)
 		}
 
