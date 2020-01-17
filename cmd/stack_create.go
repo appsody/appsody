@@ -122,7 +122,8 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			// error if repo not found in repository.yaml
 			if repoInfo == nil {
-				return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
+				//return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
+				return oldCreateMethod(rootConfig.LoggingConfig, rootConfig, config, stack, currentTime)
 			}
 			repoIndexURL := repoInfo.URL
 			var repoIndex IndexYaml
