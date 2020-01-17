@@ -134,8 +134,15 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			stackPath := filepath.Join(getHome(rootConfig), "stacks", "packaging-"+stackID)
 			log.Debug.Log("stackPath is: ", stackPath)
 
+			// creates stacks dir if it doesn't exist
+			err := os.MkdirAll(filepath.Dir(stackPath), 0777)
+
+			if err != nil {
+				return errors.Errorf("Error creating stacks directory: %v", err)
+			}
+
 			// make a copy of the folder to apply template to
-			err := CopyDir(log, projectPath, stackPath)
+			err = CopyDir(log, projectPath, stackPath)
 			if err != nil {
 				os.RemoveAll(stackPath)
 				return errors.Errorf("Error trying to copy directory: %v", err)
