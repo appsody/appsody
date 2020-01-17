@@ -82,9 +82,18 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				}
 			}
 
-			repoName, stackID, err := parseProjectParm(config.copy, config.RootCommandConfig)
+			repoID, stackID, err := parseProjectParm(config.copy, config.RootCommandConfig)
 			if err != nil {
 				return err
+			}
+
+			switch repoID {
+			case "incubator":
+				repoID = "incubator-index"
+			case "experimental":
+				repoID = "experimental-index"
+			default:
+				repoID = repoID
 			}
 
 			extractFilename := stackID + ".tar.gz"
@@ -105,11 +114,11 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			// get specificed repo and umarshal
-			repoInfo := repoFile.GetRepo(repoName)
+			repoInfo := repoFile.GetRepo(repoID)
 
 			// error if repo not found in repository.yaml
 			if repoInfo == nil {
-				return errors.Errorf("Repository: %s not found in repository.yaml file", repoName)
+				return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
 			}
 			repoIndexURL := repoInfo.URL
 			var repoIndex IndexYaml
