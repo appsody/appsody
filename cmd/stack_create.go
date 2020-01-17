@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -88,6 +87,10 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return err
 			}
 
+			extractFilename := stackID + ".tar.gz"
+			extractDir := filepath.Join(getHome(rootConfig), "extract")
+			extractDirFile := filepath.Join(extractDir, extractFilename)
+
 			// Get Repository directory and umarshal
 			repoDir := getRepoDir(rootConfig)
 			var repoFile RepositoryFile
@@ -103,10 +106,20 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			// get specificed repo and umarshal
 			repoInfo := repoFile.GetRepo(repoName)
+
+			// error if repo not found in repository.yaml
+			if repoInfo == nil {
+				return errors.Errorf("Repository: %s not found in repository.yaml file", repoName)
+			}
 			repoIndexURL := repoInfo.URL
 			var repoIndex IndexYaml
-			repoIndexURL = strings.Replace(repoIndexURL, "file://", "", 1)
-			sourceIndex, err := ioutil.ReadFile(repoIndexURL)
+			tempRepoFile := filepath.Join(extractDir, "repo.yaml")
+			err = downloadFileToDisk(rootConfig.LoggingConfig, repoIndexURL, tempRepoFile, config.Dryrun)
+			if err != nil {
+				return err
+			}
+			defer os.Remove(tempRepoFile)
+			sourceIndex, err := ioutil.ReadFile(tempRepoFile)
 			if err != nil {
 				return errors.Errorf("Error trying to read: %v", err)
 			}
@@ -123,15 +136,17 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			stackSource := createStack.SourceURL
-			extractFilename := stackID + ".tar.gz"
-			extractDir := filepath.Join(getHome(rootConfig), "extract", extractFilename)
 
-			err = downloadFileToDisk(rootConfig.LoggingConfig, stackSource, extractDir, config.Dryrun)
+			if stackSource == "" {
+				return errors.New("No source URL specified.  Use the add-to-repo command with the --release-url flag to your repo")
+			}
+
+			err = downloadFileToDisk(rootConfig.LoggingConfig, stackSource, extractDirFile, config.Dryrun)
 			if err != nil {
 				return err
 			}
 
-			extractFile, err := os.Open(extractDir)
+			extractFile, err := os.Open(extractDirFile)
 			if err != nil {
 				return err
 			}
@@ -142,7 +157,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			//deleting the stacks repo zip
-			os.Remove(extractDir)
+			os.Remove(extractDirFile)
 
 			if !config.Dryrun {
 				rootConfig.Info.log("Stack created: ", stack)
