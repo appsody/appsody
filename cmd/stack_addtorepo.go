@@ -197,6 +197,14 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 			// build up stack struct for the new stack
 			newStackStruct := initialiseStackData(stackID, stackYaml)
 
+			versionArchiveTar := stackID + ".v" + stackYaml.Version + ".source.tar.gz"
+			log.Debug.Log("versionedArchiveTar is: ", versionArchiveTar)
+
+			sourceURL := releaseURL + versionArchiveTar
+			log.Debug.Log("full release URL is: ", sourceURL)
+
+			newStackStruct.SourceURL = sourceURL
+
 			// find and open the template path so we can loop through the templates
 			templatePath := filepath.Join(stackPath, "templates")
 
@@ -219,7 +227,7 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 				}
 
 				versionArchiveTar := stackID + ".v" + stackYaml.Version + ".templates." + templates[i] + ".tar.gz"
-				log.Debug.Log("versionedArdhiveTar is: ", versionArchiveTar)
+				log.Debug.Log("versionedArchiveTar is: ", versionArchiveTar)
 
 				templateURL := releaseURL + versionArchiveTar
 				log.Debug.Log("full release URL is: ", templateURL)

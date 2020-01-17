@@ -66,6 +66,7 @@ type IndexYamlStack struct {
 	Language        string `yaml:"language"`
 	Maintainers     []Maintainer
 	DefaultTemplate string `yaml:"default-template"`
+	SourceURL       string `yaml:"src"`
 	Templates       []IndexYamlStackTemplate
 	Requirements    StackRequirement `yaml:"requirements,omitempty"`
 }
@@ -287,6 +288,31 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			// build up stack struct for the new stack
 			newStackStruct := initialiseStackData(stackID, stackYaml)
 
+			sourceDir := projectPath
+			log.Debug.Log("sourceDir is: ", sourceDir)
+
+			// create name for the tar files
+			versionedArchive := filepath.Join(devLocal, stackID+".v"+stackYaml.Version)
+			log.Debug.Log("versionedArchive is: ", versionedArchive)
+
+			versionArchiveTar := versionedArchive + ".source.tar.gz"
+			log.Debug.Log("versionedArdhiveTar is: ", versionArchiveTar)
+
+			// tar the files
+			log.Info.Log("Creating tar for: " + stackID + " source")
+			err = Targz(log, sourceDir, versionedArchive, "source")
+			if err != nil {
+				return errors.Errorf("Error trying to tar: %v", err)
+			}
+
+			if runtime.GOOS == "windows" {
+				// for windows, add a leading slash and convert to unix style slashes
+				versionArchiveTar = "/" + filepath.ToSlash(versionArchiveTar)
+			}
+			versionArchiveTar = "file://" + versionArchiveTar
+
+			newStackStruct.SourceURL = versionArchiveTar
+
 			// find and open the template path so we can loop through the templates
 			templatePath := filepath.Join(stackPath, "templates")
 
@@ -350,7 +376,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 				// tar the files
 				log.Info.Log("Creating tar for: " + templates[i])
-				err = Targz(log, sourceDir, versionedArchive)
+				err = Targz(log, sourceDir, versionedArchive, templates[i])
 				if err != nil {
 					return errors.Errorf("Error trying to tar: %v", err)
 				}

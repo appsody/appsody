@@ -1998,8 +1998,7 @@ func downloadFileToDisk(log *LoggingConfig, url string, destFile string, dryrun 
 }
 
 // tar and zip a directory into .tar.gz
-func Targz(log *LoggingConfig, source, target string) error {
-	filename := filepath.Base(source)
+func Targz(log *LoggingConfig, source, target, filename string) error {
 	log.Info.log("source is: ", source)
 	log.Info.log("filename is: ", filename)
 	log.Info.log("target is: ", target)
