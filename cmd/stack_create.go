@@ -83,7 +83,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				}
 			}
 
-			repoName, stackName, err := parseProjectParm(config.copy, config.RootCommandConfig)
+			repoName, stackID, err := parseProjectParm(config.copy, config.RootCommandConfig)
 			if err != nil {
 				return err
 			}
@@ -121,14 +121,14 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			if err != nil {
 				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
 			}
-			createStack, err := getStack(&repoIndex, stackName)
+			createStack := getStack(&repoIndex, stackID)
 
-			if err != nil {
-				return err
+			if createStack == nil {
+				return errors.New("Stack not found in index")
 			}
 
 			stackSource := createStack.SourceURL
-			extractFilename := stackName + ".tar.gz"
+			extractFilename := stackID + ".tar.gz"
 			extractDir := filepath.Join(getHome(rootConfig), "extract", extractFilename)
 
 			err = downloadFileToDisk(rootConfig.LoggingConfig, stackSource, extractDir, config.Dryrun)
@@ -162,13 +162,13 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 	return stackCmd
 }
 
-func getStack(r *IndexYaml, name string) (IndexYamlStack, error) {
+func getStack(r *IndexYaml, name string) *IndexYamlStack {
 	for _, rf := range r.Stacks {
 		if rf.ID == name {
-			return rf, nil
+			return &rf
 		}
 	}
-	return r.Stacks[0], errors.Errorf("Stack not found in Index File")
+	return nil
 }
 
 // taken from https://medium.com/@skdomino/taring-untaring-files-in-go-6b07cf56bc07
