@@ -16,15 +16,17 @@ package cmd
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 type stackCreateCommandConfig struct {
@@ -83,7 +85,53 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				}
 			}
 
-			err = downloadFileToDisk(rootConfig.LoggingConfig, "https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
+			repoAndStack := strings.Split(config.copy, "/")
+
+			repoName := repoAndStack[0]
+			stackName := repoAndStack[1]
+
+			repoDir := getRepoDir(rootConfig)
+
+			var repoFile RepositoryFile
+
+			source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
+			if err != nil {
+				return errors.Errorf("Error trying to read: %v", err)
+			}
+
+			err = yaml.Unmarshal(source, &repoFile)
+
+			if err != nil {
+				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
+			}
+
+			repoInfo := repoFile.GetRepo(repoName)
+
+			repoIndexURL := repoInfo.URL
+
+			var repoIndex IndexYaml
+
+			repoIndexURL = strings.Replace(repoIndexURL, "file://", "", 1)
+
+			sourceIndex, err := ioutil.ReadFile(repoIndexURL)
+			if err != nil {
+				return errors.Errorf("Error trying to read: %v", err)
+			}
+
+			err = yaml.Unmarshal(sourceIndex, &repoIndex)
+
+			if err != nil {
+				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
+			}
+			createStack, err := GetStack(&repoIndex, stackName)
+
+			if err != nil {
+				return err
+			}
+
+			stackSource := createStack.SourceURL
+
+			err = downloadFileToDisk(rootConfig.LoggingConfig, stackSource, filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
 			if err != nil {
 				return err
 			}
@@ -152,7 +200,6 @@ func unzip(log *LoggingConfig, src string, dest string, copy string, dryrun bool
 
 	} else {
 		valid := false
-
 		r, err := zip.OpenReader(src)
 		if err != nil {
 			return valid, err
@@ -169,20 +216,6 @@ func unzip(log *LoggingConfig, src string, dest string, copy string, dryrun bool
 				return valid, errors.Errorf("%s: illegal file path", fpath)
 			}
 
-			if runtime.GOOS == "windows" {
-				if !strings.HasPrefix(f.Name, "stacks-master/"+copy+"/") {
-					continue
-				} else {
-					valid = true
-				}
-			} else {
-				if !strings.HasPrefix(f.Name, filepath.Join("stacks-master", string(os.PathSeparator), copy)+string(os.PathSeparator)) {
-					continue
-				} else {
-					valid = true
-				}
-			}
-
 			if f.FileInfo().IsDir() {
 				// Make Folder
 				err := os.MkdirAll(fpath, os.ModePerm)
@@ -196,6 +229,8 @@ func unzip(log *LoggingConfig, src string, dest string, copy string, dryrun bool
 			if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
 				return valid, err
 			}
+
+			fmt.Println("HELLO")
 
 			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 			if err != nil {
@@ -220,4 +255,13 @@ func unzip(log *LoggingConfig, src string, dest string, copy string, dryrun bool
 		return valid, nil
 	}
 	return true, nil
+}
+
+func GetStack(r *IndexYaml, name string) (IndexYamlStack, error) {
+	for _, rf := range r.Stacks {
+		if rf.ID == name {
+			return rf, nil
+		}
+	}
+	return r.Stacks[0], errors.Errorf("Stack not found in Index File")
 }
