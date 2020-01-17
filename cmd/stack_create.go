@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"archive/zip"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -130,8 +129,9 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			stackSource := createStack.SourceURL
+			extractDir := filepath.Join(getHome(rootConfig), "extract", "repo.zip")
 
-			err = downloadFileToDisk(rootConfig.LoggingConfig, stackSource, filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
+			err = downloadFileToDisk(rootConfig.LoggingConfig, stackSource, extractDir, config.Dryrun)
 			if err != nil {
 				return err
 			}
@@ -140,7 +140,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return err
 			}
 
-			valid, unzipErr := unzip(rootConfig.LoggingConfig, filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy, config.Dryrun)
+			valid, unzipErr := unzip(rootConfig.LoggingConfig, extractDir, stack, config.copy, config.Dryrun)
 			if unzipErr != nil {
 				return unzipErr
 			}
@@ -229,8 +229,6 @@ func unzip(log *LoggingConfig, src string, dest string, copy string, dryrun bool
 			if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
 				return valid, err
 			}
-
-			fmt.Println("HELLO")
 
 			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 			if err != nil {
