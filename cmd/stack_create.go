@@ -88,41 +88,36 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return err
 			}
 
+			// Get Repository directory and umarshal
 			repoDir := getRepoDir(rootConfig)
-
 			var repoFile RepositoryFile
-
 			source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
 			if err != nil {
 				return errors.Errorf("Error trying to read: %v", err)
 			}
 
 			err = yaml.Unmarshal(source, &repoFile)
-
 			if err != nil {
 				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
 			}
 
+			// get specificed repo and umarshal
 			repoInfo := repoFile.GetRepo(repoName)
-
 			repoIndexURL := repoInfo.URL
-
 			var repoIndex IndexYaml
-
 			repoIndexURL = strings.Replace(repoIndexURL, "file://", "", 1)
-
 			sourceIndex, err := ioutil.ReadFile(repoIndexURL)
 			if err != nil {
 				return errors.Errorf("Error trying to read: %v", err)
 			}
 
 			err = yaml.Unmarshal(sourceIndex, &repoIndex)
-
 			if err != nil {
 				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
 			}
-			createStack := getStack(&repoIndex, stackID)
 
+			// get specified stack and get URL
+			createStack := getStack(&repoIndex, stackID)
 			if createStack == nil {
 				return errors.New("Stack not found in index")
 			}
