@@ -631,11 +631,12 @@ func CopyFile(log *LoggingConfig, source string, dest string) error {
 	}
 	copyCmd := exec.Command(execCmd, execArgs...)
 	cmdOutput, cmdErr := SeparateOutput(copyCmd)
-	_, err = os.Stat(dest)
-	if err != nil {
+
+	if cmdErr != nil {
 		log.Error.logf("Could not copy %s to %s - output of copy command %s %s\n", source, dest, cmdOutput, cmdErr)
 		return errors.New("Error in copy: " + cmdOutput)
 	}
+
 	log.Debug.logf("Copy of %s to %s was successful \n", source, dest)
 	return nil
 }
@@ -664,8 +665,9 @@ func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
 	// fail if fromDir does not exist on the file system
 	_, err := os.Stat(fromDir)
 	if err != nil {
-		log.Error.logf("Cannot find source directory %s to copy", fromDir)
-		return err
+		log.Error.logf("Source %s does not exist.", fromDir)
+		//return err
+		return errors.Errorf("Source %s does not exist.", fromDir)
 	}
 
 	// fail if toDir exists on the file system

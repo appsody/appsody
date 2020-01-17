@@ -489,8 +489,8 @@ func TestMoveFailFNF(t *testing.T) {
 	err := cmd.MoveDir(log, nonExistentFile, "../")
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+		if !strings.Contains(err.Error(), "Source "+nonExistentFile+" does not exist.") {
+			t.Errorf("String \"Source "+nonExistentFile+" does not exist.\" not found in output: '%v'", err.Error())
 		}
 	} else {
 		t.Error("Expected an error to be returned from command, but error was nil")
@@ -542,7 +542,7 @@ func TestMove(t *testing.T) {
 	}
 }
 
-func TestMoveFailPermissions(t *testing.T) {
+func TestCopyFileFailPermissions(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
 	}
@@ -550,7 +550,7 @@ func TestMoveFailPermissions(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	existingFile := "iamafile"
+	existingFile := "iamafile.test"
 	existingDir := "iamadir/"
 
 	// Ensure that the fake yaml file is deleted
@@ -571,14 +571,16 @@ func TestMoveFailPermissions(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error creating the file: %v", err)
 	}
+	println("existing file:", existingFile)
 
 	err = os.Mkdir(existingDir, 4440)
 
 	if err != nil {
 		t.Errorf("Error creating the directory: %v", err)
 	}
+	println("existingDir: ", existingDir)
 
-	err = cmd.MoveDir(log, existingFile, existingDir)
+	err = cmd.CopyFile(log, existingFile, existingDir)
 
 	if err != nil {
 		if !strings.Contains(err.Error(), "Permission denied") {
@@ -620,8 +622,8 @@ func TestCopyDirFailSourceNotDir(t *testing.T) {
 	// this should fail as the target can not be an existing directory
 	err = cmd.CopyDir(log, sourceDir, targetDir)
 	if err != nil {
-		if !strings.Contains(err.Error(), "stat "+sourceDir+": no such file or directory") {
-			t.Errorf("String \"stat "+sourceDir+": no such file or directory\" not found in output: '%v'", err.Error())
+		if !strings.Contains(err.Error(), "Source "+sourceDir+" does not exist.") {
+			t.Errorf("String \"Source "+sourceDir+" does not exist.\" not found in output: '%v'", err.Error())
 		}
 	} else {
 		t.Error("Expected an error to be returned from command, but error was nil")
