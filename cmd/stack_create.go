@@ -51,6 +51,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
   appsody stack create my-stack --copy incubator/nodejs-express  
   Creates a stack called my-stack, based on the Node.js Express stack.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
 			currentTime := time.Now().Format("20060102150405")
 
 			if len(args) < 1 {
@@ -58,120 +59,117 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			stack := args[0]
+			if !config.Dryrun {
+				match, err := IsValidProjectName(stack)
+				if !match {
+					return err
+				}
 
-			match, err := IsValidProjectName(stack)
-			if !match {
-				return err
-			}
-
-			exists, err := Exists(stack)
-			if err != nil {
-				return err
-			}
-
-			if exists {
-				return errors.New("A stack named " + stack + " already exists in your directory. Specify a unique stack name")
-			}
-
-			extractFolderExists, err := Exists(filepath.Join(getHome(rootConfig), "extract"))
-			if err != nil {
-				return err
-			}
-
-			if !extractFolderExists {
-				err = os.MkdirAll(filepath.Join(getHome(rootConfig), "extract"), os.ModePerm)
+				exists, err := Exists(stack)
 				if err != nil {
 					return err
 				}
-			}
 
-			repoID, stackID, err := parseProjectParm(config.copy, config.RootCommandConfig)
-			if err != nil {
-				return err
-			}
+				if exists {
+					return errors.New("A stack named " + stack + " already exists in your directory. Specify a unique stack name")
+				}
 
-			extractFilename := stackID + ".tar.gz"
-			extractDir := filepath.Join(getHome(rootConfig), "extract")
-			extractDirFile := filepath.Join(extractDir, extractFilename)
+				extractFolderExists, err := Exists(filepath.Join(getHome(rootConfig), "extract"))
+				if err != nil {
+					return err
+				}
 
-			// Get Repository directory and umarshal
-			repoDir := getRepoDir(rootConfig)
-			var repoFile RepositoryFile
-			source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
-			if err != nil {
-				return errors.Errorf("Error trying to read: %v", err)
-			}
+				if !extractFolderExists {
+					err = os.MkdirAll(filepath.Join(getHome(rootConfig), "extract"), os.ModePerm)
+					if err != nil {
+						return err
+					}
+				}
 
-			err = yaml.Unmarshal(source, &repoFile)
-			if err != nil {
-				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
-			}
+				repoID, stackID, err := parseProjectParm(config.copy, config.RootCommandConfig)
+				if err != nil {
+					return err
+				}
 
-			// get specificed repo and umarshal
-			repoEntry := repoFile.GetRepo(repoID)
+				extractFilename := stackID + ".tar.gz"
+				extractDir := filepath.Join(getHome(rootConfig), "extract")
+				extractDirFile := filepath.Join(extractDir, extractFilename)
 
-			// error if repo not found in repository.yaml
-			if repoEntry == nil {
-				return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
-			}
-			repoEntryURL := repoEntry.URL
+				// Get Repository directory and umarshal
+				repoDir := getRepoDir(rootConfig)
+				var repoFile RepositoryFile
+				source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
+				if err != nil {
+					return errors.Errorf("Error trying to read: %v", err)
+				}
 
-			var repoIndex IndexYaml
-			tempRepoIndex := filepath.Join(extractDir, "index.yaml")
-			err = downloadFileToDisk(rootConfig.LoggingConfig, repoEntryURL, tempRepoIndex, config.Dryrun)
-			if err != nil {
-				return err
-			}
-			defer os.Remove(tempRepoIndex)
-			tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
-			if err != nil {
-				return errors.Errorf("Error trying to read: %v", err)
-			}
+				err = yaml.Unmarshal(source, &repoFile)
+				if err != nil {
+					return errors.Errorf("Error parsing the repository.yaml file: %v", err)
+				}
 
-			err = yaml.Unmarshal(tempRepoIndexFile, &repoIndex)
-			if err != nil {
-				return errors.Errorf("Error parsing the index.yaml file: %v", err)
-			}
+				// get specificed repo and umarshal
+				repoEntry := repoFile.GetRepo(repoID)
 
-			// get specified stack and get URL
-			stackEntry := getStack(&repoIndex, stackID)
-			if stackEntry == nil {
-				return errors.New("Stack not found in index")
-			}
+				// error if repo not found in repository.yaml
+				if repoEntry == nil {
+					return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
+				}
+				repoEntryURL := repoEntry.URL
 
-			stackEntryURL := stackEntry.SourceURL
+				var repoIndex IndexYaml
+				tempRepoIndex := filepath.Join(extractDir, "index.yaml")
+				err = downloadFileToDisk(rootConfig.LoggingConfig, repoEntryURL, tempRepoIndex, config.Dryrun)
+				if err != nil {
+					return err
+				}
+				defer os.Remove(tempRepoIndex)
+				tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
+				if err != nil {
+					return errors.Errorf("Error trying to read: %v", err)
+				}
 
-			if stackEntryURL == "" {
-				//TODO: REMOVE OLD CREATE METHOD AFTER NEXT RELEASE AND UPDATE STACKS
-				//return errors.New("No source URL specified.  Use the add-to-repo command with the --release-url flag to your repo")
-				return oldCreateMethod(rootConfig.LoggingConfig, rootConfig, config, stack, currentTime)
-			}
+				err = yaml.Unmarshal(tempRepoIndexFile, &repoIndex)
+				if err != nil {
+					return errors.Errorf("Error parsing the index.yaml file: %v", err)
+				}
 
-			// download source.tar.gz of selected file
-			err = downloadFileToDisk(rootConfig.LoggingConfig, stackEntryURL, extractDirFile, config.Dryrun)
-			if err != nil {
-				return err
-			}
+				// get specified stack and get URL
+				stackEntry := getStack(&repoIndex, stackID)
+				if stackEntry == nil {
+					return errors.New("Stack not found in index")
+				}
 
-			extractFile, err := os.Open(extractDirFile)
-			if err != nil {
-				return err
-			}
+				stackEntryURL := stackEntry.SourceURL
 
-			untarErr := untar(rootConfig.LoggingConfig, stack, extractFile, config.Dryrun)
-			if untarErr != nil {
-				return untarErr
-			}
+				if stackEntryURL == "" {
+					//TODO: REMOVE OLD CREATE METHOD AFTER NEXT RELEASE AND UPDATE STACKS
+					//return errors.New("No source URL specified.  Use the add-to-repo command with the --release-url flag to your repo")
+					return oldCreateMethod(rootConfig.LoggingConfig, rootConfig, config, stack, currentTime)
+				}
 
-			//deleting the stacks targz
-			os.Remove(extractDirFile)
+				// download source.tar.gz of selected file
+				err = downloadFileToDisk(rootConfig.LoggingConfig, stackEntryURL, extractDirFile, config.Dryrun)
+				if err != nil {
+					return err
+				}
 
-			if !config.Dryrun {
+				extractFile, err := os.Open(extractDirFile)
+				if err != nil {
+					return err
+				}
+
+				untarErr := untar(rootConfig.LoggingConfig, stack, extractFile, config.Dryrun)
+				if untarErr != nil {
+					return untarErr
+				}
+
+				//deleting the stacks targz
+				os.Remove(extractDirFile)
 				rootConfig.Info.log("Stack created: ", stack)
 			} else {
 				rootConfig.Info.log("Dry run complete")
 			}
-
 			return nil
 		},
 	}
