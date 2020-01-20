@@ -15,9 +15,7 @@
 package cmd
 
 import (
-	"archive/tar"
 	"archive/zip"
-	"compress/gzip"
 	"io"
 	"io/ioutil"
 	"os"
@@ -110,45 +108,47 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			// get specificed repo and umarshal
-			repoInfo := repoFile.GetRepo(repoID)
+			repoEntry := repoFile.GetRepo(repoID)
 
 			// error if repo not found in repository.yaml
-			if repoInfo == nil {
-				//return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
-				return oldCreateMethod(rootConfig.LoggingConfig, rootConfig, config, stack, currentTime)
+			if repoEntry == nil {
+				return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
 			}
-			repoIndexURL := repoInfo.URL
+			repoEntryURL := repoEntry.URL
+
 			var repoIndex IndexYaml
-			tempRepoFile := filepath.Join(extractDir, "repo.yaml")
-			err = downloadFileToDisk(rootConfig.LoggingConfig, repoIndexURL, tempRepoFile, config.Dryrun)
+			tempRepoIndex := filepath.Join(extractDir, "index.yaml")
+			err = downloadFileToDisk(rootConfig.LoggingConfig, repoEntryURL, tempRepoIndex, config.Dryrun)
 			if err != nil {
 				return err
 			}
-			defer os.Remove(tempRepoFile)
-			sourceIndex, err := ioutil.ReadFile(tempRepoFile)
+			defer os.Remove(tempRepoIndex)
+			tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
 			if err != nil {
 				return errors.Errorf("Error trying to read: %v", err)
 			}
 
-			err = yaml.Unmarshal(sourceIndex, &repoIndex)
+			err = yaml.Unmarshal(tempRepoIndexFile, &repoIndex)
 			if err != nil {
-				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
+				return errors.Errorf("Error parsing the index.yaml file: %v", err)
 			}
 
 			// get specified stack and get URL
-			createStack := getStack(&repoIndex, stackID)
-			if createStack == nil {
+			stackEntry := getStack(&repoIndex, stackID)
+			if stackEntry == nil {
 				return errors.New("Stack not found in index")
 			}
 
-			stackSource := createStack.SourceURL
+			stackEntryURL := stackEntry.SourceURL
 
-			if stackSource == "" {
+			if stackEntryURL == "" {
+				//TODO: REMOVE OLD CREATE METHOD AFTER NEXT RELEASE AND UPDATE STACKS
 				//return errors.New("No source URL specified.  Use the add-to-repo command with the --release-url flag to your repo")
 				return oldCreateMethod(rootConfig.LoggingConfig, rootConfig, config, stack, currentTime)
 			}
 
-			err = downloadFileToDisk(rootConfig.LoggingConfig, stackSource, extractDirFile, config.Dryrun)
+			// download source.tar.gz of selected file
+			err = downloadFileToDisk(rootConfig.LoggingConfig, stackEntryURL, extractDirFile, config.Dryrun)
 			if err != nil {
 				return err
 			}
@@ -158,12 +158,12 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return err
 			}
 
-			untarErr := untarSource(rootConfig.LoggingConfig, stack, extractFile, config.Dryrun)
+			untarErr := untar(rootConfig.LoggingConfig, stack, extractFile, config.Dryrun)
 			if untarErr != nil {
 				return untarErr
 			}
 
-			//deleting the stacks repo zip
+			//deleting the stacks targz
 			os.Remove(extractDirFile)
 
 			if !config.Dryrun {
@@ -186,76 +186,6 @@ func getStack(r *IndexYaml, name string) *IndexYamlStack {
 		}
 	}
 	return nil
-}
-
-// taken from https://medium.com/@skdomino/taring-untaring-files-in-go-6b07cf56bc07
-func untarSource(log *LoggingConfig, dst string, r io.Reader, dryrun bool) error {
-	if !dryrun {
-		gzr, err := gzip.NewReader(r)
-		if err != nil {
-			return err
-		}
-		defer gzr.Close()
-
-		tr := tar.NewReader(gzr)
-
-		for {
-			header, err := tr.Next()
-
-			switch {
-
-			// if no more files are found return
-			case err == io.EOF:
-				return nil
-
-			// return any other error
-			case err != nil:
-				return err
-
-			// if the header is nil, just skip it (not sure how this happens)
-			case header == nil:
-				continue
-			}
-
-			// the target location where the dir/file should be created
-			target := filepath.Join(dst, header.Name)
-
-			// the following switch could also be done using fi.Mode(), not sure if there
-			// a benefit of using one vs. the other.
-			// fi := header.FileInfo()
-
-			// check the file type
-			switch header.Typeflag {
-
-			// if its a dir and it doesn't exist create it
-			case tar.TypeDir:
-				if _, err := os.Stat(target); err != nil {
-					if err := os.MkdirAll(target, 0755); err != nil {
-						return err
-					}
-				}
-
-			// if it's a file create it
-			case tar.TypeReg:
-				f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-				if err != nil {
-					return err
-				}
-
-				// copy over contents
-				if _, err := io.Copy(f, tr); err != nil {
-					return err
-				}
-
-				// manually close here after each file operation; defering would cause each file close
-				// to wait until all operations have completed.
-				f.Close()
-			}
-		}
-	} else {
-		log.Info.logf("Dry Run skipping -Untar of filee: %s to destination %s", r, dst)
-		return nil
-	}
 }
 
 // To be removed in next release

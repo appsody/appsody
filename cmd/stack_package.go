@@ -288,10 +288,11 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			// build up stack struct for the new stack
 			newStackStruct := initialiseStackData(stackID, stackYaml)
 
+			// get project directory
 			sourceDir := projectPath
 			log.Debug.Log("sourceDir is: ", sourceDir)
 
-			// create name for the tar files
+			// create name for the source tar file
 			versionedArchive := filepath.Join(devLocal, stackID+".v"+stackYaml.Version+".")
 			log.Debug.Log("versionedArchive is: ", versionedArchive)
 

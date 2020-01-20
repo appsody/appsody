@@ -268,7 +268,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		}
 
 		//if noTemplate
-		errUntar := untar(config.LoggingConfig, filename, noTemplate, config.overwrite, config.Dryrun)
+		errUntar := initUntar(config.LoggingConfig, filename, noTemplate, config.overwrite, config.Dryrun)
 
 		if config.Dryrun {
 			config.Info.logf("Dry Run - Skipping remove of temporary file for project type: %s project name: %s", projectType, projectName)
@@ -349,7 +349,7 @@ func install(config *initCommandConfig) error {
 	return nil
 }
 
-func untar(log *LoggingConfig, file string, noTemplate bool, overwrite bool, dryrun bool) error {
+func initUntar(log *LoggingConfig, file string, noTemplate bool, overwrite bool, dryrun bool) error {
 
 	if dryrun {
 		log.Info.log("Dry Run - Skipping untar of file:  ", file)
