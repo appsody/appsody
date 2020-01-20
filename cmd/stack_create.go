@@ -92,14 +92,6 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return err
 			}
 
-			switch repoID {
-			case "incubator":
-				repoID = "incubator-index"
-			case "experimental":
-				repoID = "experimental-index"
-			default:
-			}
-
 			extractFilename := stackID + ".tar.gz"
 			extractDir := filepath.Join(getHome(rootConfig), "extract")
 			extractDirFile := filepath.Join(extractDir, extractFilename)
