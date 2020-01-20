@@ -59,71 +59,72 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			}
 
 			stack := args[0]
+
+			match, err := IsValidProjectName(stack)
+			if !match {
+				return err
+			}
+
+			exists, err := Exists(stack)
+			if err != nil {
+				return err
+			}
+
+			if exists {
+				return errors.New("A stack named " + stack + " already exists in your directory. Specify a unique stack name")
+			}
+
+			extractFolderExists, err := Exists(filepath.Join(getHome(rootConfig), "extract"))
+			if err != nil {
+				return err
+			}
+
+			if !extractFolderExists {
+				err = os.MkdirAll(filepath.Join(getHome(rootConfig), "extract"), os.ModePerm)
+				if err != nil {
+					return err
+				}
+			}
+
+			repoID, stackID, err := parseProjectParm(config.copy, config.RootCommandConfig)
+			if err != nil {
+				return err
+			}
+
+			extractFilename := stackID + ".tar.gz"
+			extractDir := filepath.Join(getHome(rootConfig), "extract")
+			extractDirFile := filepath.Join(extractDir, extractFilename)
+
+			// Get Repository directory and umarshal
+			repoDir := getRepoDir(rootConfig)
+			var repoFile RepositoryFile
+			source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
+			if err != nil {
+				return errors.Errorf("Error trying to read: %v", err)
+			}
+
+			err = yaml.Unmarshal(source, &repoFile)
+			if err != nil {
+				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
+			}
+
+			// get specificed repo and umarshal
+			repoEntry := repoFile.GetRepo(repoID)
+
+			// error if repo not found in repository.yaml
+			if repoEntry == nil {
+				return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
+			}
+			repoEntryURL := repoEntry.URL
+
+			var repoIndex IndexYaml
+			tempRepoIndex := filepath.Join(extractDir, "index.yaml")
+			err = downloadFileToDisk(rootConfig.LoggingConfig, repoEntryURL, tempRepoIndex, config.Dryrun)
+			if err != nil {
+				return err
+			}
+			defer os.Remove(tempRepoIndex)
 			if !config.Dryrun {
-				match, err := IsValidProjectName(stack)
-				if !match {
-					return err
-				}
-
-				exists, err := Exists(stack)
-				if err != nil {
-					return err
-				}
-
-				if exists {
-					return errors.New("A stack named " + stack + " already exists in your directory. Specify a unique stack name")
-				}
-
-				extractFolderExists, err := Exists(filepath.Join(getHome(rootConfig), "extract"))
-				if err != nil {
-					return err
-				}
-
-				if !extractFolderExists {
-					err = os.MkdirAll(filepath.Join(getHome(rootConfig), "extract"), os.ModePerm)
-					if err != nil {
-						return err
-					}
-				}
-
-				repoID, stackID, err := parseProjectParm(config.copy, config.RootCommandConfig)
-				if err != nil {
-					return err
-				}
-
-				extractFilename := stackID + ".tar.gz"
-				extractDir := filepath.Join(getHome(rootConfig), "extract")
-				extractDirFile := filepath.Join(extractDir, extractFilename)
-
-				// Get Repository directory and umarshal
-				repoDir := getRepoDir(rootConfig)
-				var repoFile RepositoryFile
-				source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
-				if err != nil {
-					return errors.Errorf("Error trying to read: %v", err)
-				}
-
-				err = yaml.Unmarshal(source, &repoFile)
-				if err != nil {
-					return errors.Errorf("Error parsing the repository.yaml file: %v", err)
-				}
-
-				// get specificed repo and umarshal
-				repoEntry := repoFile.GetRepo(repoID)
-
-				// error if repo not found in repository.yaml
-				if repoEntry == nil {
-					return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
-				}
-				repoEntryURL := repoEntry.URL
-
-				var repoIndex IndexYaml
-				tempRepoIndex := filepath.Join(extractDir, "index.yaml")
-				err = downloadFileToDisk(rootConfig.LoggingConfig, repoEntryURL, tempRepoIndex, config.Dryrun)
-				if err != nil {
-					return err
-				}
-				defer os.Remove(tempRepoIndex)
 				tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
 				if err != nil {
 					return errors.Errorf("Error trying to read: %v", err)

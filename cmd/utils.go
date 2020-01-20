@@ -2251,7 +2251,7 @@ func untar(log *LoggingConfig, dst string, r io.Reader, dryrun bool) error {
 			}
 		}
 	} else {
-		log.Info.logf("Dry Run skipping -Untar of filee: %s to destination %s", r, dst)
+		log.Info.logf("Dry Run skipping -Untar of file: %s to destination %s", r, dst)
 		return nil
 	}
 }
