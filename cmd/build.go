@@ -41,6 +41,7 @@ type buildCommandConfig struct {
 	pullURL             string
 	appDeployFile       string
 	knative             bool
+	namespace           string
 }
 
 //These are the current supported labels for Kubernetes,
@@ -54,7 +55,7 @@ var supportedKubeLabels = []string{
 	"app.appsody.dev/name",
 }
 
-func checkDockerBuildOptions(options []string) error {
+func checkBuildOptions(options []string) error {
 	buildOptionsTest := "(^((-t)|(--tag)|(--help)|(-f)|(--file))((=?$)|(=.*)))"
 
 	blackListedBuildOptionsRegexp := regexp.MustCompile(buildOptionsTest)
@@ -167,7 +168,7 @@ func build(config *buildCommandConfig) error {
 
 	if buildOptions != "" {
 		options := strings.Split(buildOptions, " ")
-		err := checkDockerBuildOptions(options)
+		err := checkBuildOptions(options)
 		if err != nil {
 			return err
 		}
@@ -533,6 +534,14 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 	}
 
 	appsodyApplication.Spec.ApplicationImage = imageName
+
+	// This only applies to the deploy command flow:
+	// - if the namespace doesn't exist in the manifest, and a namespace flag is not set: we write a "default" namespace
+	// - if the namespace does exist in the manifest, and a namespace flag is set: we verify that they are the same. If they are not we throw an error.
+	// - if the namespace doesn't exist in the manifest, and a namespace flag is set: we write the value passed an argument with the flag.
+	if appsodyApplication.Namespace == "" {
+		appsodyApplication.Namespace = config.namespace
+	}
 
 	err = writeAppsodyApplication(appsodyApplication, config)
 	if err != nil {
