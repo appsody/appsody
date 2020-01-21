@@ -78,7 +78,42 @@ Run this command from the root directory of your Appsody project.`,
 			namespace := config.namespace
 			configFile := filepath.Join(projectDir, config.appDeployFile)
 
+			exists, err := Exists(configFile)
+			if err != nil {
+				return err
+			}
+
+			if !exists && config.nobuild {
+				return errors.Errorf("--no-build flag was used, but deployment manifest %s was not found. Please remove the --no-build, or generate a deployment manifest first by running \"appsody build\"", configFile)
+			}
+
+			if exists {
+				config.Info.Logf("Found deployment manifest %s", configFile)
+
+				appsodyApplication, err := getAppsodyApplication(configFile)
+				if err != nil {
+					return err
+				}
+
+				manifestNamespace := appsodyApplication.Namespace
+				if manifestNamespace != "" {
+					if namespace != "" && manifestNamespace != namespace {
+						return errors.Errorf("the namespace \"%s\" from the deployment manifest does not match the namespace \"%s\" passed as an argument.", manifestNamespace, namespace)
+					}
+
+					namespace = manifestNamespace
+				}
+			}
+
+			if namespace == "" {
+				namespace = "default"
+			}
+
+			config.Info.Logf("Using namespace %s for deployment", namespace)
+
 			if !config.nobuild {
+				config.Info.Log("Building the production image")
+
 				buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
 				buildConfig.Verbose = config.Verbose
 				buildConfig.pushURL = config.pushURL
@@ -90,6 +125,7 @@ Run this command from the root directory of your Appsody project.`,
 				buildConfig.pullURL = config.pullURL
 				buildConfig.knative = config.knative
 				buildConfig.appDeployFile = configFile
+				buildConfig.namespace = namespace
 
 				buildErr := build(buildConfig)
 				if buildErr != nil {
@@ -134,7 +170,6 @@ Run this command from the root directory of your Appsody project.`,
 			if err != nil {
 				return err
 			}
-
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
 			config.Info.log("Appsody Deployment name is: ", appsodyApplication.Name)
@@ -158,7 +193,7 @@ Run this command from the root directory of your Appsody project.`,
 	deployCmd.PersistentFlags().BoolVar(&config.nobuild, "no-build", false, "Deploys the application without building a new image or modifying the deployment manifest file.")
 	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment manifest.")
 	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment manifest file if one exists.")
-	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "default", "Target namespace in your Kubernetes cluster")
+	deployCmd.PersistentFlags().StringVarP(&config.namespace, "namespace", "n", "", "Target namespace in your Kubernetes cluster.")
 	deployCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Docker image name and optionally a tag in the 'name:tag' format")
 	deployCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of docker.")
 	deployCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the docker build options to use. Value must be in \"\". The following Docker options are not supported: '--help','-t','--tag','-f','--file'.")

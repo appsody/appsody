@@ -29,6 +29,12 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type packageCommandConfig struct {
+	*RootCommandConfig
+	dockerBuildOptions  string
+	buildahBuildOptions string
+}
+
 // structs for parsing the yaml files
 type StackYaml struct {
 	Name            string `yaml:"name"`
@@ -69,6 +75,7 @@ type IndexYamlStackTemplate struct {
 }
 
 func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
+	config := &packageCommandConfig{RootCommandConfig: rootConfig}
 
 	// stack package is a tool for local stack developers to package their stack
 	// the stack package command does the following...
@@ -93,7 +100,10 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
   Packages the stack in the current directory, tags the built image with the default registry and namespace, and adds the stack to the "dev.local" repository.
   
   appsody stack package --image-namespace my-namespace
-  Packages the stack in the current directory, tags the built image with the default registry and "my-namespace" namespace, and adds the stack to the "dev.local" repository.`,
+  Packages the stack in the current directory, tags the built image with the default registry and "my-namespace" namespace, and adds the stack to the "dev.local" repository.
+  
+  appsody stack package --buildah --buildah-options "--format=docker"
+  Packages the stack in the current directory, builds project using buildah primitives in Docker format, tags the built image with the default registry and namespace, and adds the stack to the "dev.local" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
@@ -102,6 +112,20 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			log.Info.Log("******************************************")
 			log.Info.Log("Running appsody stack package")
 			log.Info.Log("******************************************")
+			buildOptions := ""
+			if config.buildahBuildOptions != "" {
+				if !config.Buildah {
+					return errors.New("Cannot specify --buildah-options flag without --buildah")
+				}
+				buildOptions = strings.TrimSpace(config.buildahBuildOptions)
+			}
+
+			if config.dockerBuildOptions != "" {
+				if config.Buildah {
+					return errors.New("Cannot specify --docker-options flag with --buildah")
+				}
+				buildOptions = strings.TrimSpace(config.dockerBuildOptions)
+			}
 
 			projectPath := rootConfig.ProjectDir
 
@@ -234,6 +258,15 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["major"])
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo)
 
+			if buildOptions != "" {
+				options := strings.Split(buildOptions, " ")
+				err := checkBuildOptions(options)
+				if err != nil {
+					return err
+				}
+				cmdArgs = append(cmdArgs, options...)
+			}
+
 			labelPairs := CreateLabelPairs(labels)
 			for _, label := range labelPairs {
 				cmdArgs = append(cmdArgs, "--label", label)
@@ -242,11 +275,16 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			cmdArgs = append(cmdArgs, "-f", dockerFile, imageDir)
 			log.Debug.Log("cmdArgs is: ", cmdArgs)
 
-			log.Info.Log("Running docker build")
+			if !config.Buildah {
+				log.Info.Log("Running docker build")
+				err = DockerBuild(config.RootCommandConfig, cmdArgs, config.DockerLog)
+			} else {
+				log.Info.Log("Running buildah build")
+				err = BuildahBuild(config.RootCommandConfig, cmdArgs, config.BuildahLog)
+			}
 
-			err = DockerBuild(rootConfig, cmdArgs, rootConfig.DockerLog)
 			if err != nil {
-				return errors.Errorf("Error during docker build: %v", err)
+				return err
 			}
 
 			// build up stack struct for the new stack
@@ -392,6 +430,9 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 	stackPackageCmd.PersistentFlags().StringVar(&imageNamespace, "image-namespace", "appsody", "Namespace used for creating the images.")
 	stackPackageCmd.PersistentFlags().StringVar(&imageRegistry, "image-registry", "dev.local", "Registry used for creating the images.")
+	stackPackageCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of Docker.")
+	stackPackageCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the Docker build options to use. Value must be in \"\". The following Docker options are not supported: '--help','-t','--tag','-f','--file'.")
+	stackPackageCmd.PersistentFlags().StringVar(&config.buildahBuildOptions, "buildah-options", "", "Specify the buildah build options to use. Value must be in \"\".")
 
 	return stackPackageCmd
 }
