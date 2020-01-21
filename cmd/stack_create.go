@@ -95,7 +95,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			extractDir := filepath.Join(getHome(rootConfig), "extract")
 			extractDirFile := filepath.Join(extractDir, extractFilename)
 
-			// Get Repository directory and umarshal
+			// Get Repository directory and unmarshal
 			repoDir := getRepoDir(rootConfig)
 			var repoFile RepositoryFile
 			source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
@@ -108,7 +108,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
 			}
 
-			// get specificed repo and umarshal
+			// get specificed repo and unmarshal
 			repoEntry := repoFile.GetRepo(repoID)
 
 			// error if repo not found in repository.yaml
@@ -116,6 +116,10 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
 			}
 			repoEntryURL := repoEntry.URL
+
+			if repoEntryURL == "" {
+				return errors.Errorf("URL for specified repository is empty")
+			}
 
 			var repoIndex IndexYaml
 			tempRepoIndex := filepath.Join(extractDir, "index.yaml")
@@ -149,11 +153,14 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 					return oldCreateMethod(rootConfig.LoggingConfig, rootConfig, config, stack, currentTime)
 				}
 
-				// download source.tar.gz of selected file
+				// download source.tar.gz of selected stack source
 				err = downloadFileToDisk(rootConfig.LoggingConfig, stackEntryURL, extractDirFile, config.Dryrun)
 				if err != nil {
 					return err
 				}
+
+				//deleting the stacks targz
+				defer os.Remove(extractDirFile)
 
 				extractFile, err := os.Open(extractDirFile)
 				if err != nil {
@@ -165,8 +172,6 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 					return untarErr
 				}
 
-				//deleting the stacks targz
-				os.Remove(extractDirFile)
 				rootConfig.Info.log("Stack created: ", stack)
 			} else {
 				rootConfig.Info.log("Dry run complete")
@@ -178,10 +183,10 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 	return stackCmd
 }
 
-func getStack(r *IndexYaml, name string) *IndexYamlStack {
-	for _, rf := range r.Stacks {
-		if rf.ID == name {
-			return &rf
+func getStack(stackList *IndexYaml, name string) *IndexYamlStack {
+	for _, stackFound := range stackList.Stacks {
+		if stackFound.ID == name {
+			return &stackFound
 		}
 	}
 	return nil
