@@ -127,7 +127,19 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	t.Log(outBuffer.String())
 	t.Logf("Directory copy of %s to %s was successful \n", testDirPath, testDir)
 
-	configFolders := []string{"bad_format_repository_config", "default_repository_config", "empty_repository_config", "multiple_repository_config"}
+	configFolders := []string{}
+	files, err := ioutil.ReadDir(sandbox.TestDataPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Compile an array of the repository files in the test directory
+	for _, f := range files {
+		if strings.Contains(f.Name(), "_repository_") {
+			configFolders = append(configFolders, f.Name())
+		}
+	}
+
 	for _, config := range configFolders {
 		file, err := ioutil.ReadFile(filepath.Join(sandbox.TestDataPath, config, "config.yaml"))
 		if err != nil {
