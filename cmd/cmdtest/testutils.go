@@ -87,11 +87,13 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	sandbox.ProjectDir = filepath.Join(testDir, sandbox.ProjectName)
 	sandbox.ConfigDir = filepath.Join(testDir, "config")
 	sandbox.TestDataPath = filepath.Join(testDir, "testdata")
+
 	err = os.MkdirAll(sandbox.ProjectDir, 0755)
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
 	}
 	t.Log("Created testing project dir: ", sandbox.ProjectDir)
+
 	err = os.MkdirAll(sandbox.ConfigDir, 0755)
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
@@ -105,9 +107,11 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Error("Error writing config file: ", err)
 	}
+
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
+
 	file, err := cmd.Exists(testDirPath)
 	if err != nil {
 		t.Fatalf("Cannot find source directory %s to copy. Error: %v", testDirPath, err)
@@ -115,18 +119,21 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if !file {
 		t.Fatalf("The file %s could not be found.", testDirPath)
 	}
+
 	err = cmd.CopyDir(log, testDirPath, sandbox.TestDataPath)
 	if err != nil {
 		t.Fatalf("Could not copy %s to %s - output of copy command %s", testDirPath, testDir, err)
 	}
-	t.Logf("Directory copy of %s to %s was successful \n", testDirPath, testDir)
 	t.Log(outBuffer.String())
+	t.Logf("Directory copy of %s to %s was successful \n", testDirPath, testDir)
+
 	configFolders := []string{"bad_format_repository_config", "default_repository_config", "empty_repository_config", "multiple_repository_config"}
 	for _, config := range configFolders {
 		file, err := ioutil.ReadFile(filepath.Join(sandbox.TestDataPath, config, "config.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		lines := strings.Split(string(file), "\n")
 		for i, line := range lines {
 			if strings.Contains(line, "home:") {
@@ -134,12 +141,14 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 				lines[i] = "home: " + filepath.Join(testDir, oldLine[1])
 			}
 		}
+
 		output := strings.Join(lines, "\n")
 		err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, config, "config.yaml"), []byte(output), 0644)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
+
 	cleanupFunc := func() {
 		if CLEANUP {
 			err := os.RemoveAll(testDir)
@@ -163,13 +172,16 @@ func (s *TestSandbox) SetConfigInTestData(pathUnderTestdata string) {
 // The stdout and stderr are captured, printed and returned
 // args will be passed to the appsody command
 func RunAppsody(t *TestSandbox, args ...string) (string, error) {
+
 	if t.Verbose && !(inArray(args, "-v") || inArray(args, "--verbose")) {
 		args = append(args, "-v")
 	}
+
 	if !inArray(args, "--config") {
 		// Set appsody args to use custom home directory.
 		args = append(args, "--config", t.ConfigFile)
 	}
+
 	// // Buffer cmd output, to be logged if there is a failure
 	var outBuffer bytes.Buffer
 	// Direct cmd console output to a buffer
