@@ -16,6 +16,7 @@ package functest
 import (
 	"bytes"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -59,7 +60,7 @@ func TestPackageDockerOptions(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	err := cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
 	if err != nil {
 		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
@@ -84,6 +85,11 @@ func TestPackageDockerOptions(t *testing.T) {
 }
 
 func TestPackageBuildah(t *testing.T) {
+
+	if runtime.GOOS != "linux" {
+		t.Skip()
+	}
+
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
@@ -91,7 +97,7 @@ func TestPackageBuildah(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	err := cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
 	if err != nil {
 		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
@@ -117,6 +123,11 @@ func TestPackageBuildah(t *testing.T) {
 }
 
 func TestPackageBuildahWithOptions(t *testing.T) {
+
+	if runtime.GOOS != "linux" {
+		t.Skip()
+	}
+
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
@@ -124,7 +135,7 @@ func TestPackageBuildahWithOptions(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	err := cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
 	if err != nil {
 		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
