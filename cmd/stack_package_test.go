@@ -232,16 +232,11 @@ func TestPackageNoStackYamlFail(t *testing.T) {
 	log.InitLogging(&outBuffer, &outBuffer)
 
 	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
+	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
 	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	}
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
@@ -295,16 +290,11 @@ func TestPackageInvalidStackYamlFail(t *testing.T) {
 	log.InitLogging(&outBuffer, &outBuffer)
 
 	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
+	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
 	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	}
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
@@ -375,16 +365,11 @@ func TestPackageNoTemplates(t *testing.T) {
 	log.InitLogging(&outBuffer, &outBuffer)
 
 	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
+	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
 	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	}
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
@@ -433,16 +418,11 @@ func TestPackageInvalidCustomVars(t *testing.T) {
 	log.InitLogging(&outBuffer, &outBuffer)
 
 	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
+	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
 	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	}
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
@@ -513,16 +493,11 @@ func TestPackageInvalidCustomVarMap(t *testing.T) {
 	log.InitLogging(&outBuffer, &outBuffer)
 
 	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
+	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
 	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	}
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
@@ -593,16 +568,11 @@ func TestPackageInvalidVersion(t *testing.T) {
 	log.InitLogging(&outBuffer, &outBuffer)
 
 	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
+	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
 	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
 	}
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'

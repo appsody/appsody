@@ -279,7 +279,7 @@ func extract(config *extractCommandConfig) error {
 				config.Debug.log("Copy source: ", src)
 				config.Debug.log("Copy destination: ", dest)
 				if fileInfo.IsDir() {
-					err = CopyDir(config.LoggingConfig, src+"/.", dest)
+					err = CopyDir(config.LoggingConfig, src, dest)
 					if err != nil {
 						return errors.Errorf("folder copy error %v", err)
 					}
