@@ -47,6 +47,9 @@ An asterisk in the repository column denotes the default repository. An asterisk
 			if _, err := repos.getRepos(rootConfig); err != nil {
 				return err
 			}
+			if len(args) > 1 {
+				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
+			}
 			//var index RepoIndex
 			if len(args) < 1 {
 				projects, err := repos.listProjects(rootConfig)
@@ -82,7 +85,6 @@ An asterisk in the repository column denotes the default repository. An asterisk
 					result := string(bytes)
 					rootConfig.Info.log("\n", result)
 				}
-
 			} else {
 				repoName := args[0]
 				_, err := repos.getRepos(rootConfig)
@@ -123,7 +125,6 @@ An asterisk in the repository column denotes the default repository. An asterisk
 					rootConfig.Info.log("\n", result)
 				}
 			}
-
 			return nil
 		},
 	}

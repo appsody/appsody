@@ -81,8 +81,8 @@ var repoAddErrorTests = []struct {
 	args          []string // input
 	expectedError string   // expected to be in the error message
 }{
-	{"No args", nil, "you must specify repository name and URL"},
-	{"One arg", []string{"reponame"}, "you must specify repository name and URL"},
+	{"No args", nil, "you must specify a repository name and URL"},
+	{"One arg", []string{"reponame"}, "you must specify a repository name and URL"},
 	{"No url scheme", []string{"test", "localhost"}, "unsupported protocol scheme"},
 	{"Non-existing url", []string{"test", "http://localhost/doesnotexist"}, "refused"},
 	{"Repo name over 50 characters", []string{"reponametoolongtestreponametoolongtestreponametoolongtest", "http://localhost/doesnotexist"}, "must be less than 50 characters"},
@@ -90,6 +90,7 @@ var repoAddErrorTests = []struct {
 	{"Repo name already exists", []string{"incubator", "http://localhost/doesnotexist"}, "already exists"},
 	{"Url already exists", []string{"test", "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"}, "already exists"},
 	{"Badly formatted repo config", []string{"test", "http://localhost/doesnotexist", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
+	{"Too many arguments", []string{"too", "many", "arguments"}, "Two arguments expected."},
 }
 
 func TestRepoAddErrors(t *testing.T) {

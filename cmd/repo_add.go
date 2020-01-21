@@ -26,15 +26,17 @@ import (
 func newRepoAddCmd(config *RootCommandConfig) *cobra.Command {
 	// initCmd represents the init command
 	var addCmd = &cobra.Command{
-		Use:   "add <name> <url>",
+		Use:   "add <repository> <url>",
 		Short: "Add an Appsody repository.",
 		Long:  `Add an Appsody repository to your list of configured Appsody repositories.`,
 		Example: `  appsody repo add my-local-repo file:///absolute/path/to/my-local-repo.yaml
   Adds the "my-local-repo" repository, specified by the "file:///absolute/path/to/my-local-repo.yaml" file to your list of repositories.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
-
-				return errors.New("Error, you must specify repository name and URL")
+				return errors.New("you must specify a repository name and URL")
+			}
+			if len(args) > 2 {
+				return errors.Errorf("Two arguments expected. Use 'appsody [command] --help' for more information about a command")
 			}
 			return repoAdd(args[0], args[1], config)
 		},
