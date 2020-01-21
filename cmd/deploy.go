@@ -56,7 +56,9 @@ The command performs the following steps:
 
 1. Runs the appsody build command to build the container image for deployment.
 2. Generates a deployment manifest file, "app-deploy.yaml", if one is not present, then applies it to your Kubernetes cluster.
-3. Deploys your image to your Kubernetes cluster via the Appsody operator, or as a Knative service if you specify the "--knative" flag. If an Appsody operator cannot be found, one will be installed on your cluster.`,
+3. Deploys your image to your Kubernetes cluster via the Appsody operator, or as a Knative service if you specify the "--knative" flag. If an Appsody operator cannot be found, one will be installed on your cluster.
+
+Run this command from the root directory of your Appsody project.`,
 		Example: `  appsody deploy --namespace my-namespace
   Builds and deploys your project to the "my-namespace" namespace in your local Kubernetes cluster.
   
@@ -64,6 +66,9 @@ The command performs the following steps:
   Builds and tags the image as "my-repo/nodejs-express", pushes the image to "external-registry-url/my-repo/nodejs-express", and creates a deployment manifest that tells the Kubernetes cluster to pull the image from "internal-registry-url/my-repo/nodejs-express".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			if len(args) > 0 {
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
+			}
 			projectDir, err := getProjectDir(config.RootCommandConfig)
 			if err != nil {
 				return err
