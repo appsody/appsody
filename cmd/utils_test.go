@@ -571,14 +571,12 @@ func TestCopyFileFailPermissions(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error creating the file: %v", err)
 	}
-	println("existing file:", existingFile)
 
 	err = os.Mkdir(existingDir, 4440)
 
 	if err != nil {
 		t.Errorf("Error creating the directory: %v", err)
 	}
-	println("existingDir: ", existingDir)
 
 	err = cmd.CopyFile(log, existingFile, existingDir)
 
