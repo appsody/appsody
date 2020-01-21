@@ -478,29 +478,14 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 
 	return projectName, nil
 }
-func getStackRegistry(config *RootCommandConfig) (string, error) {
-	defaultStackRegistry := "docker.io"
-	_, err := getProjectDir(config)
-	if err != nil {
-		return defaultStackRegistry, err
+func getDefaultStackRegistry(config *RootCommandConfig) string {
+	defaultStackRegistry := config.CliConfig.Get("images").(string)
+	if defaultStackRegistry == "" {
+		config.Debug.Log("Appsody config file does not contain a default stack registry images property - setting it to docker.io")
+		defaultStackRegistry = "docker.io"
 	}
-	// check to see if project-name is set in .appsody-config.yaml
-	projectConfig, err := getProjectConfig(config)
-	if err != nil {
-		return defaultStackRegistry, err
-	}
-	if stack := projectConfig.Stack; stack != "" {
-		// stack is in .appsody-config.yaml
-		stackElements := strings.Split(stack, "/")
-		if len(stackElements) == 3 {
-			return stackElements[0], nil
-		}
-		if len(stackElements) < 3 {
-			return defaultStackRegistry, nil
-		}
-		return "", errors.Errorf("Invalid stack image name detected in project config file: %s", stack)
-	}
-	return defaultStackRegistry, nil
+	config.Debug.Log("Default stack registry set to: ", defaultStackRegistry)
+	return defaultStackRegistry
 }
 
 func saveProjectNameToConfig(projectName string, config *RootCommandConfig) error {
@@ -532,60 +517,107 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 	config.Info.log("Your Appsody project name has been set to ", projectName)
 	return nil
 }
+func setStackRegistry(stackRegistry string, config *RootCommandConfig) error {
 
-func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
-
-	if config.ProjectConfig == nil {
-		dir, perr := getProjectDir(config)
-		if perr != nil {
-			return nil, perr
-		}
-		appsodyConfig := filepath.Join(dir, ConfigFile)
-
-		v := viper.New()
-		v.SetConfigFile(appsodyConfig)
-		config.Debug.log("Project config file set to: ", appsodyConfig)
-
-		err := v.ReadInConfig()
-
-		if err != nil {
-			return nil, errors.Errorf("Error reading project config %v", err)
-		}
-
-		var projectConfig ProjectConfig
-		err = v.Unmarshal(&projectConfig)
-		if err != nil {
-			return &projectConfig, errors.Errorf("Error reading project config %v", err)
-
-		}
-
-		// TODO We should consider refactoring the following code. There is a circular dependency between
-		// getProjectConfig(), getStackRegistry(), and setting config.StackRegistry which is especially
-		// concering with the `if config.ProjectConfig == nil` caching of this method.
-		stack := v.GetString("stack")
-		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
-		imageRepo := config.CliConfig.GetString("images")
-		config.Debug.log("Image repository set to: ", imageRepo)
-		projectConfig.Stack = stack
-		imageComponents := strings.Split(projectConfig.Stack, "/")
-		if len(imageComponents) < 3 {
-			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
-		}
-		//Override the stack registry URL
-		projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
-		if err != nil {
-			return &projectConfig, err
-		}
-
-		//Buildah cannot pull from index.docker.io - only pulls from docker.io
-		projectConfig.Stack, err = NormalizeImageName(projectConfig.Stack)
-		if err != nil {
-			return &projectConfig, err
-		}
-
-		config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
-		config.ProjectConfig = &projectConfig
+	// Read in the config
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+	if err != nil {
+		return err
 	}
+	stackImageName, err := OverrideStackRegistry(stackRegistry, v.Get("stack").(string))
+	if err != nil {
+		return err
+	}
+	stackImageName, err = NormalizeImageName(stackImageName)
+	if err != nil {
+		return err
+	}
+	v.Set("stack", stackImageName)
+	err = v.WriteConfig()
+	if err != nil {
+		return err
+	}
+	config.Info.log("Your Appsody project stack has been set to ", stackImageName)
+	return nil
+}
+func getProjectConfigFileContents(config *RootCommandConfig) (*ProjectConfig, error) {
+
+	dir, perr := getProjectDir(config)
+	if perr != nil {
+		return nil, perr
+	}
+	appsodyConfig := filepath.Join(dir, ConfigFile)
+
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	config.Debug.log("Project config file set to: ", appsodyConfig)
+
+	err := v.ReadInConfig()
+
+	if err != nil {
+		return nil, errors.Errorf("Error reading project config %v", err)
+	}
+
+	var projectConfig ProjectConfig
+	err = v.Unmarshal(&projectConfig)
+	if err != nil {
+		return &projectConfig, errors.Errorf("Error reading project config %v", err)
+	}
+	return &projectConfig, nil
+}
+func getStackRegistryFromConfigFile(config *RootCommandConfig) (string, error) {
+	projectConfig, err := getProjectConfigFileContents(config)
+	if err != nil {
+		return "", err
+	}
+
+	if stack := projectConfig.Stack; stack != "" {
+		// stack is in .appsody-config.yaml
+		stackElements := strings.Split(stack, "/")
+		if len(stackElements) == 3 {
+			config.Debug.Log("Stack registry detected in project config file: ", stackElements[0])
+			return stackElements[0], nil
+		}
+		if len(stackElements) < 3 {
+			return "", nil
+		}
+		return "", errors.Errorf("Invalid stack image name detected in project config file: %s", stack)
+	}
+	return "", errors.New("No stack image name detected in project config file")
+
+}
+func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
+	if config.ProjectConfig != nil {
+		return config.ProjectConfig, nil
+	}
+	projectConfig, err := getProjectConfigFileContents(config)
+	if err != nil {
+		return nil, err
+	}
+
+	imageComponents := strings.Split(projectConfig.Stack, "/")
+	if len(imageComponents) < 3 {
+		imageRepo := config.CliConfig.GetString("images")
+		config.Debug.log("Image repository in the appsody config file: ", imageRepo)
+		projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
+	}
+	//Override the stack registry URL
+	projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
+	if err != nil {
+		return projectConfig, err
+	}
+
+	//Buildah cannot pull from index.docker.io - only pulls from docker.io
+	projectConfig.Stack, err = NormalizeImageName(projectConfig.Stack)
+	if err != nil {
+		return projectConfig, err
+	}
+
+	config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
+	config.ProjectConfig = projectConfig
 	return config.ProjectConfig, nil
 }
 

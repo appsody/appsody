@@ -54,15 +54,16 @@ type LoggingConfig struct {
 type RootCommandConfig struct {
 	*LoggingConfig
 
-	CfgFile          string
-	Dryrun           bool
-	Verbose          bool
-	CliConfig        *viper.Viper
-	Buildah          bool
-	ProjectConfig    *ProjectConfig
-	ProjectDir       string
-	UnsupportedRepos []string
-	StackRegistry    string
+	CfgFile           string
+	Dryrun            bool
+	Verbose           bool
+	CliConfig         *viper.Viper
+	Buildah           bool
+	ProjectConfig     *ProjectConfig
+	ProjectDir        string
+	UnsupportedRepos  []string
+	StackRegistry     string
+	StackRegistryInit string
 
 	// package scoped, these are mostly for caching
 	setupConfigRun bool
