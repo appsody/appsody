@@ -83,8 +83,11 @@ func operatorInstall(config *operatorInstallCommandConfig) error {
 		if existingOperatorWatchspace == "" {
 			existingOperatorWatchspace = "all namespaces"
 		}
-		if existingOperatorWatchspace != operatorNamespace {
-			return errors.Errorf("An Appsody operator already exists in namespace %s but is watching another namespace: %s. Contact your cluster administrator for more details.", operatorNamespace, existingOperatorWatchspace)
+		watchSpaces := getWatchSpaces(existingOperatorWatchspace, config.Dryrun)
+		for _, existingWatchspace := range watchSpaces {
+			if existingWatchspace != operatorNamespace {
+				return errors.Errorf("An Appsody operator already exists in namespace %s but is watching another namespace: %s. Contact your cluster administrator for more details.", operatorNamespace, existingOperatorWatchspace)
+			}
 		}
 		return errors.Errorf("An operator already exists in namespace %s and it is watching the %s namespace.", operatorNamespace, existingOperatorWatchspace)
 	}
