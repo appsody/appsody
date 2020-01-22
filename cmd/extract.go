@@ -99,6 +99,8 @@ func extract(config *extractCommandConfig) error {
 		}
 	}
 
+	// Even if targetDir is specified, we still extract to ~/.appsody/extract first because if the user's
+	// targetDir is in the project it would turn into a recursive copy
 	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract")
 	extractDirExists, err := Exists(extractDir)
 	if err != nil {
@@ -136,12 +138,15 @@ func extract(config *extractCommandConfig) error {
 		return pullErr
 	}
 
+	// Gets the project path within the container to extract
 	containerProjectDir, containerProjectDirErr := getExtractDir(config.RootCommandConfig)
 	if containerProjectDirErr != nil {
 		return containerProjectDirErr
 	}
 	config.Debug.log("Container project dir: ", containerProjectDir)
 
+	// Now we need to create a container with the same volume mappings as we would with the run/debug/test commands
+	// using the `docker create` or `buildah from` command
 	volumeMaps, volumeErr := getVolumeArgs(config.RootCommandConfig)
 	if volumeErr != nil {
 		return volumeErr
@@ -156,10 +161,15 @@ func extract(config *extractCommandConfig) error {
 		cmdArgs = append(cmdArgs, volumeMaps...)
 	}
 
+	// When done, or if something goes wrong, remove the temporary container
 	defer func() {
-		removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
-		if removeErr != nil {
-			config.Warning.log("Ignoring container remove error ", removeErr)
+		if config.Dryrun {
+			config.Info.log("Dry Run - Skip container remove: ", extractContainerName)
+		} else {
+			removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
+			if removeErr != nil {
+				config.Warning.log("Ignoring container remove error ", removeErr)
+			}
 		}
 	}()
 
@@ -190,92 +200,98 @@ func extract(config *extractCommandConfig) error {
 		// and navigate all the symlinks using cp -rL
 		// then extract /tmp/project and remove the container
 
+		// We can't use CopyDir() func here because it needs to run in the container
 		bashCmd := "cp -rfL " + filepath.ToSlash(containerProjectDir) + " " + filepath.ToSlash(filepath.Join("/tmp", containerProjectDir))
-
-		config.Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
-		_, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd, config.RootCommandConfig)
-		if err != nil {
-			return errors.Errorf("Error attempting to run copy command %s on image %s: %v", bashCmd, stackImage, err)
+		if config.Dryrun {
+			config.Info.log("Dry Run - Skip running ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
+		} else {
+			config.Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
+			_, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd, config.RootCommandConfig)
+			if err != nil {
+				return errors.Errorf("Error attempting to run copy command %s on image %s: %v", bashCmd, stackImage, err)
+			}
 		}
 		//If everything went fine, we need to set the source project directory to /tmp/...
 		appDir = extractContainerName + ":" + filepath.Join("/tmp", containerProjectDir)
 	}
 
+	// Now we need to copy files out of the container using the `docker cp` or `buildah mount` commands
 	if config.Buildah {
-
+		// In buildah, we need to mount the container filesystem then manually copy the files out
 		cmdArgs := []string{"mount", extractContainerName}
-		config.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
-		buildahMountCmd := exec.Command(cmdName, cmdArgs...)
-		buildahMountOutput, err := SeparateOutput(buildahMountCmd)
-		if err != nil {
-			return errors.Errorf("buildah mount command failed: %v", err)
-		}
-		config.Debug.Log("Output of buildah mount command: ", buildahMountOutput)
 
-		appDir = filepath.Join(buildahMountOutput, containerProjectDir)
-		err = CopyDir(config.LoggingConfig, appDir, extractDir)
-		if err != nil {
-			return errors.Errorf("Problem copying directory %s to %s %v", appDir, extractDir, err)
-		}
+		if config.Dryrun {
+			config.Info.log("Dry Run - Skip running buildah mount and copying files")
+		} else {
+			config.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
+			buildahMountCmd := exec.Command(cmdName, cmdArgs...)
+			buildahMountOutput, err := SeparateOutput(buildahMountCmd)
+			if err != nil {
+				return errors.Errorf("buildah mount command failed: %v", err)
+			}
+			config.Debug.Log("Output of buildah mount command: ", buildahMountOutput)
 
-		// A class of systems (e.g:- RHEL 7.6) exhibit situations wherein
-		// the bindmount volumes are not propagated to the child containers
-		// Accommodate those systems as well, by performing local copies
-		// for the locations that are resident in the host.
-		// ref: https://github.com/containers/buildah/issues/1821
-		for _, item := range volumeMaps {
-			if strings.Contains(item, ":") {
-				config.Debug.log("Appsody mount: ", item)
-				var src = strings.Split(item, ":")[0]
-				var dest = strings.Split(item, ":")[1]
-				if strings.EqualFold(src, ".") {
-					// This should probably be using config.ProjectDir instead of os.Getwd()
-					src, err = os.Getwd()
-					if err != nil {
-						return errors.Errorf("Error getting cwd: %v", err)
+			appDir = filepath.Join(buildahMountOutput, containerProjectDir)
+			err = CopyDir(config.LoggingConfig, appDir, extractDir)
+			if err != nil {
+				return errors.Errorf("Problem copying directory %s to %s: %v", appDir, extractDir, err)
+			}
+
+			// A class of systems (e.g:- RHEL 7.6) exhibit situations wherein
+			// the bindmount volumes are not propagated to the child containers
+			// Accommodate those systems as well, by performing local copies
+			// for the locations that are resident in the host.
+			// ref: https://github.com/containers/buildah/issues/1821
+			for _, item := range volumeMaps {
+				if strings.Contains(item, ":") {
+					config.Debug.log("Appsody mount: ", item)
+					var src = strings.Split(item, ":")[0]
+					var dest = strings.Split(item, ":")[1]
+					if strings.EqualFold(src, ".") {
+						src = config.ProjectDir
 					}
-				}
-				dest = strings.Replace(dest, containerProjectDir, extractDir, -1)
-				config.Debug.log("Local-adjusted mount destination: ", dest)
+					dest = strings.Replace(dest, containerProjectDir, extractDir, -1)
+					config.Debug.log("Local-adjusted mount destination: ", dest)
 
-				destExists, err := Exists(dest)
-				if err != nil {
-					return errors.Errorf("Error checking file exists: %v", err)
-				}
-				if destExists {
-					config.Debug.log("Deleting dest: ", dest)
-					os.RemoveAll(dest)
-				}
-
-				mkdir := filepath.Dir(dest)
-				config.Debug.Log("Running mkdir ", mkdir)
-				err = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
-				if err != nil {
-					return errors.Errorf("Error creating directories %s %v", extractDir, err)
-				}
-
-				fileInfo, err := os.Lstat(src)
-				if err != nil {
-					return errors.Errorf("project file check error %v", err)
-				}
-				config.Debug.log("Copy source: ", src)
-				config.Debug.log("Copy destination: ", dest)
-				if fileInfo.IsDir() {
-					err = CopyDir(config.LoggingConfig, src, dest)
+					destExists, err := Exists(dest)
 					if err != nil {
-						return errors.Errorf("folder copy error %v", err)
+						return errors.Errorf("Error checking file exists: %v", err)
 					}
-				} else {
-					err = CopyFile(config.LoggingConfig, src, dest)
+					if destExists {
+						config.Debug.log("Deleting dest: ", dest)
+						os.RemoveAll(dest)
+					}
+
+					mkdir := filepath.Dir(dest)
+					config.Debug.Log("Running mkdir ", mkdir)
+					err = os.MkdirAll(mkdir, os.ModePerm)
 					if err != nil {
-						return errors.Errorf("file copy error %v", err)
+						return errors.Errorf("Error creating directories %s: %v", extractDir, err)
 					}
+
+					fileInfo, err := os.Lstat(src)
+					if err != nil {
+						return errors.Errorf("project file check error %v", err)
+					}
+					config.Debug.log("Copy source: ", src)
+					config.Debug.log("Copy destination: ", dest)
+					if fileInfo.IsDir() {
+						err = CopyDir(config.LoggingConfig, src, dest)
+						if err != nil {
+							return errors.Errorf("folder copy error %v", err)
+						}
+					} else {
+						err = CopyFile(config.LoggingConfig, src, dest)
+						if err != nil {
+							return errors.Errorf("file copy error %v", err)
+						}
+					}
+					config.Debug.log("Copied ", src, " to ", dest)
 				}
-				config.Debug.log("Copied ", src, " to ", dest)
 			}
 		}
-
 	} else { // not buildah
+		// Extract the files with `docker cp`
 		cmdArgs = []string{"cp", appDir, extractDir}
 		err = execAndWaitReturnErr(config.LoggingConfig, cmdName, cmdArgs, config.Debug, config.Dryrun)
 		if err != nil {
