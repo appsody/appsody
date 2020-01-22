@@ -73,7 +73,7 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 			log.Debug.Log("stackPath is: ", stackPath)
 
 			// check for templates dir, error out if its not there
-			check, err := Exists("templates")
+			check, err := Exists(filepath.Join(stackPath, "templates"))
 			if err != nil {
 				return errors.New("Error checking stack root directory: " + err.Error())
 			}

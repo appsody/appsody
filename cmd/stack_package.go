@@ -293,10 +293,10 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			log.Debug.Log("sourceDir is: ", sourceDir)
 
 			// create name for the source tar file
-			versionedArchive := filepath.Join(devLocal, stackID+".v"+stackYaml.Version+".")
+			versionedArchive := filepath.Join(devLocal, stackID+".v"+stackYaml.Version)
 			log.Debug.Log("versionedArchive is: ", versionedArchive)
 
-			versionArchiveTar := versionedArchive + "source.tar.gz"
+			versionArchiveTar := versionedArchive + ".source.tar.gz"
 			log.Debug.Log("versionedArdhiveTar is: ", versionArchiveTar)
 
 			// tar the files
