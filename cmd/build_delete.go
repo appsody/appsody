@@ -33,6 +33,9 @@ func newBuildDeleteCmd(config *buildCommandConfig) *cobra.Command {
 		Long:   `This allows you to delete a Githook for your Appsody project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			if len(args) > 0 {
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
+			}
 			projectName, perr := getProjectName(config.RootCommandConfig)
 			if perr != nil {
 				return errors.Errorf("%v", perr)

@@ -40,10 +40,15 @@ func newExtractCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Extract your Appsody project to a local directory.",
 		Long: `Extract the full application (the stack and your Appsody project) into a local directory.
 		
-Your project is extracted into your local '$HOME/.appsody/extract' directory, unless you use the --target-dir flag to specify a different location`,
+Your project is extracted into your local '$HOME/.appsody/extract' directory, unless you use the --target-dir flag to specify a different location.
+
+Run this command from the root directory of your Appsody project.`,
 		Example: `  appsody extract --target-dir $HOME/my-extract/directory
   Extracts your project from the container to the local '$HOME/my-extract/directory' on your system.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
+			}
 			return extract(config)
 		},
 	}
@@ -274,7 +279,7 @@ func extract(config *extractCommandConfig) error {
 				config.Debug.log("Copy source: ", src)
 				config.Debug.log("Copy destination: ", dest)
 				if fileInfo.IsDir() {
-					err = CopyDir(config.LoggingConfig, src+"/.", dest)
+					err = CopyDir(config.LoggingConfig, src, dest)
 					if err != nil {
 						return errors.Errorf("folder copy error %v", err)
 					}

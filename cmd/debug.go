@@ -13,7 +13,10 @@
 // limitations under the License.
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"errors"
+	"github.com/spf13/cobra"
+)
 
 func newDebugCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	config := &devCommonConfig{RootCommandConfig: rootConfig}
@@ -21,7 +24,9 @@ func newDebugCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var debugCmd = &cobra.Command{
 		Use:   "debug",
 		Short: "Debug your Appsody project.",
-		Long:  `Start a container-based continuous build environment for your Appsody project, with debugging enabled.`,
+		Long: `Start a container-based continuous build environment for your Appsody project, with debugging enabled.
+		
+Run this command from the root directory of your Appsody project.`,
 		Example: `  appsody debug --docker-options "--privileged"
   Starts the debugging environment, passing the "--privileged" option to the "docker run" command as a flag.
   
@@ -29,6 +34,9 @@ func newDebugCmd(rootConfig *RootCommandConfig) *cobra.Command {
   Starts the debugging environment, names the development container "my-project-dev2", and binds the container port 3000 to the host port 3001.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			if len(args) > 0 {
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
+			}
 			config.Info.log("Running debug environment")
 			return commonCmd(config, "debug")
 		},
