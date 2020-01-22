@@ -33,11 +33,12 @@ func TestStackCreateDevLocal(t *testing.T) {
 	log.InitLogging(&outBuffer, &outBuffer)
 
 	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	err := cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
+	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
+	err := cmd.CopyDir(log, stackDir, targetDir)
 	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
 	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+		t.Logf("Copied %s to %s", stackDir, targetDir)
 	}
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
@@ -79,11 +80,12 @@ func TestStackCreateCustomRepo(t *testing.T) {
 	log.InitLogging(&outBuffer, &outBuffer)
 
 	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	err := cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
+	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
+	err := cmd.CopyDir(log, stackDir, targetDir)
 	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
+		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
 	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
+		t.Logf("Copied %s to %s", stackDir, targetDir)
 	}
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'

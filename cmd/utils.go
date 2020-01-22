@@ -2050,12 +2050,12 @@ func downloadFileToDisk(log *LoggingConfig, url string, destFile string, dryrun 
 
 // tar and zip a directory into .tar.gz
 func Targz(log *LoggingConfig, source, target, filename string) error {
-	log.Info.log("source is: ", source)
-	log.Info.log("filename is: ", filename)
-	log.Info.log("target is: ", target)
+	log.Debug.log("source is: ", source)
+	log.Debug.log("filename is: ", filename)
+	log.Debug.log("target is: ", target)
 	target = target + filename + ".tar.gz"
 	//target = filepath.Join(target, fmt.Sprintf("%s.tar.gz", filename))
-	log.Info.log("new target is: ", target)
+	log.Info.log(filename, " archive file created at : ", target)
 	tarfile, err := os.Create(target)
 	if err != nil {
 		return err
