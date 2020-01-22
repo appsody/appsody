@@ -27,19 +27,25 @@ var repoSetDefaultLogsTests = []struct {
 	args         []string // input
 	expectedLogs string   // logs that are expected in the output
 }{
-	{"No args", nil, "must specify desired default repository"},
+	{"No args", nil, "must specify the repository to set as the default"},
 	{"Existing default repo", []string{"incubator"}, "default repository has already been set to"},
 	{"Non-existing repo", []string{"test"}, "not in your configured list of repositories"},
 	{"Badly formatted repo config", []string{"test", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
+	{"Too many arguments", []string{"too", "many", "arguments"}, "One argument expected."},
 }
 
 func TestRepoSetDefaultLogs(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
 
-	for _, tt := range repoSetDefaultLogsTests {
+	for _, testData := range repoSetDefaultLogsTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 
 			args := append([]string{"repo", "set-default"}, tt.args...)
 			output, err := cmdtest.RunAppsody(sandbox, args...)

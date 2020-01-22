@@ -15,6 +15,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -39,7 +40,11 @@ func newCompletionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command
 	3. Make sure to copy the appsody completion file generated above into the appropriate directory for your Linux distribution e.g.
 	appsody completion >  /etc/bash_completion.d/appsody`,
 
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			if len(args) > 0 {
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
+			}
 			buf := new(bytes.Buffer)
 
 			log.Debug.log("Running bash completion script")
@@ -65,7 +70,7 @@ func newCompletionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command
 				spaceTab + spaceTab + "j=i+1\n" + "thecmd=${arr[i]}/${arr[j]}\n" + "commands+=(\"${thecmd}\")\n" + spaceTab + "done\n"
 
 			fmt.Println(header + afterAppsodyDevInit[0] + "_appsody_init()\n" + strings.Replace(afterAppsodyDevInit[1], "flags=()", extra, 1))
-
+			return nil
 		},
 	}
 

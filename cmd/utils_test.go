@@ -17,8 +17,10 @@ package cmd_test
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -43,7 +45,12 @@ var validProjectNameTests = []string{
 
 func TestValidProjectNames(t *testing.T) {
 
-	for _, test := range validProjectNameTests {
+	for _, testData := range validProjectNameTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
 		t.Run(fmt.Sprintf("Test Valid Project Name \"%s\"", test), func(t *testing.T) {
 			isValid, err := cmd.IsValidProjectName(test)
 			if err != nil {
@@ -88,7 +95,12 @@ var invalidProjectNameTests = []struct {
 
 func TestInvalidProjectNames(t *testing.T) {
 
-	for _, test := range invalidProjectNameTests {
+	for _, testData := range invalidProjectNameTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
 		t.Run(fmt.Sprintf("Test Invalid Project Name \"%s\"", test.input), func(t *testing.T) {
 			isValid, err := cmd.IsValidProjectName(test.input)
 			if err == nil {
@@ -139,11 +151,14 @@ var invalidCmdsTest = []struct {
 
 func TestInvalidCmdOutput(t *testing.T) {
 
-	for _, test := range invalidCmdsTest {
-
-		invalidCmd := exec.Command(test.cmd, test.args...)
+	for _, testData := range invalidCmdsTest {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
 
 		t.Run(fmt.Sprintf("Test Invalid "+test.cmd+" Command"), func(t *testing.T) {
+			invalidCmd := exec.Command(test.cmd, test.args...)
 			out, err := cmd.SeparateOutput(invalidCmd)
 			if err == nil {
 				t.Error("Expected an error from '", test.cmd, strings.Join(test.args, " "), "' but it did not return one.")
@@ -175,7 +190,13 @@ var convertLabelTests = []struct {
 }
 
 func TestConvertLabelToKubeFormat(t *testing.T) {
-	for _, test := range convertLabelTests {
+
+	for _, testData := range convertLabelTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
 		t.Run(test.input, func(t *testing.T) {
 			output, err := cmd.ConvertLabelToKubeFormat(test.input)
 			if err != nil {
@@ -196,7 +217,13 @@ var invalidConvertLabelTests = []string{
 }
 
 func TestInvalidConvertLabelToKubeFormat(t *testing.T) {
-	for _, test := range invalidConvertLabelTests {
+
+	for _, testData := range invalidConvertLabelTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
 		t.Run(test, func(t *testing.T) {
 			_, err := cmd.ConvertLabelToKubeFormat(test)
 			if err == nil {
@@ -218,7 +245,13 @@ var getUpdateStringTests = []struct {
 }
 
 func TestGetUpdateString(t *testing.T) {
-	for _, test := range getUpdateStringTests {
+
+	for _, testData := range getUpdateStringTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
 		t.Run(test.input, func(t *testing.T) {
 			output := cmd.GetUpdateString(test.input, test.version, test.latest)
 			expectedOutput := fmt.Sprintf("\n*\n*\n*\n\nA new CLI update is available.\n%s from %s --> %s.\n\n*\n*\n*\n", test.updateString, test.version, test.latest)
@@ -233,7 +266,13 @@ func TestGetUpdateString(t *testing.T) {
 func TestNormalizeImageName(t *testing.T) {
 	testImageNames := []string{"ubuntu", "ubuntu:latest", "ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "index.docker.io/appsody/nodejs-express:0.2", "myregistry.com:8080/appsody/nodejs-express:0.2", "yada/yada/yada/yada"}
 	normalizedTestImageNames := []string{"docker.io/ubuntu", "docker.io/ubuntu:latest", "docker.io/ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "myregistry.com:8080/appsody/nodejs-express:0.2"}
-	for idx, imageName := range testImageNames {
+
+	for index, testData := range testImageNames {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		imageName := testData
+		idx := index
 
 		t.Run(imageName, func(t *testing.T) {
 			output, err := cmd.NormalizeImageName(imageName)
@@ -256,7 +295,13 @@ func TestOverrideStackRegistry(t *testing.T) {
 	testImageNames := []string{"ubuntu", "ubuntu:latest", "ubuntu:17.1", "appsody/nodejs-express:0.2", "docker.io/appsody/nodejs-express:0.2", "index.docker.io/appsody/nodejs-express:0.2", "another-registry.com:8080/appsody/nodejs-express:0.2", "yada/yada/yada/yada"}
 	override := "my-registry.com:8080"
 	normalizedTestImageNames := []string{"my-registry.com:8080/ubuntu", "my-registry.com:8080/ubuntu:latest", "my-registry.com:8080/ubuntu:17.1", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2", "my-registry.com:8080/appsody/nodejs-express:0.2"}
-	for idx, imageName := range testImageNames {
+
+	for index, testData := range testImageNames {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		imageName := testData
+		idx := index
 
 		t.Run(imageName, func(t *testing.T) {
 			output, err := cmd.OverrideStackRegistry(override, imageName)
@@ -272,14 +317,14 @@ func TestOverrideStackRegistry(t *testing.T) {
 				}
 			}
 		})
-		t.Run("No override", func(t *testing.T) {
-			output, err := cmd.OverrideStackRegistry("", "test")
-			if err != nil || output != "test" {
-				t.Errorf("Test with empty image override failed. Error: %v, output: %s", err, output)
-			}
-		})
-
 	}
+
+	t.Run("No override", func(t *testing.T) {
+		output, err := cmd.OverrideStackRegistry("", "test")
+		if err != nil || output != "test" {
+			t.Errorf("Test with empty image override failed. Error: %v, output: %s", err, output)
+		}
+	})
 }
 func TestValidateHostName(t *testing.T) {
 	testHostNames := make(map[string]bool)
@@ -297,7 +342,13 @@ func TestValidateHostName(t *testing.T) {
 	testHostNames["host-name.my-company-"] = false
 	testHostNames["host-name.-my-company"] = false
 	testHostNames["-host-name.-my-company"] = false
-	for hostName, val := range testHostNames {
+
+	for key, value := range testHostNames {
+		// need to set key and value to new variables scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		hostName := key
+		val := value
 
 		t.Run(hostName, func(t *testing.T) {
 			match, err := cmd.ValidateHostNameAndPort(hostName)
@@ -438,8 +489,8 @@ func TestMoveFailFNF(t *testing.T) {
 	err := cmd.MoveDir(log, nonExistentFile, "../")
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+		if !strings.Contains(err.Error(), "Source "+nonExistentFile+" does not exist.") {
+			t.Errorf("String \"Source "+nonExistentFile+" does not exist.\" not found in output: '%v'", err.Error())
 		}
 	} else {
 		t.Error("Expected an error to be returned from command, but error was nil")
@@ -491,7 +542,7 @@ func TestMove(t *testing.T) {
 	}
 }
 
-func TestMoveFailPermissions(t *testing.T) {
+func TestCopyFileFailPermissions(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
 	}
@@ -499,7 +550,7 @@ func TestMoveFailPermissions(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	existingFile := "iamafile"
+	existingFile := "iamafile.test"
 	existingDir := "iamadir/"
 
 	// Ensure that the fake yaml file is deleted
@@ -527,7 +578,7 @@ func TestMoveFailPermissions(t *testing.T) {
 		t.Errorf("Error creating the directory: %v", err)
 	}
 
-	err = cmd.MoveDir(log, existingFile, existingDir)
+	err = cmd.CopyFile(log, existingFile, existingDir)
 
 	if err != nil {
 		if !strings.Contains(err.Error(), "Permission denied") {
@@ -538,40 +589,278 @@ func TestMoveFailPermissions(t *testing.T) {
 	}
 }
 
-func TestCopyDirFailFNF(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip()
-	}
+func TestCopyDirFailSourceNotDir(t *testing.T) {
+	// set up logging
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	existingFile := "idoexist.bbb"
-	nonExistentFile := "idontexist.aaa"
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
-	// Ensure that the fake yaml file is deleted
-	defer func() {
-		err := os.Remove(existingFile)
-		if err != nil {
-			t.Errorf("Error removing the file: %s", err)
-		}
-	}()
+	// create the directories in the sandbox
 
-	// Attempt to create the fake file
-	_, err := os.Create(existingFile)
+	// create a base directory from sandbox
+	baseDir := sandbox.ProjectDir
+	t.Log("baseDir is: ", baseDir)
+
+	// create a source directory but don't do the os.Mkdir
+	sourceDir := filepath.Join(baseDir, "sourceDir")
+	t.Log("sourceDir is: ", sourceDir)
+
+	// create a target directory
+	targetDir := filepath.Join(baseDir, "targetDir")
+	err := os.MkdirAll(targetDir, 0755)
 	if err != nil {
-		t.Errorf("Error creating the file: %v", err)
+		t.Fatal("Error creating targetDir: ", err)
 	}
+	t.Log("Created targetDir: ", targetDir)
 
-	err = cmd.CopyDir(log, nonExistentFile, existingFile)
-
+	// copy the source directory into the target
+	// this should fail as the target can not be an existing directory
+	err = cmd.CopyDir(log, sourceDir, targetDir)
 	if err != nil {
-		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+		if !strings.Contains(err.Error(), "Source "+sourceDir+" does not exist.") {
+			t.Errorf("String \"Source "+sourceDir+" does not exist.\" not found in output: '%v'", err.Error())
 		}
 	} else {
 		t.Error("Expected an error to be returned from command, but error was nil")
 	}
+
+}
+
+func TestCopyDirFailTargetDirExistsDir(t *testing.T) {
+	// set up logging
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// create the directories in the sandbox
+
+	// create a base directory from sandbox
+	baseDir := sandbox.ProjectDir
+	t.Log("baseDir is: ", baseDir)
+
+	// create a source directory
+	sourceDir := filepath.Join(baseDir, "sourceDir")
+	err := os.MkdirAll(sourceDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating sourceDir: ", err)
+	}
+	t.Log("Created sourceDir: ", sourceDir)
+
+	// Create test file1 <name.extension>
+	file1 := filepath.Join(sourceDir, "file1.test")
+	data := []byte("home: " + sourceDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(file1, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing file1: ", err)
+	}
+	t.Log("Created file1: ", file1)
+
+	// create a target directory
+	targetDir := filepath.Join(baseDir, "targetDir")
+	err = os.MkdirAll(targetDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating sourceDir: ", err)
+	}
+	t.Log("Created sourceDir: ", sourceDir)
+
+	// copy the source directory into the target
+	// this should fail as the target can not be an existing directory
+	err = cmd.CopyDir(log, sourceDir, targetDir)
+	if err != nil {
+		if !strings.Contains(err.Error(), "Target "+targetDir+" exists. It should only be the name of the target directory for the copy") {
+			t.Errorf("String \"Target "+targetDir+" exists. It should only be the name of the target directory for the copy\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+
+}
+
+func TestCopyDirFailTargetDirExistsFile(t *testing.T) {
+	// set up logging
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// create the directories in the sandbox
+
+	// create a base directory from sandbox
+	baseDir := sandbox.ProjectDir
+	t.Log("baseDir is: ", baseDir)
+
+	// create a source directory
+	sourceDir := filepath.Join(baseDir, "sourceDir")
+	err := os.MkdirAll(sourceDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating sourceDir: ", err)
+	}
+	t.Log("Created sourceDir: ", sourceDir)
+
+	// Create target file <name.extension>
+	targetFile := filepath.Join(baseDir, "targetFile.test")
+	data := []byte("home: " + baseDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(targetFile, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing targetFile: ", err)
+	}
+	t.Log("Created targetFile: ", targetFile)
+
+	// copy the source directory into the target
+	// this should fail as the target can not be an existing directory
+	err = cmd.CopyDir(log, sourceDir, targetFile)
+	if err != nil {
+		if !strings.Contains(err.Error(), "Target "+targetFile+" exists. It should only be the name of the target directory for the copy") {
+			t.Errorf("String \"Target "+targetFile+" exists. It should only be the name of the target directory for the copy\" not found in output: '%v'", err.Error())
+		}
+	} else {
+		t.Error("Expected an error to be returned from command, but error was nil")
+	}
+
+}
+
+func TestCopyDirPass(t *testing.T) {
+	// set up logging
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	// use sandbox directories and cleanup
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// create the directories in the sandbox
+
+	// create a base directory
+	baseDir := sandbox.ProjectDir
+	t.Log("baseDir is: ", baseDir)
+
+	// create a source directory
+	sourceDir := filepath.Join(baseDir, "sourceDir")
+	err := os.MkdirAll(sourceDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating sourceDir: ", err)
+	}
+	t.Log("Created sourceDir: ", sourceDir)
+
+	// Create test file1 <name.extension>
+	file1 := filepath.Join(sourceDir, "file1.test")
+	data := []byte("home: " + sourceDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(file1, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing file1: ", err)
+	}
+	t.Log("Created file1: ", file1)
+
+	// Create test file2 <.extension>
+	file2 := filepath.Join(sourceDir, ".file2")
+	data = []byte("home: " + sourceDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(file2, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing file2: ", err)
+	}
+	t.Log("Created file2: ", file2)
+
+	// create a source sub directory
+	sourceSubDir := filepath.Join(sourceDir, "sourceSubDir")
+	err = os.MkdirAll(sourceSubDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating source sub dir: ", err)
+	}
+	t.Log("Created sourceSubDir: ", sourceSubDir)
+
+	// Create test file3 <name.extension>
+	file3 := filepath.Join(sourceSubDir, "file3.test")
+	data = []byte("home: " + sourceSubDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(file3, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing file3: ", err)
+	}
+	t.Log("Created file3: ", file3)
+
+	// Create test file4 <.extension>
+	file4 := filepath.Join(sourceSubDir, ".file4")
+	data = []byte("home: " + sourceSubDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(file4, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing file4: ", err)
+	}
+	t.Log("Created file4: ", file4)
+
+	// Create test file5 symlink
+	file5 := filepath.Join(sourceSubDir, "file5")
+	err = os.Symlink(file1, file5)
+	if err != nil {
+		t.Fatal("Error writing file5: ", err)
+	}
+	t.Log("Created file5: ", file5)
+
+	// create a target directory string but don't create the directory
+	targetDir := filepath.Join(baseDir, "targetDir")
+	t.Log("targetDir is: ", targetDir)
+
+	// create the expected files
+	var copyExpectedFiles []string
+
+	err = filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+		copyExpectedFiles = append(copyExpectedFiles, path)
+		return nil
+	})
+	if err != nil {
+		t.Fatal("Error walking expectedDir", err)
+	}
+	// println("****source files:****")
+	// for _, copyExpectedFiles := range copyExpectedFiles {
+	// 	fmt.Println(copyExpectedFiles)
+	// }
+	// replace sourceDir with targetDir as we expect the copy to just put the files from the sourceDir into the targetDir
+	for i := range copyExpectedFiles {
+		copyExpectedFiles[i] = strings.Replace(copyExpectedFiles[i], "sourceDir", "targetDir", -1)
+	}
+	// println("****copyExpectedFiles files:****")
+	// for _, copyExpectedFiles := range copyExpectedFiles {
+	// 	fmt.Println(copyExpectedFiles)
+	// }
+
+	// copy the source directory into the target
+	err = cmd.CopyDir(log, sourceDir, targetDir)
+	if err != nil {
+		t.Fatal("Error copying sourceDir to targetDir ", err)
+	}
+
+	// create the result files
+	var copyResultFiles []string
+
+	err = filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
+		copyResultFiles = append(copyResultFiles, path)
+		return nil
+	})
+	if err != nil {
+		t.Fatal("Error walking targetDir", err)
+	}
+	// println("****copyResultFiles files:****")
+	// for _, copyResultFiles := range copyResultFiles {
+	// 	fmt.Println(copyResultFiles)
+	// }
+
+	// compare the expected vs the results
+	if len(copyExpectedFiles) != len(copyResultFiles) {
+		t.Errorf("length of expected file %s array does not match length of result file array %s", copyExpectedFiles, copyResultFiles)
+	}
+	for i := range copyExpectedFiles {
+		if copyExpectedFiles[i] != copyResultFiles[i] {
+			t.Errorf("expected file %s does not match result file %s", copyExpectedFiles[i], copyResultFiles[i])
+		}
+	}
+
 }
 
 // func TestGetGitLables(t *testing.T)
@@ -1157,7 +1446,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	result4["VAR7"] = "VAL\"7"
 	result4["VAR'8"] = "VAL'8"
 
-	for _, dockerOption := range testDockerOptions1 {
+	for _, testData := range testDockerOptions1 {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		dockerOption := testData
 
 		t.Run(dockerOption, func(t *testing.T) {
 			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
@@ -1175,7 +1468,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 			}
 		})
 	}
-	for _, dockerOption := range testDockerOptions2 {
+	for _, testData := range testDockerOptions2 {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		dockerOption := testData
 
 		t.Run(dockerOption, func(t *testing.T) {
 			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
@@ -1193,7 +1490,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 			}
 		})
 	}
-	for _, dockerOption := range testDockerOptions3 {
+	for _, testData := range testDockerOptions3 {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		dockerOption := testData
 
 		t.Run(dockerOption, func(t *testing.T) {
 			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
@@ -1207,7 +1508,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 
 		})
 	}
-	for _, dockerOption := range testDockerOptions4 {
+	for _, testData := range testDockerOptions4 {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		dockerOption := testData
 
 		t.Run(dockerOption, func(t *testing.T) {
 			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)
@@ -1226,7 +1531,11 @@ func TestExtractDockerEnvVars(t *testing.T) {
 
 		})
 	}
-	for _, dockerOption := range testDockerOptions5 {
+	for _, testData := range testDockerOptions5 {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		dockerOption := testData
 
 		t.Run(dockerOption, func(t *testing.T) {
 			envVars, err := cmd.ExtractDockerEnvVars(dockerOption)

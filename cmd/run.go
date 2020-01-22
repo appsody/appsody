@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"errors"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +53,7 @@ func newRunCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Run your Appsody project in a containerized development environment.",
 		Long: `Run the local Appsody environment, starting a container-based, continuous build environment for your project.
 		
-Run this command from the root directory of your Appsody project`,
+Run this command from the root directory of your Appsody project.`,
 		Example: `  appsody run
   Runs your project in a containerized development environment.
 
@@ -63,6 +64,9 @@ Run this command from the root directory of your Appsody project`,
   Runs your project in a containerized development environment, binds the container port 3000 to the host port 3001, and passes the "--privileged" option to the "docker run" command as a flag.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			if len(args) > 0 {
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
+			}
 			rootConfig.Info.log("Running development environment...")
 			return commonCmd(config, "run")
 

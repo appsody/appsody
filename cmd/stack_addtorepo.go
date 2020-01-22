@@ -34,14 +34,15 @@ func newStackAddToRepoCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	log := rootConfig.LoggingConfig
 
 	var stackAddToRepoCmd = &cobra.Command{
-		Use:   "add-to-repo <repo-name>",
+		Use:   "add-to-repo <repository>",
 		Short: "Add stack information into a production Appsody repository",
 		Long: `Adds stack information into an Appsody repository. 
 		
-Adds stack information to a new or existing Appsody repository, specified by the <repo-name> argument. This enables you to share your stack with others.
+Adds stack information to a new or existing Appsody repository, specified by the <repository> argument. This enables you to share your stack with others.
 
-The updated repository index file is created in  ~/.appsody/stacks/dev.local directory.`,
+The updated repository index file is created in  ~/.appsody/stacks/dev.local directory.
 
+Run this command from the root directory of your Appsody project.`,
 		Example: `  appsody stack add-to-repo incubator
   Creates a new repository index file for the incubator repository, setting the template URLs to begin with a default URL of https://github.com/appsody/stacks/releases/latest/download/
 
@@ -58,6 +59,9 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 
 			if len(args) < 1 {
 				return errors.New("Required parameter missing. You must specify a repository name")
+			}
+			if len(args) > 1 {
+				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
 			}
 
 			repoName = args[0]
