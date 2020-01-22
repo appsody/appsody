@@ -15,8 +15,8 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"path/filepath"
@@ -160,6 +160,13 @@ func extract(config *extractCommandConfig) error {
 		cmdArgs = append(cmdArgs, volumeMaps...)
 	}
 
+	defer func() {
+		removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
+		if removeErr != nil {
+			config.Warning.log("Ignoring container remove error ", removeErr)
+		}
+	}()
+
 	if runtime.GOOS != "windows" {
 		// On Linux and OS/X we run docker create or buildah from
 		if config.Buildah {
@@ -177,8 +184,6 @@ func extract(config *extractCommandConfig) error {
 			} else {
 				config.Error.log("docker create command failed: ", err)
 			}
-			removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
-			config.Error.log("Error in containerRemove", removeErr)
 			return err
 
 		}
@@ -194,50 +199,34 @@ func extract(config *extractCommandConfig) error {
 		config.Debug.log("Attempting to run ", bashCmd, " on image: ", stackImage, " with args: ", cmdArgs)
 		_, err = DockerRunBashCmd(cmdArgs, stackImage, bashCmd, config.RootCommandConfig)
 		if err != nil {
-			config.Debug.log("Error attempting to run copy command ", bashCmd, " on image ", stackImage, ": ", err)
-
-			removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
-			if removeErr != nil {
-				config.Error.log("containerRemove error ", removeErr)
-			}
-
 			return errors.Errorf("Error attempting to run copy command %s on image %s: %v", bashCmd, stackImage, err)
-
 		}
 		//If everything went fine, we need to set the source project directory to /tmp/...
 		appDir = extractContainerName + ":" + filepath.Join("/tmp", containerProjectDir)
 	}
-	cmdArgs = []string{"cp", appDir, extractDir}
+
 	if config.Buildah {
-		appDir = containerProjectDir
-		cmdName = "/bin/sh"
-		script := fmt.Sprintf("x=`buildah mount %s`; cp -rf $x/%s/* %s", extractContainerName, appDir, extractDir)
-		cmdArgs = []string{"-c", script}
-	}
-	err = execAndWaitReturnErr(config.LoggingConfig, cmdName, cmdArgs, config.Debug, config.Dryrun)
-	if err != nil {
-		if config.Buildah {
-			config.Error.log("buildah mount / copy command failed: ", err)
-		} else {
-			config.Error.log("docker cp command failed: ", err)
+
+		cmdArgs := []string{"mount", extractContainerName}
+		config.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
+		buildahMountCmd := exec.Command(cmdName, cmdArgs...)
+		buildahMountOutput, err := SeparateOutput(buildahMountCmd)
+		if err != nil {
+			return errors.Errorf("buildah mount command failed: %v", err)
+		}
+		config.Debug.Log("Output of buildah mount command: ", buildahMountOutput)
+
+		appDir = filepath.Join(buildahMountOutput, containerProjectDir)
+		err = CopyDir(config.LoggingConfig, appDir, extractDir)
+		if err != nil {
+			return errors.Errorf("Problem copying directory %s to %s %v", appDir, extractDir, err)
 		}
 
-		removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
-		if removeErr != nil {
-			config.Error.log("containerRemove error ", removeErr)
-		}
-		if config.Buildah {
-			return errors.Errorf("buildah mount / copy command failed: %v", err)
-		}
-		return errors.Errorf("docker cp command failed: %v", err)
-	}
-
-	// A class of systems (e.g:- RHEL 7.6) exhibit situations wherein
-	// the bindmount volumes are not propagated to the child containers
-	// Accommodate those systems as well, by performing local copies
-	// for the locations that are resident in the host.
-	// ref: https://github.com/containers/buildah/issues/1821
-	if config.Buildah {
+		// A class of systems (e.g:- RHEL 7.6) exhibit situations wherein
+		// the bindmount volumes are not propagated to the child containers
+		// Accommodate those systems as well, by performing local copies
+		// for the locations that are resident in the host.
+		// ref: https://github.com/containers/buildah/issues/1821
 		for _, item := range volumeMaps {
 			if strings.Contains(item, ":") {
 				config.Debug.log("Appsody mount: ", item)
@@ -250,7 +239,7 @@ func extract(config *extractCommandConfig) error {
 						return errors.Errorf("Error getting cwd: %v", err)
 					}
 				}
-				dest = strings.Replace(dest, appDir, extractDir, -1)
+				dest = strings.Replace(dest, containerProjectDir, extractDir, -1)
 				config.Debug.log("Local-adjusted mount destination: ", dest)
 				fileInfo, err := os.Lstat(src)
 				if err != nil {
@@ -287,12 +276,15 @@ func extract(config *extractCommandConfig) error {
 				config.Debug.log("Copied ", src, " to ", dest)
 			}
 		}
+
+	} else { // not buildah
+		cmdArgs = []string{"cp", appDir, extractDir}
+		err = execAndWaitReturnErr(config.LoggingConfig, cmdName, cmdArgs, config.Debug, config.Dryrun)
+		if err != nil {
+			return errors.Errorf("docker cp command failed: %v", err)
+		}
 	}
 
-	removeErr := containerRemove(config.LoggingConfig, extractContainerName, config.Buildah, config.Dryrun)
-	if removeErr != nil {
-		config.Error.log("containerRemove error ", removeErr)
-	}
 	if targetDir == "" {
 		if !config.Dryrun {
 			config.Info.log("Project extracted to ", extractDir)
