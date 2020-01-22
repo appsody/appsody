@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
@@ -134,17 +135,117 @@ func TestStackCreateCustomRepo(t *testing.T) {
 
 }
 
-/*
-func TestStackCreateInvalidRepo(t *testing.T) {
+func TestStackCreateInvalidRepoFail(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "dev.local/starter"}
+	createArgs := []string{"stack", "create", "testing-stack", "--copy", "invalid/starter"}
 	_, err := cmdtest.RunAppsody(sandbox, createArgs...)
+	if err != nil {
+		if !strings.Contains(err.Error(), "Repository: invalid not found in repository.yaml file") {
+			t.Errorf("String \"Repository: invalid not found in repository.yaml file\" not found in output")
+		}
+	} else {
+		t.Error("Stack create command unexpectededly passed with an invalid repository name")
+	}
+
+}
+
+func TestStackCreateInvalidStackFail(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
+	err := cmd.CopyDir(log, stackDir, targetDir)
+	if err != nil {
+		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
+	} else {
+		t.Logf("Copied %s to %s", stackDir, targetDir)
+	}
+
+	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
+	// folder within the temp directory that has been generated for sandboxing purposes, rather than
+	// the usual core temp directory
+	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+
+	packageArgs := []string{"stack", "package"}
+	_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	createArgs := []string{"stack", "create", "testing-stack", "--copy", "dev.local/invalid"}
+	_, err = cmdtest.RunAppsody(sandbox, createArgs...)
+	if err != nil {
+		if !strings.Contains(err.Error(), "Stack not found in index") {
+			t.Errorf("String \"Stack not found in index\" not found in output")
+		}
+	} else {
+		t.Error("Stack create command unexpectededly passed with an invalid repository name")
+	}
+
 }
-*/
+func TestStackCreateInvalidURLFail(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
+	err := cmd.CopyDir(log, stackDir, targetDir)
+	if err != nil {
+		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
+	} else {
+		t.Logf("Copied %s to %s", stackDir, targetDir)
+	}
+
+	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
+	// folder within the temp directory that has been generated for sandboxing purposes, rather than
+	// the usual core temp directory
+	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+
+	packageArgs := []string{"stack", "package"}
+	_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	devlocalFolder := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
+
+	addToRepoArgs := []string{"stack", "add-to-repo", "test-repo", "--release-url", "file://invalidurl/"}
+
+	_, err = cmdtest.RunAppsody(sandbox, addToRepoArgs...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testRepoIndex := filepath.Join(devlocalFolder, "test-repo-index.yaml")
+
+	addRepoArgs := []string{"repo", "add", "test-repo", "file://" + testRepoIndex}
+	_, err = cmdtest.RunAppsody(sandbox, addRepoArgs...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	createArgs := []string{"stack", "create", "testing-stack", "--copy", "test-repo/starter"}
+	_, err = cmdtest.RunAppsody(sandbox, createArgs...)
+	if err != nil {
+		if !strings.Contains(err.Error(), "Could not download file://invalidurl") {
+			t.Errorf("String \"Could not download file://invalidurl\" not found in output")
+		}
+	} else {
+		t.Error("Stack create command unexpectededly passed with an invalid repository name")
+	}
+
+}
