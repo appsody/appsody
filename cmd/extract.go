@@ -237,10 +237,6 @@ func extract(config *extractCommandConfig) error {
 				}
 				dest = strings.Replace(dest, containerProjectDir, extractDir, -1)
 				config.Debug.log("Local-adjusted mount destination: ", dest)
-				fileInfo, err := os.Lstat(src)
-				if err != nil {
-					return errors.Errorf("Error lstat: %v", err)
-				}
 
 				destExists, err := Exists(dest)
 				if err != nil {
@@ -258,7 +254,7 @@ func extract(config *extractCommandConfig) error {
 					return errors.Errorf("Error creating directories %s %v", extractDir, err)
 				}
 
-				fileInfo, err = os.Lstat(src)
+				fileInfo, err := os.Lstat(src)
 				if err != nil {
 					return errors.Errorf("project file check error %v", err)
 				}
