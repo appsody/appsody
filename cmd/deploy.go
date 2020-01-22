@@ -204,7 +204,7 @@ Run this command from the root directory of your Appsody project.`,
 	deployCmd.PersistentFlags().BoolVar(&config.knative, "knative", false, "Deploy as a Knative Service")
 	deployCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "Remote repository to push image to.  This will also trigger a push if the --push flag is not specified.")
 	deployCmd.PersistentFlags().StringVar(&config.pullURL, "pull-url", "", "Remote repository to pull image from.")
-	deployCmd.PersistentFlags().BoolVar(&config.noOperatorCheck, "no-operator-check", false, "Suppresses check for operator existing in namespace")
+	deployCmd.PersistentFlags().BoolVar(&config.noOperatorCheck, "no-operator-check", false, "Do not check whether existing operators are already watching the namespace")
 	deployCmd.PersistentFlags().BoolVar(&config.noOperatorInstall, "no-operator-install", false, "Deploy your application without installing the Appsody operator")
 	deployCmd.AddCommand(newDeleteDeploymentCmd(config))
 
