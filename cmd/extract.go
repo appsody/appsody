@@ -129,15 +129,6 @@ func extract(config *extractCommandConfig) error {
 		}
 	}
 
-	if config.Buildah {
-		// Buildah fails if the destination does not exist.
-		config.Debug.log("Creating extract dir: ", extractDir)
-		err = os.MkdirAll(extractDir, os.ModePerm)
-		if err != nil {
-			return errors.Errorf("Error creating directories %s %v", extractDir, err)
-		}
-	}
-
 	stackImage := projectConfig.Stack
 
 	pullErr := pullImage(stackImage, config.RootCommandConfig)
@@ -250,13 +241,19 @@ func extract(config *extractCommandConfig) error {
 				if err != nil {
 					return errors.Errorf("Error lstat: %v", err)
 				}
-				var mkdir string
-				if fileInfo.IsDir() {
-					mkdir = dest
-				} else {
-					mkdir = filepath.Dir(dest)
+
+				destExists, err := Exists(dest)
+				if err != nil {
+					return errors.Errorf("Error checking file exists: %v", err)
 				}
-				err = os.MkdirAll(mkdir, os.ModePerm)
+				if destExists {
+					config.Debug.log("Deleting dest: ", dest)
+					os.RemoveAll(dest)
+				}
+
+				mkdir := filepath.Dir(dest)
+				config.Debug.Log("Running mkdir ", mkdir)
+				err = os.MkdirAll(filepath.Dir(dest), os.ModePerm)
 				if err != nil {
 					return errors.Errorf("Error creating directories %s %v", extractDir, err)
 				}
