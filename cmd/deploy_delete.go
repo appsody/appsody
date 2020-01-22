@@ -36,6 +36,9 @@ Run this command from the root directory of your Appsody project.`,
   Deletes the AppsodyApplication from the "my-namespace" namespace, using the name and type specified in the "app-deploy.yaml" deployment manifest.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			if len(args) > 0 {
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
+			}
 			exists, err := Exists(deployConfigFile)
 			if err != nil {
 				return errors.Errorf("Error checking status of %s", deployConfigFile)
