@@ -245,3 +245,33 @@ func TestDeployDeleteKubeFail(t *testing.T) {
 		t.Error("Deploy delete did not fail as expected")
 	}
 }
+
+func TestNoCheckFlag(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("Running appsody init...")
+	_, err = cmdtest.RunAppsody(sandbox, "init", "nodejs-express")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("Running appsody deploy...")
+	output, err := cmdtest.RunAppsody(sandbox, "deploy", "-t", "testdeploy/testimage", "--dryrun", "--no-check")
+	if err != nil {
+		t.Log("WARNING: deploy dryrun failed.")
+	}
+
+	if !strings.Contains(output, "kubectl get pods -o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}' -n") {
+		t.Fatal(err, ": Expected kubectl get pods to run only against the targeted namespace rather than all namespaces.")
+	}
+}
