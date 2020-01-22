@@ -132,6 +132,7 @@ func TestStackCreateCustomRepo(t *testing.T) {
 
 }
 
+/*
 func TestStackCreateInvalidRepo(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
@@ -144,3 +145,4 @@ func TestStackCreateInvalidRepo(t *testing.T) {
 	}
 
 }
+*/
