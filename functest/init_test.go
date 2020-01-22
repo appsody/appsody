@@ -84,6 +84,7 @@ var initErrorsTests = []struct {
 	{"TestInitDryRun", []string{"nodejs-express", "--dryrun"}, "Dry Run - Skipping", "Commands should be skipped on dry run"},
 	{"TestInitMalformedStackParm", []string{"/nodejs-express"}, "malformed project parameter - slash at the beginning or end should be removed", "Malformed stack parameter should be flagged."},
 	{"TestInitStackParmTooManySlashes", []string{"incubator/nodejs-express/bad"}, "malformed project parameter - too many slashes", "Malformed stack parameter with too many slashes should be flagged."},
+	{"Too many arguments", []string{"too", "many", "arguments"}, "Too many arguments.", "Too many arguments given should be flagged."},
 }
 
 func TestInitErrors(t *testing.T) {

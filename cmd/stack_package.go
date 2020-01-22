@@ -106,6 +106,9 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
   appsody stack package --buildah --buildah-options "--format=docker"
   Packages the stack in the current directory, builds project using buildah primitives in Docker format, tags the built image with the default registry and namespace, and adds the stack to the "dev.local" repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
+			}
 
 			log.Info.Log("******************************************")
 			log.Info.Log("Running appsody stack package")
@@ -135,11 +138,11 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			stackPath := filepath.Join(getHome(rootConfig), "stacks", "packaging-"+stackID)
 			log.Debug.Log("stackPath is: ", stackPath)
 
-			// creates stackPath dir if it doesn't exist
+			// creates stacks dir if it doesn't exist
 			err := os.MkdirAll(filepath.Dir(stackPath), 0777)
 
 			if err != nil {
-				return errors.Errorf("Error creating stackPath: %v", err)
+				return errors.Errorf("Error creating stacks directory: %v", err)
 			}
 
 			// make a copy of the folder to apply template to
