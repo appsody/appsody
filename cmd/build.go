@@ -535,7 +535,7 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 		}
 	}
 
-	if config.knativeFlagPresent {
+	if appsodyApplication.Spec.CreateKnativeService == nil || config.knativeFlagPresent {
 		appsodyApplication.Spec.CreateKnativeService = &config.knative
 	}
 
