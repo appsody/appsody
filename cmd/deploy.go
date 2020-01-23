@@ -27,6 +27,7 @@ type deployCommandConfig struct {
 	*RootCommandConfig
 	appDeployFile, namespace, tag, pushURL, pullURL                             string
 	knative, generate, force, push, nobuild, noOperatorCheck, noOperatorInstall bool
+	knativeFlagPresent                                                          bool
 	dockerBuildOptions                                                          string
 	buildahBuildOptions                                                         string
 }
@@ -73,6 +74,7 @@ Run this command from the root directory of your Appsody project.`,
 			if err != nil {
 				return err
 			}
+			config.knativeFlagPresent = cmd.Flag("knative").Changed
 
 			dryrun := config.Dryrun
 			namespace := config.namespace
@@ -124,6 +126,7 @@ Run this command from the root directory of your Appsody project.`,
 				buildConfig.tag = config.tag
 				buildConfig.pullURL = config.pullURL
 				buildConfig.knative = config.knative
+				buildConfig.knativeFlagPresent = config.knativeFlagPresent
 				buildConfig.appDeployFile = configFile
 				buildConfig.namespace = namespace
 
