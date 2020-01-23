@@ -44,7 +44,7 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 By default, the new stack is based on the example stack: incubator/starter. If you want to use a different stack as the basis for your new stack, use the copy flag to specify the stack you want to use as the starting point. You can use 'appsody list' to see the available stacks.
 
-The stack name must start with a lowercase letter, and can contain only lowercase letters, numbers, or dashes, and cannot end with a dash. The stack name cannot exceed 128 characters.`,
+The stack name must start with a lowercase letter, and can contain only lowercase letters, numbers, or dashes, and cannot end with a dash. The stack name cannot exceed 68 characters.`,
 		Example: `  appsody stack create my-stack  
   Creates a stack called my-stack, based on the example stack “incubator/starter”.
 
