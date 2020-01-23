@@ -25,10 +25,10 @@ import (
 
 type deployCommandConfig struct {
 	*RootCommandConfig
-	appDeployFile, namespace, tag, pushURL, pullURL string
-	knative, generate, force, push, nobuild         bool
-	dockerBuildOptions                              string
-	buildahBuildOptions                             string
+	appDeployFile, namespace, tag, pushURL, pullURL                             string
+	knative, generate, force, push, nobuild, noOperatorCheck, noOperatorInstall bool
+	dockerBuildOptions                                                          string
+	buildahBuildOptions                                                         string
 }
 
 func findNamespaceRepositoryAndTag(image string) string {
@@ -137,27 +137,29 @@ Run this command from the root directory of your Appsody project.`,
 				return nil
 			}
 
-			// Check for the Appsody Operator
-			operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(config.LoggingConfig, namespace, config.Dryrun)
-			if operatorExistsErr != nil {
-				return operatorExistsErr
-			}
-
-			//kargs := []string{"service/appsody-operator"}
-			//_, err := KubeGet(kargs)
-			// Performing the kubectl apply
-			if !operatorExists {
-				config.Debug.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
-				operatorConfig := &operatorCommandConfig{config.RootCommandConfig, namespace}
-				operatorInstallConfig := &operatorInstallCommandConfig{operatorCommandConfig: operatorConfig}
-				//	operatorInstallConfig.RootCommandConfig = operatorConfig.RootCommandConfig
-				err := operatorInstall(operatorInstallConfig)
-				if err != nil {
-					return errors.Errorf("Failed to install an Appsody operator in namespace %s watching namespace %s. Error was: %v", namespace, namespace, err)
+			if !config.noOperatorInstall {
+				// Check for the Appsody Operator
+				operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(config.LoggingConfig, namespace, config.Dryrun, config.noOperatorCheck)
+				if operatorExistsErr != nil {
+					return operatorExistsErr
 				}
-			} else {
-				config.Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
 
+				//kargs := []string{"service/appsody-operator"}
+				//_, err := KubeGet(kargs)
+				// Performing the kubectl apply
+				if !operatorExists {
+					config.Debug.logf("Failed to find Appsody operator that watches namespace %s. Attempting to install...", namespace)
+					operatorConfig := &operatorCommandConfig{config.RootCommandConfig, namespace}
+					operatorInstallConfig := &operatorInstallCommandConfig{operatorCommandConfig: operatorConfig}
+					//	operatorInstallConfig.RootCommandConfig = operatorConfig.RootCommandConfig
+					err := operatorInstall(operatorInstallConfig)
+					if err != nil {
+						return errors.Errorf("Failed to install an Appsody operator in namespace %s watching namespace %s. Error was: %v", namespace, namespace, err)
+					}
+				} else {
+					config.Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
+
+				}
 			}
 
 			// Performing the kubectl apply
@@ -202,6 +204,8 @@ Run this command from the root directory of your Appsody project.`,
 	deployCmd.PersistentFlags().BoolVar(&config.knative, "knative", false, "Deploy as a Knative Service")
 	deployCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "Remote repository to push image to.  This will also trigger a push if the --push flag is not specified.")
 	deployCmd.PersistentFlags().StringVar(&config.pullURL, "pull-url", "", "Remote repository to pull image from.")
+	deployCmd.PersistentFlags().BoolVar(&config.noOperatorCheck, "no-operator-check", false, "Do not check whether existing operators are already watching the namespace")
+	deployCmd.PersistentFlags().BoolVar(&config.noOperatorInstall, "no-operator-install", false, "Deploy your application without installing the Appsody operator")
 	deployCmd.AddCommand(newDeleteDeploymentCmd(config))
 
 	return deployCmd
