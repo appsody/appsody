@@ -137,7 +137,7 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 			// t.Fatal(err)
 		}
 
-		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, namespace, true})
+		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, namespace, true, "Always"})
 	}
 }
 

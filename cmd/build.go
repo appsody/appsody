@@ -25,6 +25,7 @@ import (
 	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 
 	"bytes"
@@ -544,6 +545,11 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 	}
 
 	appsodyApplication.Spec.ApplicationImage = imageName
+
+	if appsodyApplication.Spec.PullPolicy == nil {
+		pullPolicy := corev1.PullAlways
+		appsodyApplication.Spec.PullPolicy = &pullPolicy
+	}
 
 	// This only applies to the deploy command flow:
 	// - if the namespace doesn't exist in the manifest, and a namespace flag is not set: we write a "default" namespace
