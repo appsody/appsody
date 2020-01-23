@@ -303,7 +303,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 
 			t.Run(tt.testName, func(t *testing.T) {
 				t.Log("***Testing stack: ", stackRaw[i], "***")
-				sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
+				sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 				defer cleanup()
 
 				// appsody init
