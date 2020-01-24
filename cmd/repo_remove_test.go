@@ -95,7 +95,10 @@ func TestRepoRemove(t *testing.T) {
 	args := []string{"repo", "remove", "experimental"}
 
 	// see how many repos we currently have
-	startRepos, _ := getRepoListOutput(t, sandbox)
+	startRepos, err := getRepoListOutput(t, sandbox)
+	if err != nil {
+		t.Fatalf("Error getting the repos: %v", err)
+	}
 
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
@@ -107,7 +110,11 @@ func TestRepoRemove(t *testing.T) {
 	}
 
 	// see how many repos we have after running repo add
-	endRepos, _ := getRepoListOutput(t, sandbox)
+	endRepos, err := getRepoListOutput(t, sandbox)
+	if err != nil {
+		t.Fatalf("Error getting the repos: %v", err)
+	}
+
 	if (len(startRepos) - 1) != len(endRepos) {
 		t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
 	}
@@ -119,7 +126,10 @@ func TestRepoRemoveDryRun(t *testing.T) {
 	defer cleanup()
 
 	// see how many repos we currently have
-	startRepos, _ := getRepoListOutput(t, sandbox)
+	startRepos, err := getRepoListOutput(t, sandbox)
+	if err != nil {
+		t.Fatalf("Error getting the repos: %v", err)
+	}
 
 	args := []string{"repo", "remove", "localhub", "--dryrun"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
@@ -130,7 +140,11 @@ func TestRepoRemoveDryRun(t *testing.T) {
 		t.Error("Did not find expected error 'Dry Run - Skip' in output")
 	}
 	// see how many repos we have after running repo add
-	endRepos, _ := getRepoListOutput(t, sandbox)
+	endRepos, err := getRepoListOutput(t, sandbox)
+	if err != nil {
+		t.Fatalf("Error getting the repos: %v", err)
+	}
+
 	if len(startRepos) != len(endRepos) {
 		t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
 	}
