@@ -31,6 +31,7 @@ func TestRepoRemoveLogs(t *testing.T) {
 		{"Existing default repo", []string{"incubator"}, "", "cannot remove the default repository"},
 		{"Non-existing repo", []string{"test"}, "", "not in configured list of repositories"},
 		{"Badly formatted repo config", []string{"test"}, "bad_format_repository_config", "Failed to parse repository file yaml"},
+		{"Too many arguments", []string{"too", "many", "arguments"}, "", "One argument expected."},
 	}
 
 	for _, testData := range repoRemoveLogsTests {
@@ -47,7 +48,16 @@ func TestRepoRemoveLogs(t *testing.T) {
 			sandbox.SetConfigInTestData(tt.configDir)
 
 			// see how many repos we currently have
-			//startRepos := getRepoListOutput(t, sandbox)
+			err, startRepos := getRepoListOutput(t, sandbox)
+
+			// If the config is badly formatted this will return an error that we want to ignore
+			if err != nil {
+				if !strings.Contains(err.Error(), tt.expectedLogs) {
+					t.Fatalf("Failed to list repos for an unexpected reason: %s", err)
+				} else {
+					t.Logf("Failed to list repos for an expected reason: %s", err)
+				}
+			}
 
 			args := append([]string{"repo", "remove"}, tt.args...)
 			output, err := cmdtest.RunAppsody(sandbox, args...)
@@ -59,10 +69,21 @@ func TestRepoRemoveLogs(t *testing.T) {
 				t.Errorf("Did not find expected error '%s' in output", tt.expectedLogs)
 			}
 			// see how many repos we have after running repo add
-			//endRepos := getRepoListOutput(t, sandbox)
-			//if len(startRepos) != len(endRepos) {
-			//	t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
-			//}
+			err, endRepos := getRepoListOutput(t, sandbox)
+
+			// If the config is badly formatted this will return an error that we want to ignore
+			if err != nil {
+				if !strings.Contains(err.Error(), tt.expectedLogs) {
+					t.Fatalf("Failed to list repos for an unexpected reason: %s", err)
+				} else {
+					t.Logf("Failed to list repos for an expected reason: %s", err)
+				}
+				// If it didn't return an error, it'll return a valid endRepo which can be compared
+			} else {
+				if len(startRepos) != len(endRepos) {
+					t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
+				}
+			}
 		})
 	}
 }
@@ -74,7 +95,7 @@ func TestRepoRemove(t *testing.T) {
 	args := []string{"repo", "remove", "experimental"}
 
 	// see how many repos we currently have
-	startRepos := getRepoListOutput(t, sandbox)
+	_, startRepos := getRepoListOutput(t, sandbox)
 
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
@@ -86,7 +107,7 @@ func TestRepoRemove(t *testing.T) {
 	}
 
 	// see how many repos we have after running repo add
-	endRepos := getRepoListOutput(t, sandbox)
+	_, endRepos := getRepoListOutput(t, sandbox)
 	if (len(startRepos) - 1) != len(endRepos) {
 		t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
 	}
@@ -98,7 +119,7 @@ func TestRepoRemoveDryRun(t *testing.T) {
 	defer cleanup()
 
 	// see how many repos we currently have
-	startRepos := getRepoListOutput(t, sandbox)
+	_, startRepos := getRepoListOutput(t, sandbox)
 
 	args := []string{"repo", "remove", "localhub", "--dryrun"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
@@ -109,7 +130,7 @@ func TestRepoRemoveDryRun(t *testing.T) {
 		t.Error("Did not find expected error 'Dry Run - Skip' in output")
 	}
 	// see how many repos we have after running repo add
-	endRepos := getRepoListOutput(t, sandbox)
+	_, endRepos := getRepoListOutput(t, sandbox)
 	if len(startRepos) != len(endRepos) {
 		t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
 	}

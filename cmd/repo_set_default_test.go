@@ -35,6 +35,7 @@ func TestRepoSetDefaultLogs(t *testing.T) {
 		{"No args", nil, "", "You must specify the repository to set as the default"},
 		{"Existing default repo", []string{"incubator"}, "", "default repository has already been set to"},
 		{"Non-existing repo", []string{"test"}, "", "not in your configured list of repositories"},
+		{"Too many arguments", []string{"too", "many", "arguments"}, "", "One argument expected."},
 		{"Badly formatted repo config", []string{"test"}, "bad_format_repository_config", "Failed to parse repository file yaml"},
 	}
 
@@ -58,13 +59,13 @@ func TestRepoSetDefaultLogs(t *testing.T) {
 				t.Errorf("Did not find expected error '%s' in output", tt.expectedLogs)
 			}
 
-			// If the configDir isn't "" then it is the bad_format_repo which fails to parse when executing repo list
-			if tt.configDir == "" {
-				// check default repo is unchanged and is still incubator
-				output, err = cmdtest.RunAppsody(sandbox, "repo", "list")
-				if err != nil {
-					t.Fatal(err)
+			// check default repo is unchanged and is still incubator
+			output, err = cmdtest.RunAppsody(sandbox, "repo", "list")
+			if err != nil {
+				if !strings.Contains(err.Error(), tt.expectedLogs) {
+					t.Fatalf("Unexpected error when running repo list: %s ", err)
 				}
+			} else {
 				checkExpectedDefaultRepo(t, output, "*incubator")
 			}
 		})
