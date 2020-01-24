@@ -73,14 +73,22 @@ func TestBuildSimple(t *testing.T) {
 		}
 
 		// appsody build
-		imageName := "testbuildimage"
-		_, err = cmdtest.RunAppsody(sandbox, "build", "--tag", imageName)
+		_, err = cmdtest.RunAppsody(sandbox, "build")
 		if err != nil {
 			t.Fatal("The appsody build command failed: ", err)
 		}
 
+		expectedImageTag := "dev.local/" + sandbox.ProjectName
+		listOutput, listErr := cmdtest.RunDockerCmdExec([]string{"images", "-q", expectedImageTag}, t)
+		if listErr != nil {
+			t.Fatal(listErr)
+		}
+		if listOutput == "" {
+			t.Errorf("Expected appsody build to create docker image '%s' but it was not found.", expectedImageTag)
+		}
+
 		//delete the image
-		deleteImage(imageName, t)
+		deleteImage(expectedImageTag, t)
 	}
 }
 
@@ -202,7 +210,7 @@ func TestBuildLabels(t *testing.T) {
 func deleteImage(imageName string, t *testing.T) {
 	_, err := cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName}, t)
 	if err != nil {
-		fmt.Printf("Ignoring error running docker image rm: %s", err)
+		t.Logf("Ignoring error running docker image rm: %s", err)
 	}
 }
 
@@ -240,7 +248,7 @@ func TestDeploymentConfig(t *testing.T) {
 		}
 
 		// appsody build
-		imageName := filepath.Base(sandbox.ProjectDir)
+		imageName := sandbox.ProjectName
 		pullURL := "my-pull-url"
 
 		_, err = cmdtest.RunAppsody(sandbox, "build", "--tag", imageName, "--pull-url", pullURL, "--knative")
@@ -253,6 +261,97 @@ func TestDeploymentConfig(t *testing.T) {
 		//delete the image
 		deleteImage(imageName, t)
 	}
+}
+
+// app-deploy
+
+var knativeFlagTests = []struct {
+	testName          string
+	knativeFlag       string
+	appDeployStart    bool
+	appDeployExpected bool
+}{
+	{"KnativeFlagAndAppDeployTrue", "--knative", true, true},
+	{"KnativeFlagAndAppDeployFalse", "--knative", false, true},
+	{"NoKnativeFlagAndAppDeployTrue", "", true, true},
+	{"NoKnativeFlagAndAppDeployFalse", "", false, false},
+	{"KnativeFalseAndAppDeployTrue", "--knative=false", true, false},
+	{"KnativeFalseAndAppDeployFalse", "--knative=false", false, false},
+	{"KnativeTrueAndAppDeployTrue", "--knative=true", true, true},
+	{"KnativeTrueAndAppDeployFalse", "--knative=true", false, true},
+}
+
+func TestKnativeFlagOnBuild(t *testing.T) {
+	t.Log("stacksList is: ", stacksList)
+
+	// if stacksList is empty there is nothing to test so return
+	if stacksList == "" {
+		t.Log("stacksList is empty, exiting test...")
+		return
+	}
+
+	// split the appsodyStack env variable
+	stackRaw := strings.Split(stacksList, " ")
+
+	// loop through the stacks
+	for i := range stackRaw {
+		for _, testData := range knativeFlagTests {
+			// need to set testData to a new variable scoped under the for loop
+			// otherwise tests run in parallel may get the wrong testData
+			// because the for loop reassigns it before the func runs
+			tt := testData
+
+			t.Run(tt.testName, func(t *testing.T) {
+				t.Log("***Testing stack: ", stackRaw[i], "***")
+				sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+				defer cleanup()
+
+				// appsody init
+				t.Log("Running appsody init...")
+				_, err := cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				err = makeAppDeployYaml(sandbox.ProjectDir, tt.appDeployStart)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				// appsody build
+				if tt.knativeFlag == "" {
+					_, err = cmdtest.RunAppsody(sandbox, "build")
+				} else {
+					_, err = cmdtest.RunAppsody(sandbox, "build", tt.knativeFlag)
+				}
+				if err != nil {
+					t.Error("appsody build command returned err: ", err)
+				}
+				expectedImageName := "dev.local/" + sandbox.ProjectName
+				checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", expectedImageName, "", tt.appDeployExpected})
+
+				//delete the image
+				deleteImage(expectedImageName, t)
+			})
+		}
+	}
+}
+
+func makeAppDeployYaml(projectDir string, createKnativeService bool) error {
+	appsodyApplication := v1beta1.AppsodyApplication{}
+	appsodyApplication.Spec.CreateKnativeService = &createKnativeService
+	data, err := yaml.Marshal(appsodyApplication)
+	if err != nil {
+		return fmt.Errorf("error marshalling yaml: %v", err)
+	}
+
+	// write to file
+	deployFilePath := filepath.Join(projectDir, deployFile)
+	err = ioutil.WriteFile(deployFilePath, data, 0666)
+	if err != nil {
+		return fmt.Errorf("error writing deployment yaml to file %s: %v", deployFilePath, err)
+	}
+	return nil
 }
 
 func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploymentConfig) {

@@ -32,7 +32,7 @@ func TestRepoSetDefaultLogs(t *testing.T) {
 		configDir    string
 		expectedLogs string // logs that are expected in the output
 	}{
-		{"No args", nil, "", "ou must specify the repository to set as the default"},
+		{"No args", nil, "", "You must specify the repository to set as the default"},
 		{"Existing default repo", []string{"incubator"}, "", "default repository has already been set to"},
 		{"Non-existing repo", []string{"test"}, "", "not in your configured list of repositories"},
 		{"Badly formatted repo config", []string{"test"}, "bad_format_repository_config", "Failed to parse repository file yaml"},

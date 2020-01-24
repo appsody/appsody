@@ -240,30 +240,17 @@ func TestPackageNoStackYamlFail(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	// rename stack.yaml to test
 	stackPath := sandbox.ProjectDir
 	stackYaml := filepath.Join(stackPath, "stack.yaml")
 	newStackYaml := filepath.Join(stackPath, "test")
 
-	err = os.Rename(stackYaml, newStackYaml)
+	err := os.Rename(stackYaml, newStackYaml)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,23 +290,10 @@ func TestPackageInvalidStackYamlFail(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	stackPath := sandbox.ProjectDir
 	stackYaml := filepath.Join(stackPath, "stack.yaml")
@@ -383,30 +357,17 @@ func TestPackageNoTemplates(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	// rename templates directory to test
 	stackPath := sandbox.ProjectDir
 	templates := filepath.Join(stackPath, "templates")
 	newTemplates := filepath.Join(stackPath, "test")
 
-	err = os.Rename(templates, newTemplates)
+	err := os.Rename(templates, newTemplates)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -441,23 +402,10 @@ func TestPackageInvalidCustomVars(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	stackPath := sandbox.ProjectDir
 	stackYaml := filepath.Join(stackPath, "stack.yaml")
@@ -521,23 +469,10 @@ func TestPackageInvalidCustomVarMap(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	stackPath := sandbox.ProjectDir
 	stackYaml := filepath.Join(stackPath, "stack.yaml")
@@ -601,23 +536,10 @@ func TestPackageInvalidVersion(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	var err error
-	if runtime.GOOS == "windows" {
-		err = cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	} else {
-		err = cmd.CopyDir(log, stackDir, sandbox.ProjectDir)
-	}
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, sandbox.ProjectDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, sandbox.ProjectDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	stackPath := sandbox.ProjectDir
 	stackYaml := filepath.Join(stackPath, "stack.yaml")

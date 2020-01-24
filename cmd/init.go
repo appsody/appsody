@@ -85,7 +85,7 @@ Use 'appsody list' to see the available stacks and templates.`,
 		},
 	}
 	// TODO - add the registry override flag, and the logic behind it
-	//addStackRegistryFlag(initCmd, &rootConfig.StackRegistry, rootConfig)
+	addStackRegistryFlagInit(initCmd, &rootConfig.StackRegistryInit, rootConfig)
 
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
@@ -310,12 +310,24 @@ func install(config *initCommandConfig) error {
 	config.Info.log("Setting up the development environment")
 
 	// reset config.StackRegistry and get it again from the newly untarred .appsody-config.yaml
-	// this will need to be updated when we support --stack-registry on the init command
-	config.StackRegistry = ""
-	var stackErr error
-	config.StackRegistry, stackErr = getStackRegistry(config.RootCommandConfig)
-	if stackErr != nil {
-		return stackErr
+
+	defaultStackRegistry := getDefaultStackRegistry(config.RootCommandConfig)
+	configFileStackRegistry, err := getStackRegistryFromConfigFile(config.RootCommandConfig)
+	if err != nil {
+		return err
+	}
+	stackRegistry := configFileStackRegistry
+
+	if config.StackRegistryInit != "" {
+		config.Debug.Log("The flag --stack-registry was set to: ", config.StackRegistryInit)
+		stackRegistry = config.StackRegistryInit
+	} else if configFileStackRegistry == "" {
+		stackRegistry = defaultStackRegistry
+	}
+	config.Debug.Log("The stack registry in .appsody-config.yaml will be set to: ", stackRegistry)
+	err = setStackRegistry(stackRegistry, config.RootCommandConfig)
+	if err != nil {
+		return err
 	}
 
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
@@ -340,7 +352,7 @@ func install(config *initCommandConfig) error {
 
 	config.Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
-	err := extractAndInitialize(config)
+	err = extractAndInitialize(config)
 	if err != nil {
 		// For some reason without this sleep, the [InitScript] output log would get cut off and
 		// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
@@ -644,4 +656,8 @@ func defaultProjectName(config *RootCommandConfig) string {
 		os.Exit(1)
 	}
 	return projectName
+}
+func addStackRegistryFlagInit(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
+	cmd.PersistentFlags().StringVar(flagVar, "stack-registry", "", "Specify the URL of the registry that hosts your stack images.")
+
 }
