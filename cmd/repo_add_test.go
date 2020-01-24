@@ -26,7 +26,7 @@ func TestRepoAdd(t *testing.T) {
 	defer cleanup()
 
 	// see how many repos we currently have
-	_, startRepos := getRepoListOutput(t, sandbox)
+	startRepos, _ := getRepoListOutput(t, sandbox)
 
 	addRepoName := "LocalTestRepo"
 	addRepoURL, err := cmdtest.AddLocalRepo(sandbox, addRepoName, filepath.Join(sandbox.TestDataPath, "index.yaml"))
@@ -34,7 +34,7 @@ func TestRepoAdd(t *testing.T) {
 		t.Fatal(err)
 	}
 	// see how many repos we have after running repo add
-	_, endRepos := getRepoListOutput(t, sandbox)
+	endRepos, _ := getRepoListOutput(t, sandbox)
 
 	if (len(startRepos) + 1) != len(endRepos) {
 		t.Errorf("Expected %d repos but found %d", (len(startRepos) + 1), len(endRepos))
@@ -58,7 +58,7 @@ func TestRepoAddDryRun(t *testing.T) {
 	defer cleanup()
 
 	// see how many repos we currently have
-	_, startRepos := getRepoListOutput(t, sandbox)
+	startRepos, _ := getRepoListOutput(t, sandbox)
 
 	args := []string{"repo", "add", "experimental", "https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml", "--dryrun", "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
@@ -69,7 +69,7 @@ func TestRepoAddDryRun(t *testing.T) {
 		t.Error("Did not find expected error 'Dry run - Skip' in output")
 	}
 	// see how many repos we have after running repo add
-	_, endRepos := getRepoListOutput(t, sandbox)
+	endRepos, _ := getRepoListOutput(t, sandbox)
 
 	if len(startRepos) != len(endRepos) {
 		t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
@@ -124,11 +124,11 @@ func TestRepoAddErrors(t *testing.T) {
 	}
 }
 
-func getRepoListOutput(t *testing.T, sandbox *cmdtest.TestSandbox) (error, []cmdtest.Repository) {
+func getRepoListOutput(t *testing.T, sandbox *cmdtest.TestSandbox) ([]cmdtest.Repository, error) {
 	output, err := cmdtest.RunAppsody(sandbox, "repo", "list")
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	startRepos := cmdtest.ParseRepoList(output)
-	return nil, startRepos
+	return startRepos, nil
 }

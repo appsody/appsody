@@ -41,7 +41,7 @@ func TestDebugSimple(t *testing.T) {
 
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
-		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
+		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 		defer cleanup()
 
 		// first add the test repo index

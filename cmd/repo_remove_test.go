@@ -48,7 +48,7 @@ func TestRepoRemoveLogs(t *testing.T) {
 			sandbox.SetConfigInTestData(tt.configDir)
 
 			// see how many repos we currently have
-			err, startRepos := getRepoListOutput(t, sandbox)
+			startRepos, err := getRepoListOutput(t, sandbox)
 
 			// If the config is badly formatted this will return an error that we want to ignore
 			if err != nil {
@@ -69,7 +69,7 @@ func TestRepoRemoveLogs(t *testing.T) {
 				t.Errorf("Did not find expected error '%s' in output", tt.expectedLogs)
 			}
 			// see how many repos we have after running repo add
-			err, endRepos := getRepoListOutput(t, sandbox)
+			endRepos, err := getRepoListOutput(t, sandbox)
 
 			// If the config is badly formatted this will return an error that we want to ignore
 			if err != nil {
@@ -95,7 +95,7 @@ func TestRepoRemove(t *testing.T) {
 	args := []string{"repo", "remove", "experimental"}
 
 	// see how many repos we currently have
-	_, startRepos := getRepoListOutput(t, sandbox)
+	startRepos, _ := getRepoListOutput(t, sandbox)
 
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
@@ -107,7 +107,7 @@ func TestRepoRemove(t *testing.T) {
 	}
 
 	// see how many repos we have after running repo add
-	_, endRepos := getRepoListOutput(t, sandbox)
+	endRepos, _ := getRepoListOutput(t, sandbox)
 	if (len(startRepos) - 1) != len(endRepos) {
 		t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
 	}
@@ -119,7 +119,7 @@ func TestRepoRemoveDryRun(t *testing.T) {
 	defer cleanup()
 
 	// see how many repos we currently have
-	_, startRepos := getRepoListOutput(t, sandbox)
+	startRepos, _ := getRepoListOutput(t, sandbox)
 
 	args := []string{"repo", "remove", "localhub", "--dryrun"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
@@ -130,7 +130,7 @@ func TestRepoRemoveDryRun(t *testing.T) {
 		t.Error("Did not find expected error 'Dry Run - Skip' in output")
 	}
 	// see how many repos we have after running repo add
-	_, endRepos := getRepoListOutput(t, sandbox)
+	endRepos, _ := getRepoListOutput(t, sandbox)
 	if len(startRepos) != len(endRepos) {
 		t.Errorf("Expected %d repos but found %d", len(startRepos), len(endRepos))
 	}
