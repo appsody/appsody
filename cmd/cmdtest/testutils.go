@@ -105,7 +105,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	data := []byte("home: " + sandbox.ConfigDir + "\n" + "generated-by-tests: Yes" + "\n")
 	err = ioutil.WriteFile(sandbox.ConfigFile, data, 0644)
 	if err != nil {
-		t.Error("Error writing config file: ", err)
+		t.Fatal("Error writing config file: ", err)
 	}
 
 	var outBuffer bytes.Buffer
