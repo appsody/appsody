@@ -45,7 +45,8 @@ func newCompletionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command
 	To install Appsody zsh completion: 
 
 	1. run appsody completion zsh > _appsody
-	2. copy _appsody to a directory in your fpath`,
+	2. copy _appsody to a directory in your $fpath
+	3. rm ~/.zcompdump*`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			buf := new(bytes.Buffer)
 			completionType := "bash"
