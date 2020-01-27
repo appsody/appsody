@@ -51,13 +51,13 @@ func newCompletionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command
 			completionType := "bash"
 
 			if len(args) > 1 {
-				return fmt.Errorf("Too many arguments, either one of bash or zsh must be specified.")
+				return fmt.Errorf("Too many arguments, either one of bash or zsh must be specified")
 
 			}
 			if len(args) == 1 {
 
 				if !(args[0] == "zsh" || args[0] == "bash") {
-					return fmt.Errorf("Argument not allowed, it must be bash or zsh.")
+					return fmt.Errorf("Argument not allowed, it must be bash or zsh")
 				}
 				completionType = args[0]
 
