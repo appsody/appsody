@@ -228,13 +228,19 @@ func ensureConfig(rootConfig *RootCommandConfig) error {
 		}
 	}
 
+	// TEMPORARY CODE: if the user has the legacy index.docker.io value, update it to docker.io
+	images := rootConfig.CliConfig.GetString("images")
+	if images == "index.docker.io" {
+		rootConfig.Debug.logf("Updating reference to 'index.docker.io' in %s", rootConfig.CliConfig.ConfigFileUsed())
+		rootConfig.CliConfig.Set("images", "docker.io")
+	}
+
 	if rootConfig.Dryrun {
 		rootConfig.Info.log("Dry Run - Skip writing config file ", defaultConfigFile)
 	} else {
 		rootConfig.Debug.log("Writing config file ", defaultConfigFile)
 		if err := rootConfig.CliConfig.WriteConfig(); err != nil {
 			return errors.Errorf("Writing default config file %s", err)
-
 		}
 	}
 	return nil
@@ -409,11 +415,12 @@ func (r *RepositoryFile) GetDefaultRepoName(rootConfig *RootCommandConfig) (stri
 	return repoName, nil
 }
 
-func (r *RepositoryFile) Remove(name string) {
+func (r *RepositoryFile) Remove(name string, log *LoggingConfig) {
 	for index, rf := range r.Repositories {
 		if rf.Name == name {
 			r.Repositories[index] = r.Repositories[0]
 			r.Repositories = r.Repositories[1:]
+			log.Info.logf("The %v repository has been removed from your configured list of repositories.", name)
 			return
 		}
 	}

@@ -44,7 +44,6 @@ type devCommonConfig struct {
 }
 
 func checkDockerRunOptions(options []string) error {
-	fmt.Println("testing docker options", options)
 	//runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))((=?$)|(=.*)))"
 	runOptionsTest := "(^((--help)|(-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))((=?$)|(=.*)))"
 
@@ -75,6 +74,18 @@ func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig)
 	cmd.PersistentFlags().StringVar(flagVar, "name", defaultName, "Assign a name to your development container.")
 }
 
+func addStackRegistryFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
+
+	defaultRegistry := getDefaultStackRegistry(config)
+	stackRegistryInConfigFile, err := getStackRegistryFromConfigFile(config)
+	if err != nil {
+		config.Debug.Logf("Error retrieving the stack registry from config file: %v", err)
+		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images. [WARNING] Your current settings are incorrect - change your project config or use this flag to override the image registry.")
+	} else {
+		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", stackRegistryInConfigFile, "Specify the URL of the registry that hosts your stack images.")
+	}
+}
+
 func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 	projectName, perr := getProjectName(config.RootCommandConfig)
 	if perr != nil {
@@ -88,13 +99,14 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 	defaultDepsVolume := projectName + "-deps"
 
 	addNameFlag(cmd, &config.containerName, config.RootCommandConfig)
+	addStackRegistryFlag(cmd, &config.StackRegistry, config.RootCommandConfig)
 	cmd.PersistentFlags().StringVar(&config.dockerNetwork, "network", "", "Specify the network for docker to use.")
 	cmd.PersistentFlags().StringVar(&config.depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 	cmd.PersistentFlags().StringArrayVarP(&config.ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
 	cmd.PersistentFlags().BoolVarP(&config.publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
 	cmd.PersistentFlags().BoolVar(&config.disableWatcher, "no-watcher", false, "Disable file watching, regardless of container environment variable settings.")
 	cmd.PersistentFlags().BoolVarP(&config.interactive, "interactive", "i", false, "Attach STDIN to the container for interactive TTY mode")
-	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\".")
+	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\". The following Docker options are not supported:  '--help','-p','--publish-all','-P','-u','-—user','-—name','-—network','-t','-—tty,'—rm','—entrypoint','-v','—volume'.")
 
 }
 
@@ -126,11 +138,13 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		return perr
 
 	}
+
 	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
 	if configErr != nil {
 		return configErr
 	}
-	err := CheckPrereqs()
+
+	err := CheckPrereqs(config.RootCommandConfig)
 	if err != nil {
 		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
@@ -220,7 +234,10 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 		go func() {
 			<-c
-			// note we still need this signaling block otherwise the signal is not caught and termination doesn't occur propertly
+			err := dockerStop(config.RootCommandConfig, config.containerName, config.Dryrun)
+			if err != nil {
+				config.Error.log(err)
+			}
 			//containerRemove(containerName) is not needed due to --rm flag
 		}()
 	}
@@ -266,12 +283,16 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if config.interactive {
 		cmdArgs = append(cmdArgs, "-i")
 	}
+
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode)
 	if config.Verbose {
 		cmdArgs = append(cmdArgs, "-v")
 	}
 	if config.disableWatcher {
 		cmdArgs = append(cmdArgs, "--no-watcher")
+	}
+	if config.interactive {
+		cmdArgs = append(cmdArgs, "--interactive")
 	}
 	if !config.Buildah {
 		config.Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
@@ -291,10 +312,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			//Linux and Windows return a different error on Ctrl-C
 			if error == "signal: interrupt" || error == "signal: terminated" || error == "exit status 2" {
 				config.Info.log("Closing down, development environment was interrupted.")
-				err := dockerStop(config.RootCommandConfig, config.containerName, config.Dryrun)
-				if err != nil {
-					config.Error.log(err)
-				}
+
 			} else {
 				return errors.Errorf("Error in 'appsody %s': %s", mode, error)
 			}
@@ -324,7 +342,13 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, depsMount, dryrun)
+
+		dockerEnvVars, err := ExtractDockerEnvVars(config.dockerOptions)
+		if err != nil {
+			return err
+		}
+		config.Debug.Logf("Docker env vars extracted from docker options: %v", dockerEnvVars)
+		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, dockerEnvVars, depsMount, dryrun)
 		if err != nil {
 			return err
 		}
@@ -406,6 +430,7 @@ func processPorts(cmdArgs []string, config *devCommonConfig) ([]string, error) {
 	if portsErr != nil {
 		return cmdArgs, portsErr
 	}
+
 	config.Debug.log("Exposed ports provided by the docker file", dockerExposedPorts)
 	// if the container port is not in the lised of exposed ports add it to the list
 
@@ -475,7 +500,6 @@ func checkPortInput(publishedPorts []string) (bool, error) {
 		} else {
 			// check the numbers
 			portValues := strings.Split(publishedPorts[i], ":")
-			fmt.Println(portValues)
 			if !validPortNumber.MatchString(portValues[0]) || !validPortNumber.MatchString(portValues[1]) {
 				portError = errors.New("The numeric port input: " + publishedPorts[i] + " is not valid.")
 				validPorts = false
@@ -486,5 +510,4 @@ func checkPortInput(publishedPorts []string) (bool, error) {
 		}
 	}
 	return validPorts, portError
-
 }

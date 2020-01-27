@@ -40,11 +40,11 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Create a new Appsody stack.",
 		Long: `Create a new Appsody stack, called <name>, in the current directory. You can use this stack as a starting point for developing your own Appsody stack.
 
-By default, the new stack is based on the example stack: samples/sample-stack. If you want to use a different stack as the basis for your new stack, use the copy flag to specify the stack you want to use as the starting point. You can use 'appsody list' to see the available stacks.
+By default, the new stack is based on the example stack: incubator/starter. If you want to use a different stack as the basis for your new stack, use the copy flag to specify the stack you want to use as the starting point. You can use 'appsody list' to see the available stacks.
 
 The stack name must start with a lowercase letter, and can contain only lowercase letters, numbers, or dashes, and cannot end with a dash. The stack name cannot exceed 128 characters.`,
 		Example: `  appsody stack create my-stack  
-  Creates a stack called my-stack, based on the example stack “samples/sample-stack”.
+  Creates a stack called my-stack, based on the example stack “incubator/starter”.
 
   appsody stack create my-stack --copy incubator/nodejs-express  
   Creates a stack called my-stack, based on the Node.js Express stack.`,
@@ -53,6 +53,9 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			if len(args) < 1 {
 				return errors.New("Required parameter missing. You must specify a stack name")
+			}
+			if len(args) > 1 {
+				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
 			}
 
 			stack := args[0]
@@ -140,7 +143,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			return nil
 		},
 	}
-	stackCmd.PersistentFlags().StringVar(&config.copy, "copy", "samples/sample-stack", "Copy the specified stack. The format is <repository>/<stack>")
+	stackCmd.PersistentFlags().StringVar(&config.copy, "copy", "incubator/starter", "Copy the specified stack. The format is <repository>/<stack>")
 	return stackCmd
 }
 

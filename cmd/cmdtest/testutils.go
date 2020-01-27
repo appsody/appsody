@@ -17,23 +17,39 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/appsody/appsody/cmd"
 	"gopkg.in/yaml.v2"
 )
 
+const CLEANUP = true
+
+const TravisTesting = false
+
+var TestDirPath = filepath.Join("..", "cmd", "testdata")
+
 // Repository struct represents an appsody repository
 type Repository struct {
 	Name string
 	URL  string
+}
+
+type TestSandbox struct {
+	*testing.T
+	ProjectDir  string
+	ProjectName string
+	ConfigDir   string
+	ConfigFile  string
+	Verbose     bool
 }
 
 func inArray(haystack []string, needle string) bool {
@@ -45,112 +61,94 @@ func inArray(haystack []string, needle string) bool {
 	return false
 }
 
-// RunAppsodyCmdExec runs the appsody CLI with the given args in a new process
-// The stdout and stderr are captured, printed, and returned
-// args will be passed to the appsody command
-// workingDir will be the directory the command runs in
-func RunAppsodyCmdExec(args []string, workingDir string, t *testing.T) (string, error) {
-	execDir, err := os.Getwd()
-	if err != nil {
-		return "", err
+func TestSetup(t *testing.T, parallel bool) {
+	if parallel {
+		t.Parallel()
 	}
-	defer func() {
-		// replace the original working directory when this function completes
-		err := os.Chdir(execDir)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	// set the working directory
-	if err := os.Chdir(workingDir); err != nil {
-		return "", err
-	}
-
-	cmdArgs := []string{"go", "run", execDir + "/..", "-v"}
-	cmdArgs = append(cmdArgs, args...)
-	t.Log(cmdArgs)
-
-	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	outReader, outWriter, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		// Make sure to close the writer first or this will hang on Windows
-		outWriter.Close()
-		outReader.Close()
-	}()
-	execCmd.Stdout = outWriter
-	execCmd.Stderr = outWriter
-	outScanner := bufio.NewScanner(outReader)
-	var outBuffer bytes.Buffer
-	go func() {
-		for outScanner.Scan() {
-			out := outScanner.Bytes()
-			outBuffer.Write(out)
-			outBuffer.WriteByte('\n')
-			t.Log(string(out))
-		}
-	}()
-
-	err = execCmd.Start()
-	if err != nil {
-		return "", err
-	}
-
-	// replace the original working directory when this function completes
-	err = os.Chdir(execDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = execCmd.Wait()
-
-	return outBuffer.String(), err
 }
 
-// RunAppsodyCmd runs the appsody CLI with the given args, in a custom
-// home directory named after the currently executing test.
-// The stdout and stderr are captured, printed and returned
-// args will be passed to the appsody command
-// projectDir will be the directory the command acts upon
-func RunAppsodyCmd(args []string, projectDir string, t *testing.T) (string, error) {
+func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
+	TestSetup(t, parallel)
 
-	args = append(args, "-v")
+	// default to verbose mode
+	sandbox := &TestSandbox{T: t, Verbose: true}
 
-	// TODO: make sure test home dirs are purged before tests are run
+	// create a temporary dir to create the project and run the test
+	dirPrefix := "appsody-" + t.Name() + "-"
+	dirPrefix = strings.ReplaceAll(dirPrefix, "/", "-")
+	dirPrefix = strings.ReplaceAll(dirPrefix, "\\", "-")
+	testDir, err := ioutil.TempDir("", dirPrefix)
+	if err != nil {
+		t.Fatal("Error creating temporary directory: ", err)
+	}
+	// remove symlinks from the path
+	// on mac, TMPDIR is set to /var which is a symlink to /private/var.
+	//    Docker by default shares mounts with /private but not /var,
+	//    so resolving the symlinks ensures docker can mount the temp dir
+	testDir, err = filepath.EvalSymlinks(testDir)
+	if err != nil {
+		t.Fatal("Error evaluating symlinks: ", err)
+	}
 
-	if !inArray(args, "--config") {
-		// Set appsody args to use custom home directory. Create the directory
-		// if it does not already exist.
-		testHomeDir := filepath.Join(os.TempDir(), "AppsodyTests", t.Name())
-		err := os.MkdirAll(testHomeDir, 0755)
-		if err != nil {
-			return "", err
-		}
-		configFile := filepath.Join(testHomeDir, "config.yaml")
+	sandbox.ProjectName = strings.ToLower(strings.Replace(filepath.Base(testDir), "appsody-", "", 1))
+	sandbox.ProjectDir = filepath.Join(testDir, sandbox.ProjectName)
+	sandbox.ConfigDir = filepath.Join(testDir, "config")
+	err = os.MkdirAll(sandbox.ProjectDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating project dir: ", err)
+	}
+	t.Log("Created testing project dir: ", sandbox.ProjectDir)
 
-		// Create the config file if it does not already exist.
-		if _, err := os.Stat(configFile); os.IsNotExist(err) {
-			data := []byte("home: " + testHomeDir + "\n" + "generated-by-tests: Yes" + "\n")
-			err = ioutil.WriteFile(configFile, data, 0644)
+	err = os.MkdirAll(sandbox.ConfigDir, 0755)
+	if err != nil {
+		t.Fatal("Error creating project dir: ", err)
+	}
+	t.Log("Created testing config dir: ", sandbox.ConfigDir)
+
+	// Create the config file if it does not already exist.
+	sandbox.ConfigFile = filepath.Join(sandbox.ConfigDir, "config.yaml")
+	data := []byte("home: " + sandbox.ConfigDir + "\n" + "generated-by-tests: Yes" + "\n")
+	err = ioutil.WriteFile(sandbox.ConfigFile, data, 0644)
+	if err != nil {
+		t.Fatal("Error writing config file: ", err)
+	}
+
+	cleanupFunc := func() {
+		if CLEANUP {
+			err := os.RemoveAll(testDir)
 			if err != nil {
-				return "", err
+				t.Log("WARNING - ignoring error cleaning up test directory: ", err)
 			}
 		}
+	}
+	return sandbox, cleanupFunc
+}
 
-		// Pass custom config file to appsody
-		args = append(args, "--config", configFile)
+// RunAppsody runs the appsody CLI with the given args, using
+// the sandbox for the project dir and config home.
+// The stdout and stderr are captured, printed and returned
+// args will be passed to the appsody command
+func RunAppsody(t *TestSandbox, args ...string) (string, error) {
+
+	if t.Verbose && !(inArray(args, "-v") || inArray(args, "--verbose")) {
+		args = append(args, "-v")
+	}
+
+	if !inArray(args, "--config") {
+		// Set appsody args to use custom home directory.
+		args = append(args, "--config", t.ConfigFile)
 	}
 
 	// // Buffer cmd output, to be logged if there is a failure
 	var outBuffer bytes.Buffer
 
 	// Direct cmd console output to a buffer
-	outReader, outWriter, _ := os.Pipe()
+	outReader, outWriter := io.Pipe()
 
 	// copy the output to the buffer, and also to the test log
 	outScanner := bufio.NewScanner(outReader)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for outScanner.Scan() {
 			out := outScanner.Bytes()
@@ -158,16 +156,22 @@ func RunAppsodyCmd(args []string, projectDir string, t *testing.T) (string, erro
 			outBuffer.WriteByte('\n')
 			t.Log(string(out))
 		}
+		wg.Done()
 	}()
 
-	err := cmd.ExecuteE("vlatest", "latest", projectDir, outWriter, outWriter, args)
+	t.Log("Running appsody in the test sandbox with args: ", args)
+	err := cmd.ExecuteE("vlatest", "latest", t.ProjectDir, outWriter, outWriter, args)
+	if err != nil {
+		t.Log("Error returned from appsody command: ", err)
+	}
 
-	// close the reader and writer
+	// close the writer first, so it sends an EOF to the scanner above,
+	// then wait for the scanner to finish before closing the reader
 	outWriter.Close()
+	wg.Wait()
 	outReader.Close()
 
 	return outBuffer.String(), err
-
 }
 
 // ParseRepoList takes in the string from 'appsody repo list' command
@@ -258,16 +262,13 @@ func ParseListYAML(yamlString string) (cmd.IndexOutputFormat, error) {
 	return index, nil
 }
 
-// AddLocalFileRepo calls the repo add command with the repo index located
-// at the local file path. The path may be relative to the current working
-// directory.
+// AddLocalRepo calls the `appsody repo add` command with the repo index located
+// at the local file path. The path may be relative to the current working directory.
 // Returns the URL of the repo added.
-// Returns a function which should be deferred by the caller to cleanup
-// the repo list when finished.
-func AddLocalFileRepo(repoName string, repoFilePath string, t *testing.T) (string, func(), error) {
+func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string, error) {
 	absPath, err := filepath.Abs(repoFilePath)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 	var repoURL string
 	if runtime.GOOS == "windows" {
@@ -276,19 +277,12 @@ func AddLocalFileRepo(repoName string, repoFilePath string, t *testing.T) (strin
 	}
 	repoURL = "file://" + absPath
 	// add a new repo
-	_, err = RunAppsodyCmd([]string{"repo", "add", repoName, repoURL}, ".", t)
+	_, err = RunAppsody(t, "repo", "add", repoName, repoURL)
 	if err != nil {
-		return "", nil, err
-	}
-	// cleanup whe finished
-	cleanupFunc := func() {
-		_, err = RunAppsodyCmd([]string{"repo", "remove", repoName}, ".", t)
-		if err != nil {
-			log.Fatalf("Error cleaning up with repo remove: %s", err)
-		}
+		return "", err
 	}
 
-	return repoURL, cleanupFunc, err
+	return repoURL, nil
 }
 
 // RunDockerCmdExec runs the docker command with the given args in a new process
@@ -302,19 +296,14 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 	t.Log(cmdArgs)
 
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	outReader, outWriter, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		// Make sure to close the writer first or this will hang on Windows
-		outWriter.Close()
-		outReader.Close()
-	}()
+	outReader, outWriter := io.Pipe()
+
 	execCmd.Stdout = outWriter
 	execCmd.Stderr = outWriter
 	outScanner := bufio.NewScanner(outReader)
 	var outBuffer bytes.Buffer
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for outScanner.Scan() {
 			out := outScanner.Bytes()
@@ -322,16 +311,21 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 			outBuffer.WriteByte('\n')
 			t.Log(string(out))
 		}
+		wg.Done()
 	}()
 
-	err = execCmd.Start()
+	err := execCmd.Start()
 	if err != nil {
 		return "", err
 	}
 
-	// replace the original working directory when this function completes
-
 	err = execCmd.Wait()
+
+	// close the writer first, so it sends an EOF to the scanner above,
+	// then wait for the scanner to finish before closing the reader
+	outWriter.Close()
+	wg.Wait()
+	outReader.Close()
 
 	return outBuffer.String(), err
 }
@@ -347,20 +341,4 @@ func Exists(path string) (bool, error) {
 		return false, nil
 	}
 	return true, err
-}
-func GetTempProjectDir(t *testing.T) string {
-	// create a temporary dir to create the project and run the test
-	projectDir, err := ioutil.TempDir("", "appsody-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// remove symlinks from the path
-	// on mac, TMPDIR is set to /var which is a symlink to /private/var.
-	//    Docker by default shares mounts with /private but not /var,
-	//    so resolving the symlinks ensures docker can mount the temp dir
-	projectDir, err = filepath.EvalSymlinks(projectDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return projectDir
 }

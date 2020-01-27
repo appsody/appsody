@@ -24,7 +24,7 @@ import (
 func newRepoRemoveCmd(config *RootCommandConfig) *cobra.Command {
 	// initCmd represents the init command
 	var removeCmd = &cobra.Command{
-		Use:   "remove <name>",
+		Use:   "remove <repository>",
 		Short: "Remove an Appsody repository.",
 		Long: `Remove an Appsody repository from your list of configured Appsody repositories.
 		
@@ -33,9 +33,11 @@ You cannot remove the default repository, but you can make a different repositor
   Removes the "my-local-repo" repository from your list of configured repositories.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return errors.New("Error, you must specify repository name")
+				return errors.New("You must specify repository name")
 			}
-
+			if len(args) > 1 {
+				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
+			}
 			var repoName = args[0]
 
 			var repoFile RepositoryFile
@@ -52,12 +54,12 @@ You cannot remove the default repository, but you can make a different repositor
 						return err
 					}
 					if repoName != defaultRepoName {
-						repoFile.Remove(repoName)
+						repoFile.Remove(repoName, config.LoggingConfig)
 					} else {
-						config.Error.log("You cannot remove the default repository " + repoName)
+						return errors.New("You cannot remove the default repository " + repoName)
 					}
 				} else {
-					config.Error.log("Repository is not in configured list of repositories")
+					return errors.New("Repository is not in configured list of repositories")
 				}
 				err := repoFile.WriteFile(getRepoFileLocation(config))
 				if err != nil {

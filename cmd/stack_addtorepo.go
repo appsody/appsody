@@ -14,8 +14,6 @@
 package cmd
 
 import (
-	"bytes"
-	"fmt"
 	"os"
 	"strings"
 
@@ -36,14 +34,15 @@ func newStackAddToRepoCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	log := rootConfig.LoggingConfig
 
 	var stackAddToRepoCmd = &cobra.Command{
-		Use:   "add-to-repo <repo-name>",
+		Use:   "add-to-repo <repository>",
 		Short: "Add stack information into a production Appsody repository",
 		Long: `Adds stack information into an Appsody repository. 
 		
-Adds stack information to a new or existing Appsody repository, specified by the <repo-name> argument. This enables you to share your stack with others.
+Adds stack information to a new or existing Appsody repository, specified by the <repository> argument. This enables you to share your stack with others.
 
-The updated repository index file is created in  ~/.appsody/stacks/dev.local directory.`,
+The updated repository index file is created in  ~/.appsody/stacks/dev.local directory.
 
+Run this command from the root directory of your Appsody project.`,
 		Example: `  appsody stack add-to-repo incubator
   Creates a new repository index file for the incubator repository, setting the template URLs to begin with a default URL of https://github.com/appsody/stacks/releases/latest/download/
 
@@ -61,6 +60,9 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 			if len(args) < 1 {
 				return errors.New("Required parameter missing. You must specify a repository name")
 			}
+			if len(args) > 1 {
+				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
+			}
 
 			repoName = args[0]
 
@@ -69,6 +71,7 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 			log.Debug.Log("useLocalCache is: ", useLocalCache)
 
 			var repoFile RepositoryFile
+			createNewLocalIndex := false
 
 			stackPath := rootConfig.ProjectDir
 			log.Debug.Log("stackPath is: ", stackPath)
@@ -118,7 +121,7 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 
 				// Check if the repo URL points to a remote repository
 				if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
-					log.Debug.log("Remote url: ", url)
+					log.Debug.log("Remote repository index url: ", url)
 					// Check to see whether the local index file exists
 					exists, err := Exists(localIndexFile)
 					if err != nil {
@@ -126,35 +129,30 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 					}
 					if exists && useLocalCache {
 						log.Debug.Log(localIndexFile, " exists in the appsody directory and use-local-cache is true")
-						source, err := ioutil.ReadFile(localIndexFile)
-						if err != nil {
-							return errors.Errorf("Error trying to read: %v", err)
-						}
-
-						err = yaml.Unmarshal(source, &indexYaml)
-						if err != nil {
-							return errors.Errorf("Error trying to unmarshall: %v", err)
-						}
 					} else {
 						// local file doesnt exist or use-local-cache is not set to true
 						// so download the index from the repote location and use it
 						log.Debug.Log(localIndexFile, " doesnt exist in the appsody directory or use-local-cache is false")
-						log.Debug.Log("Downloading the remote index file")
-						index, err := downloadFileIndex(log, url)
+						log.Info.Log("Downloading the remote index file from: ", url)
+						log.Info.log("Creating repository index file: ", localIndexFile)
+						err := downloadFileToDisk(log, url, localIndexFile, false)
 						if err != nil {
 							return err
 						}
-						indexYaml = *index
 					}
 				} else {
-					log.Debug.log("Local url: ", url)
-					log.Debug.Log("Modify the local file in the local directory")
-					index, err := downloadFileIndex(log, url)
+					log.Debug.log("Local repository index url: ", url)
+					localIndexFile = strings.TrimPrefix(url, "file://")
+					exists, err := Exists(localIndexFile)
 					if err != nil {
-						return err
+						return errors.Errorf("Error checking status of %s", localIndexFile)
 					}
-					indexYaml = *index
-					localIndexFile = url
+					if exists && useLocalCache {
+						log.Debug.Log(localIndexFile, " exists in the appsody directory and use-local-cache is true")
+					} else {
+						log.Debug.Log(localIndexFile, " doesnt exist in the appsody directory or use-local-cache is false")
+						createNewLocalIndex = true
+					}
 				}
 			} else {
 				log.Debug.Log(repoName, " does not exist within the repository list")
@@ -164,25 +162,29 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 				}
 				if exists && useLocalCache {
 					log.Debug.Log(localIndexFile, " exists in the appsody directory and use-local-cache is true")
-					source, err := ioutil.ReadFile(localIndexFile)
-					if err != nil {
-						return errors.Errorf("Error trying to read: %v", err)
-					}
-
-					err = yaml.Unmarshal(source, &indexYaml)
-					if err != nil {
-						return errors.Errorf("Error trying to unmarshall: %v", err)
-					}
 				} else {
 					// local file doesnt exist or use-local-cache is not set to true
 					// so download the index from the repote location and use it
 					log.Debug.Log(localIndexFile, " doesnt exist in the appsody directory or use-local-cache is false")
-					log.Debug.Log("Creating a new local file in the local directory")
+					createNewLocalIndex = true
+				}
+			}
 
-					// create the beginning of the index yaml
-					indexYaml = IndexYaml{}
-					indexYaml.APIVersion = "v2"
-					indexYaml.Stacks = make([]IndexYamlStack, 0, 1)
+			if createNewLocalIndex {
+				// create the beginning of the index yaml
+				log.Info.log("Creating repository index file: ", localIndexFile)
+				indexYaml = IndexYaml{}
+				indexYaml.APIVersion = "v2"
+				indexYaml.Stacks = make([]IndexYamlStack, 0, 1)
+			} else {
+				log.Info.log("Updating repository index file: ", localIndexFile)
+				source, err := ioutil.ReadFile(localIndexFile)
+				if err != nil {
+					return errors.Errorf("Error trying to read: %v", err)
+				}
+				err = yaml.Unmarshal(source, &indexYaml)
+				if err != nil {
+					return errors.Errorf("Error trying to unmarshall: %v", err)
 				}
 			}
 
@@ -250,6 +252,8 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 				return errors.Errorf("Error writing localIndexFile: %v", err)
 			}
 
+			log.Info.Log("Repository index file updated successfully")
+
 			return nil
 		},
 	}
@@ -260,23 +264,19 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 	return stackAddToRepoCmd
 }
 
-func downloadFileIndex(log *LoggingConfig, url string) (*IndexYaml, error) {
-	log.Debug.log("Downloading appsody repository index from ", url)
-	indexBuffer := bytes.NewBuffer(nil)
-	err := downloadFile(log, url, indexBuffer)
+func getStackData(stackPath string) (StackYaml, error) {
+	// get the necessary data from the current stack.yaml
+	var stackYaml StackYaml
+
+	source, err := ioutil.ReadFile(filepath.Join(stackPath, "stack.yaml"))
 	if err != nil {
-		return nil, err
+		return stackYaml, errors.Errorf("Error trying to read: %v", err)
 	}
 
-	yamlFile, err := ioutil.ReadAll(indexBuffer)
+	err = yaml.Unmarshal(source, &stackYaml)
 	if err != nil {
-		return nil, fmt.Errorf("Could not read buffer into byte array")
+		return stackYaml, errors.Errorf("Error trying to unmarshall: %v", err)
 	}
-	var index IndexYaml
-	err = yaml.Unmarshal(yamlFile, &index)
-	if err != nil {
-		log.Debug.logf("Contents of downloaded index from %s\n%s", url, yamlFile)
-		return nil, fmt.Errorf("Repository index formatting error: %s", err)
-	}
-	return &index, nil
+
+	return stackYaml, nil
 }

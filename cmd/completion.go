@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -43,22 +42,22 @@ func newCompletionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command
 	For zsh,
 	The zsh shell must be enabled and .zshrc configured to run zsh completion.
 	To install Appsody zsh completion: 
-
 	1. run appsody completion zsh > _appsody
 	2. copy _appsody to a directory in your $fpath
 	3. rm ~/.zcompdump*`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
 			buf := new(bytes.Buffer)
 			completionType := "bash"
 
 			if len(args) > 1 {
-				return errors.Errorf("Too many arguments, either one of bash or zsh must be specified.")
+				return fmt.Errorf("Too many arguments, either one of bash or zsh must be specified.")
 
 			}
 			if len(args) == 1 {
 
 				if !(args[0] == "zsh" || args[0] == "bash") {
-					return errors.Errorf("Argument not allowed, it must be bash or zsh.")
+					return fmt.Errorf("Argument not allowed, it must be bash or zsh.")
 				}
 				completionType = args[0]
 

@@ -8,3 +8,9 @@ maintainers: # list of maintainers for this stack
     email: name@email.com
     github-id: github-account
 default-template: hello # folder name of default template
+templating-data:
+  key1: value1
+  key2: value2
+  key3: value3
+requirements:
+  appsody-version: ">= 17.09.0"

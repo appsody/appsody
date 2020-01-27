@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -34,6 +35,10 @@ func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
 		Short: "List your Appsody repositories.",
 		Long:  `List all your configured Appsody repositories. The "incubator" repository is the initial default repository for Appsody.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			if len(args) > 0 {
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
+			}
 			var repos RepositoryFile
 
 			list, repoErr := repos.getRepos(config)

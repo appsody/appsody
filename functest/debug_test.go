@@ -14,7 +14,7 @@
 package functest
 
 import (
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -41,20 +41,18 @@ func TestDebugSimple(t *testing.T) {
 
 		t.Log("***Testing stack: ", stackRaw[i], "***")
 
+		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+		defer cleanup()
+
 		// first add the test repo index
-		_, cleanup, err := cmdtest.AddLocalFileRepo("LocalTestRepo", "../cmd/testdata/index.yaml", t)
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		// create a temporary dir to create the project and run the test
-		projectDir := cmdtest.GetTempProjectDir(t)
-		defer os.RemoveAll(projectDir)
-		t.Log("Created project dir: " + projectDir)
-
 		// appsody init
 		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsodyCmd([]string{"init", stackRaw[i]}, projectDir, t)
+		_, err = cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -63,9 +61,24 @@ func TestDebugSimple(t *testing.T) {
 		runChannel := make(chan error)
 		containerName := "testDebugSimpleContainer" + strings.ReplaceAll(stackRaw[i], "/", "_")
 		go func() {
-			_, err := cmdtest.RunAppsodyCmd([]string{"debug", "--name", containerName}, projectDir, t)
+			_, err := cmdtest.RunAppsody(sandbox, "debug", "--name", containerName)
 			runChannel <- err
+			close(runChannel)
 		}()
+
+		// defer the appsody stop to close the docker container
+		defer func() {
+			_, err = cmdtest.RunAppsody(sandbox, "stop", "--name", containerName)
+			if err != nil {
+				t.Logf("Ignoring error running appsody stop: %s", err)
+			}
+			// wait for the appsody command/goroutine to finish
+			runErr := <-runChannel
+			if runErr != nil {
+				t.Logf("Ignoring error from the appsody command: %s", runErr)
+			}
+		}()
+
 		// It will take a while for the container to spin up, so let's use docker ps to wait for it
 		t.Log("calling docker ps to wait for container")
 		containerRunning := false
@@ -90,13 +103,5 @@ func TestDebugSimple(t *testing.T) {
 		if !containerRunning {
 			t.Fatal("container never appeared to start")
 		}
-
-		// stop and cleanup
-		_, err = cmdtest.RunAppsodyCmd([]string{"stop", "--name", containerName}, projectDir, t)
-		if err != nil {
-			t.Logf("Ignoring error running appsody stop: %s", err)
-		}
-
-		cleanup()
 	}
 }

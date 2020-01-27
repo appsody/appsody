@@ -41,6 +41,8 @@ type buildCommandConfig struct {
 	pullURL             string
 	appDeployFile       string
 	knative             bool
+	knativeFlagPresent  bool
+	namespace           string
 }
 
 //These are the current supported labels for Kubernetes,
@@ -54,8 +56,8 @@ var supportedKubeLabels = []string{
 	"app.appsody.dev/name",
 }
 
-func checkDockerBuildOptions(options []string) error {
-	buildOptionsTest := "(^((-t)|(--tag)|(-f)|(--file))((=?$)|(=.*)))"
+func checkBuildOptions(options []string) error {
+	buildOptionsTest := "(^((-t)|(--tag)|(--help)|(-f)|(--file))((=?$)|(=.*)))"
 
 	blackListedBuildOptionsRegexp := regexp.MustCompile(buildOptionsTest)
 	for _, value := range options {
@@ -79,26 +81,34 @@ func newBuildCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 By default, the built image is tagged with the project name that you specified when you initialised your Appsody project. If you did not specify a name, the image is tagged with the name of the root directory of your Appsody project.
 
-If you want to push the built image to an image repository using the [--push] options, you must specify the relevant image tag.`,
+If you want to push the built image to an image repository using the [--push] options, you must specify the relevant image tag.
+
+Run this command from the root directory of your Appsody project.`,
 		Example: `  appsody build -t my-repo/nodejs-express --push
   Builds the container image, tags it with my-repo/nodejs-express, and pushes it to the container registry the Docker CLI is currently logged into.
 
   appsody build -t my-repo/nodejs-express:0.1 --push-url my-registry-url
   Builds the container image, tags it with my-repo/nodejs-express, and pushes it to my-registry-url/my-repo/nodejs-express:0.1.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
+			}
+			config.knativeFlagPresent = cmd.Flag("knative").Changed
 
 			projectDir, err := getProjectDir(config.RootCommandConfig)
 			if err != nil {
 				return err
 			}
 			config.appDeployFile = filepath.Join(projectDir, config.appDeployFile)
+
 			return build(config)
 		},
 	}
+	addStackRegistryFlag(buildCmd, &rootConfig.StackRegistry, rootConfig)
 
 	buildCmd.PersistentFlags().StringVarP(&config.tag, "tag", "t", "", "Container image name and optionally, a tag in the 'name:tag' format.")
 	buildCmd.PersistentFlags().BoolVar(&rootConfig.Buildah, "buildah", false, "Build project using buildah primitives instead of Docker.")
-	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the Docker build options to use. Value must be in \"\".")
+	buildCmd.PersistentFlags().StringVar(&config.dockerBuildOptions, "docker-options", "", "Specify the Docker build options to use. Value must be in \"\". The following Docker options are not supported: '--help','-t','--tag','-f','--file'.")
 	buildCmd.PersistentFlags().StringVar(&config.buildahBuildOptions, "buildah-options", "", "Specify the buildah build options to use. Value must be in \"\".")
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the container image to the image repository.")
 	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
@@ -129,6 +139,11 @@ func build(config *buildCommandConfig) error {
 		buildOptions = strings.TrimSpace(config.buildahBuildOptions)
 	}
 
+	// Issue 529 - if you specify --push or --push-url without --tag, error out
+	if config.tag == "" && (config.push || config.pushURL != "") {
+		return errors.New("Cannot specify --push or --push-url without a --tag")
+	}
+
 	extractConfig := &extractCommandConfig{RootCommandConfig: config.RootCommandConfig}
 
 	projectName, perr := getProjectName(config.RootCommandConfig)
@@ -138,7 +153,7 @@ func build(config *buildCommandConfig) error {
 
 	extractDir := filepath.Join(getHome(config.RootCommandConfig), "extract", projectName)
 	dockerfile := filepath.Join(extractDir, "Dockerfile")
-	buildImage := projectName //Lowercased
+	buildImage := "dev.local/" + projectName //Lowercased
 
 	// Regardless of pass or fail, remove the local extracted folder
 	defer os.RemoveAll(extractDir)
@@ -152,14 +167,16 @@ func build(config *buildCommandConfig) error {
 	if config.tag != "" {
 		buildImage = config.tag
 	}
+
 	if config.pushURL != "" {
 		buildImage = config.pushURL + "/" + buildImage
 	}
+
 	cmdArgs := []string{"-t", buildImage}
 
 	if buildOptions != "" {
 		options := strings.Split(buildOptions, " ")
-		err := checkDockerBuildOptions(options)
+		err := checkBuildOptions(options)
 		if err != nil {
 			return err
 		}
@@ -201,7 +218,7 @@ func build(config *buildCommandConfig) error {
 	}
 
 	// Generate app-deploy
-	err = generateDeploymentConfig(config)
+	err = generateDeploymentConfig(config, buildImage, labels)
 	if err != nil {
 		return err
 	}
@@ -222,14 +239,14 @@ func getLabels(config *RootCommandConfig) (map[string]string, error) {
 		return labels, projectConfigErr
 	}
 
-	configLabels, err := getConfigLabels(*projectConfig)
+	configLabels, err := getConfigLabels(*projectConfig, ".appsody-config.yaml", config.LoggingConfig)
 	if err != nil {
 		return labels, err
 	}
 
 	gitLabels, err := getGitLabels(config)
 	if err != nil {
-		config.Info.log(err)
+		config.Warning.log("Not all labels will be set. ", err.Error())
 	}
 
 	for key, value := range stackLabels {
@@ -327,7 +344,7 @@ func CreateLabelPairs(labels map[string]string) []string {
 	return labelsArr
 }
 
-func generateDeploymentConfig(config *buildCommandConfig) error {
+func generateDeploymentConfig(config *buildCommandConfig, imageName string, labels map[string]string) error {
 	containerConfigDir := "/config/app-deploy.yaml"
 	configFile := config.appDeployFile
 
@@ -335,12 +352,12 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	if configErr != nil {
 		return configErr
 	}
-	if !config.Buildah {
-		err := CheckPrereqs()
-		if err != nil {
-			config.Warning.logf("Failed to check prerequisites: %v\n", err)
-		}
+
+	err := CheckPrereqs(config.RootCommandConfig)
+	if err != nil {
+		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
+
 	stackImage := projectConfig.Stack
 	config.Debug.log("Stack image: ", stackImage)
 	config.Debug.log("Config directory: ", containerConfigDir)
@@ -352,7 +369,7 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 
 	if exists {
 		config.Info.log("Found existing deployment manifest ", configFile)
-		err := updateDeploymentConfig(config)
+		err := updateDeploymentConfig(config, imageName, labels)
 		if err != nil {
 			return err
 		}
@@ -461,8 +478,6 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	split = strings.Split(stack, "/")
 	stack = split[len(split)-1]
 
-	imageName := "dev.local/" + projectName
-
 	if !config.Dryrun {
 		output := bytes.Replace(yamlReader, []byte("APPSODY_PROJECT_NAME"), []byte(projectName), -1)
 		output = bytes.Replace(output, []byte("APPSODY_DOCKER_IMAGE"), []byte(imageName), -1)
@@ -474,7 +489,8 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 			return errors.Errorf("Failed to write local application configuration file: %s", err)
 		}
 
-		err = updateDeploymentConfig(config)
+		err = updateDeploymentConfig(config, imageName, labels)
+
 		if err != nil {
 			return errors.Errorf("Failed to update deployment config file: %s", err)
 		}
@@ -485,17 +501,12 @@ func generateDeploymentConfig(config *buildCommandConfig) error {
 	return nil
 }
 
-func updateDeploymentConfig(config *buildCommandConfig) error {
+func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels map[string]string) error {
 	configFile := config.appDeployFile
 
 	appsodyApplication, err := getAppsodyApplication(configFile)
 	if err != nil {
 		return err
-	}
-
-	labels, err := getLabels(config.RootCommandConfig)
-	if err != nil {
-		return errors.Errorf("Could not get labels: %s", err)
 	}
 
 	labels = convertLabelsToKubeFormat(config.LoggingConfig, labels)
@@ -508,19 +519,24 @@ func updateDeploymentConfig(config *buildCommandConfig) error {
 		}
 	}
 
-	for key, value := range selectedLabels {
-		appsodyApplication.Labels[key] = value
+	if appsodyApplication.Labels == nil {
+		appsodyApplication.Labels = selectedLabels
+	} else {
+		for key, value := range selectedLabels {
+			appsodyApplication.Labels[key] = value
+		}
 	}
 
-	for key, value := range labels {
-		appsodyApplication.Annotations[key] = value
+	if appsodyApplication.Annotations == nil {
+		appsodyApplication.Annotations = labels
+	} else {
+		for key, value := range labels {
+			appsodyApplication.Annotations[key] = value
+		}
 	}
 
-	appsodyApplication.Spec.CreateKnativeService = &config.knative
-
-	imageName := appsodyApplication.Spec.ApplicationImage
-	if config.tag != "" {
-		imageName = config.tag
+	if appsodyApplication.Spec.CreateKnativeService == nil || config.knativeFlagPresent {
+		appsodyApplication.Spec.CreateKnativeService = &config.knative
 	}
 
 	if config.pullURL != "" {
@@ -528,6 +544,14 @@ func updateDeploymentConfig(config *buildCommandConfig) error {
 	}
 
 	appsodyApplication.Spec.ApplicationImage = imageName
+
+	// This only applies to the deploy command flow:
+	// - if the namespace doesn't exist in the manifest, and a namespace flag is not set: we write a "default" namespace
+	// - if the namespace does exist in the manifest, and a namespace flag is set: we verify that they are the same. If they are not we throw an error.
+	// - if the namespace doesn't exist in the manifest, and a namespace flag is set: we write the value passed an argument with the flag.
+	if appsodyApplication.Namespace == "" {
+		appsodyApplication.Namespace = config.namespace
+	}
 
 	err = writeAppsodyApplication(appsodyApplication, config)
 	if err != nil {

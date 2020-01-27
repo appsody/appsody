@@ -1,72 +1,79 @@
 
-# Building from Source
+# Building locally from source
 
 Prerequisites:
 
-* go version 1.12 or higher is installed and in the path
-* docker is installed and running
+* Go version 1.12 or higher is installed and in the path
+* Docker is installed and running
 * wget is installed
 
-After setting the `GOPATH` env var correctly, just run `make <action...>` from the command line, within the same directory where `Makefile` resides. 
+Set the `GOPATH` environment variable and run `make <action...>` from the command line, within the same directory as the `Makefile`.
 
-For example - if you want to obtain a fully built Appsody CLI for all the supported platform run:
+## What is supported by the makefile to build?
+
+For the Appsody CLI binaries, three main target systems are supported:
+
+* `darwin` (macOS)
+* `linux`
+* `windows`
+
+For each system you can set a component target to:
+
+* `build` to build the CLI binary and place it in a subdirectory called `build`. The binary file is named to match the target system architecture, for example `appsody-0.0.0-darwin-amd64`
+* `tar` to compress the CLI binary from the build directory, along with the LICENSE and README files, and place the resulting tar file in a subdirectory called `package`, again named to match the target system architecture
+* `brew`, `deb` or `rpm` to create an *installable* CLI package, in a form relevant for the target system architecture
+
+These core makefile targets take the form of:
+
+{component}-{target system}
+
+For instance, to build the CLI for macOS, you would enter:
+
+```bash
+make build-darwin
 ```
+
+There are many other options that include `all`, `package` (which builds, tars, and packages everything), `build-docs` etc. For example, to clean, build, and package all available targeted system binaries enter:
+
+```bash
 make clean package
 ```
-which will run the `clean` action, and then the `package` action. The latter produces the built binaries (as described in the next section).
 
-If you inspect the `Makefile`, you'll notice that it invokes a number of scripts - and you'll notice a few conditional paths, because certain Linux commands behave differently on macOS and elsewhere.
+The command generates artifacts in the `package` subdirectory, within the folder that contains the makefile. When Appsody is released, the same artifacts are published in the [Appsody releases page](https://github.com/appsody/appsody/releases).
 
+Since the makefile uses the cross architecture capabilities of `go build`, as well as Docker images to build appropriate installable packages for each architecture, you can build and package all target system architectures from any one system architecture.
 
+The makefile supports a `help` target (which is, in fact, the default target), so to get the full list of targets enter:
 
-### What gets produced by the build?
-Quite a bit of stuff. 
+```bash
+make
+```
 
-If you run `make clean package`, you will find the artifacts in the `package` sub-directory, under the folder that contains the `Makefile`. The same artifacts are published in the release page, when Appsody is released.
+## Running the locally built CLI
 
-Here's a description of the various artifacts that are produced by the build:
+The `build` makefile target produces a named binary for the requested system. You can run the binary locally from the `build` subdirectory. The makefile also provides a target `localbin-{target system}` that copies the binary to a subdirectory called `bin` and renames it to `appsody`. For instance, on macOS:
 
-* The actual RPM package for RHEL/Centos (to be `yum`med or `rpm -i`)
+```bash
+make build-darwin localbin-darwin
+```
 
-* The binaries tarred up in the way homebrew loves them
+You can run the newly built CLI by referencing it directly (`./bin/appsody`). Alternatively you can add the `bin` directory to your $PATH (or %PATH% on Windows) and use the `appsody` command.
 
-* The plain binaries tarred up as they come out of the build process
+The Appsody CLI relies on a component that is called the [Appsody controller](https://github.com/appsody/controller). The Appsody Controller is built separately, and is meant to be run within the container that hosts the Appsody app itself (as opposed to being executed on the developer's system). The Appsody CLI automatically downloads the Appsody controller, when necessary, in the form of a Docker image.
 
-** for OS/X
+If your CLI changes are not dependent on changes to the Appsody Controller, then there is nothing else that you need to do to test locally. If your code changes need a matching Appsody Controller, as a developer, you can override which version of the Appsody Controller the CLI uses, in two different ways:
 
-** for Linux
+1) Set the `APPSODY_CONTROLLER_VERSION` environment variable before you run the Appsody CLI. For example, `export APPSODY_CONTROLLER_VERSION=0.3.0`.
+2) Set the `APPSODY_CONTROLLER_IMAGE` environment variable before you run the Appsody CLI. For example, `export APPSODY_CONTROLLER_IMAGE=mydockeraccount/my-controller:1.0`.
 
-** for Windows
+If you specify both, `APPSODY_CONTROLLER_IMAGE` wins.
 
-* The homebrew Formula (which we should push to some git repo, once we go "public")
+Using these environment variables, you can test the Appsody CLI with various levels of the Appsody Controller binaries, which might be useful if you want to contribute to the Appsody project.
 
-* The Debian package for Ubuntu-like Linux (to be `apt-get install`ed)
+# Travis build within the project
 
-### Running the CLI
-So, you built from source and you would like to run it. 
-
-* The first thing you need to do is to extract the binary for your OS from the `./package` directory. Un-tar the file that matches your OS.
-
-* Next, you need to copy that file to some place that's in your $PATH (for example, /usr/bin or /usr/local/bin) or %PATH% (any Win folder, then add it to the %PATH%). You may also want to call it `appsody`, so that you can run the CLI just by typing `appsody <command>`.
-
-* If you are replacing an old installation, you may want to delete the appsody home directory (`$HOME/.appsody`).
-
-### The Appsody Controller
-In order to enable rapid app development, the Appsody CLI relies on a component called the `Appsody controller`, which is built separately, and which is meant to be run within the container that hosts the Appsody app itself (as opposed to being executed on the developers' system). However, the good news is that the Appsody CLI automatically downloads the Appsody controller when necessary, in the form of a Docker image.
-
-When the Appsody CLI is built using the `Makefile`, the CLI "knows" which version of the controller needs to be obtained. If you just compile the Appsody CLI binary using `go build`, the Appsody CLI will pull the `latest` version of the controller image (which may or may not be a good match - so, be aware of that).
-
-As a developer, you can also override which version of the Appsody controller the CLI uses, in two different ways:
-1) By setting the `APPSODY_CONTROLLER_VERSION` env var prior to launching the Appsody CLI. For example, `export APPSODY_CONTROLLER_VERSION=0.3.0`
-2) By setting the `APPSODY_CONTROLLER_IMAGE` env var prior to launching the Appsody CLI. For example, `export APPSODY_CONTROLLER_IMAGE=mydockeraccount/my-controller:1.0`.
-
-If you specify both, `APPSODY_CONTROLLER_IMAGE` wins. 
-
-Using these env vars, you can test the Appsody CLI with various levels of the controller binaries, which might be useful if you want to contribute to the Appsody project.
-
-# Travis build
-The project is instrumented with Travis CI and with an appropriate `Makefile`. Most of the build logic is triggered from within the `Makefile`.
+The Appsody project is instrumented with Travis CI and an appropriate makefile. Most of the build logic is triggered from within the makefile.
 
 When you push your code to GitHub, only the `test` and `lint` actions are executed by Travis.
 
-In order for Travis to go all the way to `package` and `deploy`, you need to create a *new* release (one that is tagged with a never seen before tag). When you create a new release, a Travis build with automatically run, and the resulting artifacts will be posted on the `Releases` page. 
+In order for Travis to go all the way to `package` and `deploy`, you need to create a *new* release (one that is tagged with a never seen before tag). When you create a new release, a Travis build is automatically run, and the resulting artifacts are posted on the `Releases` page.

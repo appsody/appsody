@@ -24,16 +24,16 @@ import (
 
 func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	var lintCmd = &cobra.Command{
-		Use:   "lint",
+		Use:   "lint [path]",
 		Short: "Check your stack structure.",
 		Long: `Check that the structure of your stack is valid. Error messages indicate critical issues in your stack structure, such as missing files, directories, or stack variables. Warning messages suggest optional stack enhancements.
 
-		Run this command from the base directory of your stack, or specify the path to your stack.`,
+Run this command from the root directory of your stack, or specify the path to your stack.`,
 		Example: `  appsody stack lint
-		Checks the structure of the stack in the current directory"
+  Checks the structure of the stack in the current directory"
 		
-		appsody stack lint path/to/my-stack
-		Checks the structure of the stack "my-stack" in the path "path/to/my-stack"`,
+  appsody stack lint path/to/my-stack
+  Checks the structure of the stack "my-stack" in the path "path/to/my-stack"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			var stackLintErrorCount int
@@ -43,6 +43,9 @@ func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 			if len(args) > 0 {
 				stackPath = args[0]
+			}
+			if len(args) > 1 {
+				return errors.Errorf("Too many arguments. Use 'appsody [command] --help' for more information about a command")
 			}
 
 			imagePath := filepath.Join(stackPath, "image")
@@ -121,6 +124,15 @@ func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
 				stackLintWarningCount++
 			}
 
+			fileCheck, err = Exists(projectPath)
+			if err != nil {
+				rootConfig.Error.log("Error attempting to determine file: ", err)
+				stackLintErrorCount++
+			} else if !fileCheck {
+				rootConfig.Warning.log("Missing project directory in ", imagePath)
+				stackLintWarningCount++
+			}
+
 			fileCheck, err = Exists(filepath.Join(projectPath, "/Dockerfile"))
 			if err != nil {
 				rootConfig.Error.log("Error attempting to determine file: ", err)
@@ -160,8 +172,10 @@ func newStackLintCmd(rootConfig *RootCommandConfig) *cobra.Command {
 			stackLintErrorCount += dockerFileErrorCount
 			stackLintWarningCount += dockerFileWarningCount
 
-			var s StackDetails
-			stackLintErrorCount += s.validateYaml(rootConfig, stackPath)
+			var stackDetails StackYaml
+			stackYamlErrorCount, stackYamlWarningCount := stackDetails.validateYaml(rootConfig, stackPath)
+			stackLintErrorCount += stackYamlErrorCount
+			stackLintWarningCount += stackYamlWarningCount
 
 			rootConfig.Info.log("TOTAL ERRORS: ", stackLintErrorCount)
 			rootConfig.Info.log("TOTAL WARNINGS: ", stackLintWarningCount)

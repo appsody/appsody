@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/mitchellh/go-spdx"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
@@ -68,7 +69,6 @@ func (e NotAnAppsodyProject) Error() string { return string(e) }
 const ConfigFile = ".appsody-config.yaml"
 
 const LatestVersionURL = "https://github.com/appsody/appsody/releases/latest"
-
 const workDirNotSet = ""
 
 const ociKeyPrefix = "org.opencontainers.image."
@@ -90,6 +90,86 @@ func Exists(path string) (bool, error) {
 	return true, err
 }
 
+//ExtractDockerEnvFile returns a map with the env vars specified in docker env file
+func ExtractDockerEnvFile(envFileName string) (map[string]string, error) {
+	envVars := make(map[string]string)
+	file, err := os.Open(envFileName)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		equal := strings.Index(line, "=")
+		hash := strings.Index(line, "#")
+		if equal >= 0 && hash != 0 {
+			if key := strings.TrimSpace(line[:equal]); len(key) > 0 {
+				value := ""
+				if len(line) > equal {
+					value = strings.TrimSpace(line[equal+1:])
+				}
+				envVars[key] = value
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+
+		return nil, err
+	}
+
+	return envVars, nil
+}
+
+//ExtractDockerEnvVars returns a map with the env vars specified in docker options
+func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
+	//Check whether there's --env-file, this needs to be processed first
+	var envVars map[string]string
+	envFilePos := strings.Index(dockerOptions, "--env-file=")
+	lenFlag := len("--env-file=")
+	if envFilePos < 0 {
+		envFilePos = strings.Index(dockerOptions, "--env-file")
+		lenFlag = len("--env-file")
+	}
+	if envFilePos >= 0 {
+		tokens := strings.Fields(dockerOptions[envFilePos+lenFlag:])
+		if len(tokens) > 0 {
+			var err error
+			envVars, err = ExtractDockerEnvFile(tokens[0])
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		envVars = make(map[string]string)
+	}
+	tokens := strings.Fields(dockerOptions)
+	for idx, token := range tokens {
+		nextToken := ""
+		if token == "-e" || token == "--env" {
+			if len(tokens) > idx+1 {
+				nextToken = tokens[idx+1]
+			}
+		} else if strings.Contains(token, "-e=") || strings.Contains(token, "-env=") {
+			posEqual := strings.Index(token, "=")
+			nextToken = token[posEqual+1:]
+		}
+		if nextToken != "" && strings.Contains(nextToken, "=") {
+			nextToken = strings.ReplaceAll(nextToken, "\"", "")
+			nextToken = strings.ReplaceAll(nextToken, "'", "")
+			//Note that Appsody doesn't support quotes in -e, use --env-file
+			keyValuePair := strings.Split(nextToken, "=")
+			if len(keyValuePair) > 1 {
+				envVars[keyValuePair[0]] = keyValuePair[1]
+			}
+		}
+	}
+	return envVars, nil
+}
+
+//GetEnvVar obtains a Stack environment variable from the Stack image
 func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	if config.cachedEnvVars == nil {
 		config.cachedEnvVars = make(map[string]string)
@@ -113,19 +193,11 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	if pullErrs != nil {
 		return "", pullErrs
 	}
-	cmdName := "docker"
-	cmdArgs := []string{"image", "inspect", imageName}
-	if config.Buildah {
-		cmdName = "buildah"
-		cmdArgs = []string{"inspect", "--format={{.Config}}", imageName}
-	}
 
-	inspectCmd := exec.Command(cmdName, cmdArgs...)
-	inspectOut, inspectErr := SeparateOutput(inspectCmd)
+	inspectOut, inspectErr := inspectImage(imageName, config)
 	if inspectErr != nil {
-		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
+		return "", inspectErr
 	}
-
 	var err error
 	var envVars []interface{}
 	if config.Buildah {
@@ -275,6 +347,7 @@ func mountExistsLocally(log *LoggingConfig, mount string) bool {
 	}
 	log.Debug.log("Checking for existence of local file or directory to mount: ", localFile[0])
 	fileExists, _ := Exists(localFile[0])
+	lintMountPathForSingleFile(localFile[0], log)
 	return fileExists
 }
 
@@ -405,6 +478,15 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 
 	return projectName, nil
 }
+func getDefaultStackRegistry(config *RootCommandConfig) string {
+	defaultStackRegistry := config.CliConfig.Get("images").(string)
+	if defaultStackRegistry == "" {
+		config.Debug.Log("Appsody config file does not contain a default stack registry images property - setting it to docker.io")
+		defaultStackRegistry = "docker.io"
+	}
+	config.Debug.Log("Default stack registry set to: ", defaultStackRegistry)
+	return defaultStackRegistry
+}
 
 func saveProjectNameToConfig(projectName string, config *RootCommandConfig) error {
 	valid, err := IsValidProjectName(projectName)
@@ -435,43 +517,107 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 	config.Info.log("Your Appsody project name has been set to ", projectName)
 	return nil
 }
+func setStackRegistry(stackRegistry string, config *RootCommandConfig) error {
 
-func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
-	if config.ProjectConfig == nil {
-		dir, perr := getProjectDir(config)
-		if perr != nil {
-			return nil, perr
-		}
-		appsodyConfig := filepath.Join(dir, ConfigFile)
-
-		v := viper.New()
-		v.SetConfigFile(appsodyConfig)
-		config.Debug.log("Project config file set to: ", appsodyConfig)
-
-		err := v.ReadInConfig()
-
-		if err != nil {
-			return nil, errors.Errorf("Error reading project config %v", err)
-		}
-
-		var projectConfig ProjectConfig
-		err = v.Unmarshal(&projectConfig)
-		if err != nil {
-			return &projectConfig, errors.Errorf("Error reading project config %v", err)
-
-		}
-
-		stack := v.GetString("stack")
-		config.Debug.log("Project stack from config file: ", projectConfig.Stack)
-		imageRepo := config.CliConfig.GetString("images")
-		config.Debug.log("Image repository set to: ", imageRepo)
-		projectConfig.Stack = stack
-		if imageRepo != "index.docker.io" {
-			projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
-		}
-
-		config.ProjectConfig = &projectConfig
+	// Read in the config
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+	if err != nil {
+		return err
 	}
+	stackImageName, err := OverrideStackRegistry(stackRegistry, v.Get("stack").(string))
+	if err != nil {
+		return err
+	}
+	stackImageName, err = NormalizeImageName(stackImageName)
+	if err != nil {
+		return err
+	}
+	v.Set("stack", stackImageName)
+	err = v.WriteConfig()
+	if err != nil {
+		return err
+	}
+	config.Info.log("Your Appsody project stack has been set to ", stackImageName)
+	return nil
+}
+func getProjectConfigFileContents(config *RootCommandConfig) (*ProjectConfig, error) {
+
+	dir, perr := getProjectDir(config)
+	if perr != nil {
+		return nil, perr
+	}
+	appsodyConfig := filepath.Join(dir, ConfigFile)
+
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	config.Debug.log("Project config file set to: ", appsodyConfig)
+
+	err := v.ReadInConfig()
+
+	if err != nil {
+		return nil, errors.Errorf("Error reading project config %v", err)
+	}
+
+	var projectConfig ProjectConfig
+	err = v.Unmarshal(&projectConfig)
+	if err != nil {
+		return &projectConfig, errors.Errorf("Error reading project config %v", err)
+	}
+	return &projectConfig, nil
+}
+func getStackRegistryFromConfigFile(config *RootCommandConfig) (string, error) {
+	projectConfig, err := getProjectConfigFileContents(config)
+	if err != nil {
+		return "", err
+	}
+
+	if stack := projectConfig.Stack; stack != "" {
+		// stack is in .appsody-config.yaml
+		stackElements := strings.Split(stack, "/")
+		if len(stackElements) == 3 {
+			config.Debug.Log("Stack registry detected in project config file: ", stackElements[0])
+			return stackElements[0], nil
+		}
+		if len(stackElements) < 3 {
+			return "", nil
+		}
+		return "", errors.Errorf("Invalid stack image name detected in project config file: %s", stack)
+	}
+	return "", errors.New("No stack image name detected in project config file")
+
+}
+func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
+	if config.ProjectConfig != nil {
+		return config.ProjectConfig, nil
+	}
+	projectConfig, err := getProjectConfigFileContents(config)
+	if err != nil {
+		return nil, err
+	}
+
+	imageComponents := strings.Split(projectConfig.Stack, "/")
+	if len(imageComponents) < 3 {
+		imageRepo := config.CliConfig.GetString("images")
+		config.Debug.log("Image repository in the appsody config file: ", imageRepo)
+		projectConfig.Stack = imageRepo + "/" + projectConfig.Stack
+	}
+	//Override the stack registry URL
+	projectConfig.Stack, err = OverrideStackRegistry(config.StackRegistry, projectConfig.Stack)
+	if err != nil {
+		return projectConfig, err
+	}
+
+	//Buildah cannot pull from index.docker.io - only pulls from docker.io
+	projectConfig.Stack, err = NormalizeImageName(projectConfig.Stack)
+	if err != nil {
+		return projectConfig, err
+	}
+
+	config.Debug.Logf("Project stack after override: %s is: %s", config.StackRegistry, projectConfig.Stack)
+	config.ProjectConfig = projectConfig
 	return config.ProjectConfig, nil
 }
 
@@ -516,12 +662,13 @@ func CopyFile(log *LoggingConfig, source string, dest string) error {
 		execCmd = "cp"
 	}
 	copyCmd := exec.Command(execCmd, execArgs...)
-	cmdOutput, cmdErr := copyCmd.Output()
-	_, err = os.Stat(dest)
-	if err != nil {
+	cmdOutput, cmdErr := SeparateOutput(copyCmd)
+
+	if cmdErr != nil {
 		log.Error.logf("Could not copy %s to %s - output of copy command %s %s\n", source, dest, cmdOutput, cmdErr)
-		return errors.New("Error in copy: " + cmdErr.Error())
+		return errors.New("Error in copy: " + cmdOutput)
 	}
+
 	log.Debug.logf("Copy of %s to %s was successful \n", source, dest)
 	return nil
 }
@@ -533,7 +680,6 @@ func MoveDir(log *LoggingConfig, fromDir string, toDir string) error {
 	err := os.Rename(fromDir, toDir)
 	if err == nil {
 		// We did it - returning
-		//Error.log("Could not move ", extractDir, " to ", targetDir, " ", err)
 		return nil
 	}
 	// If we are here, we need to use copy
@@ -548,10 +694,28 @@ func MoveDir(log *LoggingConfig, fromDir string, toDir string) error {
 
 // CopyDir Copies folder from source destination to target destination
 func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
-	_, err := os.Stat(fromDir)
+	// fail if fromDir does not exist on the file system
+	fromDirExists, err := Exists(fromDir)
 	if err != nil {
-		log.Error.logf("Cannot find source directory %s to copy", fromDir)
-		return err
+		return errors.Errorf("Error checking source %v", err)
+	}
+
+	if !fromDirExists {
+		log.Error.logf("Source %s does not exist.", fromDir)
+		return errors.Errorf("Source %s does not exist.", fromDir)
+	}
+
+	// fail if toDir exists on the file system
+	// toDir should just be the name of the target directory, not an existing file or directory
+	// if toDir is an existing file or directory it causes inconsistent results between windows and non-windows
+	toDirExists, err := Exists(toDir)
+	if err != nil {
+		return errors.Errorf("Error checking target %v", err)
+	}
+
+	if toDirExists {
+		log.Error.logf("Target %s exists. It must only be a name of the target directory for the copy.", toDir)
+		return errors.Errorf("Target %s exists. It should only be the name of the target directory for the copy", toDir)
 	}
 
 	var execCmd string
@@ -569,18 +733,31 @@ func CopyDir(log *LoggingConfig, fromDir string, toDir string) error {
 	}
 	log.Debug.log("About to run: ", execCmd, execArgs)
 	copyCmd := exec.Command(execCmd, execArgs...)
-	cmdOutput, cmdErr := copyCmd.Output()
+	cmdOutput, cmdErr := SeparateOutput(copyCmd)
+	if cmdErr != nil {
+		return errors.Errorf("Could not copy %s to %s: %v", fromDir, toDir, cmdOutput)
+	}
 	_, err = os.Stat(toDir)
 	if err != nil {
 		log.Error.logf("Could not copy %s to %s - output of copy command %s %s\n", fromDir, toDir, cmdOutput, cmdErr)
-		return errors.New("Error in copy: " + cmdErr.Error())
+		return errors.New("Error in copy: " + err.Error())
 	}
 	log.Debug.logf("Directory copy of %s to %s was successful \n", fromDir, toDir)
 	return nil
 }
 
 // CheckPrereqs checks the prerequisites to run the CLI
-func CheckPrereqs() error {
+func CheckPrereqs(config *RootCommandConfig) error {
+	if config.Buildah {
+		buildahCmd := "buildah"
+		buildahArgs := []string{"containers"}
+		checkBuildahCmd := exec.Command(buildahCmd, buildahArgs...)
+		_, buildahCmdErr := checkBuildahCmd.Output()
+		if buildahCmdErr != nil {
+			return errors.Errorf("buildah does not seem to be installed or capable of running in this environment - failed to execute buildah containers: %v", buildahCmdErr)
+		}
+		return nil
+	}
 	dockerCmd := "docker"
 	dockerArgs := []string{"ps"}
 	checkDockerCmd := exec.Command(dockerCmd, dockerArgs...)
@@ -602,7 +779,7 @@ func UserHomeDir(log *LoggingConfig) string {
 	return homeDir
 }
 
-func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
+func getConfigLabels(projectConfig ProjectConfig, filename string, log *LoggingConfig) (map[string]string, error) {
 	var labels = make(map[string]string)
 
 	t := time.Now()
@@ -631,6 +808,8 @@ func getConfigLabels(projectConfig ProjectConfig) (map[string]string, error) {
 	if projectConfig.License != "" {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.License); !valid {
 			return labels, errors.Errorf("%s license value is invalid. %v", ConfigFile, err)
+		} else if err := checkValidLicense(log, projectConfig.License); err != nil {
+			return labels, errors.Errorf("The %v SPDX license ID is invalid: %v.", filename, err)
 		}
 		labels[ociKeyPrefix+"licenses"] = projectConfig.License
 	}
@@ -716,57 +895,46 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 }
 
 func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
-	if config.cachedStackLabels == nil {
-		config.cachedStackLabels = make(map[string]string)
-		var data []map[string]interface{}
-		var buildahData map[string]interface{}
-		var containerConfig map[string]interface{}
-		projectConfig, projectConfigErr := getProjectConfig(config)
-		if projectConfigErr != nil {
-			return nil, projectConfigErr
+	labels := make(map[string]string)
+	var data []map[string]interface{}
+	var buildahData map[string]interface{}
+	var containerConfig map[string]interface{}
+	projectConfig, projectConfigErr := getProjectConfig(config)
+	if projectConfigErr != nil {
+		return nil, projectConfigErr
+	}
+	imageName := projectConfig.Stack
+	pullErrs := pullImage(imageName, config)
+	if pullErrs != nil {
+		return nil, pullErrs
+	}
+	inspectOut, err := inspectImage(imageName, config)
+	if err != nil {
+		return labels, err
+	}
+	if config.Buildah {
+		err = json.Unmarshal([]byte(inspectOut), &buildahData)
+		if err != nil {
+			return labels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
-		imageName := projectConfig.Stack
-		pullErrs := pullImage(imageName, config)
-		if pullErrs != nil {
-			return nil, pullErrs
+		containerConfig = buildahData["config"].(map[string]interface{})
+		config.Debug.Log("Config inspected by buildah: ", config)
+	} else {
+		err := json.Unmarshal([]byte(inspectOut), &data)
+		if err != nil {
+			return labels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
+		containerConfig = data[0]["Config"].(map[string]interface{})
+	}
+	if containerConfig["Labels"] != nil {
+		labelsMap := containerConfig["Labels"].(map[string]interface{})
 
-		if config.Buildah {
-			cmdName := "buildah"
-			cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
-			config.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
-			inspectCmd := exec.Command(cmdName, cmdArgs...)
-			inspectOut, inspectErr := inspectCmd.Output()
-			if inspectErr != nil {
-				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %v", inspectErr)
-			}
-			err := json.Unmarshal([]byte(inspectOut), &buildahData)
-			if err != nil {
-				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
-			}
-			containerConfig = buildahData["config"].(map[string]interface{})
-			config.Debug.Log("Config inspected by buildah: ", config)
-		} else {
-			inspectOut, inspectErr := RunDockerInspect(config.LoggingConfig, imageName)
-			if inspectErr != nil {
-				return config.cachedStackLabels, errors.Errorf("Could not inspect the image: %s", inspectOut)
-			}
-			err := json.Unmarshal([]byte(inspectOut), &data)
-			if err != nil {
-				return config.cachedStackLabels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
-			}
-			containerConfig = data[0]["Config"].(map[string]interface{})
-		}
-
-		if containerConfig["Labels"] != nil {
-			labelsMap := containerConfig["Labels"].(map[string]interface{})
-
-			for key, value := range labelsMap {
-				config.cachedStackLabels[key] = value.(string)
-			}
+		for key, value := range labelsMap {
+			labels[key] = value.(string)
 		}
 	}
-	return config.cachedStackLabels, nil
+
+	return labels, nil
 }
 
 func getExposedPorts(config *RootCommandConfig) ([]string, error) {
@@ -785,15 +953,11 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 		return nil, pullErrs
 	}
 
+	inspectOut, inspectErr := inspectImage(imageName, config)
+	if inspectErr != nil {
+		return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
+	}
 	if config.Buildah {
-		cmdName := "buildah"
-		cmdArgs := []string{"inspect", "--format", "{{.Config}}", imageName}
-		config.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
-		inspectCmd := exec.Command(cmdName, cmdArgs...)
-		inspectOut, inspectErr := inspectCmd.Output()
-		if inspectErr != nil {
-			return portValues, errors.Errorf("Could not inspect the image: %v", inspectErr)
-		}
 		err := json.Unmarshal([]byte(inspectOut), &buildahData)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
@@ -801,10 +965,6 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 		containerConfig = buildahData["config"].(map[string]interface{})
 		config.Debug.Log("Config inspected by buildah: ", config)
 	} else {
-		inspectOut, inspectErr := RunDockerInspect(config.LoggingConfig, imageName)
-		if inspectErr != nil {
-			return portValues, errors.Errorf("Could not inspect the image: %s", inspectOut)
-		}
 		err := json.Unmarshal([]byte(inspectOut), &data)
 		if err != nil {
 			return portValues, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
@@ -826,7 +986,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -970,6 +1130,16 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 			return "", err
 		}
 		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
+	}
+	//Set the env vars from docker run, if any
+	if len(dockerEnvVars) > 0 {
+		envVars := make([]*EnvVar, len(dockerEnvVars))
+		idx := 0
+		for key, value := range dockerEnvVars {
+			envVars[idx] = &EnvVar{key, value}
+			idx++
+		}
+		yamlMap.Spec.PodTemplate.Spec.Containers[0].Env = envVars
 	}
 	//Set the Pod release label to the container name
 	yamlMap.Spec.PodTemplate.Metadata.Labels["release"] = appName
@@ -1273,24 +1443,6 @@ func getIngressPort(config *RootCommandConfig) int {
 	return 0
 }
 
-// DockerTag tags a docker image
-func DockerTag(log *LoggingConfig, imageToTag string, tag string, dryrun bool) error {
-	log.Info.log("Tagging Docker image as ", tag)
-	cmdName := "docker"
-	cmdArgs := []string{"image", "tag", imageToTag, tag}
-	if dryrun {
-		log.Info.log("Dry run - skipping execution of: ", cmdName, " ", strings.Join(cmdArgs, " "))
-		return nil
-	}
-	tagCmd := exec.Command(cmdName, cmdArgs...)
-	kout, kerr := SeparateOutput(tagCmd)
-	if kerr != nil {
-		return errors.Errorf("docker image tag failed: %s", kout)
-	}
-	log.Debug.log("Docker tag command output: ", kout)
-	return kerr
-}
-
 //ImagePush pushes a docker image to a docker registry (assumes that the user has done docker login)
 func ImagePush(log *LoggingConfig, imageToPush string, buildah bool, dryrun bool) error {
 	log.Info.log("Pushing image ", imageToPush)
@@ -1307,18 +1459,21 @@ func ImagePush(log *LoggingConfig, imageToPush string, buildah bool, dryrun bool
 
 	pushCmd := exec.Command(cmdName, cmdArgs...)
 
-	pushOut, pushErr := pushCmd.Output()
+	pushOut, pushErr := SeparateOutput(pushCmd)
 	if pushErr != nil {
 		if !(strings.Contains(pushErr.Error(), "[DEPRECATION NOTICE] registry v2") || strings.Contains(string(pushOut[:]), "[DEPRECATION NOTICE] registry v2")) {
 			log.Error.log("Could not push the image: ", pushErr, " ", string(pushOut[:]))
 
-			return pushErr
+			return errors.New("Error in pushing image: " + pushOut)
 		}
+		return errors.New("Error in pushing image: " + pushOut)
+
 	}
 	return pushErr
 }
 
 // DockerRunBashCmd issues a shell command in a docker image, overriding its entrypoint
+// Assume this is only used for Stack images
 func DockerRunBashCmd(options []string, image string, bashCmd string, config *RootCommandConfig) (string, error) {
 	cmdName := "docker"
 	var cmdArgs []string
@@ -1331,6 +1486,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 	} else {
 		cmdArgs = []string{"run"}
 	}
+
 	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/bash", image, "-c", bashCmd)
 	config.Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
@@ -1500,6 +1656,14 @@ func pullCmd(log *LoggingConfig, imageToPull string, buildah bool, dryrun bool) 
 
 func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool {
 	cmdName := "docker"
+
+	imageNameComponents := strings.Split(imageToPull, "/")
+	if len(imageNameComponents) == 3 {
+		if imageNameComponents[0] == "index.docker.io" || imageNameComponents[0] == "docker.io" {
+			imageToPull = fmt.Sprintf("%s/%s", imageNameComponents[1], imageNameComponents[2])
+		}
+	}
+
 	cmdArgs := []string{"image", "ls", "-q", imageToPull}
 	imagelsCmd := exec.Command(cmdName, cmdArgs...)
 	imagelsOut, imagelsErr := SeparateOutput(imagelsCmd)
@@ -1518,10 +1682,12 @@ func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool 
 //pullImage
 // pulls buildah / docker image, if APPSODY_PULL_POLICY set to IFNOTPRESENT
 //it checks for image in local repo and pulls if not in the repo
+
 func pullImage(imageToPull string, config *RootCommandConfig) error {
 	if config.imagePulled == nil {
 		config.imagePulled = make(map[string]bool)
 	}
+
 	config.Debug.logf("%s image pulled status: %t", imageToPull, config.imagePulled[imageToPull])
 	if config.imagePulled[imageToPull] {
 		config.Debug.log("Image has been pulled already: ", imageToPull)
@@ -1564,6 +1730,77 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 		config.Info.log("Using local cache for image ", imageToPull)
 	}
 	return nil
+}
+
+func inspectImage(imageToInspect string, config *RootCommandConfig) (string, error) {
+
+	cmdName := "docker"
+	cmdArgs := []string{"image", "inspect", imageToInspect}
+	if config.Buildah {
+		cmdName = "buildah"
+		cmdArgs = []string{"inspect", "--format={{.Config}}", imageToInspect}
+	}
+
+	inspectCmd := exec.Command(cmdName, cmdArgs...)
+	inspectOut, inspectErr := SeparateOutput(inspectCmd)
+	if inspectErr != nil {
+		return "", errors.Errorf("Could not inspect the image: %s", inspectOut)
+	}
+	return inspectOut, nil
+}
+
+//OverrideStackRegistry allows you to change the image registry URL
+func OverrideStackRegistry(override string, imageName string) (string, error) {
+	if override == "" {
+		return imageName, nil
+	}
+	match, err := ValidateHostNameAndPort(override)
+	if err != nil {
+		return "", err
+	}
+	if !match {
+		return "", errors.Errorf("This is an invalid host name: %s", override)
+	}
+	imageNameComponents := strings.Split(imageName, "/")
+	if len(imageNameComponents) == 3 {
+		imageNameComponents[0] = override
+	}
+	if len(imageNameComponents) == 2 || len(imageNameComponents) == 1 {
+		newComponent := []string{override}
+		imageNameComponents = append(newComponent, imageNameComponents...)
+	}
+	if len(imageNameComponents) > 3 {
+		return "", errors.Errorf("Image name is invalid and needs to be changed in the project config file (.appsody-config.yaml): %s. Too many slashes (/) - the override cannot take place.", imageName)
+	}
+	return strings.Join(imageNameComponents, "/"), nil
+}
+
+//ValidateHostNameAndPort validates that hostNameAndPort conform to the DNS naming conventions
+func ValidateHostNameAndPort(hostNameAndPort string) (bool, error) {
+	match, err := regexp.MatchString(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])($|:[0-9]{1,5}$)`, hostNameAndPort)
+	return match, err
+}
+
+//NormalizeImageName is a temporary fix for buildah workaround #676
+func NormalizeImageName(imageName string) (string, error) {
+	imageNameComponents := strings.Split(imageName, "/")
+	if len(imageNameComponents) == 2 {
+		return imageName, nil
+	}
+
+	if len(imageNameComponents) == 1 {
+		return fmt.Sprintf("docker.io/%s", imageName), nil
+	}
+
+	if len(imageNameComponents) == 3 {
+		if imageNameComponents[0] == "index.docker.io" {
+			imageNameComponents[0] = "docker.io"
+			return strings.Join(imageNameComponents, "/"), nil
+		}
+		return imageName, nil
+	}
+	return imageName, errors.Errorf("Image name is invalid: %s", imageName)
+
 }
 
 func execAndListenWithWorkDirReturnErr(log *LoggingConfig, command string, args []string, logger appsodylogger, workdir string, dryrun bool) (*exec.Cmd, error) {
@@ -1884,40 +2121,57 @@ func CheckStackRequirements(log *LoggingConfig, requirementArray map[string]stri
 
 	for technology, minVersion := range requirementArray {
 		if minVersion == "" {
-			log.Info.log("Skipping ", technology, " - No requirements set.")
-		} else if technology == "Docker" && buildah {
-			log.Info.log("Skipping Docker requirement - Buildah is being used.")
-		} else if technology == "Buildah" && !buildah {
-			log.Info.log("Skipping Buildah requirement - Docker is being used.")
+			continue
+		}
+		if technology == "Docker" && buildah {
+			log.Debug.log("Skipping Docker requirement - Buildah is being used.")
+			continue
+		}
+		if technology == "Buildah" && !buildah {
+			log.Debug.log("Skipping Buildah requirement - Docker is being used.")
+			continue
+		}
+		log.Debug.logf("Checking version requirement: %s %s", technology, minVersion)
+
+		setConstraint, err := semver.NewConstraint(minVersion)
+		if err != nil {
+			log.Warning.logf("Skipping %s version requirement because the minimum version is invalid: %s", technology, err)
+			continue
+		}
+
+		var runVersionCmd string
+		if strings.ToLower(technology) == "appsody" {
+			if VERSION == "0.0.0" || VERSION == "vlatest" {
+				log.Warning.log("Skipping appsody version requirement because this is a local build of appsody ", VERSION)
+				continue
+			}
+			runVersionCmd = VERSION
 		} else {
-			log.Info.log("Checking stack requirements for ", technology)
-
-			setConstraint, err := semver.NewConstraint(minVersion)
+			cmd := exec.Command(strings.ToLower(technology), "version")
+			runVersionCmd, err = SeparateOutput(cmd)
 			if err != nil {
-				log.Error.log(err)
-			}
-
-			runVersionCmd, appErr := exec.Command(strings.ToLower(technology), "version").Output()
-			if appErr != nil {
-				log.Error.log(appErr, " - Are you sure ", technology, " is installed?")
+				log.Error.log(err, " - Are you sure ", technology, " is installed?")
 				upgradesRequired++
-			} else {
-				cutCmdOutput := versionRegex.FindString(string(runVersionCmd))
-				parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
-				if parseErr != nil || cutCmdOutput == "0.0.0" {
-					log.Error.log(parseErr)
-					log.Warning.log("Unable to parse user version - This stack may not work in your current development environment.")
-					return nil
-				}
-				compareVersion := setConstraint.Check(parseUserVersion)
-
-				if compareVersion {
-					log.Info.log(technology + " requirements met")
-				} else {
-					log.Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
-					upgradesRequired++
-				}
+				continue
 			}
+			log.Debug.logf("Output of running %s: %s", strings.ToLower(technology)+" version", runVersionCmd)
+		}
+
+		cutCmdOutput := versionRegex.FindString(runVersionCmd)
+		parseUserVersion, parseErr := semver.NewVersion(cutCmdOutput)
+		if parseErr != nil {
+			log.Warning.logf("Unable to parse %s version - This stack may not work in your current development environment. %s", technology, parseErr)
+			// Continue when the version can not be determined
+			continue
+		}
+		log.Debug.logf("Found version of %s to be %s", technology, parseUserVersion)
+		compareVersion := setConstraint.Check(parseUserVersion)
+
+		if compareVersion {
+			log.Info.log(technology + " requirements met")
+		} else {
+			log.Error.log("The required version of " + technology + " to use this stack is " + minVersion + " - Please upgrade.")
+			upgradesRequired++
 		}
 	}
 	if upgradesRequired > 0 {
@@ -1939,4 +2193,47 @@ func SeparateOutput(cmd *exec.Cmd) (string, error) {
 
 	// If there wasn't an error return the stdOut & (lack of) err
 	return strings.TrimSpace(stdOut.String()), err
+}
+
+func CheckValidSemver(version string) error {
+	versionRegex := regexp.MustCompile(`^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
+	checkVersionNo := versionRegex.FindString(version)
+
+	if checkVersionNo == "" {
+		return errors.Errorf("Version must be formatted in accordance to semver - Please see: https://semver.org/ for valid versions.")
+	}
+
+	return nil
+}
+
+func checkValidLicense(log *LoggingConfig, license string) error {
+	// Get the list of all known licenses
+	list, _ := spdx.List()
+	if list != nil {
+		for _, spdx := range list.Licenses {
+			if spdx.ID == license {
+				return nil
+			}
+		}
+	} else {
+		log.Warning.log("Unable to check if license ID is valid.... continuing.")
+		return nil
+	}
+	return errors.New("file must have a valid license ID, see https://spdx.org/licenses/ for the list of valid licenses")
+}
+func lintMountPathForSingleFile(path string, log *LoggingConfig) {
+
+	file, err := os.Stat(path)
+	if err != nil {
+		log.Warning.logf("Could not stat mount path: %s", path)
+
+	} else {
+		if file.Mode().IsDir() {
+			log.Debug.logf("Path %s for mount is a directory", path)
+		} else {
+
+			log.Warning.logf("Path %s for mount points to a single file.  Single file Docker mount paths cause unexpected behavior and will be deprecated in the future.", path)
+		}
+
+	}
 }

@@ -32,7 +32,11 @@ var invalidDockerCmdsTest = []struct {
 
 func TestDockerInspect(t *testing.T) {
 
-	for _, test := range invalidDockerCmdsTest {
+	for _, testData := range invalidDockerCmdsTest {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
 
 		t.Run(fmt.Sprintf("Test Invalid DockerInspect"), func(t *testing.T) {
 			var outBuffer bytes.Buffer

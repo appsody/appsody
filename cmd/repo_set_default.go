@@ -15,8 +15,6 @@
 package cmd
 
 import (
-	"log"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -24,7 +22,7 @@ import (
 func newRepoDefaultCmd(config *RootCommandConfig) *cobra.Command {
 	// initCmd represents the init command
 	var setDefaultCmd = &cobra.Command{
-		Use:   "set-default <name>",
+		Use:   "set-default <repository>",
 		Short: "Set a default repository.",
 		Long: `Set your specified repository to be the default repository.
 
@@ -33,7 +31,10 @@ The default repository is used when you run the "appsody init" command without s
   Sets your default repository to "my-local-repo".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return errors.New("Error, you must specify desired default repository")
+				return errors.New("You must specify the repository to set as the default")
+			}
+			if len(args) > 1 {
+				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
 			}
 
 			var repoName = args[0]
@@ -57,19 +58,14 @@ The default repository is used when you run the "appsody init" command without s
 							return repoFileErr
 						}
 					} else {
-						config.Info.log("Your default repository has already been set to " + repoName)
+						return errors.New("Your default repository has already been set to " + repoName)
 					}
 				} else {
-					config.Error.log("Repository is not in configured list of repositories")
-				}
-				err := repoFile.WriteFile(getRepoFileLocation(config))
-				if err != nil {
-					log.Fatalf("Failed to write file repository location: %v", err)
+					return errors.New("The repository '" + repoName + "' is not in your configured list of repositories")
 				}
 			}
 			return nil
 		},
 	}
-
 	return setDefaultCmd
 }

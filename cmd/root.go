@@ -54,20 +54,21 @@ type LoggingConfig struct {
 type RootCommandConfig struct {
 	*LoggingConfig
 
-	CfgFile          string
-	Dryrun           bool
-	Verbose          bool
-	CliConfig        *viper.Viper
-	Buildah          bool
-	ProjectConfig    *ProjectConfig
-	ProjectDir       string
-	UnsupportedRepos []string
+	CfgFile           string
+	Dryrun            bool
+	Verbose           bool
+	CliConfig         *viper.Viper
+	Buildah           bool
+	ProjectConfig     *ProjectConfig
+	ProjectDir        string
+	UnsupportedRepos  []string
+	StackRegistry     string
+	StackRegistryInit string
 
 	// package scoped, these are mostly for caching
-	setupConfigRun    bool
-	imagePulled       map[string]bool
-	cachedEnvVars     map[string]string
-	cachedStackLabels map[string]string
+	setupConfigRun bool
+	imagePulled    map[string]bool
+	cachedEnvVars  map[string]string
 }
 
 // Regular expression to match ANSI terminal commands so that we can remove them from the log
@@ -92,9 +93,9 @@ Complete documentation is available at https://appsody.dev`,
 		//Run: no run action for the root command
 	}
 
-	rootCmd.PersistentFlags().StringVar(&rootConfig.CfgFile, "config", "", "config file (default is $HOME/.appsody/.appsody.yaml)")
-	rootCmd.PersistentFlags().BoolVarP(&rootConfig.Verbose, "verbose", "v", false, "Turns on debug output and logging to a file in $HOME/.appsody/logs")
-	rootCmd.PersistentFlags().BoolVar(&rootConfig.Dryrun, "dryrun", false, "Turns on dry run mode")
+	rootCmd.PersistentFlags().StringVar(&rootConfig.CfgFile, "config", "", "The absolute path to the Appsody config file. Use this option when you want to specify your own, customized config file (default '$HOME/.appsody/.appsody.yaml')")
+	rootCmd.PersistentFlags().BoolVarP(&rootConfig.Verbose, "verbose", "v", false, "Prints more detailed log output, to the console and to a file in $HOME/.appsody/logs")
+	rootCmd.PersistentFlags().BoolVar(&rootConfig.Dryrun, "dryrun", false, "Shows the commands that are called by this command, without running them.")
 
 	// parse the root flags and init logging before adding all the other commands in case those log messages
 	rootCmd.SetArgs(args)
@@ -102,11 +103,14 @@ Complete documentation is available at https://appsody.dev`,
 	// later the Execute func will parse the flags again
 	rootCmd.FParseErrWhitelist = cobra.FParseErrWhitelist{UnknownFlags: true}
 	_ = rootCmd.ParseFlags(args) // ignore flag errors here because we haven't added all the commands
+	err := rootConfig.initLogging()
+	if err != nil {
+		return rootCmd, rootConfig, err
+	}
 	setupErr := setupConfig(args, rootConfig)
 	if setupErr != nil {
 		return rootCmd, rootConfig, setupErr
 	}
-	rootConfig.initLogging()
 
 	rootCmd.AddCommand(
 		newInitCmd(rootConfig),
@@ -131,6 +135,8 @@ Complete documentation is available at https://appsody.dev`,
 	if appsodyOnK8S == "TRUE" {
 		rootConfig.Buildah = true
 	}
+	//Invalidate the cache
+	rootConfig.ProjectConfig = nil
 	return rootCmd, rootConfig, nil
 }
 
@@ -162,7 +168,7 @@ func InitConfig(config *RootCommandConfig) error {
 		return dirErr
 	}
 	cliConfig.SetDefault("home", filepath.Join(homeDirectory, ".appsody"))
-	cliConfig.SetDefault("images", "index.docker.io")
+	cliConfig.SetDefault("images", "docker.io")
 	cliConfig.SetDefault("operator", operatorHome)
 	cliConfig.SetDefault("tektonserver", "")
 	cliConfig.SetDefault("lastversioncheck", "none")
@@ -318,7 +324,7 @@ func (config *LoggingConfig) InitLogging(outWriter, errWriter io.Writer) {
 	}
 }
 
-func (config *RootCommandConfig) initLogging() {
+func (config *RootCommandConfig) initLogging() error {
 	var allLoggers = []*appsodylogger{&config.Info, &config.Warning, &config.Error, &config.Debug, &config.Container, &config.InitScript, &config.DockerLog}
 	if config.Verbose {
 		for _, l := range allLoggers {
@@ -327,7 +333,7 @@ func (config *RootCommandConfig) initLogging() {
 
 		homeDirectory, dirErr := homedir.Dir()
 		if dirErr != nil {
-			os.Exit(1)
+			return errors.Errorf("Error getting home directory: %v", dirErr)
 		}
 
 		logDir := filepath.Join(homeDirectory, ".appsody", "logs")
@@ -355,4 +361,5 @@ func (config *RootCommandConfig) initLogging() {
 		klogInitialized = true
 		config.Debug.log("Logging to file ", pathString)
 	}
+	return nil
 }

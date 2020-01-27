@@ -75,12 +75,17 @@ Use 'appsody list' to see the available stacks and templates.`,
 			if len(args) >= 1 {
 				stack = args[0]
 			}
-			if len(args) >= 2 {
+			if len(args) == 2 {
 				template = args[1]
+			}
+			if len(args) > 2 {
+				return errors.Errorf("Too many arguments. Use 'appsody [command] --help' for more information about a command")
 			}
 			return initAppsody(stack, template, config)
 		},
 	}
+	// TODO - add the registry override flag, and the logic behind it
+	addStackRegistryFlagInit(initCmd, &rootConfig.StackRegistryInit, rootConfig)
 
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
@@ -105,7 +110,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	}
 	var proceedWithTemplate bool
 
-	err = CheckPrereqs()
+	err = CheckPrereqs(config.RootCommandConfig)
 	if err != nil {
 		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
@@ -152,6 +157,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		stackFound := false
 		var stackReqs StackRequirement
 
+		// we should remove this as we no longer have use for the v1 index and it is bringing down our code coverage
 		if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 			config.Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
 		}
@@ -231,10 +237,22 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			"Buildah": stackReqs.Buildah,
 		}
 
-		checkErr := CheckStackRequirements(config.LoggingConfig, reqsMap, config.Buildah)
-		if checkErr != nil {
-			config.Error.log(checkErr)
-			os.Exit(1)
+		// Check to see if any requirements have actually been set
+		mapEmpty := true
+		for _, v := range reqsMap {
+			if v != "" {
+				mapEmpty = false
+			}
+		}
+
+		// If no requirements have been set, this function doesn't need to be called
+		if !mapEmpty {
+			checkErr := CheckStackRequirements(config.LoggingConfig, reqsMap, config.Buildah)
+			if checkErr != nil {
+				return checkErr
+			}
+		} else {
+			config.Info.log("No stack requirements set. Skipping...")
 		}
 
 		config.Info.log("Running appsody init...")
@@ -290,6 +308,28 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 //Runs the .appsody-init.sh/bat files if necessary
 func install(config *initCommandConfig) error {
 	config.Info.log("Setting up the development environment")
+
+	// reset config.StackRegistry and get it again from the newly untarred .appsody-config.yaml
+
+	defaultStackRegistry := getDefaultStackRegistry(config.RootCommandConfig)
+	configFileStackRegistry, err := getStackRegistryFromConfigFile(config.RootCommandConfig)
+	if err != nil {
+		return err
+	}
+	stackRegistry := configFileStackRegistry
+
+	if config.StackRegistryInit != "" {
+		config.Debug.Log("The flag --stack-registry was set to: ", config.StackRegistryInit)
+		stackRegistry = config.StackRegistryInit
+	} else if configFileStackRegistry == "" {
+		stackRegistry = defaultStackRegistry
+	}
+	config.Debug.Log("The stack registry in .appsody-config.yaml will be set to: ", stackRegistry)
+	err = setStackRegistry(stackRegistry, config.RootCommandConfig)
+	if err != nil {
+		return err
+	}
+
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
 		return perr
@@ -312,7 +352,7 @@ func install(config *initCommandConfig) error {
 
 	config.Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
-	err := extractAndInitialize(config)
+	err = extractAndInitialize(config)
 	if err != nil {
 		// For some reason without this sleep, the [InitScript] output log would get cut off and
 		// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
@@ -320,7 +360,6 @@ func install(config *initCommandConfig) error {
 		config.Warning.log("The stack init script failed: ", err)
 		config.Warning.log("Your local IDE may not build properly, but the Appsody container should still work.")
 		config.Warning.log("To try again, resolve the issue then run `appsody init` with no arguments.")
-		os.Exit(0)
 	}
 	return nil
 }
@@ -617,4 +656,8 @@ func defaultProjectName(config *RootCommandConfig) string {
 		os.Exit(1)
 	}
 	return projectName
+}
+func addStackRegistryFlagInit(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
+	cmd.PersistentFlags().StringVar(flagVar, "stack-registry", "", "Specify the URL of the registry that hosts your stack images.")
+
 }
