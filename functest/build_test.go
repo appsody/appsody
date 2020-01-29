@@ -29,6 +29,14 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+type expectedDeploymentConfig struct {
+	deployFile string
+	pullURL    string
+	imageTag   string
+	namespace  string
+	knative    bool
+}
+
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
 func TestBuildSimple(t *testing.T) {
 
@@ -65,14 +73,22 @@ func TestBuildSimple(t *testing.T) {
 		}
 
 		// appsody build
-		imageName := "testbuildimage"
-		_, err = cmdtest.RunAppsody(sandbox, "build", "--tag", imageName)
+		_, err = cmdtest.RunAppsody(sandbox, "build")
 		if err != nil {
 			t.Fatal("The appsody build command failed: ", err)
 		}
 
+		expectedImageTag := "dev.local/" + sandbox.ProjectName
+		listOutput, listErr := cmdtest.RunDockerCmdExec([]string{"images", "-q", expectedImageTag}, t)
+		if listErr != nil {
+			t.Fatal(listErr)
+		}
+		if listOutput == "" {
+			t.Errorf("Expected appsody build to create docker image '%s' but it was not found.", expectedImageTag)
+		}
+
 		//delete the image
-		deleteImage(imageName, t)
+		deleteImage(expectedImageTag, t)
 	}
 }
 
@@ -185,7 +201,7 @@ func TestBuildLabels(t *testing.T) {
 		t.Errorf("Expected commit message \"%s\" but found \"%s\"", commitMessage, labelsMap[appsodyCommitKey+"message"])
 	}
 
-	checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, false)
+	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, "", false})
 
 	//delete the image
 	deleteImage(imageName, t)
@@ -194,7 +210,7 @@ func TestBuildLabels(t *testing.T) {
 func deleteImage(imageName string, t *testing.T) {
 	_, err := cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName}, t)
 	if err != nil {
-		fmt.Printf("Ignoring error running docker image rm: %s", err)
+		t.Logf("Ignoring error running docker image rm: %s", err)
 	}
 }
 
@@ -232,21 +248,114 @@ func TestDeploymentConfig(t *testing.T) {
 		}
 
 		// appsody build
-		imageName := filepath.Base(sandbox.ProjectDir)
+		imageName := sandbox.ProjectName
 		pullURL := "my-pull-url"
 
 		_, err = cmdtest.RunAppsody(sandbox, "build", "--tag", imageName, "--pull-url", pullURL, "--knative")
 		if err != nil {
 			t.Error("appsody build command returned err: ", err)
 		}
-		checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, true)
+
+		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, "", true})
 
 		//delete the image
 		deleteImage(imageName, t)
 	}
 }
 
-func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imageTag string, knative bool) {
+// app-deploy
+
+var knativeFlagTests = []struct {
+	testName          string
+	knativeFlag       string
+	appDeployStart    bool
+	appDeployExpected bool
+}{
+	{"KnativeFlagAndAppDeployTrue", "--knative", true, true},
+	{"KnativeFlagAndAppDeployFalse", "--knative", false, true},
+	{"NoKnativeFlagAndAppDeployTrue", "", true, true},
+	{"NoKnativeFlagAndAppDeployFalse", "", false, false},
+	{"KnativeFalseAndAppDeployTrue", "--knative=false", true, false},
+	{"KnativeFalseAndAppDeployFalse", "--knative=false", false, false},
+	{"KnativeTrueAndAppDeployTrue", "--knative=true", true, true},
+	{"KnativeTrueAndAppDeployFalse", "--knative=true", false, true},
+}
+
+func TestKnativeFlagOnBuild(t *testing.T) {
+	t.Log("stacksList is: ", stacksList)
+
+	// if stacksList is empty there is nothing to test so return
+	if stacksList == "" {
+		t.Log("stacksList is empty, exiting test...")
+		return
+	}
+
+	// split the appsodyStack env variable
+	stackRaw := strings.Split(stacksList, " ")
+
+	// loop through the stacks
+	for i := range stackRaw {
+		for _, testData := range knativeFlagTests {
+			// need to set testData to a new variable scoped under the for loop
+			// otherwise tests run in parallel may get the wrong testData
+			// because the for loop reassigns it before the func runs
+			tt := testData
+
+			t.Run(tt.testName, func(t *testing.T) {
+				t.Log("***Testing stack: ", stackRaw[i], "***")
+				sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+				defer cleanup()
+
+				// appsody init
+				t.Log("Running appsody init...")
+				_, err := cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				err = makeAppDeployYaml(sandbox.ProjectDir, tt.appDeployStart)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				// appsody build
+				if tt.knativeFlag == "" {
+					_, err = cmdtest.RunAppsody(sandbox, "build")
+				} else {
+					_, err = cmdtest.RunAppsody(sandbox, "build", tt.knativeFlag)
+				}
+				if err != nil {
+					t.Error("appsody build command returned err: ", err)
+				}
+				expectedImageName := "dev.local/" + sandbox.ProjectName
+				checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", expectedImageName, "", tt.appDeployExpected})
+
+				//delete the image
+				deleteImage(expectedImageName, t)
+			})
+		}
+	}
+}
+
+func makeAppDeployYaml(projectDir string, createKnativeService bool) error {
+	appsodyApplication := v1beta1.AppsodyApplication{}
+	appsodyApplication.Spec.CreateKnativeService = &createKnativeService
+	data, err := yaml.Marshal(appsodyApplication)
+	if err != nil {
+		return fmt.Errorf("error marshalling yaml: %v", err)
+	}
+
+	// write to file
+	deployFilePath := filepath.Join(projectDir, deployFile)
+	err = ioutil.WriteFile(deployFilePath, data, 0666)
+	if err != nil {
+		return fmt.Errorf("error writing deployment yaml to file %s: %v", deployFilePath, err)
+	}
+	return nil
+}
+
+func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploymentConfig) {
+	deployFile := expectedDeploymentConfig.deployFile
 	_, err := os.Stat(deployFile)
 	if err != nil && os.IsNotExist(err) {
 		t.Errorf("Could not find %s", deployFile)
@@ -264,20 +373,24 @@ func checkDeploymentConfig(t *testing.T, deployFile string, pullURL string, imag
 		t.Logf("app-deploy.yaml formatting error: %s", err)
 	}
 
-	expectedApplicationImage := imageTag
-	if pullURL != "" {
-		expectedApplicationImage = pullURL + "/" + imageTag
+	expectedApplicationImage := expectedDeploymentConfig.imageTag
+	if expectedDeploymentConfig.pullURL != "" {
+		expectedApplicationImage = expectedDeploymentConfig.pullURL + "/" + expectedDeploymentConfig.imageTag
 	}
 
 	if appsodyApplication.Spec.ApplicationImage != expectedApplicationImage {
 		t.Errorf("Incorrect ApplicationImage in app-deploy.yaml. Expected %s but found %s", expectedApplicationImage, appsodyApplication.Spec.ApplicationImage)
 	}
 
-	if *appsodyApplication.Spec.CreateKnativeService != knative {
+	if *appsodyApplication.Spec.CreateKnativeService != expectedDeploymentConfig.knative {
 		t.Error("CreateKnativeService not set to true in the app-deploy.yaml when using --knative flag")
 	}
 
-	verifyImageAndConfigLabelsMatch(t, appsodyApplication, imageTag)
+	if appsodyApplication.Namespace != expectedDeploymentConfig.namespace {
+		t.Errorf("Incorrect Namespace in app-deploy.yaml. Expected %s but found %s", expectedDeploymentConfig.namespace, appsodyApplication.Namespace)
+	}
+
+	verifyImageAndConfigLabelsMatch(t, appsodyApplication, expectedDeploymentConfig.imageTag)
 }
 
 func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.AppsodyApplication, imageTag string) {
@@ -313,6 +426,35 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.Ap
 		if annotation != "" && annotation != value {
 			t.Errorf("Mismatch of %s annotation between built image and deployment config. Expected %s but found %s", key, value, annotation)
 		}
+	}
+
+}
+
+func TestBuildMissingTagFail(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// appsody init
+	t.Log("Running appsody init...")
+	_, err := cmdtest.RunAppsody(sandbox, "init", "starter")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// set push flag to true with no tag
+	args := []string{"build", "--push"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+
+		// As tag is missing, appsody verifies user input and shows error
+		if !strings.Contains(output, "Cannot specify --push or --push-url without a --tag") {
+			t.Errorf("String \"Cannot specify --push or --push-url without a --tag\" not found in output: %v", err)
+		}
+
+		// If an error is not returned, the test should fail
+	} else {
+		t.Error("Build with missing tag did not fail as expected")
 	}
 
 }

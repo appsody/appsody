@@ -17,12 +17,14 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/appsody/appsody/cmd"
@@ -72,7 +74,10 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	sandbox := &TestSandbox{T: t, Verbose: true}
 
 	// create a temporary dir to create the project and run the test
-	testDir, err := ioutil.TempDir("", "appsody-"+t.Name()+"-")
+	dirPrefix := "appsody-" + t.Name() + "-"
+	dirPrefix = strings.ReplaceAll(dirPrefix, "/", "-")
+	dirPrefix = strings.ReplaceAll(dirPrefix, "\\", "-")
+	testDir, err := ioutil.TempDir("", dirPrefix)
 	if err != nil {
 		t.Fatal("Error creating temporary directory: ", err)
 	}
@@ -84,6 +89,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error evaluating symlinks: ", err)
 	}
+
 	sandbox.ProjectName = strings.ToLower(strings.Replace(filepath.Base(testDir), "appsody-", "", 1))
 	sandbox.ProjectDir = filepath.Join(testDir, sandbox.ProjectName)
 	sandbox.ConfigDir = filepath.Join(testDir, "config")
@@ -91,11 +97,12 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
 	}
+	t.Log("Created testing project dir: ", sandbox.ProjectDir)
+
 	err = os.MkdirAll(sandbox.ConfigDir, 0755)
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
 	}
-	t.Log("Created testing project dir: ", sandbox.ProjectDir)
 	t.Log("Created testing config dir: ", sandbox.ConfigDir)
 
 	// Create the config file if it does not already exist.
@@ -136,10 +143,12 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 	var outBuffer bytes.Buffer
 
 	// Direct cmd console output to a buffer
-	outReader, outWriter, _ := os.Pipe()
+	outReader, outWriter := io.Pipe()
 
 	// copy the output to the buffer, and also to the test log
 	outScanner := bufio.NewScanner(outReader)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for outScanner.Scan() {
 			out := outScanner.Bytes()
@@ -147,12 +156,19 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 			outBuffer.WriteByte('\n')
 			t.Log(string(out))
 		}
+		wg.Done()
 	}()
 
+	t.Log("Running appsody in the test sandbox with args: ", args)
 	err := cmd.ExecuteE("vlatest", "latest", t.ProjectDir, outWriter, outWriter, args)
+	if err != nil {
+		t.Log("Error returned from appsody command: ", err)
+	}
 
-	// close the reader and writer
+	// close the writer first, so it sends an EOF to the scanner above,
+	// then wait for the scanner to finish before closing the reader
 	outWriter.Close()
+	wg.Wait()
 	outReader.Close()
 
 	return outBuffer.String(), err
@@ -280,19 +296,14 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 	t.Log(cmdArgs)
 
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	outReader, outWriter, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		// Make sure to close the writer first or this will hang on Windows
-		outWriter.Close()
-		outReader.Close()
-	}()
+	outReader, outWriter := io.Pipe()
+
 	execCmd.Stdout = outWriter
 	execCmd.Stderr = outWriter
 	outScanner := bufio.NewScanner(outReader)
 	var outBuffer bytes.Buffer
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for outScanner.Scan() {
 			out := outScanner.Bytes()
@@ -300,16 +311,21 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 			outBuffer.WriteByte('\n')
 			t.Log(string(out))
 		}
+		wg.Done()
 	}()
 
-	err = execCmd.Start()
+	err := execCmd.Start()
 	if err != nil {
 		return "", err
 	}
 
-	// replace the original working directory when this function completes
-
 	err = execCmd.Wait()
+
+	// close the writer first, so it sends an EOF to the scanner above,
+	// then wait for the scanner to finish before closing the reader
+	outWriter.Close()
+	wg.Wait()
+	outReader.Close()
 
 	return outBuffer.String(), err
 }

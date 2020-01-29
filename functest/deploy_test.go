@@ -127,17 +127,52 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 
 		imageTag := "testdeploy/testimage"
 		pullURL := "my-pull-url"
+		namespace := "myNamespace"
 		// appsody deploy
 		t.Log("Running appsody deploy...")
-		_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative")
+		_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative", "-n", namespace)
 		if err != nil {
 			t.Log("WARNING: deploy dryrun failed. Ignoring for now until that gets fixed.")
 			// TODO We need to fix the deploy --dryrun option so it doesn't fail, then uncomment the line below
 			// t.Fatal(err)
 		}
 
-		checkDeploymentConfig(t, filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, true)
+		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, namespace, true})
 	}
+}
+
+func TestDeployNamespaceMismatch(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// appsody init
+	t.Log("Running appsody init...")
+	_, err := cmdtest.RunAppsody(sandbox, "init", "nodejs-express")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	firstNamespace := "firstNamespace"
+	// appsody deploy
+	t.Logf("Running appsody deploy with namespace: %s ...", firstNamespace)
+	_, err = cmdtest.RunAppsody(sandbox, "deploy", "--generate-only", "-n", firstNamespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secondNamespace := "secondNamespace"
+	// appsody deploy
+	t.Logf("Running appsody deploy with namespace: %s ...", secondNamespace)
+	output, err := cmdtest.RunAppsody(sandbox, "deploy", "--generate-only", "-n", secondNamespace)
+
+	if err != nil {
+		if !strings.Contains(output, "the namespace \""+firstNamespace+"\" from the deployment manifest does not match the namespace \""+secondNamespace+"\" passed as an argument.") {
+			t.Errorf("Expecting namespace error to be thrown, but another error was thrown: %s", err)
+		}
+	} else {
+		t.Error("Deploy with conflicting namespace did not fail as expected")
+	}
+
 }
 
 // Testing deploy delete when the required config file cannot be found
@@ -208,5 +243,35 @@ func TestDeployDeleteKubeFail(t *testing.T) {
 		// If there was not an error returned, fail the test
 	} else {
 		t.Error("Deploy delete did not fail as expected")
+	}
+}
+
+func TestNoCheckFlag(t *testing.T) {
+	if !cmdtest.TravisTesting {
+		t.Skip()
+	}
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("Running appsody init...")
+	_, err = cmdtest.RunAppsody(sandbox, "init", "nodejs-express")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("Running appsody deploy...")
+	output, err := cmdtest.RunAppsody(sandbox, "deploy", "-t", "testdeploy/testimage", "--dryrun", "--no-check")
+	if err != nil {
+		t.Log("WARNING: deploy dryrun failed.")
+	}
+
+	if !strings.Contains(output, "kubectl get pods -o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}' -n") {
+		t.Fatal(err, ": Expected kubectl get pods to run only against the targeted namespace rather than all namespaces.")
 	}
 }
