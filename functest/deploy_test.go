@@ -128,6 +128,8 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 		imageTag := "testdeploy/testimage"
 		pullURL := "my-pull-url"
 		namespace := "myNamespace"
+		pullPolicy := "Always"
+
 		// appsody deploy
 		t.Log("Running appsody deploy...")
 		_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", imageTag, "--pull-url", pullURL, "--generate-only", "--knative", "-n", namespace)
@@ -137,7 +139,7 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 			// t.Fatal(err)
 		}
 
-		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, namespace, true, "Always"})
+		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, namespace, true, pullPolicy})
 	}
 }
 

@@ -202,7 +202,7 @@ func TestBuildLabels(t *testing.T) {
 		t.Errorf("Expected commit message \"%s\" but found \"%s\"", commitMessage, labelsMap[appsodyCommitKey+"message"])
 	}
 
-	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, "", false, "Always"})
+	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, "", false, ""})
 
 	//delete the image
 	deleteImage(imageName, t)
@@ -251,13 +251,14 @@ func TestDeploymentConfig(t *testing.T) {
 		// appsody build
 		imageName := sandbox.ProjectName
 		pullURL := "my-pull-url"
+		pullPolicy := "Always"
 
-		_, err = cmdtest.RunAppsody(sandbox, "build", "--tag", imageName, "--pull-url", pullURL, "--knative")
+		_, err = cmdtest.RunAppsody(sandbox, "build", "--tag", imageName, "--pull-url", pullURL, "--knative", "--pullPolicy", pullPolicy)
 		if err != nil {
 			t.Error("appsody build command returned err: ", err)
 		}
 
-		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, "", true, "Always"})
+		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, "", true, pullPolicy})
 
 		//delete the image
 		deleteImage(imageName, t)
@@ -391,7 +392,7 @@ func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploy
 		t.Errorf("Incorrect Namespace in app-deploy.yaml. Expected %s but found %s", expectedDeploymentConfig.namespace, appsodyApplication.Namespace)
 	}
 
-	if string(*appsodyApplication.Spec.PullPolicy) != expectedDeploymentConfig.pullPolicy {
+	if appsodyApplication.Spec.PullPolicy != nil && string(*appsodyApplication.Spec.PullPolicy) != expectedDeploymentConfig.pullPolicy {
 		t.Errorf("Incorrect PullPolicy in app-deploy.yaml. Expected %s but found %s", expectedDeploymentConfig.pullPolicy, appsodyApplication.Namespace)
 	}
 

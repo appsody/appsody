@@ -44,6 +44,7 @@ type buildCommandConfig struct {
 	knative             bool
 	knativeFlagPresent  bool
 	namespace           string
+	pullPolicy          string
 }
 
 //These are the current supported labels for Kubernetes,
@@ -114,7 +115,8 @@ Run this command from the root directory of your Appsody project.`,
 	buildCmd.PersistentFlags().BoolVar(&config.push, "push", false, "Push the container image to the image repository.")
 	buildCmd.PersistentFlags().StringVar(&config.pushURL, "push-url", "", "The remote registry to push the image to. This will also trigger a push if the --push flag is not specified.")
 	buildCmd.PersistentFlags().StringVar(&config.pullURL, "pull-url", "", "Remote repository to pull image from.")
-	buildCmd.PersistentFlags().BoolVar(&config.knative, "knative", false, "Deploy as a Knative Service")
+	buildCmd.PersistentFlags().BoolVar(&config.knative, "knative", false, "Deploy as a Knative Service.")
+	buildCmd.PersistentFlags().StringVar(&config.pullPolicy, "pullPolicy", "", "Set Pull Policy to use for the deployment.")
 	buildCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
 
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
@@ -546,8 +548,17 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 
 	appsodyApplication.Spec.ApplicationImage = imageName
 
-	if appsodyApplication.Spec.PullPolicy == nil {
-		pullPolicy := corev1.PullAlways
+	if appsodyApplication.Spec.PullPolicy == nil && config.pullPolicy != "" {
+		var pullPolicy corev1.PullPolicy
+		if config.pullPolicy == "Always" {
+			pullPolicy = corev1.PullAlways
+		} else if config.pullPolicy == "IfnotPresent" {
+			pullPolicy = corev1.PullIfNotPresent
+		} else if config.pullPolicy == "Never" {
+			pullPolicy = corev1.PullNever
+		} else {
+			return errors.Errorf("Pull Policy %s invalid. Please specify one of the following options: Always, IfNotPresent or Never.", config.pullPolicy)
+		}
 		appsodyApplication.Spec.PullPolicy = &pullPolicy
 	}
 

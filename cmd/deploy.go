@@ -107,6 +107,8 @@ Run this command from the root directory of your Appsody project.`,
 				}
 			}
 
+			// Check for appsody application
+
 			if namespace == "" {
 				namespace = "default"
 			}
@@ -129,6 +131,7 @@ Run this command from the root directory of your Appsody project.`,
 				buildConfig.knativeFlagPresent = config.knativeFlagPresent
 				buildConfig.appDeployFile = configFile
 				buildConfig.namespace = namespace
+				buildConfig.pullPolicy = "Always"
 
 				buildErr := build(buildConfig)
 				if buildErr != nil {
@@ -162,6 +165,21 @@ Run this command from the root directory of your Appsody project.`,
 				} else {
 					config.Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
 
+				}
+			}
+
+			projectConfig, err := getProjectConfig(rootConfig)
+			if err != nil {
+				return err
+			}
+
+			config.Info.Log("Checking if application has already been deployed")
+			_, err = KubeGet(config.LoggingConfig, []string{"appsodyapplication.appsody.dev/" + projectConfig.ProjectName}, namespace, dryrun)
+			if err == nil {
+				config.Info.Log("Deleting appsody application before re-deploying")
+				_, err = RunAppsodyCmdExec([]string{"deploy", "delete"}, projectDir, rootConfig)
+				if err != nil {
+					config.Error.Logf("Could not delete appsody application from deployment environment, error: %s", err)
 				}
 			}
 
