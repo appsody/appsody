@@ -15,6 +15,7 @@ package functest
 
 import (
 	"bytes"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -48,6 +49,41 @@ func TestPackage(t *testing.T) {
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestPackageImageTag(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
+	if err != nil {
+		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
+	} else {
+		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
+	}
+
+	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+
+	args := []string{"stack", "package", "--image-namespace", "testnamespace", "--image-registry", "testregistry"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+
+	file, readErr := ioutil.ReadFile(filepath.Join(sandbox.ConfigDir, "stacks", "dev.local", "dev.local-index.yaml"))
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		if !strings.Contains(string(file), "image: testregistry/testnamespace") {
+			t.Errorf("Image name not found in index. Expecting: image: testregistry/testnamespace/starter:<version>")
+		}
 	}
 }
 

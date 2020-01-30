@@ -46,7 +46,7 @@ type StackYaml struct {
 	DefaultTemplate string            `yaml:"default-template"`
 	TemplatingData  map[string]string `yaml:"templating-data"`
 	Requirements    StackRequirement  `yaml:"requirements,omitempty"`
-	Tag             string
+	Image           string
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -69,7 +69,7 @@ type IndexYamlStack struct {
 	DefaultTemplate string `yaml:"default-template"`
 	Templates       []IndexYamlStackTemplate
 	Requirements    StackRequirement `yaml:"requirements,omitempty"`
-	Tag             string
+	Image           string
 }
 type IndexYamlStackTemplate struct {
 	ID  string `yaml:"id"`
@@ -290,7 +290,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// build up stack struct for the new stack
-			stackYaml.Tag = namespaceAndRepo + ":" + semver["majorminor"]
+			stackYaml.Image = namespaceAndRepo + ":" + semver["majorminor"] + "." + semver["patch"]
 			newStackStruct := initialiseStackData(stackID, stackYaml)
 
 			// find and open the template path so we can loop through the templates
@@ -453,7 +453,7 @@ func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
 	newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
 	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
 	newStackStruct.Requirements = stackYaml.Requirements
-	newStackStruct.Tag = stackYaml.Tag
+	newStackStruct.Image = stackYaml.Image
 
 	return newStackStruct
 }
