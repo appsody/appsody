@@ -33,7 +33,7 @@ func newRepoAddCmd(config *RootCommandConfig) *cobra.Command {
   Adds the "my-local-repo" repository, specified by the "file:///absolute/path/to/my-local-repo.yaml" file to your list of repositories.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
-				return errors.New("you must specify a repository name and URL")
+				return errors.New("You must specify a repository name and URL")
 			}
 			if len(args) > 2 {
 				return errors.Errorf("Two arguments expected. Use 'appsody [command] --help' for more information about a command")

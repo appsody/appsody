@@ -60,7 +60,7 @@ func TestBuildSimple(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -125,7 +125,7 @@ func TestBuildLabels(t *testing.T) {
 	defer cleanup()
 
 	// first add the test repo index
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestBuildLabels(t *testing.T) {
 	}
 
 	t.Log("Copying .appsody-config.yaml to project dir...")
-	copyCmd := exec.Command("cp", filepath.Join(cmdtest.TestDirPath, ".appsody-config.yaml"), sandbox.ProjectDir)
+	copyCmd := exec.Command("cp", filepath.Join(sandbox.TestDataPath, ".appsody-config.yaml"), sandbox.ProjectDir)
 	err = copyCmd.Run()
 	if err != nil {
 		t.Fatal(err)
@@ -235,7 +235,7 @@ func TestDeploymentConfig(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}

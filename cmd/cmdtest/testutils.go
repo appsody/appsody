@@ -32,24 +32,21 @@ import (
 )
 
 const CLEANUP = true
-
 const TravisTesting = false
-
-var TestDirPath = filepath.Join("..", "cmd", "testdata")
 
 // Repository struct represents an appsody repository
 type Repository struct {
 	Name string
 	URL  string
 }
-
 type TestSandbox struct {
 	*testing.T
-	ProjectDir  string
-	ProjectName string
-	ConfigDir   string
-	ConfigFile  string
-	Verbose     bool
+	ProjectDir   string
+	TestDataPath string
+	ProjectName  string
+	ConfigDir    string
+	ConfigFile   string
+	Verbose      bool
 }
 
 func inArray(haystack []string, needle string) bool {
@@ -60,19 +57,16 @@ func inArray(haystack []string, needle string) bool {
 	}
 	return false
 }
-
 func TestSetup(t *testing.T, parallel bool) {
 	if parallel {
 		t.Parallel()
 	}
 }
-
 func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
+	var testDirPath, _ = filepath.Abs(filepath.Join("..", "cmd", "testdata"))
 	TestSetup(t, parallel)
-
 	// default to verbose mode
 	sandbox := &TestSandbox{T: t, Verbose: true}
-
 	// create a temporary dir to create the project and run the test
 	dirPrefix := "appsody-" + t.Name() + "-"
 	dirPrefix = strings.ReplaceAll(dirPrefix, "/", "-")
@@ -89,10 +83,11 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error evaluating symlinks: ", err)
 	}
-
 	sandbox.ProjectName = strings.ToLower(strings.Replace(filepath.Base(testDir), "appsody-", "", 1))
 	sandbox.ProjectDir = filepath.Join(testDir, sandbox.ProjectName)
 	sandbox.ConfigDir = filepath.Join(testDir, "config")
+	sandbox.TestDataPath = filepath.Join(testDir, "testdata")
+
 	err = os.MkdirAll(sandbox.ProjectDir, 0755)
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
@@ -103,14 +98,67 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 	if err != nil {
 		t.Fatal("Error creating project dir: ", err)
 	}
+	t.Log("Created testing project dir: ", sandbox.ProjectDir)
 	t.Log("Created testing config dir: ", sandbox.ConfigDir)
-
 	// Create the config file if it does not already exist.
 	sandbox.ConfigFile = filepath.Join(sandbox.ConfigDir, "config.yaml")
 	data := []byte("home: " + sandbox.ConfigDir + "\n" + "generated-by-tests: Yes" + "\n")
 	err = ioutil.WriteFile(sandbox.ConfigFile, data, 0644)
 	if err != nil {
 		t.Fatal("Error writing config file: ", err)
+	}
+
+	var outBuffer bytes.Buffer
+	log := &cmd.LoggingConfig{}
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	file, err := cmd.Exists(testDirPath)
+	if err != nil {
+		t.Fatalf("Cannot find source directory %s to copy. Error: %v", testDirPath, err)
+	}
+	if !file {
+		t.Fatalf("The file %s could not be found.", testDirPath)
+	}
+
+	err = cmd.CopyDir(log, testDirPath, sandbox.TestDataPath)
+	if err != nil {
+		t.Fatalf("Could not copy %s to %s - output of copy command %s", testDirPath, testDir, err)
+	}
+	t.Log(outBuffer.String())
+	t.Logf("Directory copy of %s to %s was successful \n", testDirPath, testDir)
+
+	configFolders := []string{}
+	files, err := ioutil.ReadDir(sandbox.TestDataPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Compile an array of the repository files in the test directory
+	for _, f := range files {
+		if strings.Contains(f.Name(), "_repository_") {
+			configFolders = append(configFolders, f.Name())
+		}
+	}
+
+	for _, config := range configFolders {
+		file, err := ioutil.ReadFile(filepath.Join(sandbox.TestDataPath, config, "config.yaml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		lines := strings.Split(string(file), "\n")
+		for i, line := range lines {
+			if strings.Contains(line, "home:") {
+				oldLine := strings.SplitN(line, " ", -1)
+				lines[i] = "home: " + filepath.Join(testDir, oldLine[1])
+			}
+		}
+
+		output := strings.Join(lines, "\n")
+		err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, config, "config.yaml"), []byte(output), 0644)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	cleanupFunc := func() {
@@ -122,6 +170,13 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 		}
 	}
 	return sandbox, cleanupFunc
+}
+
+func (s *TestSandbox) SetConfigInTestData(pathUnderTestdata string) {
+	if pathUnderTestdata != "" {
+		s.ConfigDir = filepath.Join(s.TestDataPath, pathUnderTestdata)
+		s.ConfigFile = filepath.Join(s.ConfigDir, "config.yaml")
+	}
 }
 
 // RunAppsody runs the appsody CLI with the given args, using
@@ -141,7 +196,6 @@ func RunAppsody(t *TestSandbox, args ...string) (string, error) {
 
 	// // Buffer cmd output, to be logged if there is a failure
 	var outBuffer bytes.Buffer
-
 	// Direct cmd console output to a buffer
 	outReader, outWriter := io.Pipe()
 
@@ -213,7 +267,6 @@ func ParseYAML(output string) string {
 			break
 		}
 	}
-
 	return strings.Join(outputLines[splitIndex:], "\n")
 }
 
@@ -281,7 +334,6 @@ func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string,
 	if err != nil {
 		return "", err
 	}
-
 	return repoURL, nil
 }
 
@@ -290,14 +342,11 @@ func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string,
 // args will be passed to the docker command
 // workingDir will be the directory the command runs in
 func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
-
 	cmdArgs := []string{"docker"}
 	cmdArgs = append(cmdArgs, args...)
 	t.Log(cmdArgs)
-
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	outReader, outWriter := io.Pipe()
-
 	execCmd.Stdout = outWriter
 	execCmd.Stderr = outWriter
 	outScanner := bufio.NewScanner(outReader)
@@ -318,7 +367,6 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	err = execCmd.Wait()
 
 	// close the writer first, so it sends an EOF to the scanner above,
@@ -326,7 +374,6 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 	outWriter.Close()
 	wg.Wait()
 	outReader.Close()
-
 	return outBuffer.String(), err
 }
 
