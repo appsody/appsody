@@ -26,6 +26,7 @@ import (
 	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -315,7 +316,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				err = makeAppDeployYaml(sandbox.ProjectDir, tt.appDeployStart)
+				err = makeKnativeAppDeployYaml(sandbox.ProjectDir, tt.appDeployStart)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -330,7 +331,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 					t.Error("appsody build command returned err: ", err)
 				}
 				expectedImageName := "dev.local/" + sandbox.ProjectName
-				checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", expectedImageName, "", tt.appDeployExpected})
+				checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", expectedImageName, "", tt.appDeployExpected, ""})
 
 				//delete the image
 				deleteImage(expectedImageName, t)
@@ -339,7 +340,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 	}
 }
 
-func makeAppDeployYaml(projectDir string, createKnativeService bool) error {
+func makeKnativeAppDeployYaml(projectDir string, createKnativeService bool) error {
 	appsodyApplication := v1beta1.AppsodyApplication{}
 	appsodyApplication.Spec.CreateKnativeService = &createKnativeService
 	data, err := yaml.Marshal(appsodyApplication)
@@ -356,6 +357,93 @@ func makeAppDeployYaml(projectDir string, createKnativeService bool) error {
 	return nil
 }
 
+var emptyPullPolicy corev1.PullPolicy
+var pullPolicyFlagTests = []struct {
+	testName          string
+	pullPolicyFlag    string
+	appDeployStart    corev1.PullPolicy
+	appDeployExpected corev1.PullPolicy
+}{
+	{"NoPullPolicyFlagAndStartNone", "", emptyPullPolicy, emptyPullPolicy},
+	{"NoPullPolicyFlagAndStartAlways", "", corev1.PullAlways, corev1.PullAlways},
+	{"PullPolicyAlwaysAndStartNone", "--pullPolicy=Always", emptyPullPolicy, corev1.PullAlways},
+	{"PullPolicyIfNotPresentAndStartNone", "--pullPolicy=IfNotPresent", emptyPullPolicy, corev1.PullIfNotPresent},
+	{"PullPolicyNeverAndStartNone", "--pullPolicy=Never", emptyPullPolicy, corev1.PullNever},
+	{"PullPolicyAlwaysAndStartNever", "--pullPolicy=Always", corev1.PullNever, corev1.PullAlways},
+}
+
+func TestPullPolicyFlagOnBuild(t *testing.T) {
+	t.Log("stacksList is: ", stacksList)
+
+	// if stacksList is empty there is nothing to test so return
+	if stacksList == "" {
+		t.Log("stacksList is empty, exiting test...")
+		return
+	}
+
+	// split the appsodyStack env variable
+	stackRaw := strings.Split(stacksList, " ")
+
+	// loop through the stacks
+	for i := range stackRaw {
+		for _, testData := range pullPolicyFlagTests {
+			// need to set testData to a new variable scoped under the for loop
+			// otherwise tests run in parallel may get the wrong testData
+			// because the for loop reassigns it before the func runs
+			tt := testData
+
+			t.Run(tt.testName, func(t *testing.T) {
+				t.Log("***Testing stack: ", stackRaw[i], "***")
+				sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+				defer cleanup()
+
+				// appsody init
+				t.Log("Running appsody init...")
+				_, err := cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				err = makePullPolicyAppDeployYaml(sandbox.ProjectDir, tt.appDeployStart)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				// appsody build
+				if tt.pullPolicyFlag == "" {
+					_, err = cmdtest.RunAppsody(sandbox, "build")
+				} else {
+					_, err = cmdtest.RunAppsody(sandbox, "build", tt.pullPolicyFlag)
+				}
+				if err != nil {
+					t.Error("appsody build command returned err: ", err)
+				}
+				expectedImageName := "dev.local/" + sandbox.ProjectName
+				checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", expectedImageName, "", false, string(tt.appDeployExpected)})
+
+				//delete the image
+				deleteImage(expectedImageName, t)
+			})
+		}
+	}
+}
+
+func makePullPolicyAppDeployYaml(projectDir string, pullPolicy corev1.PullPolicy) error {
+	appsodyApplication := v1beta1.AppsodyApplication{}
+	appsodyApplication.Spec.PullPolicy = &pullPolicy
+	data, err := yaml.Marshal(appsodyApplication)
+	if err != nil {
+		return fmt.Errorf("error marshalling yaml: %v", err)
+	}
+
+	// write to file
+	deployFilePath := filepath.Join(projectDir, deployFile)
+	err = ioutil.WriteFile(deployFilePath, data, 0666)
+	if err != nil {
+		return fmt.Errorf("error writing deployment yaml to file %s: %v", deployFilePath, err)
+	}
+	return nil
+}
 func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploymentConfig) {
 	deployFile := expectedDeploymentConfig.deployFile
 	_, err := os.Stat(deployFile)
