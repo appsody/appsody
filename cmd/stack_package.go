@@ -46,6 +46,7 @@ type StackYaml struct {
 	DefaultTemplate string            `yaml:"default-template"`
 	TemplatingData  map[string]string `yaml:"templating-data"`
 	Requirements    StackRequirement  `yaml:"requirements,omitempty"`
+	Tag             string
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -68,6 +69,7 @@ type IndexYamlStack struct {
 	DefaultTemplate string `yaml:"default-template"`
 	Templates       []IndexYamlStackTemplate
 	Requirements    StackRequirement `yaml:"requirements,omitempty"`
+	Tag             string
 }
 type IndexYamlStackTemplate struct {
 	ID  string `yaml:"id"`
@@ -251,7 +253,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				return errors.Errorf("Error applying templating: %v", err)
 			}
 
-			// tag with the full version then mojorminor, major, and latest
+			// tag with the full version then majorminor, major, and latest
 			cmdArgs := []string{"-t", buildImage}
 			semver := templateMetadata["semver"].(map[string]string)
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["majorminor"])
@@ -288,6 +290,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			}
 
 			// build up stack struct for the new stack
+			stackYaml.Tag = namespaceAndRepo + ":" + semver["majorminor"]
 			newStackStruct := initialiseStackData(stackID, stackYaml)
 
 			// find and open the template path so we can loop through the templates
@@ -450,6 +453,7 @@ func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
 	newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
 	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
 	newStackStruct.Requirements = stackYaml.Requirements
+	newStackStruct.Tag = stackYaml.Tag
 
 	return newStackStruct
 }
