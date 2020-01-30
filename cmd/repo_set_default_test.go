@@ -22,19 +22,22 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-var repoSetDefaultLogsTests = []struct {
-	testName     string
-	args         []string // input
-	expectedLogs string   // logs that are expected in the output
-}{
-	{"No args", nil, "must specify the repository to set as the default"},
-	{"Existing default repo", []string{"incubator"}, "default repository has already been set to"},
-	{"Non-existing repo", []string{"test"}, "not in your configured list of repositories"},
-	{"Badly formatted repo config", []string{"test", "--config", "testdata/bad_format_repository_config/config.yaml"}, "Failed to parse repository file yaml"},
-	{"Too many arguments", []string{"too", "many", "arguments"}, "One argument expected."},
-}
-
 func TestRepoSetDefaultLogs(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var repoSetDefaultLogsTests = []struct {
+		testName     string
+		args         []string // input
+		configDir    string
+		expectedLogs string // logs that are expected in the output
+	}{
+		{"No args", nil, "", "You must specify the repository to set as the default"},
+		{"Existing default repo", []string{"incubator"}, "", "default repository has already been set to"},
+		{"Non-existing repo", []string{"test"}, "", "not in your configured list of repositories"},
+		{"Too many arguments", []string{"too", "many", "arguments"}, "", "One argument expected."},
+		{"Badly formatted repo config", []string{"test"}, "bad_format_repository_config", "Failed to parse repository file yaml"},
+	}
 
 	for _, testData := range repoSetDefaultLogsTests {
 		// need to set testData to a new variable scoped under the for loop
@@ -42,10 +45,10 @@ func TestRepoSetDefaultLogs(t *testing.T) {
 		// because the for loop reassigns it before the func runs
 		tt := testData
 
+		sandbox.SetConfigInTestData(tt.configDir)
+
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.testName, func(t *testing.T) {
-			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-			defer cleanup()
 
 			args := append([]string{"repo", "set-default"}, tt.args...)
 			output, err := cmdtest.RunAppsody(sandbox, args...)
@@ -59,9 +62,12 @@ func TestRepoSetDefaultLogs(t *testing.T) {
 			// check default repo is unchanged and is still incubator
 			output, err = cmdtest.RunAppsody(sandbox, "repo", "list")
 			if err != nil {
-				t.Fatal(err)
+				if !strings.Contains(err.Error(), tt.expectedLogs) {
+					t.Fatalf("Unexpected error when running repo list: %s ", err)
+				}
+			} else {
+				checkExpectedDefaultRepo(t, output, "*incubator")
 			}
-			checkExpectedDefaultRepo(t, output, "*incubator")
 		})
 	}
 }
@@ -70,8 +76,8 @@ func TestRepoSetDefault(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"repo", "set-default", "localhub", "--config", "testdata/multiple_repository_config/config.yaml"}
-	removeRepo := filepath.Join("testdata", "multiple_repository_config", "repository", "repository.yaml")
+	args := []string{"repo", "set-default", "localhub", "--config", filepath.Join(sandbox.TestDataPath, "multiple_repository_config", "config.yaml")}
+	removeRepo := filepath.Join(sandbox.TestDataPath, "multiple_repository_config", "repository", "repository.yaml")
 	file, readErr := ioutil.ReadFile(removeRepo)
 	if readErr != nil {
 		t.Fatal(readErr)
@@ -82,7 +88,7 @@ func TestRepoSetDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	// check default repo has been changed to localhub
-	output, err := cmdtest.RunAppsody(sandbox, "repo", "list", "--config", "testdata/multiple_repository_config/config.yaml")
+	output, err := cmdtest.RunAppsody(sandbox, "repo", "list", "--config", filepath.Join(sandbox.TestDataPath, "multiple_repository_config", "config.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +103,7 @@ func TestRepoSetDefaultDryRun(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"repo", "set-default", "localhub", "--config", "testdata/multiple_repository_config/config.yaml", "--dryrun"}
+	args := []string{"repo", "set-default", "localhub", "--config", filepath.Join(sandbox.TestDataPath, "multiple_repository_config", "config.yaml"), "--dryrun"}
 
 	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {

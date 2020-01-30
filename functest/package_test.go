@@ -16,6 +16,7 @@ package functest
 import (
 	"bytes"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -31,21 +32,13 @@ func TestPackage(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	args := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,19 +51,10 @@ func TestPackageDockerOptions(t *testing.T) {
 	var outBuffer bytes.Buffer
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
-
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	args := []string{"stack", "package", "--docker-options", "-q"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
@@ -84,6 +68,11 @@ func TestPackageDockerOptions(t *testing.T) {
 }
 
 func TestPackageBuildah(t *testing.T) {
+
+	if runtime.GOOS != "linux" {
+		t.Skip()
+	}
+
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
@@ -91,18 +80,10 @@ func TestPackageBuildah(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	args := []string{"stack", "package", "--buildah"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
@@ -117,6 +98,11 @@ func TestPackageBuildah(t *testing.T) {
 }
 
 func TestPackageBuildahWithOptions(t *testing.T) {
+
+	if runtime.GOOS != "linux" {
+		t.Skip()
+	}
+
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
@@ -124,18 +110,10 @@ func TestPackageBuildahWithOptions(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	args := []string{"stack", "package", "--buildah", "--buildah-options", "--format=docker"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
