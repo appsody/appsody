@@ -53,18 +53,10 @@ func TestPackageImageTag(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
-	err := cmd.CopyDir(log, stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")), err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, (filepath.Join(sandbox.ProjectDir, "starter")))
-	}
-
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	args := []string{"stack", "package", "--image-namespace", "testnamespace", "--image-registry", "testregistry"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 
 	file, readErr := ioutil.ReadFile(filepath.Join(sandbox.ConfigDir, "stacks", "dev.local", "dev.local-index.yaml"))
 	if readErr != nil {
