@@ -71,9 +71,9 @@ func TestStackCreateInvalidCases(t *testing.T) {
 		{"Existing default repo", "testing-stack-create-invalid", []string{"--copy", "nodejs"}, "Stack name must be in the format <repo>/<stack>"},
 		{"Non-existing repo", "testing-stack-create-invalid", []string{"--copy", "experimental/nodejs"}, "Stack name must be in the format <repo>/<stack>"},
 		{"Badly formatted repo config", "testing-stack-create-invalid", []string{"--copy", "exp/java-microprofile"}, "Stack name must be in the format <repo>/<stack>"},
-		{"Invalid stack name: underscores", "testing_stack_invalid_name", nil, "The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash."},
-		{"Invalid stack name: length", "testing_stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stack", nil, "The name must be 68 characters or less"},
-		{"Invalid stack name: missing", "", nil, "Invalid project-name. The name cannot be an empty string"},
+		{"Invalid stack name underscores", "testing_stack_invalid_name", nil, "The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash."},
+		{"Invalid stack name length", "testing_stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stack", nil, "The name must be 68 characters or less"},
+		{"Invalid stack name missing", "", nil, "Invalid project-name. The name cannot be an empty string"},
 	}
 	for _, testData := range stackCreateInvalidTests {
 		// need to set testData to a new variable scoped under the for loop
