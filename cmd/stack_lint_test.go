@@ -97,7 +97,7 @@ func TestLinterMissingValues(t *testing.T) {
 		removeFile  string
 		expectedLog string
 	}{
-		{"Missing Stack Yaml", "stack.yaml", "stack.yaml: no such file or directory"},
+		{"Missing Stack Yaml", "stack.yaml", "Missing stack.yaml"},
 		{"Missing Project And Config Dir", "image", "Missing image directory"},
 		{"Missing README", "README.md", "Missing README.md"},
 		{"Missing Templates Directory", "templates", "Missing template directory"},

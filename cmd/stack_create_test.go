@@ -51,7 +51,7 @@ func TestStackCreateValidCases(t *testing.T) {
 				t.Fatal("Failed to check if the stack exists: ", err)
 			}
 			if !exists {
-				t.Fatal("Stack doesn't exist despite appsody stack create executing correctly: ", err)
+				t.Fatal("Stack doesn't exist despite appsody stack create executing correctly")
 			}
 			os.RemoveAll(testStackName)
 			if err != nil {
