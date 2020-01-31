@@ -311,7 +311,6 @@ func install(config *initCommandConfig) error {
 
 	// reset config.StackRegistry and get it again from the newly untarred .appsody-config.yaml
 
-	//defaultStackRegistry := getDefaultStackRegistry(config.RootCommandConfig)
 	configFileStackRegistry, err := getStackRegistryFromConfigFile(config.RootCommandConfig)
 	if err != nil {
 		return err
