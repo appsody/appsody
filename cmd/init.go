@@ -311,7 +311,6 @@ func install(config *initCommandConfig) error {
 
 	// reset config.StackRegistry and get it again from the newly untarred .appsody-config.yaml
 
-	defaultStackRegistry := getDefaultStackRegistry(config.RootCommandConfig)
 	configFileStackRegistry, err := getStackRegistryFromConfigFile(config.RootCommandConfig)
 	if err != nil {
 		return err
@@ -321,8 +320,6 @@ func install(config *initCommandConfig) error {
 	if config.StackRegistryInit != "" {
 		config.Debug.Log("The flag --stack-registry was set to: ", config.StackRegistryInit)
 		stackRegistry = config.StackRegistryInit
-	} else if configFileStackRegistry == "" {
-		stackRegistry = defaultStackRegistry
 	}
 	config.Debug.Log("The stack registry in .appsody-config.yaml will be set to: ", stackRegistry)
 	err = setStackRegistry(stackRegistry, config.RootCommandConfig)
