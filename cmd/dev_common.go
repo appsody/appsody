@@ -239,9 +239,9 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 		go func() {
 			<-c
-			config.Debug.Log("Inside signal handler for appsody command")
 			wg.Add(1)
 			defer wg.Done()
+			config.Debug.Log("Inside signal handler for appsody command")
 			err := dockerStop(config.RootCommandConfig, config.containerName, config.Dryrun)
 			if err != nil {
 				config.Error.log(err)
