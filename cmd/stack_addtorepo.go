@@ -122,18 +122,19 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.Errorf("Error reading index file: %s", readErr)
 			}
 
-			unmarshalErr := yaml.Unmarshal([]byte(devLocalIndex), &devLocalIndexYaml)
+			unmarshalErr := yaml.Unmarshal(devLocalIndex, &devLocalIndexYaml)
 			if unmarshalErr != nil {
 				return errors.Errorf("Unmarshal: Error unmarshalling index.yaml")
 			}
 
 			stackFound := false
-			var ind int
+			var indexNoOfStack int
 			for i, stack := range devLocalIndexYaml.Stacks {
 				if stackID == stack.ID {
 					log.Debug.Log("Found stack attempting to add to repo in dev.local-index.yaml")
 					stackFound = true
-					ind = i
+					indexNoOfStack = i
+					break
 				}
 			}
 			if !stackFound {
@@ -232,7 +233,7 @@ Run this command from the root directory of your Appsody project.`,
 			}
 
 			// build up stack struct for the new stack
-			newStackStruct := initialiseStackData(stackID, devLocalIndexYaml.Stacks[ind].Image, stackYaml)
+			newStackStruct := initialiseStackData(stackID, devLocalIndexYaml.Stacks[indexNoOfStack].Image, stackYaml)
 
 			// find and open the template path so we can loop through the templates
 			templatePath := filepath.Join(stackPath, "templates")
