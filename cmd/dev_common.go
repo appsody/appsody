@@ -23,6 +23,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -231,11 +232,16 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	//controllerMount := controllerVolumeName + ":/appsody"
 	config.Debug.log("Adding controller to volume mounts: ", controllerVolumeMount)
 	volumeMaps = append(volumeMaps, "-v", controllerVolumeMount)
+
+	var wg sync.WaitGroup
 	if !config.Buildah {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 		go func() {
 			<-c
+			config.Debug.Log("Inside signal handler for appsody command")
+			wg.Add(1)
+			defer wg.Done()
 			err := dockerStop(config.RootCommandConfig, config.containerName, config.Dryrun)
 			if err != nil {
 				config.Error.log(err)
@@ -422,6 +428,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		} //end of for loop
 
 	} // end of buildah path
+	wg.Wait()
 	return nil
 }
 
