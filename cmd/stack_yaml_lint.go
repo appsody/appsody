@@ -65,12 +65,8 @@ func (stackDetails *StackYaml) validateFields(rootConfig *RootCommandConfig) int
 
 	for i := 0; i < v.NumField(); i++ {
 		yamlValues[i] = v.Field(i).Interface()
-		field := strings.ToLower(v.Type().Field(i).Name)
-		if field == "image" {
-			continue
-		}
 		if yamlValues[i] == "" {
-			rootConfig.Error.log("Missing value for field: ", field)
+			rootConfig.Error.log("Missing value for field: ", strings.ToLower(v.Type().Field(i).Name))
 			stackLintErrorCount++
 		}
 	}
