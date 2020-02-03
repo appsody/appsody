@@ -107,6 +107,39 @@ Run this command from the root directory of your Appsody project.`,
 
 			var indexYaml IndexYaml
 
+			log.Debug.Log("Checking if appsody stack package has been run on this stack")
+			checkDevLocalIndex, existsErr := Exists(filepath.Join(devLocal, "dev.local-index.yaml"))
+			if existsErr != nil {
+				return errors.Errorf("Error checking if dev.local-index.yaml exists in: %s. Error was: %s", devLocal, existsErr)
+			}
+			if !checkDevLocalIndex {
+				return errors.Errorf("Unable to find dev.local-index.yaml in: %s. Run appsody stack package on your stack before running this command.", devLocal)
+			}
+
+			devLocalIndexYaml := IndexYaml{}
+			devLocalIndex, readErr := ioutil.ReadFile(filepath.Join(devLocal, "dev.local-index.yaml"))
+			if readErr != nil {
+				return errors.Errorf("Error reading index file: %s", readErr)
+			}
+
+			unmarshalErr := yaml.Unmarshal([]byte(devLocalIndex), &devLocalIndexYaml)
+			if unmarshalErr != nil {
+				return errors.Errorf("Unmarshal: Error unmarshalling index.yaml")
+			}
+
+			stackFound := false
+			var ind int
+			for i, stack := range devLocalIndexYaml.Stacks {
+				if stackID == stack.ID {
+					log.Debug.Log("Found stack attempting to add to repo in dev.local-index.yaml")
+					stackFound = true
+					ind = i
+				}
+			}
+			if stackFound == false {
+				return errors.Errorf("Couldn't find stack in dev.local-index.yaml. Have you packaged this stack?")
+			}
+
 			_, repoErr := repoFile.getRepos(rootConfig)
 			if repoErr != nil {
 				return repoErr
@@ -199,7 +232,7 @@ Run this command from the root directory of your Appsody project.`,
 			}
 
 			// build up stack struct for the new stack
-			newStackStruct := initialiseStackData(stackID, stackYaml)
+			newStackStruct := initialiseStackData(stackID, devLocalIndexYaml.Stacks[ind].Image, stackYaml)
 
 			// find and open the template path so we can loop through the templates
 			templatePath := filepath.Join(stackPath, "templates")

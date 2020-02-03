@@ -46,7 +46,6 @@ type StackYaml struct {
 	DefaultTemplate string            `yaml:"default-template"`
 	TemplatingData  map[string]string `yaml:"templating-data"`
 	Requirements    StackRequirement  `yaml:"requirements,omitempty"`
-	Image           string
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -69,7 +68,7 @@ type IndexYamlStack struct {
 	DefaultTemplate string `yaml:"default-template"`
 	Templates       []IndexYamlStackTemplate
 	Requirements    StackRequirement `yaml:"requirements,omitempty"`
-	Image           string
+	Image           string           `yaml:image`
 }
 type IndexYamlStackTemplate struct {
 	ID  string `yaml:"id"`
@@ -289,9 +288,9 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				return err
 			}
 
+			stackImage := namespaceAndRepo + ":" + semver["majorminor"] + "." + semver["patch"]
 			// build up stack struct for the new stack
-			stackYaml.Image = namespaceAndRepo + ":" + semver["majorminor"] + "." + semver["patch"]
-			newStackStruct := initialiseStackData(stackID, stackYaml)
+			newStackStruct := initialiseStackData(stackID, stackImage, stackYaml)
 
 			// find and open the template path so we can loop through the templates
 			templatePath := filepath.Join(stackPath, "templates")
@@ -440,7 +439,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 	return stackPackageCmd
 }
 
-func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
+func initialiseStackData(stackID string, stackImage string, stackYaml StackYaml) IndexYamlStack {
 	// build up stack struct for the new stack
 	newStackStruct := IndexYamlStack{}
 	// set the data in the new stack struct
@@ -453,7 +452,7 @@ func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
 	newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
 	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
 	newStackStruct.Requirements = stackYaml.Requirements
-	newStackStruct.Image = stackYaml.Image
+	newStackStruct.Image = stackImage
 
 	return newStackStruct
 }
