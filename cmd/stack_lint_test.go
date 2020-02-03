@@ -30,7 +30,7 @@ func TestAppsodyRunMissingInDockerfileStack(t *testing.T) {
 	defer cleanup()
 
 	restoreLine := ""
-	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
+	file, err := ioutil.ReadFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestAppsodyRunMissingInDockerfileStack(t *testing.T) {
 		}
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestAppsodyRunMissingInDockerfileStack(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +76,7 @@ func TestAppsodyMountsMissingInDockerfileStack(t *testing.T) {
 	defer cleanup()
 
 	restoreLine := ""
-	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
+	file, err := ioutil.ReadFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestAppsodyMountsMissingInDockerfileStack(t *testing.T) {
 		}
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ func TestAppsodyMountsMissingInDockerfileStack(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -125,7 +125,7 @@ func TestAppsodyWatchDirPresentAndOnChangeMissingInDockerfileStack(t *testing.T)
 	defer cleanup()
 
 	restoreLine := ""
-	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
+	file, err := ioutil.ReadFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"))
 
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +143,7 @@ func TestAppsodyWatchDirPresentAndOnChangeMissingInDockerfileStack(t *testing.T)
 			}
 
 			output := strings.Join(lines, "\n")
-			err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
+			err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 			if err != nil {
 				t.Fatal(err)
@@ -163,7 +163,7 @@ func TestAppsodyWatchDirPresentAndOnChangeMissingInDockerfileStack(t *testing.T)
 			}
 
 			output = strings.Join(lines, "\n")
-			err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
+			err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 			if err != nil {
 				t.Fatal(err)
@@ -185,7 +185,7 @@ func Test_KillValue(t *testing.T) {
 	defer cleanup()
 
 	restoreLine := ""
-	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
+	file, err := ioutil.ReadFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"))
 
 	if err != nil {
 		t.Fatal(err)
@@ -201,7 +201,7 @@ func Test_KillValue(t *testing.T) {
 	}
 
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -221,7 +221,7 @@ func Test_KillValue(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -233,7 +233,7 @@ func TestAppsodyRegexValue(t *testing.T) {
 	defer cleanup()
 
 	restoreLine := ""
-	file, err := ioutil.ReadFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"))
+	file, err := ioutil.ReadFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"))
 
 	if err != nil {
 		t.Fatal(err)
@@ -249,7 +249,7 @@ func TestAppsodyRegexValue(t *testing.T) {
 	}
 
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -269,7 +269,7 @@ func TestAppsodyRegexValue(t *testing.T) {
 	}
 
 	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath.Join(cmdtest.TestDirPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
+	err = ioutil.WriteFile(filepath.Join(sandbox.TestDataPath, "test-stack", "image", "Dockerfile-stack"), []byte(output), 0644)
 
 	if err != nil {
 		t.Fatal(err)
@@ -280,7 +280,7 @@ func TestIncorrectMountSeparator(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
 	args := []string{"stack", "lint", testStackPath}
 
 	dockerfilestackPath := filepath.Join(testStackPath, "image", "Dockerfile-stack")
@@ -319,7 +319,7 @@ func TestInvalidMounts(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
 	args := []string{"stack", "lint", testStackPath}
 
 	dockerfilestackPath := filepath.Join(testStackPath, "image", "Dockerfile-stack")
@@ -358,7 +358,7 @@ func TestLintWithValidStack(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"stack", "lint", filepath.Join(cmdtest.TestDirPath, "test-stack")}
+	args := []string{"stack", "lint", filepath.Join(sandbox.TestDataPath, "test-stack")}
 
 	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil { //Lint check should pass, if not fail the test
@@ -370,7 +370,7 @@ func TestLintWithMissingStackYaml(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
 	args := []string{"stack", "lint", testStackPath}
 	removeYaml := filepath.Join(testStackPath, "stack.yaml")
 	file, err := ioutil.ReadFile(removeYaml)
@@ -397,7 +397,8 @@ func TestLintWithMissingImageProjectAndConfigDir(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
+
 	args := []string{"stack", "lint"}
 	removeImage := filepath.Join(testStackPath, "image")
 	file, readErr := ioutil.ReadFile(filepath.Join(removeImage, "Dockerfile-stack"))
@@ -424,7 +425,7 @@ func TestLintWithMissingREADME(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
 	args := []string{"stack", "lint", testStackPath}
 	removeReadme := filepath.Join(testStackPath, "README.md")
 	removeArray := []string{removeReadme}
@@ -448,7 +449,7 @@ func TestLintWithMissingTemplatesDirectory(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
 	args := []string{"stack", "lint", testStackPath}
 
 	removeTemplatesDir := filepath.Join(testStackPath, "templates")
@@ -473,7 +474,7 @@ func TestLintWithInvalidVersion(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
 	args := []string{"stack", "lint", testStackPath}
 
 	stackYaml := filepath.Join(testStackPath, "stack.yaml")
@@ -513,7 +514,7 @@ func TestLintWithLongNameAndDescription(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
 	args := []string{"stack", "lint", testStackPath}
 
 	stackYaml := filepath.Join(testStackPath, "stack.yaml")
@@ -555,7 +556,7 @@ func TestLintWithInvalidLicenseField(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
 	args := []string{"stack", "lint", testStackPath}
 
 	stackYaml := filepath.Join(testStackPath, "stack.yaml")
@@ -594,7 +595,7 @@ func TestLintWithInvalidTemplatingValues(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
 	args := []string{"stack", "lint", testStackPath}
 
 	stackYaml := filepath.Join(testStackPath, "stack.yaml")
@@ -633,7 +634,7 @@ func TestLintWithInvalidRequirements(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackPath := filepath.Join(cmdtest.TestDirPath, "test-stack")
+	testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
 	args := []string{"stack", "lint", testStackPath}
 
 	stackYaml := filepath.Join(testStackPath, "stack.yaml")

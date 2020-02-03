@@ -29,11 +29,11 @@ var stacksList = os.Getenv("STACKSLIST")
 
 // Test appsody run of the nodejs-express stack and check the http://localhost:3000/health endpoint
 func TestRun(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
 	// first add the test repo index
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestRunSimple(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(cmdtest.TestDirPath, "index.yaml"))
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}

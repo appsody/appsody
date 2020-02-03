@@ -41,6 +41,7 @@ type buildCommandConfig struct {
 	pullURL             string
 	appDeployFile       string
 	knative             bool
+	knativeFlagPresent  bool
 	namespace           string
 }
 
@@ -92,12 +93,14 @@ Run this command from the root directory of your Appsody project.`,
 			if len(args) > 0 {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
+			config.knativeFlagPresent = cmd.Flag("knative").Changed
 
 			projectDir, err := getProjectDir(config.RootCommandConfig)
 			if err != nil {
 				return err
 			}
 			config.appDeployFile = filepath.Join(projectDir, config.appDeployFile)
+
 			return build(config)
 		},
 	}
@@ -532,7 +535,9 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 		}
 	}
 
-	appsodyApplication.Spec.CreateKnativeService = &config.knative
+	if appsodyApplication.Spec.CreateKnativeService == nil || config.knativeFlagPresent {
+		appsodyApplication.Spec.CreateKnativeService = &config.knative
+	}
 
 	if config.pullURL != "" {
 		imageName = config.pullURL + "/" + findNamespaceRepositoryAndTag(imageName)
