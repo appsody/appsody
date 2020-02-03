@@ -136,7 +136,7 @@ Run this command from the root directory of your Appsody project.`,
 					ind = i
 				}
 			}
-			if stackFound == false {
+			if !stackFound {
 				return errors.Errorf("Couldn't find stack in dev.local-index.yaml. Have you packaged this stack?")
 			}
 

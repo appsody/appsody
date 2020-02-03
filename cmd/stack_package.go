@@ -68,7 +68,7 @@ type IndexYamlStack struct {
 	DefaultTemplate string `yaml:"default-template"`
 	Templates       []IndexYamlStackTemplate
 	Requirements    StackRequirement `yaml:"requirements,omitempty"`
-	Image           string           `yaml:image`
+	Image           string           `yaml:"image"`
 }
 type IndexYamlStackTemplate struct {
 	ID  string `yaml:"id"`
