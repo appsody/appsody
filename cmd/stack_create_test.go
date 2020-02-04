@@ -53,7 +53,7 @@ func TestStackCreateValidCases(t *testing.T) {
 			if !exists {
 				t.Fatal("Stack doesn't exist despite appsody stack create executing correctly")
 			}
-			os.RemoveAll(testStackName)
+			err = os.RemoveAll(testStackName)
 			if err != nil {
 				t.Fatal("Error removing the stack", err)
 			}
