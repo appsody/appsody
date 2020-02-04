@@ -141,6 +141,28 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 	}
 }
 
+func TestDeployNoNamespace(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// appsody init
+	t.Log("Running appsody init...")
+	_, err := cmdtest.RunAppsody(sandbox, "init", "nodejs-express")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	imageTag := "testdeploy/testimage"
+	// appsody deploy
+	t.Logf("Running appsody deploy with no namespace")
+	_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", imageTag, "--generate-only")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageTag, "", false})
+}
+
 func TestDeployNamespaceMismatch(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
