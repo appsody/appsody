@@ -128,12 +128,12 @@ Run this command from the root directory of your Appsody project.`,
 			}
 
 			stackFound := false
-			var indexNoOfStack int
+			var stackToAddImage string
 			for i, stack := range devLocalIndexYaml.Stacks {
 				if stackID == stack.ID {
 					log.Debug.Log("Found stack attempting to add to repo in dev.local-index.yaml")
 					stackFound = true
-					indexNoOfStack = i
+					stackToAddImage = devLocalIndexYaml.Stacks[i].Image
 					break
 				}
 			}
@@ -233,7 +233,7 @@ Run this command from the root directory of your Appsody project.`,
 			}
 
 			// build up stack struct for the new stack
-			newStackStruct := initialiseStackData(stackID, devLocalIndexYaml.Stacks[indexNoOfStack].Image, stackYaml)
+			newStackStruct := initialiseStackData(stackID, stackToAddImage, stackYaml)
 
 			// find and open the template path so we can loop through the templates
 			templatePath := filepath.Join(stackPath, "templates")
