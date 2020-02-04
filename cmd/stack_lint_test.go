@@ -33,6 +33,8 @@ func TestLintWithValidStack(t *testing.T) {
 	}
 }
 func TestLinterInvalidValues(t *testing.T) {
+	var dockerfilePath = filepath.Join("image", "Dockerfile-stack")
+
 	var linterInvalidValues = []struct {
 		testName     string
 		targetPath   string
@@ -40,12 +42,12 @@ func TestLinterInvalidValues(t *testing.T) {
 		replaceLine  string
 		expectedLog  string
 	}{
-		{"Invalid Run Value", filepath.Join("image", "Dockerfile-stack"), "APPSODY_RUN", "Testing", "Missing APPSODY_RUN"},
-		{"Invalid Kill Value", filepath.Join("image", "Dockerfile-stack"), "_KILL", "ENV APPSODY_DEBUG_KILL=trued", "APPSODY_DEBUG_KILL can only have value true/false"},
-		{"Invalid Regex Value", filepath.Join("image", "Dockerfile-stack"), "ENV APPSODY_WATCH_REGEX='^.*(.xml|.java|.properties)$'", "ENV APPSODY_WATCH_REGEX='['", "error parsing regexp: missing closing ]"},
-		{"Invalid Mount Seperator", filepath.Join("image", "Dockerfile-stack"), "ENV APPSODY_MOUNTS", "ENV APPSODY_MOUNTS=.,/project/user-app", "Mount is not properly formatted"},
-		{"Invalid Mounts", filepath.Join("image", "Dockerfile-stack"), "ENV APPSODY_MOUNTS", "ENV APPSODY_MOUNTS=a:abcde", "Could not stat path"},
-		{"Invalid Watch Dir", filepath.Join("image", "Dockerfile-stack"), "_ON_CHANGE", "Testing", "APPSODY_WATCH_DIR is defined, but no ON_CHANGE variable is defined"},
+		{"Invalid Run Value", dockerfilePath, "APPSODY_RUN", "Testing", "Missing APPSODY_RUN"},
+		{"Invalid Kill Value", dockerfilePath, "_KILL", "ENV APPSODY_DEBUG_KILL=trued", "APPSODY_DEBUG_KILL can only have value true/false"},
+		{"Invalid Regex Value", dockerfilePath, "ENV APPSODY_WATCH_REGEX='^.*(.xml|.java|.properties)$'", "ENV APPSODY_WATCH_REGEX='['", "error parsing regexp: missing closing ]"},
+		{"Invalid Mount Seperator", dockerfilePath, "ENV APPSODY_MOUNTS", "ENV APPSODY_MOUNTS=.,/project/user-app", "Mount is not properly formatted"},
+		{"Invalid Mounts", dockerfilePath, "ENV APPSODY_MOUNTS", "ENV APPSODY_MOUNTS=a:abcde", "Could not stat path"},
+		{"Invalid Watch Dir", dockerfilePath, "_ON_CHANGE", "Testing", "APPSODY_WATCH_DIR is defined, but no ON_CHANGE variable is defined"},
 		{"Invalid Version", "stack.yaml", "version: ", "version: invalidVersion", "Version must be formatted in accordance to semver"},
 		// Fails unmarshalling the file when searching for "name" - searching for "sample stack" instead
 		{"Invalid Name Length", "stack.yaml", "sample stack", "name: This name is far too long to pass and therefore should also fail.", "Stack name must be under "},
