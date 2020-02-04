@@ -1,6 +1,7 @@
 /appsody
 /appsody.exe
 /build
+/my-project
 .DS_Store
 /package
 .vscode/
