@@ -38,7 +38,7 @@ func newStackAddToRepoCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Add stack information into a production Appsody repository",
 		Long: `Adds stack information into an Appsody repository. 
 		
-Adds stack information to a new or existing Appsody repository, specified by the <repository> argument. This enables you to share your stack with others.
+Adds stack information to a new or existing Appsody repository, specified by the <repository> argument. This enables you to share your stack with others. This command must be run after appsody stack package on the chosen stack.
 
 The updated repository index file is created in  ~/.appsody/stacks/dev.local directory.
 
