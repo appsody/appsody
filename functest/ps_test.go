@@ -107,7 +107,7 @@ func TestPS(t *testing.T) {
 	}
 }
 
-func TestPsNoContainersFail(t *testing.T) {
+func TestPsNoContainers(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
