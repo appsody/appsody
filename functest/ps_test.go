@@ -129,7 +129,7 @@ func TestPsArgumentFail(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
-	// appsody ps with no running containers
+	// appsody ps with extra arguments
 	args := []string{"ps", "testing"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
