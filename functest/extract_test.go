@@ -193,8 +193,26 @@ func TestExtract(t *testing.T) {
 	}
 }
 
-// private exists fn.
-// TODO: Can this be re-used from cmd/utils.go?
+func TestExtractWithNonExistingDir(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	t.Log("Now running appsody init...")
+	args := []string{"init", "starter"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("Now running appsody extract...")
+	args = []string{"extract", "--target-dir", "/non/existing/dir"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if !strings.Contains(output, "/non/existing does not exist") {
+		t.Fatal(err)
+	}
+
+}
+
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
