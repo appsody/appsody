@@ -33,7 +33,7 @@ func TestStackCreateDevLocal(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
 	err := cmd.CopyDir(log, stackDir, targetDir)
 	if err != nil {
@@ -80,7 +80,7 @@ func TestStackCreateCustomRepo(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
 	err := cmd.CopyDir(log, stackDir, targetDir)
 	if err != nil {
@@ -161,7 +161,7 @@ func TestStackCreateInvalidStackFail(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
 	err := cmd.CopyDir(log, stackDir, targetDir)
 	if err != nil {
@@ -201,7 +201,7 @@ func TestStackCreateInvalidURLFail(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(cmdtest.TestDirPath, "starter")
+	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
 	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
 	err := cmd.CopyDir(log, stackDir, targetDir)
 	if err != nil {
