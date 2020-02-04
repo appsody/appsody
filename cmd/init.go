@@ -310,17 +310,22 @@ func install(config *initCommandConfig) error {
 	config.Info.log("Setting up the development environment")
 
 	// reset config.StackRegistry and get it again from the newly untarred .appsody-config.yaml
-
+	var err error
 	if config.StackRegistryInit != "" {
 		config.Debug.Log("The flag --stack-registry was set to: ", config.StackRegistryInit)
 		config.Debug.Log("Updating the stack registry in .appsody-config.yaml to be: ", config.StackRegistryInit)
-		err := setStackRegistry(config.StackRegistryInit, config.RootCommandConfig)
+		err = setStackRegistry(config.StackRegistryInit, config.RootCommandConfig)
 		if err != nil {
 			return err
 		}
 		// We must set the config.StackRegistry here so that subsequent calls to getProjectConfig() and
 		// thus extractAndInitialize will pick up the registry specified by the user's flag
 		config.StackRegistry = config.StackRegistryInit
+	} else {
+		config.StackRegistry, err = getStackRegistryFromConfigFile(config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
 	}
 
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
@@ -345,7 +350,7 @@ func install(config *initCommandConfig) error {
 
 	config.Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
 
-	err := extractAndInitialize(config)
+	err = extractAndInitialize(config)
 	if err != nil {
 		// For some reason without this sleep, the [InitScript] output log would get cut off and
 		// intermixed with the following Warning logs when verbose logging. Adding this sleep as a workaround.
