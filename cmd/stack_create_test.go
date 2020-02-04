@@ -24,11 +24,12 @@ import (
 
 func TestStackCreateValidCases(t *testing.T) {
 	var stackCreateValidTests = []struct {
-		testName string
-		args     []string // input
+		testName  string
+		args      []string // input
+		stackName string
 	}{
-		{"No args", []string{}},
-		{"Existing default repo", []string{"--copy", "incubator/nodejs"}},
+		{"No args", []string{}, "test-stack-no-args"},
+		{"Existing default repo", []string{"--copy", "incubator/nodejs"}, "test-stack-default"},
 	}
 	for _, testData := range stackCreateValidTests {
 		// need to set testData to a new variable scoped under the for loop
@@ -39,15 +40,14 @@ func TestStackCreateValidCases(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 			defer cleanup()
-			testStackName := "testing-create-stack"
+			testStackName := tt.stackName
 			args := []string{"stack", "create", testStackName, "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
 			args = append(args, tt.args...)
 			_, err := cmdtest.RunAppsody(sandbox, args...)
 			if err != nil {
 				t.Fatal("Unexpected error when running appsody stack create: ", err)
 			}
-			createdPath, _ := filepath.Abs(filepath.Join("..", "cmd", testStackName))
-			exists, err := cmdtest.Exists(createdPath)
+			exists, err := cmdtest.Exists(testStackName)
 			if err != nil {
 				t.Fatal("Failed to check if the stack exists: ", err)
 			}
