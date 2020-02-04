@@ -38,7 +38,7 @@ func newStackAddToRepoCmd(rootConfig *RootCommandConfig) *cobra.Command {
 		Short: "Add stack information into a production Appsody repository",
 		Long: `Adds stack information into an Appsody repository. 
 		
-Adds stack information to a new or existing Appsody repository, specified by the <repository> argument. This enables you to share your stack with others.
+Adds stack information to a new or existing Appsody repository, specified by the <repository> argument. This enables you to share your stack with others. This command must be run after appsody stack package on the chosen stack.
 
 The updated repository index file is created in  ~/.appsody/stacks/dev.local directory.
 
@@ -106,6 +106,40 @@ Run this command from the root directory of your Appsody project.`,
 			log.Debug.Log("localIndexFile is: ", localIndexFile)
 
 			var indexYaml IndexYaml
+
+			log.Debug.Log("Checking if appsody stack package has been run on this stack")
+			checkDevLocalIndex, existsErr := Exists(filepath.Join(devLocal, "dev.local-index.yaml"))
+			if existsErr != nil {
+				return errors.Errorf("Error checking if dev.local-index.yaml exists in: %s. Error was: %s", devLocal, existsErr)
+			}
+			if !checkDevLocalIndex {
+				return errors.Errorf("Unable to find dev.local-index.yaml in: %s. Run appsody stack package on your stack before running this command.", devLocal)
+			}
+
+			devLocalIndexYaml := IndexYaml{}
+			devLocalIndex, readErr := ioutil.ReadFile(filepath.Join(devLocal, "dev.local-index.yaml"))
+			if readErr != nil {
+				return errors.Errorf("Error reading index file: %s", readErr)
+			}
+
+			unmarshalErr := yaml.Unmarshal(devLocalIndex, &devLocalIndexYaml)
+			if unmarshalErr != nil {
+				return errors.Errorf("Unmarshal: Error unmarshalling index.yaml")
+			}
+
+			stackFound := false
+			var stackToAddImage string
+			for i, stack := range devLocalIndexYaml.Stacks {
+				if stackID == stack.ID {
+					log.Debug.Log("Found stack attempting to add to repo in dev.local-index.yaml")
+					stackFound = true
+					stackToAddImage = devLocalIndexYaml.Stacks[i].Image
+					break
+				}
+			}
+			if !stackFound {
+				return errors.Errorf("Couldn't find stack in dev.local-index.yaml. Have you packaged this stack?")
+			}
 
 			_, repoErr := repoFile.getRepos(rootConfig)
 			if repoErr != nil {
@@ -199,7 +233,7 @@ Run this command from the root directory of your Appsody project.`,
 			}
 
 			// build up stack struct for the new stack
-			newStackStruct := initialiseStackData(stackID, stackYaml)
+			newStackStruct := initialiseStackData(stackID, stackToAddImage, stackYaml)
 
 			versionArchiveTar := stackID + ".v" + stackYaml.Version + ".source.tar.gz"
 			log.Debug.Log("versionedArchiveTar is: ", versionArchiveTar)
