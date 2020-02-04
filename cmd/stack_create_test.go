@@ -46,7 +46,8 @@ func TestStackCreateValidCases(t *testing.T) {
 			if err != nil {
 				t.Fatal("Unexpected error when running appsody stack create: ", err)
 			}
-			exists, err := cmdtest.Exists(testStackName)
+			createdPath, _ := filepath.Abs(filepath.Join("..", "cmd", testStackName))
+			exists, err := cmdtest.Exists(createdPath)
 			if err != nil {
 				t.Fatal("Failed to check if the stack exists: ", err)
 			}
