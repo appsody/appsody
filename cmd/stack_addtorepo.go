@@ -77,7 +77,7 @@ Run this command from the root directory of your Appsody project.`,
 			log.Debug.Log("stackPath is: ", stackPath)
 
 			// check for templates dir, error out if its not there
-			check, err := Exists("templates")
+			check, err := Exists(filepath.Join(stackPath, "templates"))
 			if err != nil {
 				return errors.New("Error checking stack root directory: " + err.Error())
 			}
@@ -201,6 +201,14 @@ Run this command from the root directory of your Appsody project.`,
 			// build up stack struct for the new stack
 			newStackStruct := initialiseStackData(stackID, stackYaml)
 
+			versionArchiveTar := stackID + ".v" + stackYaml.Version + ".source.tar.gz"
+			log.Debug.Log("versionedArchiveTar is: ", versionArchiveTar)
+
+			sourceURL := releaseURL + versionArchiveTar
+			log.Debug.Log("full release URL is: ", sourceURL)
+
+			newStackStruct.SourceURL = sourceURL
+
 			// find and open the template path so we can loop through the templates
 			templatePath := filepath.Join(stackPath, "templates")
 
@@ -223,7 +231,7 @@ Run this command from the root directory of your Appsody project.`,
 				}
 
 				versionArchiveTar := stackID + ".v" + stackYaml.Version + ".templates." + templates[i] + ".tar.gz"
-				log.Debug.Log("versionedArdhiveTar is: ", versionArchiveTar)
+				log.Debug.Log("versionedArchiveTar is: ", versionArchiveTar)
 
 				templateURL := releaseURL + versionArchiveTar
 				log.Debug.Log("full release URL is: ", templateURL)

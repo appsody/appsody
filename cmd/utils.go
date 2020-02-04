@@ -2049,14 +2049,13 @@ func downloadFileToDisk(log *LoggingConfig, url string, destFile string, dryrun 
 }
 
 // tar and zip a directory into .tar.gz
-func Targz(log *LoggingConfig, source, target string) error {
-	filename := filepath.Base(source)
-	log.Info.log("source is: ", source)
-	log.Info.log("filename is: ", filename)
-	log.Info.log("target is: ", target)
+func Targz(log *LoggingConfig, source, target, filename string) error {
+	log.Debug.log("source is: ", source)
+	log.Debug.log("filename is: ", filename)
+	log.Debug.log("target is: ", target)
 	target = target + filename + ".tar.gz"
 	//target = filepath.Join(target, fmt.Sprintf("%s.tar.gz", filename))
-	log.Info.log("new target is: ", target)
+	log.Info.log(filename, " archive file created at : ", target)
 	tarfile, err := os.Create(target)
 	if err != nil {
 		return err
@@ -2235,5 +2234,75 @@ func lintMountPathForSingleFile(path string, log *LoggingConfig) {
 			log.Warning.logf("Path %s for mount points to a single file.  Single file Docker mount paths cause unexpected behavior and will be deprecated in the future.", path)
 		}
 
+	}
+}
+
+// taken from https://medium.com/@skdomino/taring-untaring-files-in-go-6b07cf56bc07
+func untar(log *LoggingConfig, dst string, r io.Reader, dryrun bool) error {
+	if !dryrun {
+		gzr, err := gzip.NewReader(r)
+		if err != nil {
+			return err
+		}
+		defer gzr.Close()
+
+		tr := tar.NewReader(gzr)
+
+		for {
+			header, err := tr.Next()
+
+			switch {
+
+			// if no more files are found return
+			case err == io.EOF:
+				return nil
+
+			// return any other error
+			case err != nil:
+				return err
+
+			// if the header is nil, just skip it (not sure how this happens)
+			case header == nil:
+				continue
+			}
+
+			// the target location where the dir/file should be created
+			target := filepath.Join(dst, header.Name)
+
+			// the following switch could also be done using fi.Mode(), not sure if there
+			// a benefit of using one vs. the other.
+			// fi := header.FileInfo()
+
+			// check the file type
+			switch header.Typeflag {
+
+			// if its a dir and it doesn't exist create it
+			case tar.TypeDir:
+				if _, err := os.Stat(target); err != nil {
+					if err := os.MkdirAll(target, 0755); err != nil {
+						return err
+					}
+				}
+
+			// if it's a file create it
+			case tar.TypeReg:
+				f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+				if err != nil {
+					return err
+				}
+
+				// copy over contents
+				if _, err := io.Copy(f, tr); err != nil {
+					return err
+				}
+
+				// manually close here after each file operation; defering would cause each file close
+				// to wait until all operations have completed.
+				f.Close()
+			}
+		}
+	} else {
+		log.Info.logf("Dry Run skipping -Untar of file: %s to destination %s", r, dst)
+		return nil
 	}
 }
