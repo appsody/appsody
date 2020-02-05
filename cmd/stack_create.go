@@ -116,7 +116,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			// error if repo not found in repository.yaml
 			if repoEntry == nil {
-				return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
+				return errors.Errorf("Repository: '%s' was not found in the repository.yaml file", repoID)
 			}
 			repoEntryURL := repoEntry.URL
 
@@ -145,7 +145,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				// get specified stack and get URL
 				stackEntry := getStack(&repoIndex, stackID)
 				if stackEntry == nil {
-					return errors.New("Stack not found in index")
+					return errors.New("Could not find stack specified in repository index")
 				}
 
 				stackEntryURL := stackEntry.SourceURL
