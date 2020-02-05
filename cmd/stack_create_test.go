@@ -24,11 +24,12 @@ import (
 
 func TestStackCreateValidCases(t *testing.T) {
 	var stackCreateValidTests = []struct {
-		testName string
-		args     []string
+		testName  string
+		args      []string
+		stackName string
 	}{
-		{"No args", []string{}},
-		{"Existing default repo", []string{"--copy", "incubator/nodejs"}},
+		{"No args", []string{}, "test-stack-no-args"},
+		{"Existing default repo", []string{"--copy", "incubator/nodejs"}, "test-stack-existing-repo"},
 	}
 	for _, testData := range stackCreateValidTests {
 		// need to set testData to a new variable scoped under the for loop
@@ -39,7 +40,7 @@ func TestStackCreateValidCases(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 			defer cleanup()
-			testStackName := "test-stack"
+			testStackName := tt.stackName
 			args := []string{"stack", "create", testStackName, "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
 			args = append(args, tt.args...)
 			_, err := cmdtest.RunAppsody(sandbox, args...)
@@ -67,10 +68,10 @@ func TestStackCreateInvalidCases(t *testing.T) {
 		args         []string // input
 		expectedLogs string   // logs that are expected in the output
 	}{
-		{"Invalid args", "testing-stack-create", []string{"--copy", "incubator/nodej"}, "Could not find stack specified in repository index"},
-		{"Existing default repo", "testing-stack-create", []string{"--copy", "nodejs"}, "Stack name must be in the format <repo>/<stack>"},
-		{"Non-existing repo", "testing-stack-create", []string{"--copy", "experimental/nodejs"}, "Could not find stack specified in repository index"},
-		{"Invalid repo", "testing-stack-create", []string{"--copy", "invalid/java-microprofile"}, "Repository: 'invalid' was not found in the repository.yaml file"},
+		{"Invalid args", "testing-stack-create-invalid-args", []string{"--copy", "incubator/nodej"}, "Could not find stack specified in repository index"},
+		{"Existing default repo", "testing-stack-create-default-repo", []string{"--copy", "nodejs"}, "Stack name must be in the format <repo>/<stack>"},
+		{"Non-existing repo", "testing-stack-create-non-existing-repo", []string{"--copy", "experimental/nodejs"}, "Could not find stack specified in repository index"},
+		{"Invalid repo", "testing-stack-create-invalid-repo", []string{"--copy", "invalid/java-microprofile"}, "Repository: 'invalid' was not found in the repository.yaml file"},
 		{"Invalid stack name underscores", "testing_stack_invalid_name", nil, "The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash."},
 		{"Invalid stack name length", "testing_stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stacktesting-stack", nil, "The name must be 68 characters or less"},
 		{"Invalid stack name missing", "", nil, "Invalid project-name. The name cannot be an empty string"},
