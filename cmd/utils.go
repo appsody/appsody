@@ -597,6 +597,7 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	config.Debug.logf("Project stack before override: %s", projectConfig.Stack)
 
 	imageComponents := strings.Split(projectConfig.Stack, "/")
 	if len(imageComponents) < 3 {
