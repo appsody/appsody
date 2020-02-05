@@ -23,6 +23,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -81,6 +82,8 @@ func addStackRegistryFlag(cmd *cobra.Command, flagVar *string, config *RootComma
 	if err != nil {
 		config.Debug.Logf("Error retrieving the stack registry from config file: %v", err)
 		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images. [WARNING] Your current settings are incorrect - change your project config or use this flag to override the image registry.")
+	} else if stackRegistryInConfigFile == "" {
+		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images.")
 	} else {
 		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", stackRegistryInConfigFile, "Specify the URL of the registry that hosts your stack images.")
 	}
@@ -229,11 +232,16 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	//controllerMount := controllerVolumeName + ":/appsody"
 	config.Debug.log("Adding controller to volume mounts: ", controllerVolumeMount)
 	volumeMaps = append(volumeMaps, "-v", controllerVolumeMount)
+
+	var wg sync.WaitGroup
 	if !config.Buildah {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 		go func() {
 			<-c
+			wg.Add(1)
+			defer wg.Done()
+			config.Debug.Log("Inside signal handler for appsody command")
 			err := dockerStop(config.RootCommandConfig, config.containerName, config.Dryrun)
 			if err != nil {
 				config.Error.log(err)
@@ -420,6 +428,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		} //end of for loop
 
 	} // end of buildah path
+	wg.Wait()
 	return nil
 }
 

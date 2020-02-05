@@ -17,6 +17,7 @@ package cmd
 import (
 	"archive/zip"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 type stackCreateCommandConfig struct {
@@ -42,13 +44,14 @@ func newStackCreateCmd(rootConfig *RootCommandConfig) *cobra.Command {
 
 By default, the new stack is based on the example stack: incubator/starter. If you want to use a different stack as the basis for your new stack, use the copy flag to specify the stack you want to use as the starting point. You can use 'appsody list' to see the available stacks.
 
-The stack name must start with a lowercase letter, and can contain only lowercase letters, numbers, or dashes, and cannot end with a dash. The stack name cannot exceed 128 characters.`,
+The stack name must start with a lowercase letter, and can contain only lowercase letters, numbers, or dashes, and cannot end with a dash. The stack name cannot exceed 68 characters.`,
 		Example: `  appsody stack create my-stack  
   Creates a stack called my-stack, based on the example stack “incubator/starter”.
 
   appsody stack create my-stack --copy incubator/nodejs-express  
   Creates a stack called my-stack, based on the Node.js Express stack.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
 			currentTime := time.Now().Format("20060102150405")
 
 			if len(args) < 1 {
@@ -86,60 +89,96 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				}
 			}
 
-			err = downloadFileToDisk(rootConfig.LoggingConfig, "https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
-			if err != nil {
-				return err
-			}
-			_, stackTempDir, err := parseProjectParm(config.copy, config.RootCommandConfig)
+			repoID, stackID, err := parseProjectParm(config.copy, config.RootCommandConfig)
 			if err != nil {
 				return err
 			}
 
-			valid, unzipErr := unzip(rootConfig.LoggingConfig, filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy, config.Dryrun)
-			if unzipErr != nil {
-				return unzipErr
+			extractFilename := stackID + ".tar.gz"
+			extractDir := filepath.Join(getHome(rootConfig), "extract")
+			extractDirFile := filepath.Join(extractDir, extractFilename)
+
+			// Get Repository directory and unmarshal
+			repoDir := getRepoDir(rootConfig)
+			var repoFile RepositoryFile
+			source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
+			if err != nil {
+				return errors.Errorf("Error trying to read: %v", err)
 			}
 
-			if !valid {
-				return errors.Errorf("Invalid stack name: " + config.copy + ". Stack name must be in the format <repo>/<stack>")
+			err = yaml.Unmarshal(source, &repoFile)
+			if err != nil {
+				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
 			}
 
-			//deleting the stacks repo zip
-			os.Remove(filepath.Join(getHome(rootConfig), "extract", "repo.zip"))
+			// get specificed repo and unmarshal
+			repoEntry := repoFile.GetRepo(repoID)
 
-			//moving out the stack which we need
-			if config.Dryrun {
-				config.Info.logf("Dry Run -Skipping moving out of stack: %s from %s", stackTempDir, filepath.Join(stack, "stacks-master", config.copy))
+			// error if repo not found in repository.yaml
+			if repoEntry == nil {
+				return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
+			}
+			repoEntryURL := repoEntry.URL
 
-			} else {
-				stackTempDir = ".temp-" + stackTempDir + "-" + currentTime
-
-				err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), stackTempDir)
-				if err != nil {
-					return err
-				}
+			if repoEntryURL == "" {
+				return errors.Errorf("URL for specified repository is empty")
 			}
 
-			//deleting the folder from which stack is extracted
-			os.RemoveAll(stack)
-
-			// rename the stack to the name which user want
-			if config.Dryrun {
-				config.Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", stackTempDir, stack)
-
-			} else {
-				err = os.Rename(stackTempDir, stack)
-				if err != nil {
-					return err
-				}
+			var repoIndex IndexYaml
+			tempRepoIndex := filepath.Join(extractDir, "index.yaml")
+			err = downloadFileToDisk(rootConfig.LoggingConfig, repoEntryURL, tempRepoIndex, config.Dryrun)
+			if err != nil {
+				return err
 			}
-
+			defer os.Remove(tempRepoIndex)
 			if !config.Dryrun {
+				tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
+				if err != nil {
+					return errors.Errorf("Error trying to read: %v", err)
+				}
+
+				err = yaml.Unmarshal(tempRepoIndexFile, &repoIndex)
+				if err != nil {
+					return errors.Errorf("Error parsing the index.yaml file: %v", err)
+				}
+
+				// get specified stack and get URL
+				stackEntry := getStack(&repoIndex, stackID)
+				if stackEntry == nil {
+					return errors.New("Stack not found in index")
+				}
+
+				stackEntryURL := stackEntry.SourceURL
+
+				if stackEntryURL == "" {
+					//TODO: REMOVE OLD CREATE METHOD AFTER NEXT RELEASE AND UPDATE STACKS
+					//return errors.New("No source URL specified.  Use the add-to-repo command with the --release-url flag to your repo")
+					return oldCreateMethod(rootConfig.LoggingConfig, rootConfig, config, stack, currentTime)
+				}
+
+				// download source.tar.gz of selected stack source
+				err = downloadFileToDisk(rootConfig.LoggingConfig, stackEntryURL, extractDirFile, config.Dryrun)
+				if err != nil {
+					return err
+				}
+
+				//deleting the stacks targz
+				defer os.Remove(extractDirFile)
+
+				extractFile, err := os.Open(extractDirFile)
+				if err != nil {
+					return err
+				}
+
+				untarErr := untar(rootConfig.LoggingConfig, stack, extractFile, config.Dryrun)
+				if untarErr != nil {
+					return untarErr
+				}
+
 				rootConfig.Info.log("Stack created: ", stack)
 			} else {
 				rootConfig.Info.log("Dry run complete")
 			}
-
 			return nil
 		},
 	}
@@ -147,7 +186,75 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 	return stackCmd
 }
 
-// Unzip will decompress a zip archive
+func getStack(stackList *IndexYaml, name string) *IndexYamlStack {
+	for _, stackFound := range stackList.Stacks {
+		if stackFound.ID == name {
+			return &stackFound
+		}
+	}
+	return nil
+}
+
+// To be removed in next release
+func oldCreateMethod(log *LoggingConfig, rootConfig *RootCommandConfig, config *stackCreateCommandConfig, stack string, currentTime string) error {
+	err := downloadFileToDisk(rootConfig.LoggingConfig, "https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
+	if err != nil {
+		return err
+	}
+	_, stackTempDir, err := parseProjectParm(config.copy, config.RootCommandConfig)
+	if err != nil {
+		return err
+	}
+
+	valid, unzipErr := unzip(rootConfig.LoggingConfig, filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy, config.Dryrun)
+	if unzipErr != nil {
+		return unzipErr
+	}
+
+	if !valid {
+		return errors.Errorf("Invalid stack name: " + config.copy + ". Stack name must be in the format <repo>/<stack>")
+	}
+
+	//deleting the stacks repo zip
+	os.Remove(filepath.Join(getHome(rootConfig), "extract", "repo.zip"))
+
+	//moving out the stack which we need
+	if config.Dryrun {
+		config.Info.logf("Dry Run -Skipping moving out of stack: %s from %s", stackTempDir, filepath.Join(stack, "stacks-master", config.copy))
+
+	} else {
+		stackTempDir = ".temp-" + stackTempDir + "-" + currentTime
+
+		err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), stackTempDir)
+		if err != nil {
+			return err
+		}
+	}
+
+	//deleting the folder from which stack is extracted
+	os.RemoveAll(stack)
+
+	// rename the stack to the name which user want
+	if config.Dryrun {
+		config.Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", stackTempDir, stack)
+
+	} else {
+		err = os.Rename(stackTempDir, stack)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !config.Dryrun {
+		rootConfig.Info.log("Stack created: ", stack)
+	} else {
+		rootConfig.Info.log("Dry run complete")
+	}
+
+	return nil
+}
+
+// Unzip will decompress a zip archive - TO BE REMOVED NEXT RELEASE
 // within the zip file (parameter 1) to an output directory (parameter 2).
 func unzip(log *LoggingConfig, src string, dest string, copy string, dryrun bool) (bool, error) {
 	if dryrun {
