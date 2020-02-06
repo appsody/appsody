@@ -133,7 +133,7 @@ func TestPsArgumentFail(t *testing.T) {
 	args := []string{"ps", "testing"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
-		if !strings.Contains(err.Error(), "Unexpected argument") {
+		if !strings.Contains(output, "Unexpected argument") {
 			t.Fatalf("String \"Unexpected argument\" not found in error: %v", err)
 		}
 	} else {
