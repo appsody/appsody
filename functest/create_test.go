@@ -51,6 +51,9 @@ func TestStackCreateDevLocal(t *testing.T) {
 
 	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, "testing-stack"))
 
+	if err != nil {
+		t.Fatal("Error checking if the stack exists: ", err)
+	}
 	if !exists {
 		t.Fatal("Stack doesn't exist despite appsody stack create executing correctly.")
 	}
@@ -102,8 +105,11 @@ func TestStackCreateCustomRepo(t *testing.T) {
 
 	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, "testing-stack"))
 
+	if err != nil {
+		t.Fatal("Error checking if the stack exists: ", err)
+	}
 	if !exists {
-		t.Fatal(err)
+		t.Fatal("Stack doesn't exist despite appsody stack create executing correctly.")
 	}
 }
 
