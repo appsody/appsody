@@ -224,9 +224,9 @@ func TestExtractCases(t *testing.T) {
 
 			t.Log("Now running appsody extract...")
 			extractArgs := append([]string{"extract"}, tt.args...)
-			output, err := cmdtest.RunAppsody(sandbox, extractArgs...)
+			output, extractErr := cmdtest.RunAppsody(sandbox, extractArgs...)
 			if !strings.Contains(output, tt.expectedLogs) {
-				t.Fatalf("Expected failure to include: %s but instead receieved: %s", tt.expectedLogs, output)
+				t.Fatalf("Expected failure to include: %s but instead receieved: %s. Full error: %s", tt.expectedLogs, output, extractErr)
 			}
 		})
 	}
