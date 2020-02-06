@@ -109,7 +109,7 @@ func TestPS(t *testing.T) {
 
 func TestPsNoContainers(t *testing.T) {
 
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
 	// appsody ps with no running containers
@@ -126,7 +126,7 @@ func TestPsNoContainers(t *testing.T) {
 
 func TestPsArgumentFail(t *testing.T) {
 
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
 	// appsody ps with extra arguments
