@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -193,24 +194,42 @@ func TestExtract(t *testing.T) {
 	}
 }
 
-func TestExtractWithNonExistingDir(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	t.Log("Now running appsody init...")
-	args := []string{"init", "starter"}
-	_, err := cmdtest.RunAppsody(sandbox, args...)
-	if err != nil {
-		t.Fatal(err)
+func TestExtractCases(t *testing.T) {
+	var extractTests = []struct {
+		testName     string
+		args         []string
+		expectedLogs string
+	}{
+		{"Non existing target directory", []string{"--target-dir", "/non/existing/dir"}, "/non/existing does not exist"},
+		{"Target dir with contents", []string{"--target-dir", "."}, "Cannot extract to an existing target-dir"},
+		{"Extract with Buildah", []string{"--buildah"}, "Copied"},
 	}
 
-	t.Log("Now running appsody extract...")
-	args = []string{"extract", "--target-dir", "/non/existing/dir"}
-	output, err := cmdtest.RunAppsody(sandbox, args...)
-	if !strings.Contains(output, "/non/existing does not exist") {
-		t.Fatal(err)
-	}
+	for _, testData := range extractTests {
+		tt := testData
+		if runtime.GOOS != "linux" && tt.testName == "Extract with Buildah" {
+			t.Skip()
+		}
 
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
+			t.Log("Now running appsody init...")
+			args := []string{"init", "starter"}
+			_, err := cmdtest.RunAppsody(sandbox, args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			t.Log("Now running appsody extract...")
+			extractArgs := append([]string{"extract"}, tt.args...)
+			output, err := cmdtest.RunAppsody(sandbox, extractArgs...)
+			if !strings.Contains(output, tt.expectedLogs) {
+				t.Fatalf("Expected failure to include: %s but instead receieved: %s", tt.expectedLogs, output)
+			}
+		})
+	}
 }
 
 func exists(path string) (bool, error) {
