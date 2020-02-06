@@ -15,7 +15,6 @@ package functest
 
 import (
 	"bytes"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -50,14 +49,10 @@ func TestStackCreateDevLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, "testing-stack"))
 
 	if !exists {
 		t.Fatal("Stack doesn't exist despite appsody stack create executing correctly.")
-	}
-	os.RemoveAll("testing-stack")
-	if err != nil {
-		t.Fatal(err)
 	}
 
 }
@@ -105,16 +100,11 @@ func TestStackCreateCustomRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, "testing-stack"))
 
 	if !exists {
 		t.Fatal(err)
 	}
-	os.RemoveAll("testing-stack")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 }
 
 func TestStackCreateInvalidStackFail(t *testing.T) {

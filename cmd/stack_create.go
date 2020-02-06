@@ -170,7 +170,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 					return err
 				}
 
-				untarErr := untar(rootConfig.LoggingConfig, stack, extractFile, config.Dryrun)
+				untarErr := untar(rootConfig.LoggingConfig, filepath.Join(config.ProjectDir, stack), extractFile, config.Dryrun)
 				if untarErr != nil {
 					return untarErr
 				}
@@ -239,7 +239,7 @@ func oldCreateMethod(log *LoggingConfig, rootConfig *RootCommandConfig, config *
 		config.Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", stackTempDir, stack)
 
 	} else {
-		err = os.Rename(stackTempDir, stack)
+		err = os.Rename(stackTempDir, filepath.Join(rootConfig.ProjectDir, stack))
 		if err != nil {
 			return err
 		}

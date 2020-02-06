@@ -40,6 +40,7 @@ func TestStackCreateValidCases(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 			defer cleanup()
+
 			testStackName := tt.stackName
 			args := []string{"stack", "create", testStackName, "--config", filepath.Join(sandbox.TestDataPath, "default_repository_config", "config.yaml")}
 			args = append(args, tt.args...)
@@ -47,16 +48,12 @@ func TestStackCreateValidCases(t *testing.T) {
 			if err != nil {
 				t.Fatal("Unexpected error when running appsody stack create: ", err)
 			}
-			exists, err := cmdtest.Exists(testStackName)
+			exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, testStackName))
 			if err != nil {
 				t.Fatal("Failed to check if the stack exists: ", err)
 			}
 			if !exists {
 				t.Fatal("Stack doesn't exist despite appsody stack create executing correctly")
-			}
-			err = os.RemoveAll(testStackName)
-			if err != nil {
-				t.Fatal("Error removing the stack", err)
 			}
 		})
 	}
