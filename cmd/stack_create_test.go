@@ -118,7 +118,7 @@ func TestStackAlreadyExists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exists, err := cmdtest.Exists(testStackName)
+	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, testStackName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,10 +132,6 @@ func TestStackAlreadyExists(t *testing.T) {
 		if err == nil {
 			t.Fatalf("Expected non-zero exit code: %v", expectedLog)
 		}
-	}
-	err = os.RemoveAll(testStackName)
-	if err != nil {
-		t.Fatal(err)
 	}
 }
 func TestStackCreateSampleStackDryrun(t *testing.T) {

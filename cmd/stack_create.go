@@ -63,12 +63,14 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			stack := args[0]
 
+			stackPath := filepath.Join(config.ProjectDir, stack)
+
 			match, err := IsValidProjectName(stack)
 			if !match {
 				return err
 			}
 
-			exists, err := Exists(stack)
+			exists, err := Exists(stackPath)
 			if err != nil {
 				return err
 			}
@@ -170,7 +172,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 					return err
 				}
 
-				untarErr := untar(rootConfig.LoggingConfig, filepath.Join(config.ProjectDir, stack), extractFile, config.Dryrun)
+				untarErr := untar(rootConfig.LoggingConfig, stackPath, extractFile, config.Dryrun)
 				if untarErr != nil {
 					return untarErr
 				}
