@@ -69,6 +69,7 @@ type IndexYamlStack struct {
 	SourceURL       string `yaml:"src"`
 	Templates       []IndexYamlStackTemplate
 	Requirements    StackRequirement `yaml:"requirements,omitempty"`
+	Image           string           `yaml:"image"`
 }
 type IndexYamlStackTemplate struct {
 	ID  string `yaml:"id"`
@@ -252,7 +253,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				return errors.Errorf("Error applying templating: %v", err)
 			}
 
-			// tag with the full version then mojorminor, major, and latest
+			// tag with the full version then majorminor, major, and latest
 			cmdArgs := []string{"-t", buildImage}
 			semver := templateMetadata["semver"].(map[string]string)
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo+":"+semver["majorminor"])
@@ -288,8 +289,9 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				return err
 			}
 
+			stackImage := namespaceAndRepo + ":" + semver["majorminor"] + "." + semver["patch"]
 			// build up stack struct for the new stack
-			newStackStruct := initialiseStackData(stackID, stackYaml)
+			newStackStruct := initialiseStackData(stackID, stackImage, stackYaml)
 
 			// get project directory
 			sourceDir := projectPath
@@ -464,7 +466,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 	return stackPackageCmd
 }
 
-func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
+func initialiseStackData(stackID string, stackImage string, stackYaml StackYaml) IndexYamlStack {
 	// build up stack struct for the new stack
 	newStackStruct := IndexYamlStack{}
 	// set the data in the new stack struct
@@ -477,6 +479,7 @@ func initialiseStackData(stackID string, stackYaml StackYaml) IndexYamlStack {
 	newStackStruct.Maintainers = append(newStackStruct.Maintainers, stackYaml.Maintainers...)
 	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
 	newStackStruct.Requirements = stackYaml.Requirements
+	newStackStruct.Image = stackImage
 
 	return newStackStruct
 }
