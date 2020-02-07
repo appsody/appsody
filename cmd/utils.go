@@ -1488,7 +1488,7 @@ func DockerRunBashCmd(options []string, image string, bashCmd string, config *Ro
 	}
 
 	cmdArgs = append(cmdArgs, "--entrypoint", "/bin/bash", image, "-c", bashCmd)
-	config.Info.log("Running command: ", cmdName, " ", strings.Join(cmdArgs, " "))
+	config.Info.log("Running command: ", cmdName, " ", ArgsToString(cmdArgs))
 	dockerCmd := exec.Command(cmdName, cmdArgs...)
 
 	kout, kerr := SeparateOutput(dockerCmd)
@@ -1509,10 +1509,10 @@ func KubeGet(log *LoggingConfig, args []string, namespace string, dryrun bool) (
 	}
 
 	if dryrun {
-		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", ArgsToString(kargs))
 		return "", nil
 	}
-	log.Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Info.log("Running command: ", kcmd, " ", ArgsToString(kargs))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
@@ -1531,10 +1531,10 @@ func KubeApply(log *LoggingConfig, fileToApply string, namespace string, dryrun 
 	}
 
 	if dryrun {
-		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", ArgsToString(kargs))
 		return nil
 	}
-	log.Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Info.log("Running command: ", kcmd, " ", ArgsToString(kargs))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
@@ -1554,10 +1554,10 @@ func KubeDelete(log *LoggingConfig, fileToApply string, namespace string, dryrun
 	}
 
 	if dryrun {
-		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", ArgsToString(kargs))
 		return nil
 	}
-	log.Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Info.log("Running command: ", kcmd, " ", ArgsToString(kargs))
 	execCmd := exec.Command(kcmd, kargs...)
 
 	kout, kerr := SeparateOutput(execCmd)
@@ -1602,10 +1602,10 @@ func KubeGetKnativeURL(log *LoggingConfig, service string, namespace string, dry
 	}
 
 	if dryrun {
-		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", ArgsToString(kargs))
 		return "", nil
 	}
-	log.Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Info.log("Running command: ", kcmd, " ", ArgsToString(kargs))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := SeparateOutput(execCmd)
 	if kerr != nil {
@@ -1807,9 +1807,9 @@ func execAndListenWithWorkDirReturnErr(log *LoggingConfig, command string, args 
 	var execCmd *exec.Cmd
 	var err error
 	if dryrun {
-		log.Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
+		log.Info.log("Dry Run - Skipping command: ", command, " ", ArgsToString(args))
 	} else {
-		log.Info.log("Running command: ", command, " ", strings.Join(args, " "))
+		log.Info.log("Running command: ", command, " ", ArgsToString(args))
 		execCmd = exec.Command(command, args...)
 		if workdir != "" {
 			execCmd.Dir = workdir
@@ -2305,4 +2305,22 @@ func untar(log *LoggingConfig, dst string, r io.Reader, dryrun bool) error {
 		log.Info.logf("Dry Run skipping -Untar of file: %s to destination %s", r, dst)
 		return nil
 	}
+}
+
+// Converts an array of command arguments to a string of arguments
+// properly escaped and quoted for copying and running in sh, bash, or zsh
+func ArgsToString(args []string) string {
+	charsToQuote := ` =*(|<[{?^@#$"'`
+	returnStr := ""
+	for i := 0; i < len(args); i++ {
+		if strings.ContainsAny(args[i], charsToQuote) {
+			returnStr += `"` + strings.Replace(args[i], `"`, `\"`, -1) + `"`
+		} else {
+			returnStr += args[i]
+		}
+		if i+1 != len(args) {
+			returnStr += " "
+		}
+	}
+	return returnStr
 }
