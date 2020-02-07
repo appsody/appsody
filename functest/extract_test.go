@@ -202,7 +202,7 @@ func TestExtractCases(t *testing.T) {
 	}{
 		{"Non existing target directory", []string{"--target-dir", "/non/existing/dir"}, "/non/existing does not exist"},
 		{"Target dir with contents", []string{"--target-dir", "."}, "Cannot extract to an existing target-dir"},
-		{"Extract with Buildah", []string{"--buildah"}, "Copied"},
+		{"Extract with Buildah", []string{"--buildah"}, "Project extracted"},
 	}
 
 	for _, testData := range extractTests {
