@@ -153,83 +153,83 @@ func TestTemplatingWrongVariablesFail(t *testing.T) {
 
 }
 
-func TestTemplatingFilePermissionsFail(t *testing.T) {
+// func TestTemplatingFilePermissionsFail(t *testing.T) {
 
-	// file permissions do not work the same way on windows
-	// user has to specify a RUN chmod in their dockerfile for windows
-	if runtime.GOOS == "windows" {
-		t.Skip()
-	}
+// 	// file permissions do not work the same way on windows
+// 	// user has to specify a RUN chmod in their dockerfile for windows
+// 	if runtime.GOOS == "windows" {
+// 		t.Skip()
+// 	}
 
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
+// 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+// 	defer cleanup()
 
-	// gets all the necessary data from a setup function
-	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests(sandbox.TestDataPath)
-	if err != nil {
-		t.Fatalf("Error during setup: %v", err)
-	}
+// 	// gets all the necessary data from a setup function
+// 	imageNamespace, imageRegistry, stackYaml, labels, err := setupStackPackageTests(sandbox.TestDataPath)
+// 	if err != nil {
+// 		t.Fatalf("Error during setup: %v", err)
+// 	}
 
-	// creates templating.txt file where templating variables will appear
-	templatingPath := filepath.Join(sandbox.TestDataPath, "templating", "templating.txt")
-	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
-	if err != nil {
-		t.Fatalf("Error creating templating dir: %v", err)
-	}
-	file, err := os.Create(templatingPath)
-	if err != nil {
-		t.Fatalf("Error creating templating file: %v", err)
-	}
+// 	// creates templating.txt file where templating variables will appear
+// 	templatingPath := filepath.Join(sandbox.TestDataPath, "templating", "templating.txt")
+// 	err = os.MkdirAll(filepath.Dir(templatingPath), 0777)
+// 	if err != nil {
+// 		t.Fatalf("Error creating templating dir: %v", err)
+// 	}
+// 	file, err := os.Create(templatingPath)
+// 	if err != nil {
+// 		t.Fatalf("Error creating templating file: %v", err)
+// 	}
 
-	defer os.RemoveAll(templatingPath)
+// 	defer os.RemoveAll(templatingPath)
 
-	// write some text to file
-	_, err = file.WriteString("id: {{.stack.id}}")
-	if err != nil {
-		t.Fatalf("Error writing to file: %v", err)
-	}
-	// make file read only
-	err = file.Chmod(0400)
-	if err != nil {
-		t.Fatalf("Error changing file permissions: %v", err)
-	}
+// 	// write some text to file
+// 	_, err = file.WriteString("id: {{.stack.id}}")
+// 	if err != nil {
+// 		t.Fatalf("Error writing to file: %v", err)
+// 	}
+// 	// make file read only
+// 	err = file.Chmod(0400)
+// 	if err != nil {
+// 		t.Fatalf("Error changing file permissions: %v", err)
+// 	}
 
-	// save file changes
-	err = file.Sync()
-	if err != nil {
-		t.Fatalf("Error saving file: %v", err)
-	}
+// 	// save file changes
+// 	err = file.Sync()
+// 	if err != nil {
+// 		t.Fatalf("Error saving file: %v", err)
+// 	}
 
-	// create the template metadata
-	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
-	if err != nil {
-		t.Fatalf("Error creating template map: %v", err)
-	}
+// 	// create the template metadata
+// 	templateMetadata, err := cmd.CreateTemplateMap(labels, stackYaml, imageNamespace, imageRegistry)
+// 	if err != nil {
+// 		t.Fatalf("Error creating template map: %v", err)
+// 	}
 
-	// apply templating to stack
-	err = cmd.ApplyTemplating(templatingPath, templateMetadata)
-	if err != nil {
-		t.Fatalf("Error applying template: %v", err)
-	}
+// 	// apply templating to stack
+// 	err = cmd.ApplyTemplating(templatingPath, templateMetadata)
+// 	if err != nil {
+// 		t.Fatalf("Error applying template: %v", err)
+// 	}
 
-	// read the whole file at once
-	b, err := ioutil.ReadFile(templatingPath)
-	if err != nil {
-		t.Fatalf("Error reading templating file: %v", err)
-	}
-	s := string(b)
-	t.Log(s)
-	if !strings.Contains(s, "id: starter") {
-		t.Fatal("Templating text did not match expected values")
-	}
+// 	// read the whole file at once
+// 	b, err := ioutil.ReadFile(templatingPath)
+// 	if err != nil {
+// 		t.Fatalf("Error reading templating file: %v", err)
+// 	}
+// 	s := string(b)
+// 	t.Log(s)
+// 	if !strings.Contains(s, "id: starter") {
+// 		t.Fatal("Templating text did not match expected values")
+// 	}
 
-	writable, err := canWrite(templatingPath)
+// 	writable, err := canWrite(templatingPath)
 
-	if writable && err == nil {
-		t.Fatal("Opened read only file")
-	}
+// 	if writable && err == nil {
+// 		t.Fatal("Opened read only file")
+// 	}
 
-}
+// }
 
 func TestPackageNoStackYamlFail(t *testing.T) {
 
