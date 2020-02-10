@@ -595,17 +595,17 @@ func TestPackageInvalidVersion(t *testing.T) {
 }
 
 // function that returns a boolean if the file is writable or not
-func canWrite(filepath string) (bool, error) {
-	file, err := os.OpenFile(filepath, os.O_WRONLY, 0666)
-	if err != nil {
-		if os.IsPermission(err) {
-			return false, err
-		}
-	}
-	file.Close()
-	return true, nil
+// func canWrite(filepath string) (bool, error) {
+// 	file, err := os.OpenFile(filepath, os.O_WRONLY, 0666)
+// 	if err != nil {
+// 		if os.IsPermission(err) {
+// 			return false, err
+// 		}
+// 	}
+// 	file.Close()
+// 	return true, nil
 
-}
+// }
 
 func setupStackPackageTests(testDataPath string) (string, string, cmd.StackYaml, map[string]string, error) {
 	var loggingConfig = &cmd.LoggingConfig{}
