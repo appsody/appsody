@@ -397,105 +397,105 @@ func TestCopy(t *testing.T) {
 	}
 }
 
-func TestCopyFailFNF(t *testing.T) {
+// func TestCopyFailFNF(t *testing.T) {
 
-	if runtime.GOOS == "windows" {
-		t.Skip()
-	}
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
+// 	if runtime.GOOS == "windows" {
+// 		t.Skip()
+// 	}
+// 	var outBuffer bytes.Buffer
+// 	log := &cmd.LoggingConfig{}
+// 	log.InitLogging(&outBuffer, &outBuffer)
 
-	existingFile := "idoexist.bbb"
-	nonExistentFile := "idontexist.aaa"
+// 	existingFile := "idoexist.bbb"
+// 	nonExistentFile := "idontexist.aaa"
 
-	// Ensure that the fake yaml file is deleted
-	defer func() {
-		err := os.Remove(existingFile)
-		if err != nil {
-			t.Errorf("Error removing the file: %s", err)
-		}
-	}()
+// 	// Ensure that the fake yaml file is deleted
+// 	defer func() {
+// 		err := os.Remove(existingFile)
+// 		if err != nil {
+// 			t.Errorf("Error removing the file: %s", err)
+// 		}
+// 	}()
 
-	// Attempt to create the fake file
-	_, err := os.Create(existingFile)
-	if err != nil {
-		t.Errorf("Error creating the file: %v", err)
-	}
+// 	// Attempt to create the fake file
+// 	_, err := os.Create(existingFile)
+// 	if err != nil {
+// 		t.Errorf("Error creating the file: %v", err)
+// 	}
 
-	err = cmd.CopyFile(log, nonExistentFile, existingFile)
+// 	err = cmd.CopyFile(log, nonExistentFile, existingFile)
 
-	if err != nil {
-		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
-			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
-		}
-	} else {
-		t.Errorf("Error: %v", err)
-	}
-}
+// 	if err != nil {
+// 		if !strings.Contains(err.Error(), "stat "+nonExistentFile+": no such file or directory") {
+// 			t.Errorf("String \"stat "+nonExistentFile+": no such file or directory\" not found in output: '%v'", err.Error())
+// 		}
+// 	} else {
+// 		t.Errorf("Error: %v", err)
+// 	}
+// }
 
-func TestCopyFailPermissions(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip()
-	}
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
+// func TestCopyFailPermissions(t *testing.T) {
+// 	if runtime.GOOS == "windows" {
+// 		t.Skip()
+// 	}
+// 	var outBuffer bytes.Buffer
+// 	log := &cmd.LoggingConfig{}
+// 	log.InitLogging(&outBuffer, &outBuffer)
 
-	existingFile := "idoexist.bbb"
-	nonExistentFile := "idontexist.aaa"
+// 	existingFile := "idoexist.bbb"
+// 	nonExistentFile := "idontexist.aaa"
 
-	// Ensure that the fake yaml file is deleted
-	defer func() {
-		err := os.Remove(existingFile)
-		if err != nil {
-			t.Errorf("Error removing the file: %s", err)
-		}
-	}()
+// 	// Ensure that the fake yaml file is deleted
+// 	defer func() {
+// 		err := os.Remove(existingFile)
+// 		if err != nil {
+// 			t.Errorf("Error removing the file: %s", err)
+// 		}
+// 	}()
 
-	// Attempt to create the fake file
-	file, err := os.Create(existingFile)
-	if err != nil {
-		t.Errorf("Error creating the file: %s", err)
-	}
+// 	// Attempt to create the fake file
+// 	file, err := os.Create(existingFile)
+// 	if err != nil {
+// 		t.Errorf("Error creating the file: %s", err)
+// 	}
 
-	err = file.Chmod(0333)
-	if err != nil {
-		t.Errorf("Error changing file permissions: %s", err)
-	}
+// 	err = file.Chmod(0333)
+// 	if err != nil {
+// 		t.Errorf("Error changing file permissions: %s", err)
+// 	}
 
-	err = cmd.CopyFile(log, existingFile, nonExistentFile)
+// 	err = cmd.CopyFile(log, existingFile, nonExistentFile)
 
-	if err != nil {
-		if !strings.Contains(err.Error(), "Permission denied") {
-			t.Errorf("String \"Permission denied\" not found in output: '%v'", err.Error())
-		}
+// 	if err != nil {
+// 		if !strings.Contains(err.Error(), "Permission denied") {
+// 			t.Errorf("String \"Permission denied\" not found in output: '%v'", err.Error())
+// 		}
 
-	} else {
-		t.Error("Expected an error to be returned from command, but error was nil")
-	}
-}
+// 	} else {
+// 		t.Error("Expected an error to be returned from command, but error was nil")
+// 	}
+// }
 
-func TestMoveFailFNF(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip()
-	}
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
+// func TestMoveFailFNF(t *testing.T) {
+// 	if runtime.GOOS == "windows" {
+// 		t.Skip()
+// 	}
+// 	var outBuffer bytes.Buffer
+// 	log := &cmd.LoggingConfig{}
+// 	log.InitLogging(&outBuffer, &outBuffer)
 
-	nonExistentFile := "idontexist.aaa"
+// 	nonExistentFile := "idontexist.aaa"
 
-	err := cmd.MoveDir(log, nonExistentFile, "../")
+// 	err := cmd.MoveDir(log, nonExistentFile, "../")
 
-	if err != nil {
-		if !strings.Contains(err.Error(), "Source "+nonExistentFile+" does not exist.") {
-			t.Errorf("String \"Source "+nonExistentFile+" does not exist.\" not found in output: '%v'", err.Error())
-		}
-	} else {
-		t.Error("Expected an error to be returned from command, but error was nil")
-	}
-}
+// 	if err != nil {
+// 		if !strings.Contains(err.Error(), "Source "+nonExistentFile+" does not exist.") {
+// 			t.Errorf("String \"Source "+nonExistentFile+" does not exist.\" not found in output: '%v'", err.Error())
+// 		}
+// 	} else {
+// 		t.Error("Expected an error to be returned from command, but error was nil")
+// 	}
+// }
 
 func TestMove(t *testing.T) {
 
