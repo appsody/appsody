@@ -38,12 +38,9 @@ func TestExtract(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	t.Log("stacksList is: ", stacksList)
-
-	// if stacksList is empty there is nothing to test so return
+	// if stacksList is empty, set to the default
 	if stacksList == "" {
-		t.Log("stacksList is empty, exiting test...")
-		return
+		stacksList = "incubator/nodejs"
 	}
 
 	// split the appsodyStack env variable

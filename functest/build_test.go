@@ -40,12 +40,9 @@ type expectedDeploymentConfig struct {
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
 func TestBuildSimple(t *testing.T) {
 
-	t.Log("stacksList is: ", stacksList)
-
-	// if stacksList is empty there is nothing to test so return
+	// if stacksList is empty, set to the default
 	if stacksList == "" {
-		t.Log("stacksList is empty, exiting test...")
-		return
+		stacksList = "incubator/nodejs"
 	}
 
 	// split the appsodyStack env variable
@@ -121,7 +118,7 @@ var appsodyCommitLabels = []string{
 
 func TestBuildLabels(t *testing.T) {
 	stacksList = "incubator/nodejs"
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
 	// first add the test repo index
@@ -215,12 +212,10 @@ func deleteImage(imageName string, t *testing.T) {
 }
 
 func TestDeploymentConfig(t *testing.T) {
-	t.Log("stacksList is: ", stacksList)
 
-	// if stacksList is empty there is nothing to test so return
+	// if stacksList is empty, set to the default
 	if stacksList == "" {
-		t.Log("stacksList is empty, exiting test...")
-		return
+		stacksList = "incubator/nodejs"
 	}
 
 	// split the appsodyStack env variable
@@ -282,12 +277,10 @@ var knativeFlagTests = []struct {
 }
 
 func TestKnativeFlagOnBuild(t *testing.T) {
-	t.Log("stacksList is: ", stacksList)
 
-	// if stacksList is empty there is nothing to test so return
+	// if stacksList is empty, set to the default
 	if stacksList == "" {
-		t.Log("stacksList is empty, exiting test...")
-		return
+		stacksList = "incubator/nodejs"
 	}
 
 	// split the appsodyStack env variable

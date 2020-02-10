@@ -25,12 +25,9 @@ import (
 // Simple test for appsody debug command. A future enhancement would be to verify the debug output
 func TestDebugSimple(t *testing.T) {
 
-	t.Log("stacksList is: ", stacksList)
-
-	// if stacksList is empty there is nothing to test so return
+	// if stacksList is empty, set to the default
 	if stacksList == "" {
-		t.Log("stacksList is empty, exiting test...")
-		return
+		stacksList = "incubator/nodejs"
 	}
 
 	// split the appsodyStack env variable
@@ -82,7 +79,7 @@ func TestDebugSimple(t *testing.T) {
 		// It will take a while for the container to spin up, so let's use docker ps to wait for it
 		t.Log("calling docker ps to wait for container")
 		containerRunning := false
-		count := 100
+		count := 50
 		for {
 			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName}, t)
 			if dockerErr != nil {

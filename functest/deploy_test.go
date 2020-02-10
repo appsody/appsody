@@ -27,11 +27,9 @@ var deployFile = "app-deploy.yaml"
 // Test parsing environment variable with stack info
 func TestParser(t *testing.T) {
 
-	stacksList = "incubator/nodejs"
-	t.Log("stacksList is: ", stacksList)
+	// if stacksList is empty, set to the default
 	if stacksList == "" {
-		t.Log("stacksList is empty, exiting test...")
-		return
+		stacksList = "incubator/nodejs"
 	}
 
 	stackRaw := strings.Split(stacksList, " ")
@@ -48,12 +46,9 @@ func TestParser(t *testing.T) {
 // Simple test for appsody deploy command. A future enhancement would be to configure a valid deployment environment
 func TestDeploySimple(t *testing.T) {
 
-	t.Log("stacksList is: ", stacksList)
-
-	// if stacksList is empty there is nothing to test so return
+	// if stacksList is empty, set to the default
 	if stacksList == "" {
-		t.Log("stacksList is empty, exiting test...")
-		return
+		stacksList = "incubator/nodejs"
 	}
 
 	// split the appsodyStack env variable
@@ -93,12 +88,10 @@ func TestDeploySimple(t *testing.T) {
 
 // Testing generation of app-deploy.yaml
 func TestGenerationDeploymentConfig(t *testing.T) {
-	t.Log("stacksList is: ", stacksList)
 
-	// if stacksList is empty there is nothing to test so return
+	// if stacksList is empty, set to the default
 	if stacksList == "" {
-		t.Log("stacksList is empty, exiting test...")
-		return
+		stacksList = "incubator/nodejs"
 	}
 
 	// split the appsodyStack env variable

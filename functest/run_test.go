@@ -25,7 +25,7 @@ import (
 )
 
 // get the STACKSLIST environment variable
-var stacksList = os.Getenv("STACKSLIST")
+var stacksList = os.Getenv("STACKS_LIST")
 
 // Test appsody run of the nodejs-express stack and check the http://localhost:3000/health endpoint
 func TestRun(t *testing.T) {
@@ -101,12 +101,9 @@ func TestRun(t *testing.T) {
 // Simple test for appsody run command. A future enhancement would be to verify the endpoint or console output if there is no web endpoint
 func TestRunSimple(t *testing.T) {
 
-	t.Log("stacksList is: ", stacksList)
-
-	// if stacksList is empty there is nothing to test so return
+	// if stacksList is empty, set to the default
 	if stacksList == "" {
-		t.Log("stacksList is empty, exiting test...")
-		return
+		stacksList = "incubator/nodejs"
 	}
 
 	// split the appsodyStack env variable
