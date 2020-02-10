@@ -64,7 +64,7 @@ func TestStackAddToRepo(t *testing.T) {
 			}
 
 			args := append([]string{"stack", "add-to-repo"}, tt.args...)
-			output, err := cmdtest.RunAppsody(sandbox, args...)
+			_, err = cmdtest.RunAppsody(sandbox, args...)
 			if err != nil {
 				t.Fatalf("Error adding stack to repository: %v", err)
 			}
@@ -76,7 +76,7 @@ func TestStackAddToRepo(t *testing.T) {
 					t.Fatalf("Error adding repo to configured list of repositories: %v", err)
 				}
 			}
-			output, err = cmdtest.RunAppsody(sandbox, "list", tt.repo)
+			output, err := cmdtest.RunAppsody(sandbox, "list", tt.repo)
 			if !strings.Contains(output, "starter") {
 				t.Errorf("Expected starter stack to be added to the %s repository.", tt.repo)
 			}
@@ -160,12 +160,12 @@ func TestStackAddToRepoUseLocalCache(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error adding stack to repository: %v", err)
 			}
-			output, err := cmdtest.RunAppsody(sandbox, args...)
+			_, err = cmdtest.RunAppsody(sandbox, args...)
 			if err != nil {
 				t.Fatalf("Error adding stack to repository: %v", err)
 			}
 
-			output, err = cmdtest.RunAppsody(sandbox, "list", tt.repoName)
+			output, err := cmdtest.RunAppsody(sandbox, "list", tt.repoName)
 			if !strings.Contains(output, "starter") {
 				t.Errorf("Expected starter stack to be added to the %s repository.", tt.repoName)
 			}
