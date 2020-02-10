@@ -109,34 +109,6 @@ func TestStackCreateInvalidStackCase2(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	testStackName := "testing-stack-create-invalid-2"
-
-	args := []string{"stack", "create", testStackName, "--copy", "nodejs"}
-	_, err := cmdtest.RunAppsody(sandbox, args...)
-
-	if err == nil {
-		t.Fatal(err)
-	}
-
-	exists, err := cmdtest.Exists(testStackName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if exists {
-		// It SHOULDN'T exist, but it might
-		err = os.RemoveAll(testStackName)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Fatal(err)
-	}
-}
-
-func TestStackCreateInvalidStackCase3(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
 	testStackName := "testing-stack-create-invalid-3"
 
 	args := []string{"stack", "create", testStackName, "--copy", "experimental/nodejs"}
@@ -161,7 +133,7 @@ func TestStackCreateInvalidStackCase3(t *testing.T) {
 	}
 }
 
-func TestStackCreateInvalidStackCase4(t *testing.T) {
+func TestStackCreateInvalidStackCase3(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
