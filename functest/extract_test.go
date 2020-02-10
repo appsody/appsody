@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -226,9 +225,6 @@ func TestExtractCases(t *testing.T) {
 			t.Log("Now running appsody extract...")
 			extractArgs := append([]string{"extract"}, tt.args...)
 			output, extractErr := cmdtest.RunAppsody(sandbox, extractArgs...)
-
-			out, _ := exec.Command("buildah", "version").Output()
-			t.Log("#################", string(out), "############")
 
 			if !strings.Contains(output, tt.expectedLogs) {
 				t.Fatalf("Expected failure to include: %s but instead receieved: %s. Full error: %s", tt.expectedLogs, output, extractErr)
