@@ -146,6 +146,12 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				return errors.Errorf("Error creating stacks directory: %v", err)
 			}
 
+			err = os.RemoveAll(stackPath)
+
+			if err != nil {
+				return errors.Errorf("Error creating removing packaging directory: %v", err)
+			}
+
 			// make a copy of the folder to apply template to
 			err = CopyDir(log, projectPath, stackPath)
 			if err != nil {
