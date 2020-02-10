@@ -66,7 +66,6 @@ func TestStackCreateInvalidCases(t *testing.T) {
 		expectedLogs string   // logs that are expected in the output
 	}{
 		{"Invalid args", "testing-stack-create-invalid-args", []string{"--copy", "incubator/nodej"}, "Could not find stack specified in repository index"},
-		{"Existing default repo", "testing-stack-create-default-repo", []string{"--copy", "nodejs"}, "Stack name must be in the format <repo>/<stack>"},
 		{"Non-existing repo", "testing-stack-create-non-existing-repo", []string{"--copy", "experimental/nodejs"}, "Could not find stack specified in repository index"},
 		{"Invalid repo", "testing-stack-create-invalid-repo", []string{"--copy", "invalid/java-microprofile"}, "Repository: 'invalid' was not found in the repository.yaml file"},
 		{"Invalid stack name underscores", "testing_stack_invalid_name", nil, "The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash."},
