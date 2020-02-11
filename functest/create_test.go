@@ -33,22 +33,13 @@ func TestStackCreateDevLocal(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
-	err := cmd.CopyDir(log, stackDir, targetDir)
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, targetDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
+	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,22 +71,13 @@ func TestStackCreateCustomRepo(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
-	err := cmd.CopyDir(log, stackDir, targetDir)
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, targetDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
+	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,22 +143,13 @@ func TestStackCreateInvalidStackFail(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
-	err := cmd.CopyDir(log, stackDir, targetDir)
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, targetDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
+	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,22 +174,13 @@ func TestStackCreateInvalidURLFail(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
-	err := cmd.CopyDir(log, stackDir, targetDir)
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, targetDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
+	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
 	if err != nil {
 		t.Fatal(err)
 	}
