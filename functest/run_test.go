@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -97,7 +98,6 @@ func TestRun(t *testing.T) {
 	}
 }
 
-/*
 // Simple test for appsody run command. A future enhancement would be to verify the endpoint or console output if there is no web endpoint
 func TestRunSimple(t *testing.T) {
 
@@ -182,4 +182,3 @@ func TestRunSimple(t *testing.T) {
 
 	}
 }
-*/
