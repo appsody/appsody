@@ -69,7 +69,7 @@ func TestRepoListJson(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"repo", "list", "--config", filepath.Join(sandbox.TestDataPath, "marshal_repository_config", "config.yaml"), "-o", "json"}
+	args := []string{"repo", "list", "--config", filepath.Join(sandbox.TestDataPath, "multiple_repository_config", "config.yaml"), "-o", "json"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
