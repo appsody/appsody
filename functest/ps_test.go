@@ -106,3 +106,37 @@ func TestPS(t *testing.T) {
 		t.Logf("Ignoring error running appsody ps: %s", errStop)
 	}
 }
+
+func TestPsNoContainers(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// appsody ps with no running containers
+	args := []string{"ps"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		if !strings.Contains(output, "There are no stack-based containers running in your docker environment") {
+			t.Fatalf("String \"There are no stack-based containers running in your docker environment\" not found in output: %v", output)
+		}
+	}
+}
+
+func TestPsArgumentFail(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// appsody ps with extra arguments
+	args := []string{"ps", "testing"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		if !strings.Contains(output, "Unexpected argument") {
+			t.Fatalf("String \"Unexpected argument\" not found in error: %v", err)
+		}
+	} else {
+		t.Fatalf("Appsody ps passed with an argument: %v", output)
+	}
+}
