@@ -224,7 +224,11 @@ Run this command from the root directory of your Appsody project.`,
 
 			// At this point we should have the indexFile loaded that want to use for updating / adding stack info
 			// find the index of the stack
-			indexYaml = findStackAndRemove(log, stackID, indexYaml)
+			indexYaml, err = findStackAndRemove(log, stackID, indexYaml)
+
+			if err != nil {
+				return err
+			}
 
 			// get the necessary data from the current stack.yaml
 			stackYaml, err := getStackData(stackPath)
