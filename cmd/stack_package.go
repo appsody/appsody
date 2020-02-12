@@ -159,6 +159,9 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				}
 				return nil
 			}()
+			if err != nil {
+				return err
+			}
 
 			// make a copy of the folder to apply template to
 			err = CopyDir(log, projectPath, stackPath)
