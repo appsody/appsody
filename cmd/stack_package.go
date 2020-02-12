@@ -155,7 +155,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			defer func() {
 				err = removePackagingFolder(stackPath)
 				if err != nil {
-					errors.Errorf("Error removing packaging folder: %v", err)
+					log.Info.logf("Error removing packaging folder: %v", err)
 				}
 			}()
 
