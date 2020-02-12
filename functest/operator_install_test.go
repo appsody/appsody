@@ -73,7 +73,12 @@ func TestInstallOperatorWithNamespaceAndWatchspace(t *testing.T) {
 	log := &cmd.LoggingConfig{}
 	log.InitLogging(&outBuffer, &outBuffer)
 
-	defer removeNamespace(log, "namespace-for-test-operator-install")
+	defer func() {
+		err := removeNamespace(log, "namespace-for-test-operator-install")
+		if err != nil {
+			t.Fatalf("%s", err)
+		}
+	}()
 	expectedLogs := "Appsody operator deployed to Kubernetes"
 
 	namespaceKargs := []string{"create", "namespace", "namespace-for-test-operator-install"}
