@@ -146,21 +146,19 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				return errors.Errorf("Error creating stacks directory: %v", err)
 			}
 
-			err = os.RemoveAll(stackPath)
-
+			err = removePackagingFolder(stackPath)
 			if err != nil {
-				return errors.Errorf("Error creating removing packaging directory: %v", err)
+				return err
 			}
+
+			// defer function to remove packaging folder created for stack variables
+			defer removePackagingFolder(stackPath)
 
 			// make a copy of the folder to apply template to
 			err = CopyDir(log, projectPath, stackPath)
 			if err != nil {
-				os.RemoveAll(stackPath)
 				return errors.Errorf("Error trying to copy directory: %v", err)
 			}
-
-			// remove copied folder locally, no matter the output
-			defer os.RemoveAll(stackPath)
 
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
@@ -678,4 +676,18 @@ func ApplyTemplating(stackPath string, templateMetadata interface{}) error {
 
 	return nil
 
+}
+
+func removePackagingFolder(stackPath string) error {
+	stackPathExists, err := Exists(stackPath)
+	if err != nil {
+		return errors.Errorf("Error checking that: %v exists: %v", stackPath, err)
+	}
+	if stackPathExists {
+		err = os.RemoveAll(stackPath)
+		if err != nil {
+			return errors.Errorf("Error removing: %v and children: %v", stackPath, err)
+		}
+	}
+	return nil
 }
