@@ -46,7 +46,7 @@ type GitInfo struct {
 
 const trimChars = "' \r\n"
 
-func stringBefore(value string, searchValue string) string {
+func StringBefore(value string, searchValue string) string {
 	// Get substring before a string.
 
 	gitURLElements := strings.Split(value, searchValue)
@@ -57,7 +57,7 @@ func stringBefore(value string, searchValue string) string {
 
 }
 
-func stringAfter(value string, searchValue string) string {
+func StringAfter(value string, searchValue string) string {
 	// Get substring after a string.
 	position := strings.LastIndex(value, searchValue)
 	if position == -1 {
@@ -69,7 +69,7 @@ func stringAfter(value string, searchValue string) string {
 	}
 	return value[adjustedPosition:]
 }
-func stringBetween(value string, pre string, post string) string {
+func StringBetween(value string, pre string, post string) string {
 	// Get substring between two strings.
 	positionBegin := strings.Index(value, pre)
 	if positionBegin == -1 {
@@ -121,16 +121,16 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 
 	if strings.HasPrefix(value, branchPrefix) {
 		if strings.Contains(value, branchSeparatorString) {
-			gitInfo.Branch = strings.Trim(stringBetween(value, branchPrefix, branchSeparatorString), trimChars)
-			gitInfo.Upstream = strings.Trim(stringAfter(value, branchSeparatorString), trimChars)
+			gitInfo.Branch = strings.Trim(StringBetween(value, branchPrefix, branchSeparatorString), trimChars)
+			gitInfo.Upstream = strings.Trim(StringAfter(value, branchSeparatorString), trimChars)
 			gitInfo.Upstream = strings.Split(gitInfo.Upstream, " ")[0]
 		} else {
-			gitInfo.Branch = strings.Trim(stringAfter(value, branchPrefix), trimChars)
+			gitInfo.Branch = strings.Trim(StringAfter(value, branchPrefix), trimChars)
 		}
 
 	}
 	if strings.Contains(value, noCommits) {
-		gitInfo.Branch = stringAfter(value, noCommits)
+		gitInfo.Branch = StringAfter(value, noCommits)
 	}
 	changesMade := false
 	outputLength := len(outputLines)
@@ -198,7 +198,7 @@ func RunGitGetLastCommit(URL string, config *RootCommandConfig) (CommitInfo, err
 		return commitInfo, errors.Errorf("JSON Unmarshall error: %v", err)
 	}
 	if URL != "" {
-		commitInfo.URL = stringBefore(URL, ".git") + "/commit/" + commitInfo.SHA
+		commitInfo.URL = StringBefore(URL, ".git") + "/commit/" + commitInfo.SHA
 	}
 
 	gitLocation, gitErr := exec.Command("git", "rev-parse", "--show-toplevel").Output()
