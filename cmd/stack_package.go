@@ -148,20 +148,16 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			err = removePackagingFolder(stackPath)
 			if err != nil {
-				return err
+				return errors.Errorf("Error removing packaging folder: %v", err)
 			}
 
 			// defer function to remove packaging folder created for stack variables
-			defer func() error {
+			defer func() {
 				err = removePackagingFolder(stackPath)
 				if err != nil {
-					return err
+					errors.Errorf("Error removing packaging folder: %v", err)
 				}
-				return nil
 			}()
-			if err != nil {
-				return err
-			}
 
 			// make a copy of the folder to apply template to
 			err = CopyDir(log, projectPath, stackPath)
