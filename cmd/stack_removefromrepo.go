@@ -129,17 +129,7 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 					}
 				}
 			} else {
-				log.Debug.Log(repoName, " does not exist within the repository list")
-				exists, err := Exists(localIndexFile)
-				if err != nil {
-					return errors.Errorf("Error checking status of %s", localIndexFile)
-				}
-				if exists && useLocalCache {
-					log.Debug.Log(localIndexFile, " exists in the appsody directory and use-local-cache is true")
-				} else {
-					log.Info.Log("Repository index file not found - unable to remove stack")
-					return nil
-				}
+				return errors.Errorf("%v does not exist within the repository list", repoName)
 			}
 
 			log.Info.log("Updating repository index file: ", localIndexFile)
