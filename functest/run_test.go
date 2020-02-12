@@ -182,3 +182,17 @@ func TestRunSimple(t *testing.T) {
 
 	}
 }
+
+func TestRunTooManyArgs(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"run", "too", "many", "args"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err == nil {
+		t.Error("Expected non-zero exit code")
+	}
+	if !strings.Contains(output, "Unexpected argument.") {
+		t.Error("Failed to flag too many arguments.")
+	}
+}
