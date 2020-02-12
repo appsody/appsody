@@ -16,6 +16,7 @@ package cmd_test
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
@@ -97,8 +98,35 @@ func TestStringBetween(t *testing.T) {
 	}
 }
 
+func TestGetGitInfoWithNotAGitRepo(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Error(nil)
+	}
+	err = os.Chdir(sandbox.ProjectDir)
+	if err != nil {
+		t.Error(nil)
+	}
+	_, err = cmd.GetGitInfo(config)
+	expectedError := "not a git repository"
+	if err == nil || !strings.Contains(err.Error(), expectedError) {
+		t.Errorf("Should had flagged error: %v", expectedError)
+	}
+	err = os.Chdir(cwd)
+	if err != nil {
+		t.Error(nil)
+	}
+}
+
 func TestGetGitInfoWithNoCommits(t *testing.T) {
-	_, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
 	var outBuffer bytes.Buffer
@@ -106,9 +134,25 @@ func TestGetGitInfoWithNoCommits(t *testing.T) {
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
 
-	_, err := cmd.GetGitInfo(config)
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Error(nil)
+	}
+	err = os.Chdir(sandbox.ProjectDir)
+	if err != nil {
+		t.Error(nil)
+	}
+	_, gitErr := cmd.RunGit(loggingConfig, sandbox.ProjectDir, []string{"init"}, false)
+	if gitErr != nil {
+		t.Error(gitErr)
+	}
+	_, err = cmd.GetGitInfo(config)
 	expectedError := "does not have any commits yet"
 	if err == nil || !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Should had flagged current branch: %v", expectedError)
+		t.Errorf("Should had flagged error: %v", expectedError)
+	}
+	err = os.Chdir(cwd)
+	if err != nil {
+		t.Error(nil)
 	}
 }
