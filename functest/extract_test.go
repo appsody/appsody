@@ -187,7 +187,7 @@ func TestExtract(t *testing.T) {
 
 		}
 		dockerFile := filepath.Join(extractDir, "Dockerfile")
-		_, err = exists(dockerFile)
+		_, err = cmd.Exists(dockerFile)
 		if err != nil {
 			t.Fatal("Extraction failure, Dockerfile was not extracted into ", extractDir)
 		}
@@ -231,15 +231,4 @@ func TestExtractCases(t *testing.T) {
 			}
 		})
 	}
-}
-
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return true, err
 }
