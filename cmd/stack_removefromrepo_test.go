@@ -15,12 +15,18 @@
 package cmd_test
 
 import (
+	"io/ioutil"
+	"path/filepath"
+	"strings"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
+	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
 )
 
-func TestRemoveFromRemoteRepo(t *testing.T) {
+func TestRemoveFromIncubatorRepo(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
@@ -32,4 +38,109 @@ func TestRemoveFromRemoteRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	devLocal := filepath.Join(sandbox.ProjectDir, "stacks", "dev.local")
+	indexFileLocal := filepath.Join(devLocal, "incubator-index.yaml")
+	var indexYaml cmd.IndexYaml
+
+	source, err := ioutil.ReadFile(indexFileLocal)
+	if err != nil {
+		errors.Errorf("Error trying to read: %v", err)
+	}
+
+	err = yaml.Unmarshal(source, &indexYaml)
+	if err != nil {
+		t.Fatalf("Error trying to unmarshall: %v", err)
+	}
+
+	foundStack := -1
+	for i, stack := range indexYaml.Stacks {
+		if stack.ID == "nodejs" {
+			foundStack = i
+			break
+		}
+	}
+	if foundStack != -1 {
+		t.Fatal("Stack found unexpectecdly")
+	}
+}
+
+func TestRemoveFromRepoLocalCache(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// run stack remove-from-repo
+	args := []string{"stack", "remove-from-repo", "incubator", "nodejs"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// run stack remove-from-repo use local cache
+	argsRemoveLC := []string{"stack", "remove-from-repo", "incubator", "kitura", "--use-local-cache"}
+	output, err = cmdtest.RunAppsody(sandbox, argsRemoveLC...)
+	if err != nil {
+		t.Fatal(output)
+	}
+
+	devLocal := filepath.Join(sandbox.ProjectDir, "stacks", "dev.local")
+	indexFileLocal := filepath.Join(devLocal, "incubator-index.yaml")
+	var indexYaml cmd.IndexYaml
+
+	source, err := ioutil.ReadFile(indexFileLocal)
+	if err != nil {
+		errors.Errorf("Error trying to read: %v", err)
+	}
+
+	err = yaml.Unmarshal(source, &indexYaml)
+	if err != nil {
+		t.Fatalf("Error trying to unmarshall: %v", err)
+	}
+
+	foundStack := -1
+	for i, stack := range indexYaml.Stacks {
+		if stack.ID == "nodejs" || stack.ID == "kitura" {
+			foundStack = i
+			break
+		}
+	}
+	if foundStack != -1 {
+		t.Fatal("Stack found unexpectecdly")
+	}
+}
+
+func TestRemoveFromRepoInvalidRepoName(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// run stack remove-from-repo
+	args := []string{"stack", "remove-from-repo", "invalid", "nodejs"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		if !strings.Contains(output, "invalid does not exist within the repository list") {
+			t.Errorf("String \"invalid does not exist within the repository list\" not found in output: '%v'", err.Error())
+		}
+
+	} else {
+		t.Fatal("stack remove-from-repo command unexpectedly passed with an invalid repo name")
+	}
+}
+
+func TestRemoveFromRepoInvalidStackName(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// run stack remove-from-repo
+	args := []string{"stack", "remove-from-repo", "incubator", "invalid"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		if !strings.Contains(output, "Stack: invalid not found in repository index file") {
+			t.Errorf("String \"Stack: invalid not found in repository index file\" not found in output: '%v'", err.Error())
+		}
+
+	} else {
+		t.Fatal("stack remove-from-repo command unexpectedly passed with an invalid stack name")
+	}
 }
