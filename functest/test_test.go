@@ -27,10 +27,7 @@ import (
 // Simple test for appsody test command. A future enhancement would be to verify the test output
 func TestTestSimple(t *testing.T) {
 
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
+	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")

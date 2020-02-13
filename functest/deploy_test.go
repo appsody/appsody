@@ -27,10 +27,7 @@ var deployFile = "app-deploy.yaml"
 // Test parsing environment variable with stack info
 func TestParser(t *testing.T) {
 
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
+	stacksList := cmdtest.GetEnvStacksList()
 
 	stackRaw := strings.Split(stacksList, " ")
 
@@ -46,10 +43,7 @@ func TestParser(t *testing.T) {
 // Simple test for appsody deploy command. A future enhancement would be to configure a valid deployment environment
 func TestDeploySimple(t *testing.T) {
 
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
+	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
@@ -89,10 +83,7 @@ func TestDeploySimple(t *testing.T) {
 // Testing generation of app-deploy.yaml
 func TestGenerationDeploymentConfig(t *testing.T) {
 
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
+	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
@@ -135,11 +126,6 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 }
 
 func TestDeployNoNamespace(t *testing.T) {
-
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()

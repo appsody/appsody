@@ -40,10 +40,7 @@ type expectedDeploymentConfig struct {
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
 func TestBuildSimple(t *testing.T) {
 
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
+	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
@@ -117,7 +114,7 @@ var appsodyCommitLabels = []string{
 }
 
 func TestBuildLabels(t *testing.T) {
-	stacksList = "incubator/nodejs"
+
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
@@ -213,10 +210,7 @@ func deleteImage(imageName string, t *testing.T) {
 
 func TestDeploymentConfig(t *testing.T) {
 
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
+	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
@@ -278,10 +272,7 @@ var knativeFlagTests = []struct {
 
 func TestKnativeFlagOnBuild(t *testing.T) {
 
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
+	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
