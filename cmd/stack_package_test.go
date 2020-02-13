@@ -15,7 +15,6 @@
 package cmd_test
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -236,10 +235,6 @@ func TestPackageNoStackYamlFail(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
@@ -285,10 +280,6 @@ func TestPackageInvalidStackYamlFail(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
@@ -353,10 +344,6 @@ func TestPackageNoTemplates(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
@@ -397,10 +384,6 @@ func TestPackageInvalidCustomVars(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
@@ -465,10 +448,6 @@ func TestPackageInvalidCustomVarMap(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
@@ -531,10 +510,6 @@ func TestPackageInvalidVersion(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
 
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
