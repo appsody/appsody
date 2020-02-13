@@ -19,7 +19,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -202,14 +201,10 @@ func TestExtractCases(t *testing.T) {
 	}{
 		{"Non existing target directory", []string{"--target-dir", "/non/existing/dir"}, "/non/existing does not exist"},
 		{"Target dir with contents", []string{"--target-dir", "."}, "Cannot extract to an existing target-dir"},
-		{"Extract with Buildah", []string{"--buildah"}, "Project extracted"},
 	}
 
 	for _, testData := range extractTests {
 		tt := testData
-		if runtime.GOOS != "linux" && tt.testName == "Extract with Buildah" {
-			t.Skip()
-		}
 
 		t.Run(tt.testName, func(t *testing.T) {
 			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
