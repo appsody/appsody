@@ -2307,3 +2307,17 @@ func untar(log *LoggingConfig, dst string, r io.Reader, dryrun bool) error {
 		return nil
 	}
 }
+
+func RemoveIfExists(path string) error {
+	stackPathExists, err := Exists(path)
+	if err != nil {
+		return errors.Errorf("Error checking that: %v exists: %v", path, err)
+	}
+	if stackPathExists {
+		err = os.RemoveAll(path)
+		if err != nil {
+			return errors.Errorf("Error removing: %v and children: %v", path, err)
+		}
+	}
+	return nil
+}
