@@ -51,8 +51,6 @@ func TestTemplatingAllVariables(t *testing.T) {
 		t.Fatalf("Error creating templating file: %v", err)
 	}
 
-	defer os.RemoveAll(templatingPath)
-
 	// write some text to file
 	_, err = file.WriteString("{{test}}, id: {{.stack.id}}, name: {{.stack.name}}, version: {{.stack.version}}, description: {{.stack.description}}, tag: {{.stack.tag}}, maintainers: {{.stack.maintainers}}, semver.major: {{.stack.semver.major}}, semver.minor: {{.stack.semver.minor}}, semver.patch: {{.stack.semver.patch}}, semver.majorminor: {{.stack.semver.majorminor}}, image.namespace: {{.stack.image.namespace}}, image.registry: {{.stack.image.registry}}, customvariable1: {{.stack.variable1}}, customvariable2: {{.stack.variable2}}")
 	if err != nil {
@@ -112,8 +110,6 @@ func TestTemplatingWrongVariablesFail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating templating file: %v", err)
 	}
-
-	defer os.RemoveAll(templatingPath)
 
 	// write some text to file
 	_, err = file.WriteString("id: {{.stack.iad}}")
@@ -179,8 +175,6 @@ func TestTemplatingFilePermissionsFail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating templating file: %v", err)
 	}
-
-	defer os.RemoveAll(templatingPath)
 
 	// write some text to file
 	_, err = file.WriteString("id: {{.stack.id}}")

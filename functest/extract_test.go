@@ -54,7 +54,6 @@ func TestExtract(t *testing.T) {
 
 		extractDir := parentDir + "/appsody-extract-test-extract-" + strings.ReplaceAll(stackRaw[i], "/", "_")
 
-		defer os.RemoveAll(extractDir)
 		t.Log("Created extraction dir: " + extractDir)
 
 		// appsody init inside projectDir
