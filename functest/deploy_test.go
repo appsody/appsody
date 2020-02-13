@@ -135,6 +135,12 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 }
 
 func TestDeployNoNamespace(t *testing.T) {
+
+	// if stacksList is empty, set to the default
+	if stacksList == "" {
+		stacksList = "incubator/nodejs"
+	}
+
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
