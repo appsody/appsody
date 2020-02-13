@@ -37,7 +37,7 @@ func TestRemoveFromIncubatorRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	devLocal := filepath.Join(sandbox.ProjectDir, "stacks", "dev.local")
+	devLocal := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
 	indexFileLocal := filepath.Join(devLocal, "incubator-index.yaml")
 	var indexYaml cmd.IndexYaml
 
@@ -82,7 +82,7 @@ func TestRemoveFromRepoLocalCache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	devLocal := filepath.Join(sandbox.ProjectDir, "stacks", "dev.local")
+	devLocal := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
 	indexFileLocal := filepath.Join(devLocal, "incubator-index.yaml")
 	var indexYaml cmd.IndexYaml
 
