@@ -22,7 +22,6 @@ import (
 
 	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 )
 
@@ -44,7 +43,7 @@ func TestRemoveFromIncubatorRepo(t *testing.T) {
 
 	source, err := ioutil.ReadFile(indexFileLocal)
 	if err != nil {
-		errors.Errorf("Error trying to read: %v", err)
+		t.Fatalf("Error trying to read: %v", err)
 	}
 
 	err = yaml.Unmarshal(source, &indexYaml)
@@ -71,16 +70,16 @@ func TestRemoveFromRepoLocalCache(t *testing.T) {
 
 	// run stack remove-from-repo
 	args := []string{"stack", "remove-from-repo", "incubator", "nodejs"}
-	output, err := cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// run stack remove-from-repo use local cache
 	argsRemoveLC := []string{"stack", "remove-from-repo", "incubator", "kitura", "--use-local-cache"}
-	output, err = cmdtest.RunAppsody(sandbox, argsRemoveLC...)
+	_, err = cmdtest.RunAppsody(sandbox, argsRemoveLC...)
 	if err != nil {
-		t.Fatal(output)
+		t.Fatal(err)
 	}
 
 	devLocal := filepath.Join(sandbox.ProjectDir, "stacks", "dev.local")
@@ -89,7 +88,7 @@ func TestRemoveFromRepoLocalCache(t *testing.T) {
 
 	source, err := ioutil.ReadFile(indexFileLocal)
 	if err != nil {
-		errors.Errorf("Error trying to read: %v", err)
+		t.Fatalf("Error trying to read: %v", err)
 	}
 
 	err = yaml.Unmarshal(source, &indexYaml)
