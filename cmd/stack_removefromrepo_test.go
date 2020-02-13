@@ -15,28 +15,21 @@
 package cmd_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestRemoveFromRepoDefault(t *testing.T) {
+func TestRemoveFromRemoteRepo(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// run stack package
+	// run stack remove-from-repo
 	args := []string{"stack", "remove-from-repo", "incubator", "nodejs"}
-	output, err := cmdtest.RunAppsody(sandbox, args...)
-
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
-		if !strings.Contains(err.Error(), "Error creating templating mal: Variable name didn't start with alphanumeric character") {
-			t.Errorf("String \"Error creating templating mal: Variable name didn't start with alphanumeric character\" not found in output: '%v'", err.Error())
-		}
-
-	} else {
-		t.Fatal(output)
+		t.Fatal(err)
 	}
 
 }
