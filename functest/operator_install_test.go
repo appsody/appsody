@@ -61,45 +61,58 @@ func TestOperatorInstallCases(t *testing.T) {
 	}
 }
 
-func TestInstallOperatorWithNamespaceAndWatchspace(t *testing.T) {
-	if !cmdtest.TravisTesting {
-		t.Skip()
+func TestOperatorInstallAndUninstall(t *testing.T) {
+	var testParameters = []struct {
+		testName     string
+		args         []string
+		namespace    string
+		expectedLogs string
+	}{
+		{"Test operator install with namespace and watchspace", []string{"install", "--namespace", "namespace-for-operator-install-test", "--watchspace", "testWatchspace"}, "namespace-for-operator-install-test", "Appsody operator deployed to Kubernetes"},
+		{"Test operator uninstall with no install", []string{"uninstall", "--namespace", "namespace-for-test-operator-uninstall"}, "namespace-for-test-operator-uninstall", "An appsody operator could not be found in namespace"},
 	}
+	for _, testData := range testParameters {
+		tt := testData
+		t.Run(tt.testName, func(t *testing.T) {
+			if !cmdtest.TravisTesting {
+				t.Skip()
+			}
 
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
+			var outBuffer bytes.Buffer
+			log := &cmd.LoggingConfig{}
+			log.InitLogging(&outBuffer, &outBuffer)
 
-	defer func() {
-		err := removeNamespace(log, "namespace-for-test-operator-install")
-		if err != nil {
-			t.Fatalf("%s", err)
-		}
-	}()
-	expectedLogs := "Appsody operator deployed to Kubernetes"
+			defer func() {
+				err := removeNamespace(log, tt.namespace)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}()
 
-	namespaceKargs := []string{"create", "namespace", "namespace-for-test-operator-install"}
-	_, namespaceErr := cmd.RunKube(log, namespaceKargs, false)
-	if namespaceErr != nil {
-		t.Fatal(namespaceErr)
-	}
+			namespaceKargs := []string{"create", "namespace", tt.namespace}
+			_, namespaceErr := cmd.RunKube(log, namespaceKargs, false)
+			if namespaceErr != nil {
+				t.Fatal(namespaceErr)
+			}
 
-	t.Log("Now running appsody init")
-	args := []string{"init", "starter"}
-	_, err := cmdtest.RunAppsody(sandbox, args...)
-	if err != nil {
-		t.Fatal(err)
-	}
+			t.Log("Now running appsody init")
+			args := []string{"init", "starter"}
+			_, err := cmdtest.RunAppsody(sandbox, args...)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	t.Log("Now running appsody operator install")
-	operatorInstallArgs := []string{"operator", "install", "--namespace", "namespace-for-test-operator-install", "--watchspace", "testWatchspace"}
-	output, operatorErr := cmdtest.RunAppsody(sandbox, operatorInstallArgs...)
+			t.Log("Now running appsody operator command")
+			operatorArgs := append([]string{"operator"}, tt.args...)
+			output, operatorErr := cmdtest.RunAppsody(sandbox, operatorArgs...)
 
-	if !strings.Contains(output, expectedLogs) {
-		t.Fatalf("Expected failure to include: %s but instead receieved: %s. Full error: %s", expectedLogs, output, operatorErr)
+			if !strings.Contains(output, tt.expectedLogs) {
+				t.Fatalf("Expected failure to include: %s but instead receieved: %s. Full error: %s", tt.expectedLogs, output, operatorErr)
+			}
+		})
 	}
 }
 
