@@ -143,9 +143,12 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 
 			// At this point we should have the indexFile loaded that want to use for updating / adding stack info
 			// find the index of the stack
-			indexYaml, err = findStackAndRemove(log, stackName, indexYaml)
+			indexYaml, stackExists, err := findStackAndRemove(log, stackName, indexYaml)
 			if err != nil {
 				return err
+			}
+			if !stackExists {
+				return errors.Errorf("Stack: %v does not exist in repository index file", stackName)
 			}
 
 			// Last thing to do is write the data to the file

@@ -135,8 +135,8 @@ func TestRemoveFromRepoInvalidStackName(t *testing.T) {
 	args := []string{"stack", "remove-from-repo", "incubator", "invalid"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
-		if !strings.Contains(output, "Stack: invalid not found in repository index file") {
-			t.Errorf("String \"Stack: invalid not found in repository index file\" not found in output: '%v'", err.Error())
+		if !strings.Contains(output, "Stack: invalid does not exist in repository index file") {
+			t.Errorf("String \"Stack: invalid does not exist in repository index file\" not found in output: '%v'", err.Error())
 		}
 
 	} else {
