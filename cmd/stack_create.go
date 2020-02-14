@@ -56,12 +56,14 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			stack := args[0]
 
+			stackPath := filepath.Join(config.ProjectDir, stack)
+
 			match, err := IsValidProjectName(stack)
 			if !match {
 				return err
 			}
 
-			exists, err := Exists(stack)
+			exists, err := Exists(stackPath)
 			if err != nil {
 				return err
 			}
@@ -109,7 +111,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			// error if repo not found in repository.yaml
 			if repoEntry == nil {
-				return errors.Errorf("Repository: %s not found in repository.yaml file", repoID)
+				return errors.Errorf("Repository: '%s' was not found in the repository.yaml file", repoID)
 			}
 			repoEntryURL := repoEntry.URL
 
@@ -138,7 +140,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				// get specified stack and get URL
 				stackEntry := getStack(&repoIndex, stackID)
 				if stackEntry == nil {
-					return errors.New("Stack not found in index")
+					return errors.New("Could not find stack specified in repository index")
 				}
 
 				stackEntryURL := stackEntry.SourceURL
@@ -162,7 +164,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 					return err
 				}
 
-				untarErr := untar(rootConfig.LoggingConfig, stack, extractFile, config.Dryrun)
+				untarErr := untar(rootConfig.LoggingConfig, stackPath, extractFile, config.Dryrun)
 				if untarErr != nil {
 					return untarErr
 				}
