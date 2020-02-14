@@ -58,7 +58,7 @@ func TestDebugSimple(t *testing.T) {
 		runChannel := make(chan error)
 		containerName := "testDebugSimpleContainer" + strings.ReplaceAll(stackRaw[i], "/", "_")
 		go func() {
-			_, err := cmdtest.RunAppsody(sandbox, "debug", "--name", containerName)
+			_, err := cmdtest.RunAppsody(sandbox, "debug", "--name", containerName, "-P")
 			runChannel <- err
 			close(runChannel)
 		}()

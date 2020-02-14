@@ -183,22 +183,44 @@ func TestExtract(t *testing.T) {
 
 		}
 		dockerFile := filepath.Join(extractDir, "Dockerfile")
-		_, err = exists(dockerFile)
+		_, err = cmd.Exists(dockerFile)
 		if err != nil {
 			t.Fatal("Extraction failure, Dockerfile was not extracted into ", extractDir)
 		}
 	}
 }
 
-// private exists fn.
-// TODO: Can this be re-used from cmd/utils.go?
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
+func TestExtractCases(t *testing.T) {
+	var extractTests = []struct {
+		testName     string
+		args         []string
+		expectedLogs string
+	}{
+		{"Non existing target directory", []string{"--target-dir", "/non/existing/dir"}, "/non/existing does not exist"},
+		{"Target dir with contents", []string{"--target-dir", "."}, "Cannot extract to an existing target-dir"},
 	}
-	if os.IsNotExist(err) {
-		return false, nil
+
+	for _, testData := range extractTests {
+		tt := testData
+
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
+			t.Log("Now running appsody init...")
+			args := []string{"init", "starter"}
+			_, err := cmdtest.RunAppsody(sandbox, args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			t.Log("Now running appsody extract...")
+			extractArgs := append([]string{"extract"}, tt.args...)
+			output, extractErr := cmdtest.RunAppsody(sandbox, extractArgs...)
+
+			if !strings.Contains(output, tt.expectedLogs) {
+				t.Fatalf("Expected failure to include: %s but instead receieved: %s. Full error: %s", tt.expectedLogs, output, extractErr)
+			}
+		})
 	}
-	return true, err
 }
