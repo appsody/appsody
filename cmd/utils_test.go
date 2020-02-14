@@ -1558,3 +1558,29 @@ func TestExtractDockerEnvVars(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveIfExists(t *testing.T) {
+
+	err := os.MkdirAll("./test/test-child/", 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = cmd.RemoveIfExists("./test/")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parentDirExists, err := cmd.Exists("./test/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	childDirExists, err := cmd.Exists("./test/test-child/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parentDirExists || childDirExists {
+		t.Fatal("Folders were not removed")
+	}
+
+}

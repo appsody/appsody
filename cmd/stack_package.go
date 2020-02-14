@@ -146,15 +146,24 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				return errors.Errorf("Error creating stacks directory: %v", err)
 			}
 
+			err = RemoveIfExists(stackPath)
+			if err != nil {
+				return errors.Errorf("Error removing packaging folder: %v", err)
+			}
+
+			// defer function to remove packaging folder created for stack variables
+			defer func() {
+				err = RemoveIfExists(stackPath)
+				if err != nil {
+					log.Info.logf("Error removing packaging folder: %v", err)
+				}
+			}()
+
 			// make a copy of the folder to apply template to
 			err = CopyDir(log, projectPath, stackPath)
 			if err != nil {
-				os.RemoveAll(stackPath)
 				return errors.Errorf("Error trying to copy directory: %v", err)
 			}
-
-			// remove copied folder locally, no matter the output
-			defer os.RemoveAll(stackPath)
 
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
