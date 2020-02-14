@@ -146,3 +146,19 @@ func TestStackCreateSampleStackDryrun(t *testing.T) {
 		}
 	}
 }
+
+func TestStackCreateInvalidRepoFail(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	createArgs := []string{"stack", "create", "testing-stack", "--copy", "invalid/starter"}
+	output, err := cmdtest.RunAppsody(sandbox, createArgs...)
+	if err != nil {
+		if !strings.Contains(output, "Repository: 'invalid' was not found in the repository.yaml file") {
+			t.Errorf("String \"Repository: 'invalid' was not found in the repository.yaml file\" not found in output")
+		}
+	} else {
+		t.Error("Stack create command unexpectededly passed with an invalid repository name")
+	}
+}
