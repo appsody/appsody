@@ -2324,27 +2324,27 @@ func RemoveIfExists(path string) error {
 }
 
 func generateJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath string) error {
-	indexJsonStack := make([]IndexJSONStack, 0)
+	indexJSONStack := make([]IndexJSONStack, 0)
 	for _, stack := range indexYaml.Stacks {
 		for _, template := range stack.Templates {
-			stackJson := IndexJSONStack{}
-			stackJson.DisplayName = "Appsody " + stack.Name + " " + template.ID + " template"
-			stackJson.Description = stack.Description
-			stackJson.Language = stack.Language
-			stackJson.ProjectType = "appsodyExtension"
-			stackJson.ProjectStyle = "Appsody"
-			stackJson.Location = template.URL
+			stackJSON := IndexJSONStack{}
+			stackJSON.DisplayName = "Appsody " + stack.Name + " " + template.ID + " template"
+			stackJSON.Description = stack.Description
+			stackJSON.Language = stack.Language
+			stackJSON.ProjectType = "appsodyExtension"
+			stackJSON.ProjectStyle = "Appsody"
+			stackJSON.Location = template.URL
 
 			link := Link{}
 			link.Self = "/devfiles/" + stack.ID + "/devfile.yaml"
-			stackJson.Links = link
+			stackJSON.Links = link
 
-			indexJsonStack = append(indexJsonStack, stackJson)
+			indexJSONStack = append(indexJSONStack, stackJSON)
 		}
 	}
 
 	// Last thing to do is write the data to the file
-	data, err := json.MarshalIndent(&indexJsonStack, "", "	")
+	data, err := json.MarshalIndent(&indexJSONStack, "", "	")
 	if err != nil {
 		return err
 	}
