@@ -225,10 +225,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				if err != nil {
 					return errors.Errorf("Error trying to unmarshall: %v", err)
 				}
-				indexYaml, _, err = findStackAndRemove(log, stackID, indexYaml)
-				if err != nil {
-					return err
-				}
+				indexYaml, _ = findStackAndRemove(log, stackID, indexYaml)
 			} else {
 				// create the beginning of the index yaml
 				indexYaml = IndexYaml{}
@@ -496,7 +493,7 @@ func initialiseStackData(stackID string, stackImage string, stackYaml StackYaml)
 	return newStackStruct
 }
 
-func findStackAndRemove(log *LoggingConfig, stackID string, indexYaml IndexYaml) (IndexYaml, bool, error) {
+func findStackAndRemove(log *LoggingConfig, stackID string, indexYaml IndexYaml) (IndexYaml, bool) {
 	// find the index of the stack
 	stackExists := false
 	foundStack := -1
@@ -513,7 +510,7 @@ func findStackAndRemove(log *LoggingConfig, stackID string, indexYaml IndexYaml)
 		stackExists = true
 		indexYaml.Stacks = indexYaml.Stacks[:foundStack+copy(indexYaml.Stacks[foundStack:], indexYaml.Stacks[foundStack+1:])]
 	}
-	return indexYaml, stackExists, nil
+	return indexYaml, stackExists
 }
 
 // GetLabelsForStackImage - Gets labels associated with the stack image

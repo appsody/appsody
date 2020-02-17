@@ -224,9 +224,10 @@ Run this command from the root directory of your Appsody project.`,
 
 			// At this point we should have the indexFile loaded that want to use for updating / adding stack info
 			// find the index of the stack
-			indexYaml, _, err = findStackAndRemove(log, stackID, indexYaml)
-			if err != nil {
-				return err
+			indexYaml, stackExists := findStackAndRemove(log, stackID, indexYaml)
+
+			if stackExists {
+				log.Debug.Logf("Stack: %v already exists in repo", stackID)
 			}
 
 			// get the necessary data from the current stack.yaml

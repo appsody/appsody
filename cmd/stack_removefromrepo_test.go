@@ -59,7 +59,7 @@ func TestRemoveFromIncubatorRepo(t *testing.T) {
 		}
 	}
 	if foundStack != -1 {
-		t.Fatal("Stack found unexpectecdly")
+		t.Fatal("Stack found unexpectedly")
 	}
 }
 
