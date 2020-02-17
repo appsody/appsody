@@ -77,7 +77,7 @@ type IndexYamlStackTemplate struct {
 }
 
 // struct to convert yaml to json files
-type IndexJsonStack struct {
+type IndexJSONStack struct {
 	DisplayName  string `json:"displayName"`
 	Description  string `json:"description"`
 	Language     string `json:"language"`
@@ -469,7 +469,10 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					return errors.Errorf("Error adding local repository. Your stack may not be available to appsody commands. %v", err)
 				}
 			}
-			generateJson(log, indexYaml, indexFileLocal)
+			err = generateJSON(log, indexYaml, indexFileLocal)
+			if err != nil {
+				return errors.Errorf("Could not generate json file from yaml index: %v", err)
+			}
 
 			log.Info.log("Your local stack is available as part of repo ", repoName)
 

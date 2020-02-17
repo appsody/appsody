@@ -2323,11 +2323,11 @@ func RemoveIfExists(path string) error {
 	return nil
 }
 
-func generateJson(log *LoggingConfig, indexYaml IndexYaml, indexFilePath string) error {
-	indexJsonStack := make([]IndexJsonStack, 0)
+func generateJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath string) error {
+	indexJsonStack := make([]IndexJSONStack, 0)
 	for _, stack := range indexYaml.Stacks {
 		for _, template := range stack.Templates {
-			stackJson := IndexJsonStack{}
+			stackJson := IndexJSONStack{}
 			stackJson.DisplayName = "Appsody " + stack.Name + " " + template.ID + " template"
 			stackJson.Description = stack.Description
 			stackJson.Language = stack.Language

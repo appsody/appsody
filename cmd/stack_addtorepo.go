@@ -294,7 +294,10 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.Errorf("Error writing localIndexFile: %v", err)
 			}
 
-			generateJson(log, indexYaml, localIndexFile)
+			err = generateJSON(log, indexYaml, localIndexFile)
+			if err != nil {
+				return errors.Errorf("Could not generate json file from yaml index: %v", err)
+			}
 
 			log.Info.Log("Repository index file updated successfully")
 
