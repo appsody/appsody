@@ -294,6 +294,8 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.Errorf("Error writing localIndexFile: %v", err)
 			}
 
+			generateJson(log, indexYaml, localIndexFile)
+
 			log.Info.Log("Repository index file updated successfully")
 
 			return nil

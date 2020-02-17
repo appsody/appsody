@@ -571,8 +571,8 @@ func TestPackageInvalidVersion(t *testing.T) {
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 
 	if err != nil {
-		if !strings.Contains(err.Error(), "Error creating templating mal: Verison format incorrect") {
-			t.Errorf("String \"Error creating templating mal: Verison format incorrect\" not found in output: '%v'", err.Error())
+		if !strings.Contains(err.Error(), "Error creating templating mal: Version format incorrect") {
+			t.Errorf("String \"Error creating templating mal: Version format incorrect\" not found in output: '%v'", err.Error())
 		}
 
 	} else {

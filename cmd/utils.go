@@ -2307,3 +2307,39 @@ func untar(log *LoggingConfig, dst string, r io.Reader, dryrun bool) error {
 		return nil
 	}
 }
+
+func generateJson(log *LoggingConfig, indexYaml IndexYaml, indexFilePath string) error {
+	indexJsonStack := make([]IndexJsonStack, 0)
+	for _, stack := range indexYaml.Stacks {
+		for _, template := range stack.Templates {
+			stackJson := IndexJsonStack{}
+			stackJson.DisplayName = "Appsody " + stack.Name + " " + template.ID + " template"
+			stackJson.Description = stack.Description
+			stackJson.Language = stack.Language
+			stackJson.ProjectType = "appsodyExtension"
+			stackJson.ProjectStyle = "Appsody"
+			stackJson.Location = template.URL
+
+			link := Link{}
+			link.Self = "/devfiles/" + stack.ID + "/devfile.yaml"
+			stackJson.Links = link
+
+			indexJsonStack = append(indexJsonStack, stackJson)
+		}
+	}
+
+	// Last thing to do is write the data to the file
+	data, err := json.MarshalIndent(&indexJsonStack, "", "	")
+	if err != nil {
+		return err
+	}
+	indexFilePath = strings.ReplaceAll(indexFilePath, ".yaml", ".json")
+
+	err = ioutil.WriteFile(indexFilePath, data, 0666)
+	if err != nil {
+		return errors.Errorf("Error writing to json file: %v", err)
+	}
+
+	log.Info.logf("Succesfully generated file: %s", indexFilePath)
+	return nil
+}
