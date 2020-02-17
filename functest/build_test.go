@@ -101,7 +101,6 @@ func TestSimpleBuildCases(t *testing.T) {
 					if listOutput == "" {
 						t.Errorf("Expected appsody build to create buildah image '%s' but it was not found.", expectedImageTag)
 					}
-
 					//delete the image
 					deleteImage(expectedImageTag, true, t)
 				} else {
@@ -112,62 +111,12 @@ func TestSimpleBuildCases(t *testing.T) {
 					if listOutput == "" {
 						t.Errorf("Expected appsody build to create docker image '%s' but it was not found.", expectedImageTag)
 					}
-
 					//delete the image
 					deleteImage(expectedImageTag, false, t)
 				}
 			}
 
 		})
-	}
-}
-
-// Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
-func TestBuildSimple(t *testing.T) {
-
-	stacksList := cmdtest.GetEnvStacksList()
-
-	// split the appsodyStack env variable
-	stackRaw := strings.Split(stacksList, " ")
-
-	// loop through the stacks
-	for i := range stackRaw {
-
-		t.Log("***Testing stack: ", stackRaw[i], "***")
-
-		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-		defer cleanup()
-
-		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// appsody init
-		t.Log("Running appsody init...")
-		_, err = cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// appsody build
-		_, err = cmdtest.RunAppsody(sandbox, "build")
-		if err != nil {
-			t.Fatal("The appsody build command failed: ", err)
-		}
-
-		expectedImageTag := "dev.local/" + sandbox.ProjectName
-		listOutput, listErr := cmdtest.RunDockerCmdExec([]string{"images", "-q", expectedImageTag}, t)
-		if listErr != nil {
-			t.Fatal(listErr)
-		}
-		if listOutput == "" {
-			t.Errorf("Expected appsody build to create docker image '%s' but it was not found.", expectedImageTag)
-		}
-
-		//delete the image
-		deleteImage(expectedImageTag, false, t)
 	}
 }
 
