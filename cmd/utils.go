@@ -2312,3 +2312,18 @@ func untar(log *LoggingConfig, dst string, r io.Reader, dryrun bool) error {
 		return nil
 	}
 }
+
+//RemoveIfExists - Checks if inode exists and removes it if it does
+func RemoveIfExists(path string) error {
+	pathExists, err := Exists(path)
+	if err != nil {
+		return errors.Errorf("Error checking that: %v exists: %v", path, err)
+	}
+	if pathExists {
+		err = os.RemoveAll(path)
+		if err != nil {
+			return errors.Errorf("Error removing: %v and children: %v", path, err)
+		}
+	}
+	return nil
+}
