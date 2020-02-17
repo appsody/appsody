@@ -26,16 +26,6 @@ func TestStackCreateDevLocal(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-=======
->>>>>>> upstream/master
-=======
->>>>>>> 456d5f33ed1b4e600178dc87f7e31ef90f2aed80
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
@@ -69,16 +59,6 @@ func TestStackCreateCustomRepo(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-=======
->>>>>>> upstream/master
-=======
->>>>>>> 456d5f33ed1b4e600178dc87f7e31ef90f2aed80
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
@@ -128,16 +108,6 @@ func TestStackCreateInvalidStackFail(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-=======
->>>>>>> upstream/master
-=======
->>>>>>> 456d5f33ed1b4e600178dc87f7e31ef90f2aed80
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
@@ -165,16 +135,6 @@ func TestStackCreateInvalidURLFail(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-=======
->>>>>>> upstream/master
-=======
->>>>>>> 456d5f33ed1b4e600178dc87f7e31ef90f2aed80
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
