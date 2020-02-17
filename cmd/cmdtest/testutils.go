@@ -389,3 +389,11 @@ func Exists(path string) (bool, error) {
 	}
 	return true, err
 }
+
+func GetEnvStacksList() string {
+	stacksList := os.Getenv("STACKS_LIST")
+	if stacksList == "" {
+		stacksList = "incubator/nodejs"
+	}
+	return stacksList
+}
