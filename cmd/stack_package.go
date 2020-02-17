@@ -76,10 +76,6 @@ type IndexYamlStackTemplate struct {
 	URL string `yaml:"url"`
 }
 
-// type IndexJson struct {
-// 	Stacks []IndexJsonStack
-// }
-
 // struct to convert yaml to json files
 type IndexJsonStack struct {
 	DisplayName  string `json:"displayName"`
@@ -190,7 +186,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			// get the necessary data from the current stack.yaml
 			stackYaml, err = getStackData(stackPath)
 			if err != nil {
-				return err
+				return errors.Errorf("Error parsing the stack.yaml file: %v", err)
 			}
 
 			// check for templates dir, error out if its not there
