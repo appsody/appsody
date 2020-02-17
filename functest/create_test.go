@@ -14,13 +14,11 @@
 package functest
 
 import (
-	"bytes"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -44,9 +42,6 @@ func TestFuncCreateValidCases(t *testing.T) {
 			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 			defer cleanup()
 
-			var outBuffer bytes.Buffer
-			log := &cmd.LoggingConfig{}
-			log.InitLogging(&outBuffer, &outBuffer)
 			sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 			packageArgs := []string{"stack", "package"}
@@ -111,9 +106,6 @@ func TestFuncCreateInvalidCases(t *testing.T) {
 			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 			defer cleanup()
 
-			var outBuffer bytes.Buffer
-			log := &cmd.LoggingConfig{}
-			log.InitLogging(&outBuffer, &outBuffer)
 			sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 			packageArgs := []string{"stack", "package"}
