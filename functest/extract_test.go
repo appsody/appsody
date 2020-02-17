@@ -38,10 +38,7 @@ func TestExtract(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
+	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
@@ -54,7 +51,6 @@ func TestExtract(t *testing.T) {
 
 		extractDir := parentDir + "/appsody-extract-test-extract-" + strings.ReplaceAll(stackRaw[i], "/", "_")
 
-		defer os.RemoveAll(extractDir)
 		t.Log("Created extraction dir: " + extractDir)
 
 		// appsody init inside projectDir

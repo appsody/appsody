@@ -15,7 +15,6 @@ package functest
 
 import (
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -23,9 +22,6 @@ import (
 
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
-
-// get the STACKSLIST environment variable
-var stacksList = os.Getenv("STACKS_LIST")
 
 // Test appsody run of the nodejs-express stack and check the http://localhost:3000/health endpoint
 func TestRun(t *testing.T) {
@@ -101,10 +97,7 @@ func TestRun(t *testing.T) {
 // Simple test for appsody run command. A future enhancement would be to verify the endpoint or console output if there is no web endpoint
 func TestRunSimple(t *testing.T) {
 
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
+	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")

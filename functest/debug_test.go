@@ -25,11 +25,6 @@ import (
 // Simple test for appsody debug command. A future enhancement would be to verify the debug output
 func TestDebugSimple(t *testing.T) {
 
-	// if stacksList is empty, set to the default
-	if stacksList == "" {
-		stacksList = "incubator/nodejs"
-	}
-
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
 
@@ -58,7 +53,7 @@ func TestDebugSimple(t *testing.T) {
 		runChannel := make(chan error)
 		containerName := "testDebugSimpleContainer" + strings.ReplaceAll(stackRaw[i], "/", "_")
 		go func() {
-			_, err := cmdtest.RunAppsody(sandbox, "debug", "--name", containerName, "-P")
+			_, err := cmdtest.RunAppsody(sandbox, "debug", "--name", containerName)
 			runChannel <- err
 			close(runChannel)
 		}()
