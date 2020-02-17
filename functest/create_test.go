@@ -14,12 +14,10 @@
 package functest
 
 import (
-	"bytes"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -28,9 +26,9 @@ func TestStackCreateDevLocal(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
+	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
+	// folder within the temp directory that has been generated for sandboxing purposes, rather than
+	// the usual core temp directory
 	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
@@ -61,9 +59,9 @@ func TestStackCreateCustomRepo(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
+	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
+	// folder within the temp directory that has been generated for sandboxing purposes, rather than
+	// the usual core temp directory
 	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
@@ -110,9 +108,9 @@ func TestStackCreateInvalidStackFail(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
+	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
+	// folder within the temp directory that has been generated for sandboxing purposes, rather than
+	// the usual core temp directory
 	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
@@ -137,9 +135,9 @@ func TestStackCreateInvalidURLFail(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
+	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
+	// folder within the temp directory that has been generated for sandboxing purposes, rather than
+	// the usual core temp directory
 	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
