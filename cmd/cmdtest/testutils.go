@@ -377,6 +377,46 @@ func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
 	return outBuffer.String(), err
 }
 
+// RunBuildahCmdExec runs the buildah command with the given args in a new process
+// The stdout and stderr are captured, printed, and returned
+// args will be passed to the buildah command
+// workingDir will be the directory the command runs in
+func RunBuildahCmdExec(args []string, t *testing.T) (string, error) {
+	cmdArgs := []string{"buildah"}
+	cmdArgs = append(cmdArgs, args...)
+	t.Log(cmdArgs)
+	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	outReader, outWriter := io.Pipe()
+	execCmd.Stdout = outWriter
+	execCmd.Stderr = outWriter
+	outScanner := bufio.NewScanner(outReader)
+	var outBuffer bytes.Buffer
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		for outScanner.Scan() {
+			out := outScanner.Bytes()
+			outBuffer.Write(out)
+			outBuffer.WriteByte('\n')
+			t.Log(string(out))
+		}
+		wg.Done()
+	}()
+
+	err := execCmd.Start()
+	if err != nil {
+		return "", err
+	}
+	err = execCmd.Wait()
+
+	// close the writer first, so it sends an EOF to the scanner above,
+	// then wait for the scanner to finish before closing the reader
+	outWriter.Close()
+	wg.Wait()
+	outReader.Close()
+	return outBuffer.String(), err
+}
+
 // Checks whether an inode (it does not bother
 // about file or folder) exists or not.
 func Exists(path string) (bool, error) {

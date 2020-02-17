@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -35,6 +36,90 @@ type expectedDeploymentConfig struct {
 	imageTag   string
 	namespace  string
 	knative    bool
+}
+
+func TestSimpleBuildCases(t *testing.T) {
+	var buildSimpleTests = []struct {
+		testName string
+		buildah  bool
+		args     []string // input
+	}{
+		{"Test simple build Docker", false, []string{"build"}},
+		{"Test simple build Buildah", true, []string{"build", "--buildah"}},
+	}
+	for _, testData := range buildSimpleTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+
+			if tt.buildah {
+				if runtime.GOOS != "linux" {
+					t.Skip()
+				}
+			}
+			stacksList := cmdtest.GetEnvStacksList()
+
+			// split the appsodyStack env variable
+			stackRaw := strings.Split(stacksList, " ")
+
+			// loop through the stacks
+			for i := range stackRaw {
+
+				t.Log("***Testing stack: ", stackRaw[i], "***")
+
+				sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+				defer cleanup()
+
+				// first add the test repo index
+				_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				// appsody init
+				t.Log("Running appsody init...")
+				_, err = cmdtest.RunAppsody(sandbox, "init", stackRaw[i])
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				// appsody build
+				_, err = cmdtest.RunAppsody(sandbox, tt.args...)
+				if err != nil {
+					t.Fatal("The appsody build command failed: ", err)
+				}
+
+				expectedImageTag := "dev.local/" + sandbox.ProjectName
+				if tt.buildah {
+					listOutput, listErr := cmdtest.RunBuildahCmdExec([]string{"images", "-q", expectedImageTag}, t)
+					if listErr != nil {
+						t.Fatal(listErr)
+					}
+					if listOutput == "" {
+						t.Errorf("Expected appsody build to create buildah image '%s' but it was not found.", expectedImageTag)
+					}
+
+					//delete the image
+					deleteImage(expectedImageTag, true, t)
+				} else {
+					listOutput, listErr := cmdtest.RunDockerCmdExec([]string{"images", "-q", expectedImageTag}, t)
+					if listErr != nil {
+						t.Fatal(listErr)
+					}
+					if listOutput == "" {
+						t.Errorf("Expected appsody build to create docker image '%s' but it was not found.", expectedImageTag)
+					}
+
+					//delete the image
+					deleteImage(expectedImageTag, false, t)
+				}
+			}
+
+		})
+	}
 }
 
 // Simple test for appsody build command. A future enhancement would be to verify the image that gets built.
@@ -82,7 +167,7 @@ func TestBuildSimple(t *testing.T) {
 		}
 
 		//delete the image
-		deleteImage(expectedImageTag, t)
+		deleteImage(expectedImageTag, false, t)
 	}
 }
 
@@ -198,13 +283,20 @@ func TestBuildLabels(t *testing.T) {
 	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, "", false})
 
 	//delete the image
-	deleteImage(imageName, t)
+	deleteImage(imageName, false, t)
 }
 
-func deleteImage(imageName string, t *testing.T) {
-	_, err := cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName}, t)
-	if err != nil {
-		t.Logf("Ignoring error running docker image rm: %s", err)
+func deleteImage(imageName string, buildah bool, t *testing.T) {
+	if buildah {
+		_, err := cmdtest.RunBuildahCmdExec([]string{"image", "rm", imageName}, t)
+		if err != nil {
+			t.Logf("Ignoring error running docker image rm: %s", err)
+		}
+	} else {
+		_, err := cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName}, t)
+		if err != nil {
+			t.Logf("Ignoring error running docker image rm: %s", err)
+		}
 	}
 }
 
@@ -248,7 +340,7 @@ func TestDeploymentConfig(t *testing.T) {
 		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, "", true})
 
 		//delete the image
-		deleteImage(imageName, t)
+		deleteImage(imageName, false, t)
 	}
 }
 
@@ -315,7 +407,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 				checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", expectedImageName, "", tt.appDeployExpected})
 
 				//delete the image
-				deleteImage(expectedImageName, t)
+				deleteImage(expectedImageName, false, t)
 			})
 		}
 	}
