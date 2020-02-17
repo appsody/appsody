@@ -14,10 +14,12 @@
 package functest
 
 import (
+	"bytes"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
