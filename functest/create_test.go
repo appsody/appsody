@@ -24,198 +24,155 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestStackCreateDevLocal(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	packageArgs := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
-	if err != nil {
-		t.Fatal(err)
+func TestFuncCreateValidCases(t *testing.T) {
+	var stackCreateValidTests = []struct {
+		testName   string
+		addToRepo  bool
+		createArgs []string
+		stackName  string
+	}{
+		{"Create with dev.local stack", false, []string{"stack", "create", "testing-stack", "--copy", "dev.local/starter"}, "testing-stack"},
+		{"Create with custom repo stack", true, []string{"stack", "create", "testing-stack", "--copy", "test-repo/starter"}, "testing-stack"},
 	}
+	for _, testData := range stackCreateValidTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "dev.local/starter"}
-	_, err = cmdtest.RunAppsody(sandbox, createArgs...)
-	if err != nil {
-		t.Fatal(err)
+			var outBuffer bytes.Buffer
+			log := &cmd.LoggingConfig{}
+			log.InitLogging(&outBuffer, &outBuffer)
+			sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
+
+			packageArgs := []string{"stack", "package"}
+			_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			testStackName := tt.stackName
+
+			if tt.addToRepo {
+
+				devlocalFolder := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
+
+				addToRepoArgs := []string{"stack", "add-to-repo", "test-repo", "--release-url", "file://" + devlocalFolder + "/"}
+
+				_, err = cmdtest.RunAppsody(sandbox, addToRepoArgs...)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				testRepoIndex := filepath.Join(devlocalFolder, "test-repo-index.yaml")
+
+				addRepoArgs := []string{"repo", "add", "test-repo", "file://" + testRepoIndex}
+				_, err = cmdtest.RunAppsody(sandbox, addRepoArgs...)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+			}
+			_, err = cmdtest.RunAppsody(sandbox, tt.createArgs...)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, testStackName))
+			if !exists {
+				t.Fatal(err)
+			}
+		})
 	}
-
-	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, "testing-stack"))
-	if !exists {
-		t.Fatal(err)
-	}
-
 }
 
-func TestStackCreateCustomRepo(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	packageArgs := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
-	if err != nil {
-		t.Fatal(err)
+func TestFuncCreateInvalidCases(t *testing.T) {
+	var stackCreateInvalidTests = []struct {
+		testName       string
+		addToRepo      bool
+		removeSrc      bool
+		createArgs     []string
+		expectedOutput string
+	}{
+		{"Create with invalid stack", false, false, []string{"stack", "create", "testing-stack", "--copy", "dev.local/invalid"}, "Could not find stack specified in repository index"},
+		{"Create with no src", false, true, []string{"stack", "create", "testing-stack", "--copy", "dev.local/starter"}, "No source URL specified"},
+		{"Create with invalid url", true, false, []string{"stack", "create", "testing-stack", "--copy", "test-repo/starter"}, "Could not download file://invalidurl"},
 	}
+	for _, testData := range stackCreateInvalidTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 
-	devlocalFolder := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
+			var outBuffer bytes.Buffer
+			log := &cmd.LoggingConfig{}
+			log.InitLogging(&outBuffer, &outBuffer)
+			sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
-	addToRepoArgs := []string{"stack", "add-to-repo", "test-repo", "--release-url", "file://" + devlocalFolder + "/"}
+			packageArgs := []string{"stack", "package"}
+			_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	_, err = cmdtest.RunAppsody(sandbox, addToRepoArgs...)
-	if err != nil {
-		t.Fatal(err)
+			if tt.addToRepo {
+
+				devlocalFolder := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
+
+				addToRepoArgs := []string{"stack", "add-to-repo", "test-repo", "--release-url", "file://invalidurl/"}
+
+				_, err = cmdtest.RunAppsody(sandbox, addToRepoArgs...)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				testRepoIndex := filepath.Join(devlocalFolder, "test-repo-index.yaml")
+
+				addRepoArgs := []string{"repo", "add", "test-repo", "file://" + testRepoIndex}
+				_, err = cmdtest.RunAppsody(sandbox, addRepoArgs...)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+			}
+
+			if tt.removeSrc {
+				devlocalFile := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local", "dev.local-index.yaml")
+
+				file, err := ioutil.ReadFile(devlocalFile)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				lines := strings.Split(string(file), "\n")
+
+				for i, line := range lines {
+					if strings.Contains(line, "src:") {
+						lines[i] = ""
+					}
+				}
+				output := strings.Join(lines, "\n")
+				err = ioutil.WriteFile(devlocalFile, []byte(output), 0644)
+
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			output, err := cmdtest.RunAppsody(sandbox, tt.createArgs...)
+			if err != nil {
+				if !strings.Contains(output, tt.expectedOutput) {
+					t.Errorf("String" + tt.expectedOutput + " not found in output")
+				}
+			} else {
+				t.Error("Stack create command unexpectedly passed")
+			}
+		})
 	}
-
-	testRepoIndex := filepath.Join(devlocalFolder, "test-repo-index.yaml")
-
-	addRepoArgs := []string{"repo", "add", "test-repo", "file://" + testRepoIndex}
-	_, err = cmdtest.RunAppsody(sandbox, addRepoArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "test-repo/starter"}
-	_, err = cmdtest.RunAppsody(sandbox, createArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, "testing-stack"))
-	if !exists {
-		t.Fatal(err)
-	}
-
-}
-
-func TestStackCreateInvalidStackFail(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	packageArgs := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "dev.local/invalid"}
-	output, err := cmdtest.RunAppsody(sandbox, createArgs...)
-	if err != nil {
-		if !strings.Contains(output, "Could not find stack specified in repository index") {
-			t.Errorf("String \"Could not find stack specified in repository index\" not found in output")
-		}
-	} else {
-		t.Error("Stack create command unexpectedly passed with an invalid repository name")
-	}
-
-}
-func TestStackCreateInvalidURLFail(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	packageArgs := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	devlocalFolder := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
-
-	addToRepoArgs := []string{"stack", "add-to-repo", "test-repo", "--release-url", "file://invalidurl/"}
-
-	_, err = cmdtest.RunAppsody(sandbox, addToRepoArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testRepoIndex := filepath.Join(devlocalFolder, "test-repo-index.yaml")
-
-	addRepoArgs := []string{"repo", "add", "test-repo", "file://" + testRepoIndex}
-	_, err = cmdtest.RunAppsody(sandbox, addRepoArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "test-repo/starter"}
-	output, err := cmdtest.RunAppsody(sandbox, createArgs...)
-	if err != nil {
-		if !strings.Contains(output, "Could not download file://invalidurl") {
-			t.Errorf("String \"Could not download file://invalidurl\" not found in output")
-		}
-	} else {
-		t.Error("Stack create command unexpectedly passed with an invalid repository name")
-	}
-
-}
-func TestStackCreateNoSrcFail(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	packageArgs := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	devlocalFile := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local", "dev.local-index.yaml")
-
-	file, err := ioutil.ReadFile(devlocalFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	lines := strings.Split(string(file), "\n")
-
-	for i, line := range lines {
-		if strings.Contains(line, "src:") {
-			lines[i] = ""
-		}
-	}
-	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(devlocalFile, []byte(output), 0644)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "dev.local/starter"}
-	output, err = cmdtest.RunAppsody(sandbox, createArgs...)
-
-	if err != nil {
-		if !strings.Contains(output, "No source URL specified") {
-			t.Errorf("String \"No source URL specified\" not found in output")
-		}
-	} else {
-		t.Error("Stack create command unexpectedly passed with no source url")
-	}
-
 }
