@@ -1655,7 +1655,7 @@ func pullCmd(log *LoggingConfig, imageToPull string, buildah bool, dryrun bool) 
 	return nil
 }
 
-func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string, buildah bool) bool {
+func checkImageExistsLocally(log *LoggingConfig, imageToPull string, buildah bool) bool {
 
 	var cmdName string
 	if buildah {
@@ -1717,14 +1717,14 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 		pullPolicyAlways = false
 	}
 	if !pullPolicyAlways {
-		localImageFound = checkDockerImageExistsLocally(config.LoggingConfig, imageToPull, config.Buildah)
+		localImageFound = checkImageExistsLocally(config.LoggingConfig, imageToPull, config.Buildah)
 	}
 
 	if pullPolicyAlways || (!pullPolicyAlways && !localImageFound) {
 		err := pullCmd(config.LoggingConfig, imageToPull, config.Buildah, config.Dryrun)
 		if err != nil {
 			if pullPolicyAlways {
-				localImageFound = checkDockerImageExistsLocally(config.LoggingConfig, imageToPull, config.Buildah)
+				localImageFound = checkImageExistsLocally(config.LoggingConfig, imageToPull, config.Buildah)
 			}
 			if !localImageFound {
 				return errors.Errorf("Could not find the image either in docker hub or locally: %s", imageToPull)
