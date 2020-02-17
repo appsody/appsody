@@ -544,6 +544,10 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 		}
 	}
 
+	if deploymentManifest.Spec == nil {
+		deploymentManifest.Spec = make(map[string]interface{})
+	}
+
 	if deploymentManifest.Spec["createKnativeService"] == nil || config.knativeFlagPresent {
 		deploymentManifest.Spec["createKnativeService"] = config.knative
 	}
@@ -558,7 +562,7 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 	//// - if the namespace doesn't exist in the manifest, and a namespace flag is not set: we write a "default" namespace
 	//// - if the namespace does exist in the manifest, and a namespace flag is set: we verify that they are the same. If they are not we throw an error.
 	//// - if the namespace doesn't exist in the manifest, and a namespace flag is set: we write the value passed an argument with the flag.
-	if deploymentManifest.Namespace == "" {
+	if deploymentManifest.Namespace == "" && config.namespaceFlagPresent {
 		deploymentManifest.Namespace = config.namespace
 	}
 

@@ -344,6 +344,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 
 func makeAppDeployYaml(projectDir string, createKnativeService bool) error {
 	deploymentManifest := cmd.DeploymentManifest{}
+	deploymentManifest.Spec = make(map[string]interface{})
 	deploymentManifest.Spec["createKnativeService"] = createKnativeService
 
 	data, err := yaml.Marshal(deploymentManifest)
