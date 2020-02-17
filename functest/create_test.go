@@ -99,22 +99,6 @@ func TestStackCreateCustomRepo(t *testing.T) {
 
 }
 
-func TestStackCreateInvalidRepoFail(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "invalid/starter"}
-	output, err := cmdtest.RunAppsody(sandbox, createArgs...)
-	if err != nil {
-		if !strings.Contains(output, "Repository: 'invalid' was not found in the repository.yaml file") {
-			t.Errorf("String \"Repository: 'invalid' was not found in the repository.yaml file\" not found in output")
-		}
-	} else {
-		t.Error("Stack create command unexpectededly passed with an invalid repository name")
-	}
-}
-
 func TestStackCreateInvalidStackFail(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
@@ -138,7 +122,7 @@ func TestStackCreateInvalidStackFail(t *testing.T) {
 			t.Errorf("String \"Could not find stack specified in repository index\" not found in output")
 		}
 	} else {
-		t.Error("Stack create command unexpectededly passed with an invalid repository name")
+		t.Error("Stack create command unexpectedly passed with an invalid repository name")
 	}
 
 }
@@ -182,7 +166,7 @@ func TestStackCreateInvalidURLFail(t *testing.T) {
 			t.Errorf("String \"Could not download file://invalidurl\" not found in output")
 		}
 	} else {
-		t.Error("Stack create command unexpectededly passed with an invalid repository name")
+		t.Error("Stack create command unexpectedly passed with an invalid repository name")
 	}
 
 }
@@ -231,7 +215,7 @@ func TestStackCreateNoSrcFail(t *testing.T) {
 			t.Errorf("String \"No source URL specified\" not found in output")
 		}
 	} else {
-		t.Error("Stack create command unexpectededly passed with no source url")
+		t.Error("Stack create command unexpectedly passed with no source url")
 	}
 
 }

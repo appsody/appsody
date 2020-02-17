@@ -29,7 +29,8 @@ func TestStackCreateValidCases(t *testing.T) {
 		stackName string
 	}{
 		{"No args", []string{}, "test-stack-no-args"},
-		{"Existing default repo", []string{"--copy", "incubator/nodejs"}, "test-stack-existing-repo"},
+		{"Existing repo", []string{"--copy", "incubator/nodejs"}, "test-stack-existing-repo"},
+		{"Existing default repo", []string{"--copy", "nodejs"}, "test-stack-default-repo"},
 	}
 	for _, testData := range stackCreateValidTests {
 		// need to set testData to a new variable scoped under the for loop
