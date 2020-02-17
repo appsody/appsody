@@ -24,7 +24,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 	"sigs.k8s.io/yaml"
@@ -344,9 +343,10 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 }
 
 func makeAppDeployYaml(projectDir string, createKnativeService bool) error {
-	appsodyApplication := v1beta1.AppsodyApplication{}
-	appsodyApplication.Spec.CreateKnativeService = &createKnativeService
-	data, err := yaml.Marshal(appsodyApplication)
+	deploymentManifest := cmd.DeploymentManifest{}
+	deploymentManifest.Spec["createKnativeService"] = createKnativeService
+
+	data, err := yaml.Marshal(deploymentManifest)
 	if err != nil {
 		return fmt.Errorf("error marshalling yaml: %v", err)
 	}
@@ -372,9 +372,9 @@ func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploy
 		t.Errorf("Could not read %s: %s", deployFile, err)
 	}
 
-	var appsodyApplication v1beta1.AppsodyApplication
+	var deploymentManifest cmd.DeploymentManifest
 
-	err = yaml.Unmarshal(yamlFileBytes, &appsodyApplication)
+	err = yaml.Unmarshal(yamlFileBytes, &deploymentManifest)
 	if err != nil {
 		t.Logf("app-deploy.yaml formatting error: %s", err)
 	}
@@ -384,22 +384,22 @@ func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploy
 		expectedApplicationImage = expectedDeploymentConfig.pullURL + "/" + expectedDeploymentConfig.imageTag
 	}
 
-	if appsodyApplication.Spec.ApplicationImage != expectedApplicationImage {
-		t.Errorf("Incorrect ApplicationImage in app-deploy.yaml. Expected %s but found %s", expectedApplicationImage, appsodyApplication.Spec.ApplicationImage)
+	if deploymentManifest.Spec["applicationImage"] != expectedApplicationImage {
+		t.Errorf("Incorrect ApplicationImage in app-deploy.yaml. Expected %s but found %s", expectedApplicationImage, deploymentManifest.Spec["applicationImage"])
 	}
 
-	if *appsodyApplication.Spec.CreateKnativeService != expectedDeploymentConfig.knative {
+	if deploymentManifest.Spec["createKnativeService"] != expectedDeploymentConfig.knative {
 		t.Error("CreateKnativeService not set to true in the app-deploy.yaml when using --knative flag")
 	}
 
-	if appsodyApplication.Namespace != expectedDeploymentConfig.namespace {
-		t.Errorf("Incorrect Namespace in app-deploy.yaml. Expected %s but found %s", expectedDeploymentConfig.namespace, appsodyApplication.Namespace)
+	if deploymentManifest.Namespace != expectedDeploymentConfig.namespace {
+		t.Errorf("Incorrect Namespace in app-deploy.yaml. Expected %s but found %s", expectedDeploymentConfig.namespace, deploymentManifest.Namespace)
 	}
 
-	verifyImageAndConfigLabelsMatch(t, appsodyApplication, expectedDeploymentConfig.imageTag)
+	verifyImageAndConfigLabelsMatch(t, deploymentManifest, expectedDeploymentConfig.imageTag)
 }
 
-func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.AppsodyApplication, imageTag string) {
+func verifyImageAndConfigLabelsMatch(t *testing.T, deploymentManifest cmd.DeploymentManifest, imageTag string) {
 	args := []string{"inspect", "--format='{{json .Config.Labels }}'", imageTag}
 	output, err := cmdtest.RunCmdExec("docker", args, t)
 	if err != nil {
@@ -419,8 +419,8 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.Ap
 			t.Errorf("Could not convert label to Kubernetes format: %s", err)
 		}
 
-		label := appsodyApplication.Labels[key]
-		annotation := appsodyApplication.Annotations[key]
+		label := deploymentManifest.Labels[key]
+		annotation := deploymentManifest.Annotations[key]
 		if label == "" && annotation == "" {
 			t.Errorf("Could not find label %s in deployment config", key)
 		}

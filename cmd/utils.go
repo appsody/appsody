@@ -52,6 +52,7 @@ type ProjectConfig struct {
 	Description     string
 	License         string
 	Maintainers     []Maintainer
+	Operator        string
 }
 type OwnerReference struct {
 	APIVersion         string `yaml:"apiVersion"`

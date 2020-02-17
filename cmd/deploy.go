@@ -93,12 +93,12 @@ Run this command from the root directory of your Appsody project.`,
 			if exists {
 				config.Info.Logf("Found deployment manifest %s", configFile)
 
-				appsodyApplication, err := getAppsodyApplication(configFile)
+				deploymentManifest, err := getDeploymentManifest(configFile)
 				if err != nil {
 					return err
 				}
 
-				manifestNamespace := appsodyApplication.Namespace
+				manifestNamespace := deploymentManifest.Namespace
 				if manifestNamespace != "" {
 					if namespace != "" && manifestNamespace != namespace {
 						return errors.Errorf("the namespace \"%s\" from the deployment manifest does not match the namespace \"%s\" passed as an argument.", manifestNamespace, namespace)
@@ -173,14 +173,14 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.Errorf("Failed to deploy to your Kubernetes cluster: %v", err)
 			}
 
-			appsodyApplication, err := getAppsodyApplication(configFile)
+			deploymentManifest, err := getDeploymentManifest(configFile)
 			if err != nil {
 				return err
 			}
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
-			config.Info.log("Appsody Deployment name is: ", appsodyApplication.Name)
-			out, err := KubeGetDeploymentURL(config.LoggingConfig, appsodyApplication.Name, namespace, dryrun)
+			config.Info.log("Appsody Deployment name is: ", deploymentManifest.Name)
+			out, err := KubeGetDeploymentURL(config.LoggingConfig, deploymentManifest.Name, namespace, dryrun)
 			// Performing the kubectl apply
 			if err != nil {
 				return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
