@@ -26,13 +26,6 @@ func TestStackCreateDevLocal(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-<<<<<<< HEAD
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-=======
->>>>>>> upstream/master
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
@@ -66,13 +59,6 @@ func TestStackCreateCustomRepo(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-<<<<<<< HEAD
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-=======
->>>>>>> upstream/master
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
@@ -122,13 +108,6 @@ func TestStackCreateInvalidStackFail(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-<<<<<<< HEAD
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-=======
->>>>>>> upstream/master
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
@@ -156,13 +135,6 @@ func TestStackCreateInvalidURLFail(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-<<<<<<< HEAD
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-=======
->>>>>>> upstream/master
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
