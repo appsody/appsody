@@ -15,6 +15,7 @@ package cmd_test
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
@@ -110,5 +111,37 @@ func testContentsRepoListOutput(t *testing.T, list cmd.RepositoryFile, output st
 
 	if len(list.Repositories) != 2 {
 		t.Errorf("Expected 2 repos! CLI output:\n%s", output)
+	}
+}
+
+func TestRepoListBadRepoFile(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	sandbox.SetConfigInTestData("bad_format_repository_config")
+
+	args := []string{"repo", "list", "--config", sandbox.ConfigFile}
+
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err == nil {
+		t.Error("Expected non-zero exit code")
+	}
+	expectedError := "Failed to parse repository file yaml"
+	if !strings.Contains(output, expectedError) {
+		t.Errorf("Did not get expected error: %s", expectedError)
+	}
+}
+
+func TestRepoListTooManyArgs(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"repo", "list", "incubator"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err == nil {
+		t.Error("Expected non-zero exit code")
+	}
+	if !strings.Contains(output, "Unexpected argument.") {
+		t.Error("Failed to flag too many arguments.")
 	}
 }
