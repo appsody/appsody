@@ -597,6 +597,7 @@ func getProjectConfig(config *RootCommandConfig) (*ProjectConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	config.Debug.logf("Project stack before override: %s", projectConfig.Stack)
 
 	imageComponents := strings.Split(projectConfig.Stack, "/")
 	if len(imageComponents) < 3 {
@@ -2323,4 +2324,44 @@ func ArgsToString(args []string) string {
 		}
 	}
 	return returnStr
+}
+
+func dockerStop(rootConfig *RootCommandConfig, imageName string, dryrun bool) error {
+	cmdName := "docker"
+	cmdArgs := []string{"stop", imageName}
+	err := execAndWait(rootConfig.LoggingConfig, cmdName, cmdArgs, rootConfig.Debug, dryrun)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func containerRemove(log *LoggingConfig, imageName string, buildah bool, dryrun bool) error {
+	cmdName := "docker"
+	//Added "-f" to force removal if container is still running or image has containers
+	cmdArgs := []string{"rm", imageName, "-f"}
+	if buildah {
+		cmdName = "buildah"
+		cmdArgs = []string{"rm", imageName}
+	}
+	err := execAndWait(log, cmdName, cmdArgs, log.Debug, dryrun)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//RemoveIfExists - Checks if inode exists and removes it if it does
+func RemoveIfExists(path string) error {
+	pathExists, err := Exists(path)
+	if err != nil {
+		return errors.Errorf("Error checking that: %v exists: %v", path, err)
+	}
+	if pathExists {
+		err = os.RemoveAll(path)
+		if err != nil {
+			return errors.Errorf("Error removing: %v and children: %v", path, err)
+		}
+	}
+	return nil
 }

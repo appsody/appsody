@@ -19,32 +19,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func dockerStop(rootConfig *RootCommandConfig, imageName string, dryrun bool) error {
-	cmdName := "docker"
-	cmdArgs := []string{"stop", imageName}
-	err := execAndWait(rootConfig.LoggingConfig, cmdName, cmdArgs, rootConfig.Debug, dryrun)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func containerRemove(log *LoggingConfig, imageName string, buildah bool, dryrun bool) error {
-	cmdName := "docker"
-	//Added "-f" to force removal if container is still running or image has containers
-	cmdArgs := []string{"rm", imageName, "-f"}
-	if buildah {
-		cmdName = "buildah"
-		cmdArgs = []string{"rm", imageName}
-	}
-	err := execAndWait(log, cmdName, cmdArgs, log.Debug, dryrun)
-	if err != nil {
-		return err
-	}
-	return nil
-
-}
-
 func newRunCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	config := &devCommonConfig{RootCommandConfig: rootConfig}
 	// runCmd represents the run command

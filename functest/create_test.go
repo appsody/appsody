@@ -14,13 +14,10 @@
 package functest
 
 import (
-	"bytes"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -29,26 +26,13 @@ func TestStackCreateDevLocal(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
-	err := cmd.CopyDir(log, stackDir, targetDir)
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, targetDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
+	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,14 +43,13 @@ func TestStackCreateDevLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, "testing-stack"))
 
-	if !exists {
-		t.Fatal(err)
-	}
-	os.RemoveAll("testing-stack")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("Error checking if the stack exists: ", err)
+	}
+	if !exists {
+		t.Fatal("Stack doesn't exist despite appsody stack create executing correctly.")
 	}
 
 }
@@ -76,26 +59,13 @@ func TestStackCreateCustomRepo(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
-	err := cmd.CopyDir(log, stackDir, targetDir)
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, targetDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
+	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,33 +93,14 @@ func TestStackCreateCustomRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	exists, err := cmdtest.Exists("testing-stack")
+	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, "testing-stack"))
 
+	if err != nil {
+		t.Fatal("Error checking if the stack exists: ", err)
+	}
 	if !exists {
-		t.Fatal(err)
+		t.Fatal("Stack doesn't exist despite appsody stack create executing correctly.")
 	}
-	os.RemoveAll("testing-stack")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-}
-
-func TestStackCreateInvalidRepoFail(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "invalid/starter"}
-	_, err := cmdtest.RunAppsody(sandbox, createArgs...)
-	if err != nil {
-		if !strings.Contains(err.Error(), "Repository: invalid not found in repository.yaml file") {
-			t.Errorf("String \"Repository: invalid not found in repository.yaml file\" not found in output")
-		}
-	} else {
-		t.Error("Stack create command unexpectededly passed with an invalid repository name")
-	}
-
 }
 
 func TestStackCreateInvalidStackFail(t *testing.T) {
@@ -157,26 +108,13 @@ func TestStackCreateInvalidStackFail(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
-	err := cmd.CopyDir(log, stackDir, targetDir)
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, targetDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
+	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,8 +122,8 @@ func TestStackCreateInvalidStackFail(t *testing.T) {
 	createArgs := []string{"stack", "create", "testing-stack", "--copy", "dev.local/invalid"}
 	_, err = cmdtest.RunAppsody(sandbox, createArgs...)
 	if err != nil {
-		if !strings.Contains(err.Error(), "Stack not found in index") {
-			t.Errorf("String \"Stack not found in index\" not found in output")
+		if !strings.Contains(err.Error(), "Could not find stack specified in repository index") {
+			t.Errorf("String \"Could not find stack specified in repository index\" not found in output")
 		}
 	} else {
 		t.Error("Stack create command unexpectededly passed with an invalid repository name")
@@ -197,26 +135,13 @@ func TestStackCreateInvalidURLFail(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	stackDir := filepath.Join(sandbox.TestDataPath, "starter")
-	targetDir := filepath.Join(sandbox.ProjectDir, "starter")
-	err := cmd.CopyDir(log, stackDir, targetDir)
-	if err != nil {
-		t.Errorf("Problem copying %s to %s: %v", stackDir, targetDir, err)
-	} else {
-		t.Logf("Copied %s to %s", stackDir, targetDir)
-	}
-
 	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
 	// folder within the temp directory that has been generated for sandboxing purposes, rather than
 	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.ProjectDir, "starter")
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
 	packageArgs := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
+	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
 	if err != nil {
 		t.Fatal(err)
 	}

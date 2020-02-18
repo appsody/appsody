@@ -1,0 +1,22 @@
+apiVersion: v2
+stacks:
+- id: java-microprofile
+  name: Eclipse MicroProfile®
+  version: 0.2.21
+  description: Eclipse MicroProfile on Open Liberty & OpenJ9 using Maven
+  license: Apache-2.0
+  language: java
+  maintainers:
+  - name: Emily Jiang
+    email: emijiang6@googlemail.com
+    github-id: Emily-Jiang
+  - name: Neeraj Laad
+    email: neeraj.laad@gmail.com
+    github-id: neeraj-laad
+  - name: Ozzy
+    email: ozzy@ca.ibm.com
+    github-id: BarDweller
+  default-template: default
+  templates:
+  - id: default
+    url: https://github.com/appsody/stacks/releases/download/java-microprofile-v0.2.21/incubator.java-microprofile.v0.2.21.templates.default.tar.gz
