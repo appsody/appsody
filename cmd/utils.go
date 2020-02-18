@@ -2329,6 +2329,21 @@ func containerRemove(log *LoggingConfig, imageName string, buildah bool, dryrun 
 	err := execAndWait(log, cmdName, cmdArgs, log.Debug, dryrun)
 	if err != nil {
 		return err
+    	}
+	return nil
+}
+    
+//RemoveIfExists - Checks if inode exists and removes it if it does
+func RemoveIfExists(path string) error {
+	pathExists, err := Exists(path)
+	if err != nil {
+		return errors.Errorf("Error checking that: %v exists: %v", path, err)
+	}
+	if pathExists {
+		err = os.RemoveAll(path)
+		if err != nil {
+			return errors.Errorf("Error removing: %v and children: %v", path, err)
+		}
 	}
 	return nil
 }
