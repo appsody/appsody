@@ -146,8 +146,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				stackEntryURL := stackEntry.SourceURL
 
 				if stackEntryURL == "" {
-					//TODO: REMOVE OLD CREATE METHOD AFTER NEXT RELEASE AND UPDATE STACKS
-					return errors.New("No source URL specified.  Use the add-to-repo command with the --release-url flag to your repo")
+					return errors.New("No source URL found for stack in repository index file.  Use the add-to-repo command with the --release-url flag to your repository")
 				}
 
 				// download source.tar.gz of selected stack source

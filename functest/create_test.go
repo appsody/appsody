@@ -29,8 +29,8 @@ func TestFuncCreateValidCases(t *testing.T) {
 		createArgs []string
 		stackName  string
 	}{
-		{"Create with dev.local stack", false, []string{"stack", "create", "testing-stack", "--copy", "dev.local/starter"}, "testing-stack"},
-		{"Create with custom repo stack", true, []string{"stack", "create", "testing-stack", "--copy", "test-repo/starter"}, "testing-stack"},
+		{"Create with dev.local stack", false, []string{"dev.local/starter"}, "testing-stack"},
+		{"Create with custom repo stack", true, []string{"test-repo/starter"}, "testing-stack"},
 	}
 	for _, testData := range stackCreateValidTests {
 		// need to set testData to a new variable scoped under the for loop
@@ -71,7 +71,8 @@ func TestFuncCreateValidCases(t *testing.T) {
 				}
 
 			}
-			_, err = cmdtest.RunAppsody(sandbox, tt.createArgs...)
+			createArgs := append([]string{"stack", "create", "testing-stack", "--copy"}, tt.createArgs...)
+			_, err = cmdtest.RunAppsody(sandbox, createArgs...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -92,9 +93,9 @@ func TestFuncCreateInvalidCases(t *testing.T) {
 		createArgs     []string
 		expectedOutput string
 	}{
-		{"Create with invalid stack", false, false, []string{"stack", "create", "testing-stack", "--copy", "dev.local/invalid"}, "Could not find stack specified in repository index"},
-		{"Create with no src", false, true, []string{"stack", "create", "testing-stack", "--copy", "dev.local/starter"}, "No source URL specified"},
-		{"Create with invalid url", true, false, []string{"stack", "create", "testing-stack", "--copy", "test-repo/starter"}, "Could not download file://invalidurl"},
+		{"Create with invalid stack", false, false, []string{"dev.local/invalid"}, "Could not find stack specified in repository index"},
+		{"Create with no src", false, true, []string{"dev.local/starter"}, "No source URL found"},
+		{"Create with invalid url", true, false, []string{"test-repo/starter"}, "Could not download file://invalidurl"},
 	}
 	for _, testData := range stackCreateInvalidTests {
 		// need to set testData to a new variable scoped under the for loop
@@ -157,10 +158,11 @@ func TestFuncCreateInvalidCases(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			output, err := cmdtest.RunAppsody(sandbox, tt.createArgs...)
+			createArgs := append([]string{"stack", "create", "testing-stack", "--copy"}, tt.createArgs...)
+			output, err := cmdtest.RunAppsody(sandbox, createArgs...)
 			if err != nil {
 				if !strings.Contains(output, tt.expectedOutput) {
-					t.Errorf("String" + tt.expectedOutput + " not found in output")
+					t.Errorf("String " + tt.expectedOutput + " not found in output")
 				}
 			} else {
 				t.Error("Stack create command unexpectedly passed")

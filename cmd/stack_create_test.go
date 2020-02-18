@@ -151,6 +151,6 @@ func TestStackCreateInvalidRepoFail(t *testing.T) {
 			t.Errorf("String \"Repository: 'invalid' was not found in the repository.yaml file\" not found in output")
 		}
 	} else {
-		t.Error("Stack create command unexpectededly passed with an invalid repository name")
+		t.Error("Stack create command unexpectedly passed with an invalid repository name")
 	}
 }
