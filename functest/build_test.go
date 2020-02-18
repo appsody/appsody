@@ -45,7 +45,6 @@ func TestSimpleBuildCases(t *testing.T) {
 		args     []string // input
 	}{
 		{"Test simple build Docker", false, []string{"build"}},
-		{"Test simple build Buildah", true, []string{"build", "--buildah"}},
 	}
 	for _, testData := range buildSimpleTests {
 		// need to set testData to a new variable scoped under the for loop
@@ -93,6 +92,7 @@ func TestSimpleBuildCases(t *testing.T) {
 				}
 
 				expectedImageTag := "dev.local/" + sandbox.ProjectName
+				expectedImageTag = strings.Replace(expectedImageTag, "_", "-", -1)
 				if tt.buildah {
 					listOutput, listErr := cmdtest.RunBuildahCmdExec([]string{"images", "-q", expectedImageTag}, t)
 					if listErr != nil {
