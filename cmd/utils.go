@@ -2323,19 +2323,20 @@ func RemoveIfExists(path string) error {
 	return nil
 }
 
-func generateJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath string) error {
+func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath string, repoName string) error {
 	indexJSONStack := make([]IndexJSONStack, 0)
+	prefixName := strings.Title(repoName)
 	for _, stack := range indexYaml.Stacks {
 		for _, template := range stack.Templates {
 			stackJSON := IndexJSONStack{}
-			stackJSON.DisplayName = "Appsody " + stack.Name + " " + template.ID + " template"
+			stackJSON.DisplayName = prefixName + " " + stack.Name + " " + template.ID + " template"
 			stackJSON.Description = stack.Description
 			stackJSON.Language = stack.Language
 			stackJSON.ProjectType = "appsodyExtension"
 			stackJSON.ProjectStyle = "Appsody"
 			stackJSON.Location = template.URL
 
-			link := Link{}
+			link := Links{}
 			link.Self = "/devfiles/" + stack.ID + "/devfile.yaml"
 			stackJSON.Links = link
 
@@ -2348,7 +2349,7 @@ func generateJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath string)
 	if err != nil {
 		return err
 	}
-	indexFilePath = strings.ReplaceAll(indexFilePath, ".yaml", ".json")
+	indexFilePath = strings.Replace(indexFilePath, ".yaml", ".json", 1)
 
 	err = ioutil.WriteFile(indexFilePath, data, 0666)
 	if err != nil {

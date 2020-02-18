@@ -84,10 +84,10 @@ type IndexJSONStack struct {
 	ProjectType  string `json:"projectType"`
 	ProjectStyle string `json:"projectStyle"`
 	Location     string `json:"location"`
-	Links        Link   `json:"links"`
+	Links
 }
 
-type Link struct {
+type Links struct {
 	Self string `json:"self"`
 }
 
@@ -469,7 +469,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					return errors.Errorf("Error adding local repository. Your stack may not be available to appsody commands. %v", err)
 				}
 			}
-			err = generateJSON(log, indexYaml, indexFileLocal)
+			err = generateCodewindJSON(log, indexYaml, indexFileLocal, "Local")
 			if err != nil {
 				return errors.Errorf("Could not generate json file from yaml index: %v", err)
 			}
