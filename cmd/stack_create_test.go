@@ -14,7 +14,6 @@
 package cmd_test
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -93,17 +92,9 @@ func TestStackCreateInvalidCases(t *testing.T) {
 			if !strings.Contains(output, tt.expectedLogs) {
 				t.Errorf("Did not find expected error '%s' in output", tt.expectedLogs)
 			}
-			exists, err := cmdtest.Exists(tt.stackName)
+			_, err = cmdtest.Exists(tt.stackName)
 			if err != nil {
 				t.Fatal("Error attempting to check stack exists: ", err)
-			}
-			if exists {
-				// It SHOULDN'T exist, but it might
-				err = os.RemoveAll(tt.stackName)
-				if err != nil {
-					t.Fatal("Error attempting to remove stack: ", err)
-				}
-				t.Fatal("Stack was created despite command failing")
 			}
 		})
 	}
