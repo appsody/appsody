@@ -341,48 +341,13 @@ func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string,
 // The stdout and stderr are captured, printed, and returned
 // args will be passed to the docker command
 // workingDir will be the directory the command runs in
-func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
-	cmdArgs := []string{"docker"}
-	cmdArgs = append(cmdArgs, args...)
-	t.Log(cmdArgs)
-	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	outReader, outWriter := io.Pipe()
-	execCmd.Stdout = outWriter
-	execCmd.Stderr = outWriter
-	outScanner := bufio.NewScanner(outReader)
-	var outBuffer bytes.Buffer
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		for outScanner.Scan() {
-			out := outScanner.Bytes()
-			outBuffer.Write(out)
-			outBuffer.WriteByte('\n')
-			t.Log(string(out))
-		}
-		wg.Done()
-	}()
-
-	err := execCmd.Start()
-	if err != nil {
-		return "", err
+func RunCmdExec(args []string, buildah bool, t *testing.T) (string, error) {
+	var cmdArgs []string
+	if buildah {
+		cmdArgs = []string{"buildah"}
+	} else {
+		cmdArgs = []string{"docker"}
 	}
-	err = execCmd.Wait()
-
-	// close the writer first, so it sends an EOF to the scanner above,
-	// then wait for the scanner to finish before closing the reader
-	outWriter.Close()
-	wg.Wait()
-	outReader.Close()
-	return outBuffer.String(), err
-}
-
-// RunBuildahCmdExec runs the buildah command with the given args in a new process
-// The stdout and stderr are captured, printed, and returned
-// args will be passed to the buildah command
-// workingDir will be the directory the command runs in
-func RunBuildahCmdExec(args []string, t *testing.T) (string, error) {
-	cmdArgs := []string{"buildah"}
 	cmdArgs = append(cmdArgs, args...)
 	t.Log(cmdArgs)
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)

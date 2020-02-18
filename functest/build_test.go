@@ -93,27 +93,15 @@ func TestSimpleBuildCases(t *testing.T) {
 
 				expectedImageTag := "dev.local/" + sandbox.ProjectName
 				expectedImageTag = strings.Replace(expectedImageTag, "_", "-", -1)
-				if tt.buildah {
-					listOutput, listErr := cmdtest.RunBuildahCmdExec([]string{"images", "-q", expectedImageTag}, t)
-					if listErr != nil {
-						t.Fatal(listErr)
-					}
-					if listOutput == "" {
-						t.Errorf("Expected appsody build to create buildah image '%s' but it was not found.", expectedImageTag)
-					}
-					//delete the image
-					deleteImage(expectedImageTag, true, t)
-				} else {
-					listOutput, listErr := cmdtest.RunDockerCmdExec([]string{"images", "-q", expectedImageTag}, t)
-					if listErr != nil {
-						t.Fatal(listErr)
-					}
-					if listOutput == "" {
-						t.Errorf("Expected appsody build to create docker image '%s' but it was not found.", expectedImageTag)
-					}
-					//delete the image
-					deleteImage(expectedImageTag, false, t)
+				listOutput, listErr := cmdtest.RunCmdExec([]string{"images", "-q", expectedImageTag}, tt.buildah, t)
+				if listErr != nil {
+					t.Fatal(listErr)
 				}
+				if listOutput == "" {
+					t.Errorf("Expected appsody build to create image '%s' but it was not found.", expectedImageTag)
+				}
+				//delete the image
+				deleteImage(expectedImageTag, tt.buildah, t)
 			}
 
 		})
@@ -188,7 +176,7 @@ func TestBuildLabels(t *testing.T) {
 		t.Fatalf("Error on appsody build: %v", err)
 	}
 
-	inspectOutput, inspectErr := cmdtest.RunDockerCmdExec([]string{"inspect", imageName}, t)
+	inspectOutput, inspectErr := cmdtest.RunCmdExec([]string{"inspect", imageName}, false, t)
 	if inspectErr != nil {
 		t.Fatal(inspectErr)
 	}
@@ -236,16 +224,9 @@ func TestBuildLabels(t *testing.T) {
 }
 
 func deleteImage(imageName string, buildah bool, t *testing.T) {
-	if buildah {
-		_, err := cmdtest.RunBuildahCmdExec([]string{"image", "rm", imageName}, t)
-		if err != nil {
-			t.Logf("Ignoring error running docker image rm: %s", err)
-		}
-	} else {
-		_, err := cmdtest.RunDockerCmdExec([]string{"image", "rm", imageName}, t)
-		if err != nil {
-			t.Logf("Ignoring error running docker image rm: %s", err)
-		}
+	_, err := cmdtest.RunCmdExec([]string{"image", "rm", imageName}, buildah, t)
+	if err != nil {
+		t.Logf("Ignoring error running docker image rm: %s", err)
 	}
 }
 
@@ -420,7 +401,7 @@ func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploy
 
 func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.AppsodyApplication, imageTag string) {
 	args := []string{"inspect", "--format='{{json .Config.Labels }}'", imageTag}
-	output, err := cmdtest.RunDockerCmdExec(args, t)
+	output, err := cmdtest.RunCmdExec(args, false, t)
 	if err != nil {
 		t.Errorf("Error inspecting docker image: %s", err)
 	}
