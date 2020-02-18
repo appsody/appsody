@@ -304,6 +304,7 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 		projectDirOverridden = true
 	}
 
+	namedVolumeCount := 0
 	for _, mount := range stackMountList {
 		if mount == "" {
 			continue
@@ -311,9 +312,11 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 		var mappedMount string
 		var overridden bool
 		if strings.HasPrefix(mount, "~") {
-			if homeDirOverride != "" && strings.HasSuffix(homeDir, ":") {
-				start := strings.LastIndex(mount, ":") + 1
-				mappedMount = homeDir + mount[start:]
+			if homeDirOverride != "" && !strings.ContainsAny(homeDir, "/\\") {
+				// home dir was overridden with a named volume (rather than a path)
+				namedVolumeCount++
+				start := strings.LastIndex(mount, ":")
+				mappedMount = fmt.Sprintf("%s%d%s", homeDir, namedVolumeCount, mount[start:])
 			} else {
 				mappedMount = strings.Replace(mount, "~", homeDir, 1)
 			}
