@@ -30,6 +30,7 @@ type deployCommandConfig struct {
 	knativeFlagPresent, namespaceFlagPresent                                    bool
 	dockerBuildOptions                                                          string
 	buildahBuildOptions                                                         string
+	criu																		bool
 }
 
 func findNamespaceRepositoryAndTag(image string) string {
@@ -131,6 +132,7 @@ Run this command from the root directory of your Appsody project.`,
 				buildConfig.appDeployFile = configFile
 				buildConfig.namespace = namespace
 				buildConfig.namespaceFlagPresent = config.namespaceFlagPresent
+				buildConfig.criu = config.criu
 
 				buildErr := build(buildConfig)
 				if buildErr != nil {
@@ -211,6 +213,7 @@ Run this command from the root directory of your Appsody project.`,
 	deployCmd.PersistentFlags().StringVar(&config.pullURL, "pull-url", "", "Remote repository to pull image from.")
 	deployCmd.PersistentFlags().BoolVar(&config.noOperatorCheck, "no-operator-check", false, "Do not check whether existing operators are already watching the namespace")
 	deployCmd.PersistentFlags().BoolVar(&config.noOperatorInstall, "no-operator-install", false, "Deploy your application without installing the Appsody operator")
+	deployCmd.PersistentFlags().BoolVar(&config.criu, "criu", false, "Makes appsody to deploy a startup optimized image")
 	deployCmd.AddCommand(newDeleteDeploymentCmd(config))
 
 	return deployCmd
