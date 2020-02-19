@@ -29,7 +29,6 @@ func TestOperatorInstallCases(t *testing.T) {
 		args         []string
 		expectedLogs string
 	}{
-		{"Run in dryrun mode", []string{"--dryrun"}, "Appsody operator deployed to Kubernetes"},
 		{"Install with non existing namespace", []string{"--namespace", "nonexistingnamespace"}, "namespaces \"nonexistingnamespace\" not found"},
 	}
 
