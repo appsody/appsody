@@ -15,7 +15,6 @@
 package cmd_test
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -51,8 +50,6 @@ func TestTemplatingAllVariables(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating templating file: %v", err)
 	}
-
-	defer os.RemoveAll(templatingPath)
 
 	// write some text to file
 	_, err = file.WriteString("{{test}}, id: {{.stack.id}}, name: {{.stack.name}}, version: {{.stack.version}}, description: {{.stack.description}}, tag: {{.stack.tag}}, maintainers: {{.stack.maintainers}}, semver.major: {{.stack.semver.major}}, semver.minor: {{.stack.semver.minor}}, semver.patch: {{.stack.semver.patch}}, semver.majorminor: {{.stack.semver.majorminor}}, image.namespace: {{.stack.image.namespace}}, image.registry: {{.stack.image.registry}}, customvariable1: {{.stack.variable1}}, customvariable2: {{.stack.variable2}}")
@@ -113,8 +110,6 @@ func TestTemplatingWrongVariablesFail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating templating file: %v", err)
 	}
-
-	defer os.RemoveAll(templatingPath)
 
 	// write some text to file
 	_, err = file.WriteString("id: {{.stack.iad}}")
@@ -181,8 +176,6 @@ func TestTemplatingFilePermissionsFail(t *testing.T) {
 		t.Fatalf("Error creating templating file: %v", err)
 	}
 
-	defer os.RemoveAll(templatingPath)
-
 	// write some text to file
 	_, err = file.WriteString("id: {{.stack.id}}")
 	if err != nil {
@@ -231,367 +224,114 @@ func TestTemplatingFilePermissionsFail(t *testing.T) {
 
 }
 
-func TestPackageNoStackYamlFail(t *testing.T) {
+func TestPackageMissingFilesFail(t *testing.T) {
 
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
-	// folder within the temp directory that has been generated for sandboxing purposes, rather than
-	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	// rename stack.yaml to test
-	stackPath := sandbox.ProjectDir
-	stackYaml := filepath.Join(stackPath, "stack.yaml")
-	newStackYaml := filepath.Join(stackPath, "test")
-
-	err := os.Rename(stackYaml, newStackYaml)
-	if err != nil {
-		t.Fatal(err)
+	var targetFiles = []struct {
+		testName           string
+		target             string
+		expectedLogWindows string
+		expectedLogDefault string
+	}{
+		{"No stack.yaml", "stack.yaml", "stack.yaml: The system cannot find the file specified", "stack.yaml: no such file or directory"},
+		{"No Templates Folder", "templates", "Unable to reach templates directory. Current directory must be the root of the stack", "Unable to reach templates directory. Current directory must be the root of the stack"},
 	}
-	defer func() {
-		err = os.Rename(newStackYaml, stackYaml)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
 
-	// run stack package
-	args := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	for _, testData := range targetFiles {
 
-	if err != nil {
-		if runtime.GOOS == "windows" {
-			if !strings.Contains(err.Error(), "stack.yaml: The system cannot find the file specified") {
-				t.Errorf("String \"stack.yaml: The system cannot find the file specified\" not found in output: '%v'", err.Error())
+		tt := testData
+
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
+			sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
+
+			target := filepath.Join(sandbox.ProjectDir, tt.target)
+
+			err := os.RemoveAll(target)
+			if err != nil {
+				t.Fatal(err)
 			}
-		} else {
-			if !strings.Contains(err.Error(), "stack.yaml: no such file or directory") {
-				t.Errorf("String \"stack.yaml: no such file or directory\" not found in output: '%v'", err.Error())
+
+			// run stack package
+			args := []string{"stack", "package"}
+			_, err = cmdtest.RunAppsody(sandbox, args...)
+
+			if err != nil {
+				if runtime.GOOS == "windows" {
+					if !strings.Contains(err.Error(), tt.expectedLogWindows) {
+						t.Errorf("String \""+tt.expectedLogWindows+"\" not found in output: '%v'", err.Error())
+					}
+				} else {
+					if !strings.Contains(err.Error(), tt.expectedLogDefault) {
+						t.Errorf("String \""+tt.expectedLogDefault+"\" not found in output: '%v'", err.Error())
+					}
+				}
+			} else {
+				t.Fatal("Stack package command unexpectedly passed with no stack.yaml present")
 			}
-		}
-	} else {
-		t.Fatal("Stack package command unexpectedly passed with no stack.yaml present")
+		})
 	}
-
 }
 
-func TestPackageInvalidStackYamlFail(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
-	// folder within the temp directory that has been generated for sandboxing purposes, rather than
-	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	stackPath := sandbox.ProjectDir
-	stackYaml := filepath.Join(stackPath, "stack.yaml")
-
-	// change line to be testing
-	restoreLine := ""
-	file, err := ioutil.ReadFile(stackYaml)
-	if err != nil {
-		t.Fatal(err)
+func TestInvalidStackYaml(t *testing.T) {
+	var targetLines = []struct {
+		testName        string
+		targetLine      string
+		replacementLine string
+		expectedLog     string
+	}{
+		{"Invalid default-template", "default-template", "Enrique Was Here", "Error parsing the stack.yaml file"},
+		{"Invalid custom variable", "variable1", "  ^variable1: value1", "Error creating templating mal: Variable name didn't start with alphanumeric character"},
+		{"Invalid custom varable map", "variable1", "  variable1: \n    value1: s", "cannot unmarshal !!map into string"},
+		{"Invalid version", "version:", "version: 0.1", "Error creating templating mal: Verison format incorrect"},
 	}
 
-	lines := strings.Split(string(file), "\n")
+	for _, testData := range targetLines {
 
-	for i, line := range lines {
-		if strings.Contains(line, "default-template") {
-			restoreLine = lines[i]
-			lines[i] = "Testing"
-		}
+		tt := testData
+
+		t.Run(tt.testName, func(t *testing.T) {
+
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
+			sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
+
+			yamlPath := filepath.Join(sandbox.ProjectDir, "stack.yaml")
+
+			file, err := ioutil.ReadFile(yamlPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			lines := strings.Split(string(file), "\n")
+
+			for i, line := range lines {
+				if strings.Contains(line, tt.targetLine) {
+					lines[i] = tt.replacementLine
+				}
+			}
+			output := strings.Join(lines, "\n")
+			err = ioutil.WriteFile(yamlPath, []byte(output), 0644)
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			args := []string{"stack", "package"}
+			_, err = cmdtest.RunAppsody(sandbox, args...)
+
+			if err != nil {
+				if !strings.Contains(err.Error(), tt.expectedLog) {
+					t.Errorf("String \""+tt.expectedLog+"\" not found in output: '%v'", err.Error())
+				}
+
+			} else {
+				t.Fatal("Stack package command unexpectedly passed with invalid stack.yaml")
+			}
+		})
 	}
-	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// run stack package
-	args := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
-
-	if err != nil {
-		if !strings.Contains(err.Error(), "Error parsing the stack.yaml file") {
-			t.Errorf("String \"Error parsing the stack.yaml file\" not found in output: '%v'", err.Error())
-		}
-
-	} else {
-		t.Fatal("Stack package command unexpectedly passed with invalid stack.yaml")
-	}
-
-	for i, line := range lines {
-		if strings.Contains(line, "Testing") {
-			lines[i] = restoreLine
-		}
-	}
-
-	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-}
-
-func TestPackageNoTemplates(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
-	// folder within the temp directory that has been generated for sandboxing purposes, rather than
-	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	// rename templates directory to test
-	stackPath := sandbox.ProjectDir
-	templates := filepath.Join(stackPath, "templates")
-	newTemplates := filepath.Join(stackPath, "test")
-
-	err := os.Rename(templates, newTemplates)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		err = os.Rename(newTemplates, templates)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	// run stack package
-	args := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
-
-	if err != nil {
-		if !strings.Contains(err.Error(), "Unable to reach templates directory. Current directory must be the root of the stack") {
-			t.Errorf("String \"Unable to reach templates directory. Current directory must be the root of the stack\" not found in output: '%v'", err.Error())
-		}
-
-	} else {
-		t.Fatal("Stack package command unexpectedly passed with no templates directory present")
-	}
-
-}
-
-func TestPackageInvalidCustomVars(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
-	// folder within the temp directory that has been generated for sandboxing purposes, rather than
-	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	stackPath := sandbox.ProjectDir
-	stackYaml := filepath.Join(stackPath, "stack.yaml")
-
-	// change variable to not begin with alphanumeric character
-	restoreLine := ""
-	file, err := ioutil.ReadFile(stackYaml)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	lines := strings.Split(string(file), "\n")
-
-	for i, line := range lines {
-		if strings.Contains(line, "variable1") {
-			restoreLine = lines[i]
-			lines[i] = "  ^variable1: value1"
-		}
-	}
-	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// run stack package
-	args := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
-
-	if err != nil {
-		if !strings.Contains(err.Error(), "Error creating templating mal: Variable name didn't start with alphanumeric character") {
-			t.Errorf("String \"Error creating templating mal: Variable name didn't start with alphanumeric character\" not found in output: '%v'", err.Error())
-		}
-
-	} else {
-		t.Fatal("Stack package command unexpectedly passed with invalid stack.yaml")
-	}
-
-	for i, line := range lines {
-		if strings.Contains(line, "  ^variable1") {
-			lines[i] = restoreLine
-		}
-	}
-
-	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-}
-
-func TestPackageInvalidCustomVarMap(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
-	// folder within the temp directory that has been generated for sandboxing purposes, rather than
-	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	stackPath := sandbox.ProjectDir
-	stackYaml := filepath.Join(stackPath, "stack.yaml")
-
-	// use invalid formatting for map
-	restoreLine := ""
-	file, err := ioutil.ReadFile(stackYaml)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	lines := strings.Split(string(file), "\n")
-
-	for i, line := range lines {
-		if strings.Contains(line, "variable1") {
-			restoreLine = lines[i]
-			lines[i] = "  variable1: \n    value1: s"
-		}
-	}
-	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// run stack package
-	args := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
-
-	if err != nil {
-		if !strings.Contains(err.Error(), "cannot unmarshal !!map into string") {
-			t.Errorf("String \"cannot unmarshal !!map into string\" not found in output: '%v'", err.Error())
-		}
-
-	} else {
-		t.Fatal("Stack package command unexpectedly passed with invalid stack.yaml")
-	}
-
-	for i, line := range lines {
-		if strings.Contains(line, "value1:") {
-			lines[i] = restoreLine
-		}
-	}
-
-	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-}
-
-func TestPackageInvalidVersion(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	log := &cmd.LoggingConfig{}
-	log.InitLogging(&outBuffer, &outBuffer)
-
-	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
-	// folder within the temp directory that has been generated for sandboxing purposes, rather than
-	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	stackPath := sandbox.ProjectDir
-	stackYaml := filepath.Join(stackPath, "stack.yaml")
-
-	// change version to only have 2 numbers
-	restoreLine := ""
-	file, err := ioutil.ReadFile(stackYaml)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	lines := strings.Split(string(file), "\n")
-
-	for i, line := range lines {
-		if strings.Contains(line, "version:") {
-			restoreLine = lines[i]
-			lines[i] = "version: 0.1"
-		}
-	}
-	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// run stack package
-	args := []string{"stack", "package"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
-
-	if err != nil {
-		if !strings.Contains(err.Error(), "Error creating templating mal: Verison format incorrect") {
-			t.Errorf("String \"Error creating templating mal: Verison format incorrect\" not found in output: '%v'", err.Error())
-		}
-
-	} else {
-		t.Fatal("Stack package command unexpectedly passed with invalid stack.yaml")
-	}
-
-	for i, line := range lines {
-		if strings.Contains(line, "version:") {
-			lines[i] = restoreLine
-		}
-	}
-
-	output = strings.Join(lines, "\n")
-	err = ioutil.WriteFile(stackYaml, []byte(output), 0644)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
 }
 
 // function that returns a boolean if the file is writable or not
