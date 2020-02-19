@@ -314,6 +314,9 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 			mappedMount = strings.Replace(mount, "~", homeDir, 1)
 			overridden = homeDirOverridden
 		} else {
+			if strings.HasPrefix(mount, ".:") {
+				mount = strings.TrimPrefix(mount, ".")
+			}
 			mappedMount = filepath.Join(projectDir, mount)
 			overridden = projectDirOverridden
 		}
