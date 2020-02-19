@@ -43,19 +43,12 @@ func TestOperatorInstallCases(t *testing.T) {
 			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 			defer cleanup()
 
-			t.Log("Now running appsody init")
-			args := []string{"init", "starter"}
-			_, err := cmdtest.RunAppsody(sandbox, args...)
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			t.Log("Now running appsody operator install")
 			operatorInstallArgs := append([]string{"operator", "install"}, tt.args...)
 			output, operatorErr := cmdtest.RunAppsody(sandbox, operatorInstallArgs...)
 
 			if !strings.Contains(output, tt.expectedLogs) {
-				t.Fatalf("Expected failure to include: %s but instead receieved: %s. Full error: %s", tt.expectedLogs, output, operatorErr)
+				t.Fatalf("Expected failure to include: %s but instead received: %s. Full error: %s", tt.expectedLogs, output, operatorErr)
 			}
 		})
 	}
@@ -98,19 +91,12 @@ func TestOperatorInstallAndUninstall(t *testing.T) {
 				t.Fatal(namespaceErr)
 			}
 
-			t.Log("Now running appsody init")
-			args := []string{"init", "starter"}
-			_, err := cmdtest.RunAppsody(sandbox, args...)
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			t.Log("Now running appsody operator command")
 			operatorArgs := append([]string{"operator"}, tt.args...)
 			output, operatorErr := cmdtest.RunAppsody(sandbox, operatorArgs...)
 
 			if !strings.Contains(output, tt.expectedLogs) {
-				t.Fatalf("Expected failure to include: %s but instead receieved: %s. Full error: %s", tt.expectedLogs, output, operatorErr)
+				t.Fatalf("Expected failure to include: %s but instead received: %s. Full error: %s", tt.expectedLogs, output, operatorErr)
 			}
 		})
 	}
