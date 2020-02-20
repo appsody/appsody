@@ -50,10 +50,10 @@ func RunKubeDelete(log *LoggingConfig, args []string, dryrun bool) (string, erro
 func RunKube(log *LoggingConfig, kargs []string, dryrun bool) (string, error) {
 	kcmd := "kubectl"
 	if dryrun {
-		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", ArgsToString(kargs))
 		return "", nil
 	}
-	log.Info.log("Running command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Info.log("Running command: ", kcmd, " ", ArgsToString(kargs))
 	execCmd := exec.Command(kcmd, kargs...)
 	kout, kerr := execCmd.Output()
 
