@@ -41,10 +41,10 @@ type expectedDeploymentConfig struct {
 func TestSimpleBuildCases(t *testing.T) {
 	var buildSimpleTests = []struct {
 		testName string
-		buildah  bool
+		cmdName  string
 		args     []string // input
 	}{
-		{"Test simple build Docker", false, []string{"build"}},
+		{"Test simple build Docker", "docker", []string{"build"}},
 	}
 	for _, testData := range buildSimpleTests {
 		// need to set testData to a new variable scoped under the for loop
@@ -54,7 +54,7 @@ func TestSimpleBuildCases(t *testing.T) {
 		// call t.Run so that we can name and report on individual tests
 		t.Run(tt.testName, func(t *testing.T) {
 
-			if tt.buildah {
+			if tt.cmdName == "buildah" {
 				if runtime.GOOS != "linux" {
 					t.Skip()
 				}
@@ -93,7 +93,7 @@ func TestSimpleBuildCases(t *testing.T) {
 
 				expectedImageTag := "dev.local/" + sandbox.ProjectName
 				expectedImageTag = strings.Replace(expectedImageTag, "_", "-", -1)
-				listOutput, listErr := cmdtest.RunCmdExec([]string{"images", "-q", expectedImageTag}, tt.buildah, t)
+				listOutput, listErr := cmdtest.RunCmdExec([]string{"images", "-q", expectedImageTag}, tt.cmdName, t)
 				if listErr != nil {
 					t.Fatal(listErr)
 				}
@@ -101,7 +101,7 @@ func TestSimpleBuildCases(t *testing.T) {
 					t.Errorf("Expected appsody build to create image '%s' but it was not found.", expectedImageTag)
 				}
 				//delete the image
-				deleteImage(expectedImageTag, tt.buildah, t)
+				deleteImage(expectedImageTag, tt.cmdName, t)
 			}
 
 		})
@@ -176,7 +176,7 @@ func TestBuildLabels(t *testing.T) {
 		t.Fatalf("Error on appsody build: %v", err)
 	}
 
-	inspectOutput, inspectErr := cmdtest.RunCmdExec([]string{"inspect", imageName}, false, t)
+	inspectOutput, inspectErr := cmdtest.RunCmdExec([]string{"inspect", imageName}, "docker", t)
 	if inspectErr != nil {
 		t.Fatal(inspectErr)
 	}
@@ -220,11 +220,11 @@ func TestBuildLabels(t *testing.T) {
 	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, "", false})
 
 	//delete the image
-	deleteImage(imageName, false, t)
+	deleteImage(imageName, "docker", t)
 }
 
-func deleteImage(imageName string, buildah bool, t *testing.T) {
-	_, err := cmdtest.RunCmdExec([]string{"image", "rm", imageName}, buildah, t)
+func deleteImage(imageName string, cmdName string, t *testing.T) {
+	_, err := cmdtest.RunCmdExec([]string{"image", "rm", imageName}, cmdName, t)
 	if err != nil {
 		t.Logf("Ignoring error running docker image rm: %s", err)
 	}
@@ -270,7 +270,7 @@ func TestDeploymentConfig(t *testing.T) {
 		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, "", true})
 
 		//delete the image
-		deleteImage(imageName, false, t)
+		deleteImage(imageName, "docker", t)
 	}
 }
 
@@ -337,7 +337,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 				checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", expectedImageName, "", tt.appDeployExpected})
 
 				//delete the image
-				deleteImage(expectedImageName, false, t)
+				deleteImage(expectedImageName, "docker", t)
 			})
 		}
 	}
@@ -401,7 +401,7 @@ func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploy
 
 func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.AppsodyApplication, imageTag string) {
 	args := []string{"inspect", "--format='{{json .Config.Labels }}'", imageTag}
-	output, err := cmdtest.RunCmdExec(args, false, t)
+	output, err := cmdtest.RunCmdExec(args, "docker", t)
 	if err != nil {
 		t.Errorf("Error inspecting docker image: %s", err)
 	}

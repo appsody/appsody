@@ -337,17 +337,12 @@ func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string,
 	return repoURL, nil
 }
 
-// RunDockerCmdExec runs the docker command with the given args in a new process
+// RunCmdExec runs the command (Docker or Buildah) with the given args in a new process
 // The stdout and stderr are captured, printed, and returned
 // args will be passed to the docker command
 // workingDir will be the directory the command runs in
-func RunCmdExec(args []string, buildah bool, t *testing.T) (string, error) {
-	var cmdArgs []string
-	if buildah {
-		cmdArgs = []string{"buildah"}
-	} else {
-		cmdArgs = []string{"docker"}
-	}
+func RunCmdExec(args []string, cmdName string, t *testing.T) (string, error) {
+	cmdArgs := []string{cmdName}
 	cmdArgs = append(cmdArgs, args...)
 	t.Log(cmdArgs)
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
