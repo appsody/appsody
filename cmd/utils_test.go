@@ -1559,6 +1559,36 @@ func TestExtractDockerEnvVars(t *testing.T) {
 	}
 }
 
+var argsToStringTests = []struct {
+	input          []string
+	expectedOutput string
+}{
+	{[]string{""}, ""},
+	{[]string{}, ""},
+	{[]string{"appsody", "list"}, `appsody list`},
+	{[]string{"appsody", "list\"quote"}, `appsody "list\"quote"`},
+	{[]string{"appsody", "--name", "contains spaces"}, `appsody --name "contains spaces"`},
+	{[]string{"kubectl", "get", "svc", "hello", "-o", "jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort}"},
+		`kubectl get svc hello -o "jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort}"`},
+}
+
+func TestArgsToString(t *testing.T) {
+
+	for _, testData := range argsToStringTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
+		t.Run(fmt.Sprint(test.input), func(t *testing.T) {
+			output := cmd.ArgsToString(test.input)
+			if output != test.expectedOutput {
+				t.Errorf("Expected %s to convert to %s but got %s", test.input, test.expectedOutput, output)
+			}
+		})
+
+	}
+}
 func TestRemoveIfExists(t *testing.T) {
 
 	err := os.MkdirAll("./test/test-child/", 0700)

@@ -214,7 +214,7 @@ func ExecuteE(version string, controllerVersion string, projectDir string, outWr
 	if err != nil {
 		rootConfig.Error.log(err)
 	}
-	rootConfig.Debug.log("Running with command line args: appsody ", strings.Join(args, " "))
+	rootConfig.Debug.log("Running with command line args: appsody ", ArgsToString(args))
 	err = rootCmd.Execute()
 	if err != nil {
 		rootConfig.Error.log(err)
