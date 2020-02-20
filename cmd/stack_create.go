@@ -65,7 +65,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 
 			stackPath := filepath.Join(config.ProjectDir, stack)
 
-			match, err := IsValidProjectName(stack)
+			match, err := IsValidParamName(stack, "project-name")
 			if !match {
 				return err
 			}

@@ -80,6 +80,7 @@ func TestInitErrors(t *testing.T) {
 		{"TestInitWithBadTemplateSpecified", []string{"nodejs-express", "badtemplate"}, "", "Could not find a template", "Should have flagged non existing stack template"},
 		{"TestInitNoTemplateAndSimple", []string{"nodejs-express", "simple", "--no-template"}, "", "with both a template and --no-template", "Correct error message not given"},
 		{"TestInitWithBadProjectName", []string{"nodejs-express", "--project-name", "badprojectname!"}, "", "Invalid project-name", "Correct error message not given"},
+		{"TestInitWithBadApplicationName", []string{"nodejs-express", "--application-name", "badapplicationname!"}, "", "Invalid application-name", "Correct error message not given"},
 		{"TestInitWithBadlyFormattedConfig", []string{"nodejs-express"}, "bad_format_repository_config", "Failed to parse repository file yaml", "Correct error message not given"},
 		{"TestInitWithEmptyConfig", []string{"nodejs-express"}, "empty_repository_config", "Your stack repository is empty", "Correct error message not given"},
 		{"TestInitWithBadRepoUrlConfig", []string{"nodejs-express"}, "bad_repo_url_repository_config", "The following indices could not be read, skipping", "Correct error message not given"},

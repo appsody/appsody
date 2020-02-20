@@ -24,6 +24,7 @@ import (
 
 // Simple test for appsody debug command. A future enhancement would be to verify the debug output
 func TestDebugSimple(t *testing.T) {
+	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
