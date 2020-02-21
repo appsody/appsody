@@ -79,6 +79,21 @@ type IndexYamlStackTemplate struct {
 	URL string `yaml:"url"`
 }
 
+// struct to convert yaml to json files
+type IndexJSONStack struct {
+	DisplayName  string `json:"displayName"`
+	Description  string `json:"description"`
+	Language     string `json:"language"`
+	ProjectType  string `json:"projectType"`
+	ProjectStyle string `json:"projectStyle"`
+	Location     string `json:"location"`
+	Links
+}
+
+type Links struct {
+	Self string `json:"self"`
+}
+
 func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	config := &packageCommandConfig{RootCommandConfig: rootConfig}
 
@@ -171,13 +186,8 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			// get the necessary data from the current stack.yaml
 			var stackYaml StackYaml
 
-			source, err := ioutil.ReadFile(filepath.Join(stackPath, "stack.yaml"))
-			if err != nil {
-				return errors.Errorf("Error trying to read: %v", err)
-			}
-
-			err = yaml.Unmarshal(source, &stackYaml)
-
+			// get the necessary data from the current stack.yaml
+			stackYaml, err = getStackData(stackPath)
 			if err != nil {
 				return errors.Errorf("Error parsing the stack.yaml file: %v", err)
 			}
@@ -416,7 +426,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			indexYaml.Stacks = append(indexYaml.Stacks, newStackStruct)
 
 			// write yaml data to the index yaml
-			source, err = yaml.Marshal(&indexYaml)
+			source, err := yaml.Marshal(&indexYaml)
 			if err != nil {
 				return errors.Errorf("Error trying to marshall: %v", err)
 			}
@@ -465,6 +475,10 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				if err != nil {
 					return errors.Errorf("Error adding local repository. Your stack may not be available to appsody commands. %v", err)
 				}
+			}
+			err = generateCodewindJSON(log, indexYaml, indexFileLocal, "Local")
+			if err != nil {
+				return errors.Errorf("Could not generate json file from yaml index: %v", err)
 			}
 
 			log.Info.log("Your local stack is available as part of repo ", repoName)
@@ -578,7 +592,7 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	versionFull := strings.Split(versionLabel, ".")
 
 	if len(versionFull) != 3 {
-		err = errors.Errorf("Verison format incorrect")
+		err = errors.Errorf("Version format incorrect")
 		return templateMetadata, err
 	}
 
