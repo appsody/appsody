@@ -95,7 +95,6 @@ Use 'appsody list' to see the available stacks and templates.`,
 }
 
 func initAppsody(stack string, template string, config *initCommandConfig) error {
-	stackDeprecated := ""
 	noTemplate := config.noTemplate
 	if noTemplate {
 		config.Warning.log("The --no-template flag has been deprecated.  Please specify a template value of \"none\" instead.")
@@ -179,9 +178,6 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 				stackReqs = stack.Requirements
 				stackFound = true
 				config.Debug.log("Stack ", projectType, " found in repo ", repoName)
-				if stack.Deprecated != "" {
-					stackDeprecated = stack.Deprecated
-				}
 				URL := ""
 				if templateName == "" || templateName == "none" {
 					templateName = stack.DefaultTemplate
@@ -306,8 +302,12 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		config.Info.logf("Successfully initialized Appsody project with the %s stack and no template.", stack)
 	}
 
-	if stackDeprecated != "" {
-		config.Warning.logf("Stack deprecated: %v", stackDeprecated)
+	deprecated, depErr := GetDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
+	if deprecated != "" {
+		config.Warning.logf("Stack deprecated: %v", deprecated)
 	}
 	return nil
 }

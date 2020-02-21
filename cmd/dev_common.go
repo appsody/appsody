@@ -114,7 +114,7 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 }
 
 func commonCmd(config *devCommonConfig, mode string) error {
-	deprecated, depErr := getDeprecated(config.RootCommandConfig)
+	deprecated, depErr := GetDeprecated(config.RootCommandConfig)
 	if depErr != nil {
 		return depErr
 	}

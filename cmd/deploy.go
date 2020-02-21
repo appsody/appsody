@@ -191,7 +191,7 @@ Run this command from the root directory of your Appsody project.`,
 				rootConfig.Info.log("Dry run complete")
 			}
 
-			deprecated, depErr := getDeprecated(config.RootCommandConfig)
+			deprecated, depErr := GetDeprecated(config.RootCommandConfig)
 			if depErr != nil {
 				return depErr
 			}

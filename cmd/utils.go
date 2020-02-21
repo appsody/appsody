@@ -479,7 +479,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 	return projectName, nil
 }
 
-func getDeprecated(config *RootCommandConfig) (string, error) {
+func GetDeprecated(config *RootCommandConfig) (string, error) {
 	deprecatedMessage := ""
 	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
 	v := viper.New()
@@ -488,8 +488,9 @@ func getDeprecated(config *RootCommandConfig) (string, error) {
 	if err != nil {
 		return deprecatedMessage, err
 	}
-
-	deprecatedMessage = v.Get("deprecated").(string)
+	if v.Get("deprecated") != nil {
+		deprecatedMessage = v.Get("deprecated").(string)
+	}
 	return deprecatedMessage, nil
 }
 func getDefaultStackRegistry(config *RootCommandConfig) string {
