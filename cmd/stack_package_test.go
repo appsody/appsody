@@ -284,7 +284,7 @@ func TestInvalidStackYaml(t *testing.T) {
 		{"Invalid default-template", "default-template", "Enrique Was Here", "Error parsing the stack.yaml file"},
 		{"Invalid custom variable", "variable1", "  ^variable1: value1", "Error creating templating mal: Variable name didn't start with alphanumeric character"},
 		{"Invalid custom varable map", "variable1", "  variable1: \n    value1: s", "cannot unmarshal !!map into string"},
-		{"Invalid version", "version:", "version: 0.1", "Error creating templating mal: Verison format incorrect"},
+		{"Invalid version", "version:", "version: 0.1", "Error creating templating mal: Version format incorrect"},
 	}
 
 	for _, testData := range targetLines {
