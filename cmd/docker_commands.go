@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 //DockerRunAndListen runs a Docker command with arguments in args
@@ -92,9 +91,9 @@ func RunCommandAndListen(config *RootCommandConfig, commandValue string, args []
 	var command = commandValue
 	var err error
 	if config.Dryrun {
-		config.Info.log("Dry Run - Skipping command: ", command, " ", strings.Join(args, " "))
+		config.Info.log("Dry Run - Skipping command: ", command, " ", ArgsToString(args))
 	} else {
-		config.Info.log("Running command: ", command, " ", strings.Join(args, " "))
+		config.Info.log("Running command: ", command, " ", ArgsToString(args))
 		execCmd = exec.Command(command, args...)
 
 		// Create io pipes for the command
