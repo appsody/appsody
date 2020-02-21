@@ -93,7 +93,7 @@ func TestSimpleBuildCases(t *testing.T) {
 
 				expectedImageTag := "dev.local/" + sandbox.ProjectName
 				expectedImageTag = strings.Replace(expectedImageTag, "_", "-", -1)
-				listOutput, listErr := cmdtest.RunCmdExec([]string{"images", "-q", expectedImageTag}, tt.cmdName, t)
+				listOutput, listErr := cmdtest.RunCmdExec(tt.cmdName, []string{"images", "-q", expectedImageTag}, t)
 				if listErr != nil {
 					t.Fatal(listErr)
 				}
@@ -176,7 +176,7 @@ func TestBuildLabels(t *testing.T) {
 		t.Fatalf("Error on appsody build: %v", err)
 	}
 
-	inspectOutput, inspectErr := cmdtest.RunCmdExec([]string{"inspect", imageName}, "docker", t)
+	inspectOutput, inspectErr := cmdtest.RunCmdExec("docker", []string{"inspect", imageName}, t)
 	if inspectErr != nil {
 		t.Fatal(inspectErr)
 	}
@@ -224,7 +224,7 @@ func TestBuildLabels(t *testing.T) {
 }
 
 func deleteImage(imageName string, cmdName string, t *testing.T) {
-	_, err := cmdtest.RunCmdExec([]string{"image", "rm", imageName}, cmdName, t)
+	_, err := cmdtest.RunCmdExec(cmdName, []string{"image", "rm", imageName}, t)
 	if err != nil {
 		t.Logf("Ignoring error running docker image rm: %s", err)
 	}
@@ -401,7 +401,7 @@ func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploy
 
 func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.AppsodyApplication, imageTag string) {
 	args := []string{"inspect", "--format='{{json .Config.Labels }}'", imageTag}
-	output, err := cmdtest.RunCmdExec(args, "docker", t)
+	output, err := cmdtest.RunCmdExec("docker", args, t)
 	if err != nil {
 		t.Errorf("Error inspecting docker image: %s", err)
 	}

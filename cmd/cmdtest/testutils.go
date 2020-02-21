@@ -341,7 +341,7 @@ func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string,
 // The stdout and stderr are captured, printed, and returned
 // args will be passed to the docker command
 // workingDir will be the directory the command runs in
-func RunCmdExec(args []string, cmdName string, t *testing.T) (string, error) {
+func RunCmdExec(cmdName string, args []string, t *testing.T) (string, error) {
 	cmdArgs := []string{cmdName}
 	cmdArgs = append(cmdArgs, args...)
 	t.Log(cmdArgs)
