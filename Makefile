@@ -3,7 +3,7 @@
 #### Constant variables
 
 # use -count=1 to disable cache and -p=1 to stream output live
-GO_TEST_COMMAND := go test -v -count=1 -p=2 -parallel 5 -covermode=count -coverprofile=cover.out -coverpkg ./cmd
+GO_TEST_COMMAND := go test -v -count=1 -p=2 -parallel 5 -covermode=count -coverprofile=cover.out -coverpkg ./cmd -timeout 15m
 GO_TEST_LOGGING := | tee test.out | grep -E "^\s*(---|===)" ; tail -3 test.out ; awk '/--- FAIL/,/===/' test.out ; ! grep -E "(--- FAIL|^FAIL)" test.out
 GO_TEST_COVER_VIEWER := go tool cover -func=cover.out && go tool cover -html=cover.out
 # Set a default VERSION only if it is not already set
