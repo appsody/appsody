@@ -150,7 +150,7 @@ func TestRunSimple(t *testing.T) {
 		containerRunning := false
 		count := 100
 		for {
-			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName}, t)
+			dockerOutput, dockerErr := cmdtest.RunCmdExec("docker", []string{"ps", "-q", "-f", "name=" + containerName}, t)
 			if dockerErr != nil {
 				t.Log("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
 			}
