@@ -147,7 +147,7 @@ func TestBuildLabels(t *testing.T) {
 	}
 
 	// appsody init
-	_, err = cmdtest.RunAppsody(sandbox, "init", "nodejs-express")
+	_, err = cmdtest.RunAppsody(sandbox, "init", "nodejs")
 	t.Log("Running appsody init...")
 	if err != nil {
 		t.Fatal(err)
