@@ -78,11 +78,6 @@ type IndexYamlStackTemplate struct {
 	ID  string `yaml:"id"`
 	URL string `yaml:"url"`
 }
-type ConfigYaml struct {
-	ProjectName string `"yaml:"project-name"`
-	Stack       string `"yaml:"stack"`
-	Deprecated  string `"yaml:"deprecated"`
-}
 
 func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
 	config := &packageCommandConfig{RootCommandConfig: rootConfig}
