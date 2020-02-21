@@ -22,7 +22,7 @@ stages:
 test-template: &test-template
   stage: test
   install: if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install make; fi
-  script: make cover
+  script: travis_wait make cover
 
 jobs:
   include:

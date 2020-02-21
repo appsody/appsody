@@ -158,6 +158,10 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 			if err != nil {
 				return errors.Errorf("Error writing localIndexFile: %v", err)
 			}
+			err = generateCodewindJSON(log, indexYaml, localIndexFile, repoName)
+			if err != nil {
+				return errors.Errorf("Could not generate json file from yaml index: %v", err)
+			}
 
 			log.Info.Log("Repository index file updated successfully")
 
