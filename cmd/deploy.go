@@ -191,12 +191,9 @@ Run this command from the root directory of your Appsody project.`,
 				rootConfig.Info.log("Dry run complete")
 			}
 
-			deprecated, depErr := GetDeprecated(config.RootCommandConfig)
+			depErr := GetDeprecated(config.RootCommandConfig, config.LoggingConfig)
 			if depErr != nil {
 				return depErr
-			}
-			if deprecated != "" {
-				config.Warning.logf("Stack deprecated: %v", deprecated)
 			}
 
 			return nil

@@ -114,12 +114,9 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 }
 
 func commonCmd(config *devCommonConfig, mode string) error {
-	deprecated, depErr := GetDeprecated(config.RootCommandConfig)
+	depErr := GetDeprecated(config.RootCommandConfig, config.LoggingConfig)
 	if depErr != nil {
 		return depErr
-	}
-	if deprecated != "" {
-		config.Warning.logf("Stack deprecated: %v", deprecated)
 	}
 	// Checking whether the controller is being overridden
 	overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
