@@ -25,6 +25,7 @@ import (
 	"github.com/andrew-d/isbinary"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"gopkg.in/yaml.v2"
 )
@@ -46,6 +47,7 @@ type StackYaml struct {
 	DefaultTemplate string            `yaml:"default-template"`
 	TemplatingData  map[string]string `yaml:"templating-data"`
 	Requirements    StackRequirement  `yaml:"requirements,omitempty"`
+	Deprecated      string            `yaml:"deprecated,omitempty"`
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -70,10 +72,16 @@ type IndexYamlStack struct {
 	Templates       []IndexYamlStackTemplate
 	Requirements    StackRequirement `yaml:"requirements,omitempty"`
 	Image           string           `yaml:"image"`
+	Deprecated      string           `yaml:"deprecated,omitempty"`
 }
 type IndexYamlStackTemplate struct {
 	ID  string `yaml:"id"`
 	URL string `yaml:"url"`
+}
+type ConfigYaml struct {
+	ProjectName string `"yaml:"project-name"`
+	Stack       string `"yaml:"stack"`
+	Deprecated  string `"yaml:"deprecated"`
 }
 
 func newStackPackageCmd(rootConfig *RootCommandConfig) *cobra.Command {
@@ -375,18 +383,22 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				// create a config yaml file for the tarball
 				configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
 				log.Debug.Log("configYaml is: ", configYaml)
-
 				g, err := os.Create(configYaml)
 				if err != nil {
-					return errors.Errorf("Error trying to create file: %v", err)
+					return err
 				}
-
-				// Only use major.minor version here
-				_, err = g.WriteString("stack: " + namespaceAndRepo + ":" + semver["majorminor"])
+				v := viper.New()
+				v.SetConfigFile(configYaml)
+				err = v.ReadInConfig()
 				if err != nil {
-					return errors.Errorf("Error trying to write: %v", err)
+					return err
 				}
-
+				v.Set("stack", namespaceAndRepo+":"+semver["majorminor"])
+				v.Set("deprecated", stackYaml.Deprecated)
+				err = v.WriteConfig()
+				if err != nil {
+					return err
+				}
 				g.Close()
 
 				// tar the files

@@ -224,6 +224,14 @@ func build(config *buildCommandConfig) error {
 		return err
 	}
 
+	deprecated, depErr := getDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
+	if deprecated != "" {
+		config.Warning.logf("Stack deprecated: %v", deprecated)
+	}
+
 	return nil
 }
 
