@@ -16,7 +16,6 @@ package cmd_test
 
 import (
 	"bytes"
-	"os"
 	"strings"
 	"testing"
 
@@ -106,22 +105,15 @@ func TestGetGitInfoWithNotAGitRepo(t *testing.T) {
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Error(nil)
-	}
-	err = os.Chdir(sandbox.ProjectDir)
-	if err != nil {
-		t.Error(nil)
-	}
-	_, err = cmd.GetGitInfo(config)
+
+	// Change the config ProjectDir to be in the sandboxing folder because that's where
+	// we want to execute the commands
+	config.ProjectDir = sandbox.ProjectDir
+
+	_, err := cmd.GetGitInfo(config)
 	expectedError := "not a git repository"
 	if err == nil || !strings.Contains(err.Error(), expectedError) {
 		t.Errorf("Should had flagged error: %v", expectedError)
-	}
-	err = os.Chdir(cwd)
-	if err != nil {
-		t.Error(nil)
 	}
 }
 
@@ -134,25 +126,18 @@ func TestGetGitInfoWithNoCommits(t *testing.T) {
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Error(nil)
-	}
-	err = os.Chdir(sandbox.ProjectDir)
-	if err != nil {
-		t.Error(nil)
-	}
+	// Change the config ProjectDir to be in the sandboxing folder because that's where
+	// we want to execute the commands
+	config.ProjectDir = sandbox.ProjectDir
+
 	_, gitErr := cmd.RunGit(loggingConfig, sandbox.ProjectDir, []string{"init"}, false)
 	if gitErr != nil {
 		t.Error(gitErr)
 	}
-	_, err = cmd.GetGitInfo(config)
+	_, err := cmd.GetGitInfo(config)
 	expectedError := "does not have any commits yet"
 	if err == nil || !strings.Contains(err.Error(), expectedError) {
 		t.Errorf("Should had flagged error: %v", expectedError)
 	}
-	err = os.Chdir(cwd)
-	if err != nil {
-		t.Error(nil)
-	}
+
 }
