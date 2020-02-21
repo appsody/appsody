@@ -69,7 +69,6 @@ type ProjectVersion struct {
 	URLs            []string         `yaml:"urls"` //V1
 	Templates       []Template       `yaml:"templates,omitempty"`
 	DefaultTemplate string           `yaml:"default-template"`
-	Deprecated      string           `yaml:"deprecated,omitempty"'`
 }
 
 type StackRequirement struct {
