@@ -92,7 +92,7 @@ Use 'appsody list' to see the available stacks and templates.`,
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
 	defaultName := defaultProjectName(rootConfig)
 	initCmd.PersistentFlags().StringVar(&config.projectName, "project-name", defaultName, "Project Name for Kubernetes Service.")
-	initCmd.PersistentFlags().StringVar(&config.applicationName, "application-name", "", "Specifies the greater application which this project will belong to.")
+	initCmd.PersistentFlags().StringVar(&config.applicationName, "application-name", "", "Specifies the greater application which this project belongs to.")
 	return initCmd
 }
 
@@ -101,13 +101,13 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if noTemplate {
 		config.Warning.log("The --no-template flag has been deprecated.  Please specify a template value of \"none\" instead.")
 	}
-	valid, err := IsValidParamName(config.projectName, "project-name")
+	valid, err := IsValidProjectName(config.projectName)
 	if !valid {
 		return err
 	}
 
 	if config.applicationName != "" {
-		valid, err := IsValidParamName(config.applicationName, "application-name")
+		valid, err := IsValidApplicationName(config.applicationName)
 		if !valid {
 			return err
 		}

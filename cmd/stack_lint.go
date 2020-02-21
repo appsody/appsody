@@ -56,7 +56,7 @@ Run this command from the root directory of your stack, or specify the path to y
 			stackID := filepath.Base(stackPath)
 			rootConfig.Info.log("LINTING ", stackID)
 
-			validStackID, err := IsValidParamName(stackID, "project-name")
+			validStackID, err := IsValidProjectName(stackID)
 			if !validStackID {
 				rootConfig.Error.log("Stack directory name is invalid. ", err)
 				stackLintErrorCount++

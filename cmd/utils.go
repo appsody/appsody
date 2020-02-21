@@ -365,6 +365,14 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	return config.ProjectDir, nil
 }
 
+func IsValidProjectName(name string) (bool, error) {
+	return isValidParamName(name, "project-name")
+}
+
+func IsValidApplicationName(name string) (bool, error) {
+	return isValidParamName(name, "application-name")
+}
+
 // IsValidParamName tests the given string against Appsody name rules.
 // This common set of name rules for Appsody must comply to Kubernetes
 // resource name, Kubernetes label value, and Docker container name rules.
@@ -373,7 +381,7 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 // 2. Must contain only lowercase letters, digits, and dashes
 // 3. Must end with a letter or digit
 // 4. Must be 68 characters or less
-func IsValidParamName(name, param string) (bool, error) {
+func isValidParamName(name, param string) (bool, error) {
 	if name == "" {
 		return false, errors.Errorf("Invalid %s. The name cannot be an empty string", param)
 	}
@@ -415,7 +423,7 @@ func IsValidKubernetesLabelValue(value string) (bool, error) {
 // and returns a name that conforms to isValidContainerName rules
 func ConvertToValidProjectName(projectDir string) (string, error) {
 	projectName := strings.ToLower(filepath.Base(projectDir))
-	valid, _ := IsValidParamName(projectName, "project-name")
+	valid, _ := IsValidProjectName(projectName)
 
 	if !valid {
 		projectName = strings.ToLower(filepath.Base(projectDir))
@@ -437,7 +445,7 @@ func ConvertToValidProjectName(projectDir string) (string, error) {
 			projectName = projectName + "app"
 		}
 
-		valid, err := IsValidParamName(projectName, "project-name")
+		valid, err := IsValidProjectName(projectName)
 		if !valid {
 			return projectName, err
 		}
@@ -459,7 +467,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 	}
 	if projectConfig.ProjectName != "" {
 		// project-name is in .appsody-config.yaml
-		valid, err := IsValidParamName(projectConfig.ProjectName, "project-name")
+		valid, err := IsValidProjectName(projectConfig.ProjectName)
 		if !valid {
 			return defaultProjectName, err
 		}
@@ -489,7 +497,7 @@ func getDefaultStackRegistry(config *RootCommandConfig) string {
 }
 
 func saveProjectNameToConfig(projectName string, config *RootCommandConfig) error {
-	valid, err := IsValidParamName(projectName, "project-name")
+	valid, err := IsValidProjectName(projectName)
 	if !valid {
 		return err
 	}
@@ -519,7 +527,7 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 }
 
 func saveApplicationNameToConfig(applicationName string, config *RootCommandConfig) error {
-	valid, err := IsValidParamName(applicationName, "application-name")
+	valid, err := IsValidProjectName(applicationName)
 	if !valid {
 		return err
 	}

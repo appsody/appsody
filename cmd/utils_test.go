@@ -52,7 +52,7 @@ func TestValidProjectNames(t *testing.T) {
 		test := testData
 
 		t.Run(fmt.Sprintf("Test Valid Project Name \"%s\"", test), func(t *testing.T) {
-			isValid, err := cmd.IsValidParamName(test, "project-name")
+			isValid, err := cmd.IsValidProjectName(test)
 			if err != nil {
 				t.Error(err)
 			}
@@ -102,9 +102,9 @@ func TestInvalidProjectNames(t *testing.T) {
 		test := testData
 
 		t.Run(fmt.Sprintf("Test Invalid Project Name \"%s\"", test.input), func(t *testing.T) {
-			isValid, err := cmd.IsValidParamName(test.input, "project-name")
+			isValid, err := cmd.IsValidProjectName(test.input)
 			if err == nil {
-				t.Error("Expected an error from IsValidIsValidParamName but did not return one.")
+				t.Error("Expected an error from IsValidProjectNamebut did not return one.")
 			} else if !strings.Contains(err.Error(), "Invalid project-name") {
 				t.Error("Expected the error to contain \"Invalid project-name\"", err)
 			}
