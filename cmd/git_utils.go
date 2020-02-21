@@ -235,10 +235,10 @@ func RunGitVersion(log *LoggingConfig, workDir string, dryrun bool) (string, err
 func RunGit(log *LoggingConfig, workDir string, kargs []string, dryrun bool) (string, error) {
 	kcmd := "git"
 	if dryrun {
-		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", strings.Join(kargs, " "))
+		log.Info.log("Dry run - skipping execution of: ", kcmd, " ", ArgsToString(kargs))
 		return "", nil
 	}
-	log.Debug.log("Running git command: ", kcmd, " ", strings.Join(kargs, " "))
+	log.Debug.log("Running git command: ", kcmd, " ", ArgsToString(kargs))
 	execCmd := exec.Command(kcmd, kargs...)
 	execCmd.Dir = workDir
 	kout, kerr := SeparateOutput(execCmd)
