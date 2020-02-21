@@ -16,6 +16,7 @@ package functest
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,6 +115,29 @@ func TestInitErrors(t *testing.T) {
 			}
 			checkExpressNotExists(sandbox.ProjectDir, t)
 		})
+	}
+}
+
+func TestInitWithApplicationName(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	appsodyConfig := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
+
+	args := []string{"init", "nodejs", "--application-name", "my-big-app"}
+
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := ioutil.ReadFile(appsodyConfig)
+	if err != nil {
+		t.Fatalf("Error reading %s file: %v", appsodyConfig, err)
+	}
+	s := string(b)
+	if !strings.Contains(s, "application-name: my-big-app") {
+		t.Fatal("ApplicationName did not match expected value")
 	}
 }
 
