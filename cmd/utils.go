@@ -480,7 +480,6 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 }
 
 func GetDeprecated(config *RootCommandConfig, log *LoggingConfig) error {
-	deprecatedMessage := ""
 	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
@@ -488,12 +487,81 @@ func GetDeprecated(config *RootCommandConfig, log *LoggingConfig) error {
 	if err != nil {
 		return err
 	}
-	if v.Get("deprecated") != nil {
-		deprecatedMessage = v.Get("deprecated").(string)
-		log.Warning.logf("Stack deprercated: %v", deprecatedMessage)
+	stackImage := v.Get("stack").(string)
+	dockerOutput, err := RunDockerCmdExec([]string{"inspect", "-f", "'{{ index .Config.Labels \"dev.appsody.stack.deprecated\"}}'", stackImage}, log)
+	if err != nil {
+		return err
 	}
+	if dockerOutput != "" {
+		log.Warning.logf("Stack deprecated: %v", dockerOutput)
+	}
+
 	return nil
 }
+
+func getStackIndexYaml(repoID string, stackID string, config *RootCommandConfig) (*IndexYamlStack, error) {
+
+	var stackEntry *IndexYamlStack
+	extractDir := filepath.Join(getHome(config), "extract")
+
+	// Get Repository directory and unmarshal
+	repoDir := getRepoDir(config)
+	var repoFile RepositoryFile
+	source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
+	if err != nil {
+		return stackEntry, errors.Errorf("Error trying to read: %v", err)
+	}
+
+	err = yaml.Unmarshal(source, &repoFile)
+	if err != nil {
+		return stackEntry, errors.Errorf("Error parsing the repository.yaml file: %v", err)
+	}
+
+	// get specificed repo and unmarshal
+	repoEntry := repoFile.GetRepo(repoID)
+
+	// error if repo not found in repository.yaml
+	if repoEntry == nil {
+		return stackEntry, errors.Errorf("Repository: '%s' was not found in the repository.yaml file", repoID)
+	}
+	repoEntryURL := repoEntry.URL
+
+	if repoEntryURL == "" {
+		return stackEntry, errors.Errorf("URL for specified repository is empty")
+	}
+
+	var repoIndex IndexYaml
+	tempRepoIndex := filepath.Join(extractDir, "index.yaml")
+	err = downloadFileToDisk(config.LoggingConfig, repoEntryURL, tempRepoIndex, config.Dryrun)
+	if err != nil {
+		return stackEntry, err
+	}
+	defer os.Remove(tempRepoIndex)
+	if !config.Dryrun {
+		tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
+		if err != nil {
+			return stackEntry, errors.Errorf("Error trying to read: %v", err)
+		}
+
+		err = yaml.Unmarshal(tempRepoIndexFile, &repoIndex)
+		if err != nil {
+			return stackEntry, errors.Errorf("Error parsing the index.yaml file: %v", err)
+		}
+
+		// get specified stack and get URL
+		stackEntry = getStack(&repoIndex, stackID)
+		if stackEntry == nil {
+			return stackEntry, errors.New("Could not find stack specified in repository index")
+		}
+
+	} else {
+		config.Info.log("Dry run complete")
+	}
+
+	return stackEntry, nil
+
+}
+
 func getDefaultStackRegistry(config *RootCommandConfig) string {
 	defaultStackRegistry := config.CliConfig.Get("images").(string)
 	if defaultStackRegistry == "" {

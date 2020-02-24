@@ -399,7 +399,6 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					return err
 				}
 				v.Set("stack", namespaceAndRepo+":"+semver["majorminor"])
-				v.Set("deprecated", stackYaml.Deprecated)
 				err = v.WriteConfig()
 				if err != nil {
 					return err
@@ -510,6 +509,7 @@ func initialiseStackData(stackID string, stackImage string, stackYaml StackYaml)
 	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
 	newStackStruct.Requirements = stackYaml.Requirements
 	newStackStruct.Image = stackImage
+	newStackStruct.Deprecated = stackYaml.Deprecated
 
 	return newStackStruct
 }
@@ -570,6 +570,10 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	}
 	configLabels[appsodyStackKeyPrefix+"id"] = stackID
 	configLabels[appsodyStackKeyPrefix+"tag"] = buildImage
+
+	if stackYaml.Deprecated != "" {
+		configLabels[appsodyStackKeyPrefix+"deprecated"] = stackYaml.Deprecated
+	}
 
 	for key, value := range configLabels {
 		labels[key] = value
