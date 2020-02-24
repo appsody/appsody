@@ -330,9 +330,9 @@ func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string,
 	}
 	repoURL = "file://" + absPath
 	// add a new repo
-	_, err = RunAppsody(t, "repo", "add", repoName, repoURL)
-	if err != nil {
-		return "", err
+	output, cmdErr := RunAppsody(t, "repo", "add", repoName, repoURL)
+	if cmdErr != nil {
+		return output, cmdErr
 	}
 	return repoURL, nil
 }

@@ -140,15 +140,14 @@ func TestRepoAddWithV1Index(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"repo", "add", "v1index-test-repo", filepath.Join(sandbox.TestDataPath, "index.yaml")}
-	output, err := cmdtest.RunAppsody(sandbox, args...)
+	output, err := cmdtest.AddLocalRepo(sandbox, "v1index-test-repo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
 
 	if err == nil {
 		t.Error("Expected non-zero exit code.")
 	}
 
 	if !strings.Contains(output, "The repository .yaml for v1index-test-repo has an older APIVersion that the Appsody CLI no longer supports.") {
-		t.Errorf("Did not find expected error '%s' in output: ", "The repository .yaml for v1-index has an older APIVersion that the Appsody CLI no longer supports.")
+		t.Errorf("Did not find expected error '%s' in output: ", "The repository .yaml for v1index-test-repo has an older APIVersion that the Appsody CLI no longer supports.")
 	}
 }
 
