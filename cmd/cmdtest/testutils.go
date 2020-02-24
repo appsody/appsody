@@ -22,7 +22,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -400,31 +399,20 @@ func GetEnvStacksList() string {
 	return stacksList
 }
 
-func getTestDepDockerVolumes(t *testing.T) []string {
+func cleanUpTestDepDockerVolumes(t *testing.T) []string {
 	var testDepVolumes []string
 	output, err := RunCmdExec("docker", []string{"volume", "ls", "--format", "{{.Name}}"}, t)
 	if err != nil {
 		t.Logf("Error listing docker volumes: %v", err)
 	}
 	volumes := strings.Fields(output)
-	r, _ := regexp.Compile("test([a-z]+)-([0-9]+)-deps")
-	if err != nil {
-		t.Logf("Error compiling regular expression: %v", err)
-	}
 	for _, volume := range volumes {
-		if r.MatchString(volume) {
-			testDepVolumes = append(testDepVolumes, volume)
+		if strings.Contains(volume, strings.ToLower(t.Name())+"-") {
+			_, err := RunCmdExec("docker", []string{"volume", "rm", volume}, t)
+			if err != nil {
+				t.Logf("WARNING - error cleaning up test volumes created: %v", err)
+			}
 		}
 	}
 	return testDepVolumes
-}
-
-func cleanUpTestDepDockerVolumes(t *testing.T) {
-	testDepVolumes := getTestDepDockerVolumes(t)
-	args := []string{"volume", "rm"}
-	args = append(args, testDepVolumes...)
-	_, err := RunCmdExec("docker", args, t)
-	if err != nil {
-		t.Logf("WARNING - error cleaning up test volumes created: %v", err)
-	}
 }
