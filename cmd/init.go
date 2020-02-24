@@ -153,25 +153,14 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		config.Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
 		index = indices[repoName]
-		projectFound := false
 		stackFound := false
 		var stackReqs StackRequirement
 
-		// we should remove this as we no longer have use for the v1 index and it is bringing down our code coverage
 		if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 			config.Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
 		}
-		if len(index.Projects[projectType]) >= 1 { //V1 repos
-			projectFound = true
-			//return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
-			config.Debug.log("Project ", projectType, " found in repo ", repoName)
-
-			// need to check template name vs default
-			if !noTemplate && !(templateName == "" || templateName == index.Projects[projectType][0].DefaultTemplate) {
-				return errors.Errorf("template name is not \"none\" and does not match %s.", index.Projects[projectType][0].DefaultTemplate)
-			}
-			projectName = index.Projects[projectType][0].URLs[0]
-
+		if index.APIVersion == "v1" {
+			return errors.Errorf("The repository .yaml for " + repoName + " has an older APIVersion that the Appsody CLI no longer supports. Supported APIVersion: " + supportedIndexAPIVersion)
 		}
 		for indexNo, stack := range index.Stacks {
 			if stack.ID == projectType {
@@ -190,7 +179,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 				projectName = URL
 			}
 		}
-		if !projectFound && !stackFound {
+		if !stackFound {
 			return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
 		}
 
