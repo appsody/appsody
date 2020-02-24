@@ -22,30 +22,6 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestList(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	// first add the test repo index
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	output, err := cmdtest.RunAppsody(sandbox, "list")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if strings.Contains(output, "A Java Microprofile Stack") {
-		t.Error("list command should not display the stack name")
-	}
-
-	if !strings.Contains(output, "java-microprofile") {
-		t.Error("list command should contain id 'java-microprofile'")
-	}
-}
-
 // test the v2 list functionality
 func TestListV2(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
