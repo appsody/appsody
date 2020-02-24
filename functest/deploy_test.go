@@ -57,7 +57,7 @@ func TestDeploySimple(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -97,7 +97,7 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -261,7 +261,7 @@ func TestNoCheckFlag(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,12 +273,12 @@ func TestNoCheckFlag(t *testing.T) {
 	}
 
 	t.Log("Running appsody deploy...")
-	output, err := cmdtest.RunAppsody(sandbox, "deploy", "-t", "testdeploy/testimage", "--dryrun", "--no-check")
+	output, err := cmdtest.RunAppsody(sandbox, "deploy", "-t", "testdeploy/testimage", "--dryrun", "--no-operator-check")
 	if err != nil {
 		t.Log("WARNING: deploy dryrun failed.")
 	}
 
-	if !strings.Contains(output, "kubectl get pods -o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}' -n") {
+	if !strings.Contains(output, "kubectl get pods \"-o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}'\" -n") {
 		t.Fatal(err, ": Expected kubectl get pods to run only against the targeted namespace rather than all namespaces.")
 	}
 }

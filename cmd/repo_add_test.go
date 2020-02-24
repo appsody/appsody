@@ -32,7 +32,7 @@ func TestRepoAdd(t *testing.T) {
 	}
 
 	addRepoName := "LocalTestRepo"
-	addRepoURL, err := cmdtest.AddLocalRepo(sandbox, addRepoName, filepath.Join(sandbox.TestDataPath, "index.yaml"))
+	addRepoURL, err := cmdtest.AddLocalRepo(sandbox, addRepoName, filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,6 +133,22 @@ func TestRepoAddErrors(t *testing.T) {
 				t.Errorf("Did not find expected error '%s' in output", tt.expectedError)
 			}
 		})
+	}
+}
+
+func TestRepoAddWithV1Index(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"repo", "add", "v1index-test-repo", "file://" + sandbox.TestDataPath + "/index.yaml"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+
+	if err == nil {
+		t.Error("Expected non-zero exit code.")
+	}
+
+	if !strings.Contains(output, "The repository .yaml for v1index-test-repo has an older APIVersion that the Appsody CLI no longer supports.") {
+		t.Errorf("Did not find expected error '%s' in output: ", "The repository .yaml for v1-index has an older APIVersion that the Appsody CLI no longer supports.")
 	}
 }
 

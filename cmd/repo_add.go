@@ -77,6 +77,9 @@ func repoAdd(repoName, repoURL string, config *RootCommandConfig) error {
 	if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 		config.Warning.log("The repository " + repoName + " contains an APIVersion in its .yaml file more recent than the current Appsody CLI supports(" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
 	}
+	if index.APIVersion == "v1" {
+		return errors.Errorf("The repository .yaml for " + repoName + " has an older APIVersion that the Appsody CLI no longer supports. Supported APIVersion: " + supportedIndexAPIVersion)
+	}
 
 	if config.Dryrun {
 		config.Info.logf("Dry Run - Skipping appsody repo add repository Name: %s, URL: %s", repoName, repoURL)
