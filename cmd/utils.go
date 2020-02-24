@@ -493,7 +493,7 @@ func GetDeprecated(config *RootCommandConfig, log *LoggingConfig) error {
 		return err
 	}
 	if dockerOutput != "" {
-		log.Warning.logf("Stack deprecated: %v", dockerOutput)
+		log.Warning.logf("\n*\n*\n*\n Stack deprecated: %v \n*\n*\n*", dockerOutput)
 	}
 
 	return nil
