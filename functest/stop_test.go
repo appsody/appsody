@@ -64,7 +64,7 @@ func TestStopWithoutName(t *testing.T) {
 		t.Log("calling docker ps")
 		pathElements := strings.Split(sandbox.ProjectDir, "/")
 		containerName := pathElements[len(pathElements)-1]
-		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName + "-dev"}, t)
+		dockerOutput, dockerErr := cmdtest.RunCmdExec("docker", []string{"ps", "-q", "-f", "name=" + containerName + "-dev"}, t)
 		t.Log("docker output", dockerOutput)
 		if dockerErr != nil {
 			t.Log("Ignoring error running docker ps -q -f name=appsody-stop-test-dev", dockerErr)
@@ -152,7 +152,7 @@ func TestStopWithName(t *testing.T) {
 
 		}
 		t.Log("about to do docker ps")
-		dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=testStopContainer"}, t)
+		dockerOutput, dockerErr := cmdtest.RunCmdExec("docker", []string{"ps", "-q", "-f", "name=testStopContainer"}, t)
 		if dockerErr != nil {
 			t.Log("Ignoring error running docker ps -q -f name=testStopContainer", dockerErr)
 
