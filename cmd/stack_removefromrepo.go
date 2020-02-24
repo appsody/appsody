@@ -124,7 +124,8 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 					if exists {
 						log.Debug.Log(localIndexFile, " exists in the appsody directory")
 					} else {
-						return errors.Errorf("Repository index file not found - unable to remove stack")
+						log.Info.Log("Repository index file not found - unable to remove stack")
+						return nil
 					}
 				}
 			} else {
@@ -145,7 +146,8 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 			// find the index of the stack
 			indexYaml, stackExists := findStackAndRemove(log, stackName, indexYaml)
 			if !stackExists {
-				return errors.Errorf("Stack: %v does not exist in repository index file", stackName)
+				log.Info.Logf("Stack: %v does not exist in repository index file", stackName)
+				return nil
 			}
 
 			// Last thing to do is write the data to the file

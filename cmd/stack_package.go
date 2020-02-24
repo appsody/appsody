@@ -236,6 +236,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 					return errors.Errorf("Error trying to unmarshall: %v", err)
 				}
 				indexYaml, _ = findStackAndRemove(log, stackID, indexYaml)
+
 			} else {
 				// create the beginning of the index yaml
 				indexYaml = IndexYaml{}
