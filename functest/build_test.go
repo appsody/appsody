@@ -452,8 +452,12 @@ func TestOpenLibertyDeploymentConfig(t *testing.T) {
 
 	deployFilePath := filepath.Join(sandbox.ProjectDir, deployFile)
 
-	makeOpenLibertyAppDeployYaml(deployFilePath)
+	err = makeOpenLibertyAppDeployYaml(deployFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
 
+	t.Log("Running appsody build...")
 	args := []string{"build"}
 	_, err = cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
