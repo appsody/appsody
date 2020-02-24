@@ -140,7 +140,7 @@ func TestRepoAddWithV1Index(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	args := []string{"repo", "add", "v1index-test-repo", "file://" + sandbox.TestDataPath + "/index.yaml"}
+	args := []string{"repo", "add", "v1index-test-repo", filepath.Join(sandbox.TestDataPath, "index.yaml")}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 
 	if err == nil {
