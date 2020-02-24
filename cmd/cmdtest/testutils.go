@@ -407,12 +407,12 @@ func getTestDepDockerVolumes(t *testing.T) []string {
 		t.Logf("Error listing docker volumes: %v", err)
 	}
 	volumes := strings.Fields(output)
+	r, _ := regexp.Compile("test([a-z]+)-([0-9]+)-deps")
+	if err != nil {
+		t.Logf("Error compiling regular expression: %v", err)
+	}
 	for _, volume := range volumes {
-		matched, err := regexp.MatchString(`test([a-z]+)-([0-9]+)-deps`, volume)
-		if err != nil {
-			t.Logf("Error comparing docker volume to regular expression: %v", err)
-		}
-		if matched {
+		if r.MatchString(volume) {
 			testDepVolumes = append(testDepVolumes, volume)
 		}
 	}
