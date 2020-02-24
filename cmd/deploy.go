@@ -142,7 +142,12 @@ Run this command from the root directory of your Appsody project.`,
 				return nil
 			}
 
-			if !config.noOperatorInstall {
+			deploymentManifest, err := getDeploymentManifest(configFile)
+			if err != nil {
+				return err
+			}
+
+			if !config.noOperatorInstall && deploymentManifest.Kind == "AppsodyApplication" {
 				// Check for the Appsody Operator
 				operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(config.LoggingConfig, namespace, config.Dryrun, config.noOperatorCheck)
 				if operatorExistsErr != nil {
@@ -163,8 +168,9 @@ Run this command from the root directory of your Appsody project.`,
 					}
 				} else {
 					config.Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
-
 				}
+			} else {
+				config.Debug.log("Not installing Appsody Operator")
 			}
 
 			// Performing the kubectl apply
@@ -173,10 +179,6 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.Errorf("Failed to deploy to your Kubernetes cluster: %v", err)
 			}
 
-			deploymentManifest, err := getDeploymentManifest(configFile)
-			if err != nil {
-				return err
-			}
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
 			config.Info.log("Appsody Deployment name is: ", deploymentManifest.Name)

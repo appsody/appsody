@@ -318,7 +318,8 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				err = makeAppDeployYaml(sandbox.ProjectDir, tt.appDeployStart)
+				deployFilePath := filepath.Join(sandbox.ProjectDir, deployFile)
+				err = makeKnativeAppDeployYaml(deployFilePath, tt.appDeployStart)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -333,7 +334,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 					t.Error("appsody build command returned err: ", err)
 				}
 				expectedImageName := "dev.local/" + sandbox.ProjectName
-				checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", expectedImageName, "", tt.appDeployExpected})
+				checkDeploymentConfig(t, expectedDeploymentConfig{deployFilePath, "", expectedImageName, "", tt.appDeployExpected})
 
 				//delete the image
 				deleteImage(expectedImageName, "docker", t)
@@ -342,43 +343,15 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 	}
 }
 
-func makeAppDeployYaml(projectDir string, createKnativeService bool) error {
+func makeKnativeAppDeployYaml(destination string, createKnativeService bool) error {
 	deploymentManifest := cmd.DeploymentManifest{}
 	deploymentManifest.Spec = make(map[string]interface{})
 	deploymentManifest.Spec["createKnativeService"] = createKnativeService
-
-	data, err := yaml.Marshal(deploymentManifest)
-	if err != nil {
-		return fmt.Errorf("error marshalling yaml: %v", err)
-	}
-
-	// write to file
-	deployFilePath := filepath.Join(projectDir, deployFile)
-	err = ioutil.WriteFile(deployFilePath, data, 0666)
-	if err != nil {
-		return fmt.Errorf("error writing deployment yaml to file %s: %v", deployFilePath, err)
-	}
-	return nil
+	return writeAppDeployYaml(destination, deploymentManifest)
 }
 
 func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploymentConfig) {
-	deployFile := expectedDeploymentConfig.deployFile
-	_, err := os.Stat(deployFile)
-	if err != nil && os.IsNotExist(err) {
-		t.Errorf("Could not find %s", deployFile)
-		return
-	}
-	yamlFileBytes, err := ioutil.ReadFile(deployFile)
-	if err != nil {
-		t.Errorf("Could not read %s: %s", deployFile, err)
-	}
-
-	var deploymentManifest cmd.DeploymentManifest
-
-	err = yaml.Unmarshal(yamlFileBytes, &deploymentManifest)
-	if err != nil {
-		t.Logf("app-deploy.yaml formatting error: %s", err)
-	}
+	deploymentManifest := getAppDeployYaml(expectedDeploymentConfig.deployFile, t)
 
 	expectedApplicationImage := expectedDeploymentConfig.imageTag
 	if expectedDeploymentConfig.pullURL != "" {
@@ -464,4 +437,104 @@ func TestBuildMissingTagFail(t *testing.T) {
 		t.Error("Build with missing tag did not fail as expected")
 	}
 
+}
+
+func TestOpenLibertyDeploymentConfig(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// appsody init
+	t.Log("Running appsody init...")
+	_, err := cmdtest.RunAppsody(sandbox, "init", "starter")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	deployFilePath := filepath.Join(sandbox.ProjectDir, deployFile)
+
+	makeOpenLibertyAppDeployYaml(deployFilePath)
+
+	args := []string{"build"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedImageName := "dev.local/" + sandbox.ProjectName
+	checkDeploymentConfig(t, expectedDeploymentConfig{deployFilePath, "", expectedImageName, "", false})
+	checkOpenLibertyAppDeployYaml(deployFilePath, t)
+}
+
+// Sample values taken from the OpenLiberty Operator documentation:
+// https://github.com/OpenLiberty/open-liberty-operator/blob/master/doc/user-guide.md#day-2-operations
+func makeOpenLibertyAppDeployYaml(destination string) error {
+	deploymentManifest := cmd.DeploymentManifest{}
+	deploymentManifest.APIVersion = "openliberty.io/v1beta1"
+	deploymentManifest.Kind = "OpenLibertyApplication"
+	deploymentManifest.Annotations = make(map[string]string)
+	deploymentManifest.Annotations["openliberty.io/day2operations"] = "OpenLibertyTrace,OpenLibertyDump"
+	deploymentManifest.Spec = make(map[string]interface{})
+	deploymentManifest.Spec["podName"] = "PodName"
+	deploymentManifest.Spec["traceSpecification"] = "*=info:com.ibm.ws.webcontainer*=all"
+
+	return writeAppDeployYaml(destination, deploymentManifest)
+}
+
+func checkOpenLibertyAppDeployYaml(source string, t *testing.T) {
+	deploymentManifest := getAppDeployYaml(source, t)
+
+	if deploymentManifest.APIVersion != "openliberty.io/v1beta1" {
+		t.Errorf("Incorrect APIVersion in app-deploy.yaml. Expected %s but found %s", "openliberty.io/v1beta1", deploymentManifest.APIVersion)
+	}
+
+	if deploymentManifest.Kind != "OpenLibertyApplication" {
+		t.Errorf("Incorrect Kind in app-deploy.yaml. Expected %s but found %s", "OpenLibertyApplication", deploymentManifest.Kind)
+	}
+
+	if deploymentManifest.Annotations["openliberty.io/day2operations"] != "OpenLibertyTrace,OpenLibertyDump" {
+		t.Errorf("Could not find Day 2 annotation for Open Liberty in app-deploy.yaml. Expected %s but found %s", "OpenLibertyTrace,OpenLibertyDump", deploymentManifest.Annotations["openliberty.io/day2operations"])
+	}
+
+	if deploymentManifest.Spec["podName"] != "PodName" {
+		t.Errorf("Could not find podName in app-deploy.yaml. Expected %s but found %s", "PodName", deploymentManifest.Spec["podName"])
+	}
+
+	if deploymentManifest.Spec["traceSpecification"] != "*=info:com.ibm.ws.webcontainer*=all" {
+		t.Errorf("Could not find traceSpecification in app-deploy.yaml. Expected %s but found %s", "*=info:com.ibm.ws.webcontainer*=all", deploymentManifest.Spec["traceSpecification"])
+	}
+}
+
+func getAppDeployYaml(source string, t *testing.T) cmd.DeploymentManifest {
+	var deploymentManifest cmd.DeploymentManifest
+
+	_, err := os.Stat(source)
+	if err != nil && os.IsNotExist(err) {
+		t.Errorf("Could not find %s", source)
+		return deploymentManifest
+	}
+	yamlFileBytes, err := ioutil.ReadFile(source)
+	if err != nil {
+		t.Errorf("Could not read %s: %s", source, err)
+	}
+
+	err = yaml.Unmarshal(yamlFileBytes, &deploymentManifest)
+	if err != nil {
+		t.Logf("app-deploy.yaml formatting error: %s", err)
+	}
+
+	return deploymentManifest
+}
+
+func writeAppDeployYaml(destination string, deploymentManifest cmd.DeploymentManifest) error {
+	data, err := yaml.Marshal(deploymentManifest)
+	if err != nil {
+		return fmt.Errorf("error marshalling yaml: %v", err)
+	}
+
+	// write to file
+	err = ioutil.WriteFile(destination, data, 0666)
+	if err != nil {
+		return fmt.Errorf("error writing deployment yaml to file %s: %v", destination, err)
+	}
+	return nil
 }
