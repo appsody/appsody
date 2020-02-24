@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -167,6 +168,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 			if err != nil {
 				t.Log("WARNING - ignoring error cleaning up test directory: ", err)
 			}
+			cleanUpTestDepDockerVolumes(t)
 		}
 	}
 	return sandbox, cleanupFunc
@@ -396,4 +398,33 @@ func GetEnvStacksList() string {
 		stacksList = "incubator/nodejs"
 	}
 	return stacksList
+}
+
+func getTestDepDockerVolumes(t *testing.T) []string {
+	var testDepVolumes []string
+	output, err := RunCmdExec("docker", []string{"volume", "ls", "--format", "{{.Name}}"}, t)
+	if err != nil {
+		t.Logf("Error listing docker volumes: %v", err)
+	}
+	volumes := strings.Fields(output)
+	for _, volume := range volumes {
+		matched, err := regexp.MatchString(`test([a-z]+)-([0-9]+)-deps`, volume)
+		if err != nil {
+			t.Logf("Error comparing docker volume to regular expression: %v", err)
+		}
+		if matched {
+			testDepVolumes = append(testDepVolumes, volume)
+		}
+	}
+	return testDepVolumes
+}
+
+func cleanUpTestDepDockerVolumes(t *testing.T) {
+	testDepVolumes := getTestDepDockerVolumes(t)
+	args := []string{"volume", "rm"}
+	args = append(args, testDepVolumes...)
+	_, err := RunCmdExec("docker", args, t)
+	if err != nil {
+		t.Logf("WARNING - error cleaning up test volumes created: %v", err)
+	}
 }
