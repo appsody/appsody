@@ -1655,9 +1655,14 @@ func pullCmd(log *LoggingConfig, imageToPull string, buildah bool, dryrun bool) 
 	return nil
 }
 
-func checkDockerImageExistsLocally(log *LoggingConfig, imageToPull string) bool {
-	cmdName := "docker"
+func checkImageExistsLocally(log *LoggingConfig, imageToPull string, buildah bool) bool {
 
+	var cmdName string
+	if buildah {
+		cmdName = "buildah"
+	} else {
+		cmdName = "docker"
+	}
 	imageNameComponents := strings.Split(imageToPull, "/")
 	if len(imageNameComponents) == 3 {
 		if imageNameComponents[0] == "index.docker.io" || imageNameComponents[0] == "docker.io" {
@@ -1712,14 +1717,14 @@ func pullImage(imageToPull string, config *RootCommandConfig) error {
 		pullPolicyAlways = false
 	}
 	if !pullPolicyAlways {
-		localImageFound = checkDockerImageExistsLocally(config.LoggingConfig, imageToPull)
+		localImageFound = checkImageExistsLocally(config.LoggingConfig, imageToPull, config.Buildah)
 	}
 
 	if pullPolicyAlways || (!pullPolicyAlways && !localImageFound) {
 		err := pullCmd(config.LoggingConfig, imageToPull, config.Buildah, config.Dryrun)
 		if err != nil {
 			if pullPolicyAlways {
-				localImageFound = checkDockerImageExistsLocally(config.LoggingConfig, imageToPull)
+				localImageFound = checkImageExistsLocally(config.LoggingConfig, imageToPull, config.Buildah)
 			}
 			if !localImageFound {
 				return errors.Errorf("Could not find the image either in docker hub or locally: %s", imageToPull)
@@ -2363,5 +2368,42 @@ func RemoveIfExists(path string) error {
 			return errors.Errorf("Error removing: %v and children: %v", path, err)
 		}
 	}
+	return nil
+}
+
+func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath string, repoName string) error {
+	indexJSONStack := make([]IndexJSONStack, 0)
+	prefixName := strings.Title(repoName)
+	for _, stack := range indexYaml.Stacks {
+		for _, template := range stack.Templates {
+			stackJSON := IndexJSONStack{}
+			stackJSON.DisplayName = prefixName + " " + stack.Name + " " + template.ID + " template"
+			stackJSON.Description = stack.Description
+			stackJSON.Language = stack.Language
+			stackJSON.ProjectType = "appsodyExtension"
+			stackJSON.ProjectStyle = "Appsody"
+			stackJSON.Location = template.URL
+
+			link := Links{}
+			link.Self = "/devfiles/" + stack.ID + "/devfile.yaml"
+			stackJSON.Links = link
+
+			indexJSONStack = append(indexJSONStack, stackJSON)
+		}
+	}
+
+	// Last thing to do is write the data to the file
+	data, err := json.MarshalIndent(&indexJSONStack, "", "	")
+	if err != nil {
+		return err
+	}
+	indexFilePath = strings.Replace(indexFilePath, ".yaml", ".json", 1)
+
+	err = ioutil.WriteFile(indexFilePath, data, 0666)
+	if err != nil {
+		return errors.Errorf("Error writing to json file: %v", err)
+	}
+
+	log.Info.logf("Succesfully generated file: %s", indexFilePath)
 	return nil
 }

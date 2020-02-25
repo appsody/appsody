@@ -54,7 +54,7 @@ var supportedKubeLabels = []string{
 	"image.opencontainers.org/licenses",
 	"stack.appsody.dev/id",
 	"stack.appsody.dev/version",
-	"app.appsody.dev/name",
+	"app.kubernetes.io/part-of",
 }
 
 func checkBuildOptions(options []string) error {
@@ -280,6 +280,9 @@ func convertLabelsToKubeFormat(log *LoggingConfig, labels map[string]string) map
 
 	for key, value := range labels {
 		newKey, err := ConvertLabelToKubeFormat(key)
+		if newKey == "app.appsody.dev/name" {
+			newKey = "app.kubernetes.io/part-of"
+		}
 		if err != nil {
 			log.Debug.logf("Skipping image label \"%s\" - %v", key, err)
 		} else {

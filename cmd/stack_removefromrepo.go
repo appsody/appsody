@@ -121,25 +121,15 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 					if err != nil {
 						return errors.Errorf("Error checking status of %s", localIndexFile)
 					}
-					if exists && useLocalCache {
-						log.Debug.Log(localIndexFile, " exists in the appsody directory and use-local-cache is true")
+					if exists {
+						log.Debug.Log(localIndexFile, " exists in the appsody directory")
 					} else {
 						log.Info.Log("Repository index file not found - unable to remove stack")
 						return nil
 					}
 				}
 			} else {
-				log.Debug.Log(repoName, " does not exist within the repository list")
-				exists, err := Exists(localIndexFile)
-				if err != nil {
-					return errors.Errorf("Error checking status of %s", localIndexFile)
-				}
-				if exists && useLocalCache {
-					log.Debug.Log(localIndexFile, " exists in the appsody directory and use-local-cache is true")
-				} else {
-					log.Info.Log("Repository index file not found - unable to remove stack")
-					return nil
-				}
+				return errors.Errorf("%v does not exist within the repository list", repoName)
 			}
 
 			log.Info.log("Updating repository index file: ", localIndexFile)
@@ -154,7 +144,11 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 
 			// At this point we should have the indexFile loaded that want to use for updating / adding stack info
 			// find the index of the stack
-			indexYaml = findStackAndRemove(log, stackName, indexYaml)
+			indexYaml, stackExists := findStackAndRemove(log, stackName, indexYaml)
+			if !stackExists {
+				log.Info.Logf("Stack: %v does not exist in repository index file", stackName)
+				return nil
+			}
 
 			// Last thing to do is write the data to the file
 			data, err := yaml.Marshal(indexYaml)
@@ -165,6 +159,10 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 			err = ioutil.WriteFile(localIndexFile, data, 0666)
 			if err != nil {
 				return errors.Errorf("Error writing localIndexFile: %v", err)
+			}
+			err = generateCodewindJSON(log, indexYaml, localIndexFile, repoName)
+			if err != nil {
+				return errors.Errorf("Could not generate json file from yaml index: %v", err)
 			}
 
 			log.Info.Log("Repository index file updated successfully")
