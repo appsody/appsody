@@ -554,7 +554,7 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 		appsodyApplication.Namespace = config.namespace
 	}
 
-	err = writeAppsodyApplication(appsodyApplication, config)
+	err = writeAppsodyApplication(appsodyApplication, configFile)
 	if err != nil {
 		return err
 	}
@@ -577,9 +577,7 @@ func getAppsodyApplication(configFile string) (v1beta1.AppsodyApplication, error
 	return appsodyApplication, err
 }
 
-func writeAppsodyApplication(appsodyApplication v1beta1.AppsodyApplication, config *buildCommandConfig) error {
-	configFile := config.appDeployFile
-
+func writeAppsodyApplication(appsodyApplication v1beta1.AppsodyApplication, configFile string) error {
 	output, err := yaml.Marshal(appsodyApplication)
 	if err != nil {
 		return errors.Errorf("Could not marshall AppsodyApplication to YAML when updating the %s: %s", configFile, err)
