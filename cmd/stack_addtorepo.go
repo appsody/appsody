@@ -224,7 +224,11 @@ Run this command from the root directory of your Appsody project.`,
 
 			// At this point we should have the indexFile loaded that want to use for updating / adding stack info
 			// find the index of the stack
-			indexYaml = findStackAndRemove(log, stackID, indexYaml)
+			indexYaml, stackExists := findStackAndRemove(log, stackID, indexYaml)
+
+			if stackExists {
+				log.Debug.Logf("Stack: %v already exists in repo", stackID)
+			}
 
 			// get the necessary data from the current stack.yaml
 			stackYaml, err := getStackData(stackPath)
@@ -292,6 +296,11 @@ Run this command from the root directory of your Appsody project.`,
 			err = ioutil.WriteFile(localIndexFile, data, 0666)
 			if err != nil {
 				return errors.Errorf("Error writing localIndexFile: %v", err)
+			}
+
+			err = generateCodewindJSON(log, indexYaml, localIndexFile, repoName)
+			if err != nil {
+				return errors.Errorf("Could not generate json file from yaml index: %v", err)
 			}
 
 			log.Info.Log("Repository index file updated successfully")

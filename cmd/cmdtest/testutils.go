@@ -167,6 +167,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 			if err != nil {
 				t.Log("WARNING - ignoring error cleaning up test directory: ", err)
 			}
+			cleanUpTestDepDockerVolumes(t, sandbox.ProjectName)
 		}
 	}
 	return sandbox, cleanupFunc
@@ -337,12 +338,12 @@ func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string,
 	return repoURL, nil
 }
 
-// RunDockerCmdExec runs the docker command with the given args in a new process
+// RunCmdExec runs the command (Docker or Buildah) with the given args in a new process
 // The stdout and stderr are captured, printed, and returned
 // args will be passed to the docker command
 // workingDir will be the directory the command runs in
-func RunDockerCmdExec(args []string, t *testing.T) (string, error) {
-	cmdArgs := []string{"docker"}
+func RunCmdExec(cmdName string, args []string, t *testing.T) (string, error) {
+	cmdArgs := []string{cmdName}
 	cmdArgs = append(cmdArgs, args...)
 	t.Log(cmdArgs)
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
@@ -396,4 +397,12 @@ func GetEnvStacksList() string {
 		stacksList = "incubator/nodejs"
 	}
 	return stacksList
+}
+
+func cleanUpTestDepDockerVolumes(t *testing.T, testDir string) {
+	_, err := RunCmdExec("docker", []string{"volume", "rm", testDir + "-deps"}, t)
+	if err != nil {
+		t.Logf("WARNING - error cleaning up test volumes created: %v", err)
+	}
+
 }
