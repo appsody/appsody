@@ -415,6 +415,9 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.Ap
 
 	for key, value := range imageLabels {
 		key, err = cmd.ConvertLabelToKubeFormat(key)
+		if key == "app.appsody.dev/name" {
+			key = "app.kubernetes.io/part-of"
+		}
 		if err != nil {
 			t.Errorf("Could not convert label to Kubernetes format: %s", err)
 		}
