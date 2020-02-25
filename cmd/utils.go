@@ -487,8 +487,11 @@ func GetDeprecated(config *RootCommandConfig, log *LoggingConfig) error {
 	if err != nil {
 		return err
 	}
-	stackImage := v.Get("stack").(string)
-	dockerOutput, err := RunDockerCmdExec([]string{"inspect", "-f", "'{{ index .Config.Labels \"dev.appsody.stack.deprecated\"}}'", stackImage}, log)
+	stackInfo := v.Get("stack")
+	if stackInfo == nil {
+		return errors.New("stack information not found in .appsody-config.yaml file")
+	}
+	dockerOutput, err := RunDockerCmdExec([]string{"inspect", "-f", "'{{ index .Config.Labels \"dev.appsody.stack.deprecated\"}}'", stackInfo.(string)}, log)
 	if err != nil {
 		return err
 	}
