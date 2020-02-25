@@ -148,7 +148,7 @@ func TestDeployNoNamespace(t *testing.T) {
 	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageTag, "", false})
 }
 
-func TestDeployNamespaceMismatch(t *testing.T) {
+func TestDeployChangeNamespace(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
