@@ -555,7 +555,7 @@ func getStackIndexYaml(repoID string, stackID string, config *RootCommandConfig)
 		}
 
 	} else {
-		config.Info.log("Dry run complete")
+		return nil, nil
 	}
 
 	return stackEntry, nil

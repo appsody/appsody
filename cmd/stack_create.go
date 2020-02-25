@@ -102,7 +102,10 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			if err != nil {
 				return err
 			}
-
+			if rootConfig.Dryrun {
+				rootConfig.Info.Log("Dry run complete")
+				return nil
+			}
 			stackEntryURL := stackEntry.SourceURL
 
 			if stackEntryURL == "" {
