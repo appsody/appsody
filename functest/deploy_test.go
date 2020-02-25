@@ -172,14 +172,13 @@ func TestDeployNamespaceMismatch(t *testing.T) {
 	t.Logf("Running appsody deploy with namespace: %s ...", secondNamespace)
 	output, err := cmdtest.RunAppsody(sandbox, "deploy", "--generate-only", "-n", secondNamespace)
 
-	if err != nil {
-		if !strings.Contains(output, "the namespace \""+firstNamespace+"\" from the deployment manifest does not match the namespace \""+secondNamespace+"\" passed as an argument.") {
-			t.Errorf("Expecting namespace error to be thrown, but another error was thrown: %s", err)
-		}
-	} else {
-		t.Error("Deploy with conflicting namespace did not fail as expected")
+	expectedOutput := "Overriding namespace " + firstNamespace + " in the deployment manifest to: " + secondNamespace
+	if !strings.Contains(output, expectedOutput) {
+		t.Errorf("Did not get expected output: %s", expectedOutput)
 	}
-
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 // Testing deploy delete when the required config file cannot be found
