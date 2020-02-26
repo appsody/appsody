@@ -33,9 +33,10 @@ import (
 
 type initCommandConfig struct {
 	*RootCommandConfig
-	overwrite   bool
-	noTemplate  bool
-	projectName string
+	overwrite       bool
+	noTemplate      bool
+	projectName     string
+	applicationName string
 }
 
 // these are global constants
@@ -90,7 +91,8 @@ Use 'appsody list' to see the available stacks and templates.`,
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
 	defaultName := defaultProjectName(rootConfig)
-	initCmd.PersistentFlags().StringVar(&config.projectName, "project-name", defaultName, "Project Name for Kubernetes Service")
+	initCmd.PersistentFlags().StringVar(&config.projectName, "project-name", defaultName, "Project Name for Kubernetes Service.")
+	initCmd.PersistentFlags().StringVar(&config.applicationName, "application-name", "", "Specifies the greater application which this project belongs to.")
 	return initCmd
 }
 
@@ -103,6 +105,14 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if !valid {
 		return err
 	}
+
+	if config.applicationName != "" {
+		valid, err := IsValidApplicationName(config.applicationName)
+		if !valid {
+			return err
+		}
+	}
+
 	//var index RepoIndex
 	var repos RepositoryFile
 	if _, err := repos.getRepos(config.RootCommandConfig); err != nil {
@@ -346,6 +356,14 @@ func install(config *initCommandConfig) error {
 			return err
 		}
 	}
+
+	if config.applicationName != "" {
+		err := saveApplicationNameToConfig(config.applicationName, config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
+	}
+
 	platformDefinition := projectConfig.Stack
 
 	config.Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)
