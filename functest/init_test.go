@@ -15,7 +15,6 @@
 package functest
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,18 +24,23 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-var initResultsCheckTests = []struct {
-	testName string
-	args     []string //input
-}{
-	{"TestInit", []string{"nodejs-express"}},
-	{"TestInitV2WithDefaultRepoSpecified", []string{"incubator/nodejs-express"}},
-	{"TestInitV2WithDefaultRepoSpecifiedTemplateNonDefault", []string{"incubator/nodejs-express", "scaffold"}},
-	{"TestInitV2WithDefaultRepoSpecifiedTemplateDefault", []string{"incubator/nodejs-express", "simple"}},
-	{"TestInitV2WithNoRepoSpecifiedTemplateDefault", []string{"nodejs-express", "simple"}},
-}
+var appsodyFile = ".appsody-config.yaml"
+var appjs = "app.js"
+var packagejson = "package.json"
+var packagejsonlock = "package-lock.json"
 
 func TestInitResultsCheck(t *testing.T) {
+
+	var initResultsCheckTests = []struct {
+		testName string
+		args     []string //input
+	}{
+		{"TestInit", []string{"nodejs-express"}},
+		{"TestInitV2WithDefaultRepoSpecified", []string{"incubator/nodejs-express"}},
+		{"TestInitV2WithDefaultRepoSpecifiedTemplateNonDefault", []string{"incubator/nodejs-express", "scaffold"}},
+		{"TestInitV2WithDefaultRepoSpecifiedTemplateDefault", []string{"incubator/nodejs-express", "simple"}},
+		{"TestInitV2WithNoRepoSpecifiedTemplateDefault", []string{"nodejs-express", "simple"}},
+	}
 
 	for _, testData := range initResultsCheckTests {
 		// need to set testData to a new variable scoped under the for loop
@@ -61,7 +65,7 @@ func TestInitResultsCheck(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checkExpressExists(sandbox.ProjectDir, t)
+			expressExist(sandbox.ProjectDir, true, t)
 		})
 
 	}
@@ -113,7 +117,7 @@ func TestInitErrors(t *testing.T) {
 			} else if err == nil {
 				t.Errorf("Expected an error from test %v but it did not return one.", tt.testName)
 			}
-			checkExpressNotExists(sandbox.ProjectDir, t)
+			expressExist(sandbox.ProjectDir, false, t)
 		})
 	}
 }
@@ -162,9 +166,6 @@ func TestInitTemplateShouldNotExistTests(t *testing.T) {
 			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 			defer cleanup()
 
-			packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
-			packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
-
 			testDir := filepath.Join(sandbox.ProjectDir, tt.testName)
 			err := os.Mkdir(testDir, os.FileMode(0755))
 			if err != nil {
@@ -178,8 +179,7 @@ func TestInitTemplateShouldNotExistTests(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			shouldNotExist(packagejson, t)
-			shouldNotExist(packagejsonlock, t)
+			filesExist([]string{packagejson, packagejsonlock}, sandbox.ProjectDir, false, t)
 		})
 	}
 }
@@ -188,9 +188,8 @@ func TestInitV2WithNonDefaultRepoSpecified(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	appsodyFile := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
-	functionjs := filepath.Join(sandbox.ProjectDir, "function.js")
-	packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
+	functionjs := "function.js"
+	packagejson := "package.json"
 
 	args := []string{"init", "experimental/nodejs-functions"}
 
@@ -198,17 +197,14 @@ func TestInitV2WithNonDefaultRepoSpecified(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shouldExist(appsodyFile, t)
-	shouldExist(functionjs, t)
-	shouldExist(packagejson, t)
+	filesExist([]string{appsodyFile, functionjs, packagejson}, sandbox.ProjectDir, true, t)
 }
 
 func TestInitV2WithStackHasInitScript(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	appsodyFile := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
-	pomxml := filepath.Join(sandbox.ProjectDir, "pom.xml")
+	pomxml := "pom.xml"
 
 	args := []string{"init", "java-microprofile"}
 
@@ -216,8 +212,7 @@ func TestInitV2WithStackHasInitScript(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shouldExist(appsodyFile, t)
-	shouldExist(pomxml, t)
+	filesExist([]string{appsodyFile, pomxml}, sandbox.ProjectDir, true, t)
 }
 
 func TestInitOnExistingAppsodyProject(t *testing.T) {
@@ -246,41 +241,17 @@ func TestNoOverwrite(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	appsodyFile := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
-	appjs := filepath.Join(sandbox.ProjectDir, "app.js")
-	packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
-	packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
-
-	_, err := os.Create(appjs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = os.Stat(appjs)
-	if err != nil {
-		t.Fatal(err)
-	}
+	createAndStat(filepath.Join(sandbox.ProjectDir, appjs), t)
 
 	// appsody init nodejs-express
 	args := []string{"init", "nodejs-express"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if !strings.Contains(err.Error(), "non-empty directory found with files which may conflict with the template project") {
 		t.Errorf("Correct error message not given: %v", err)
 	}
 
-	shouldNotExist(appsodyFile, t)
-	shouldNotExist(packagejson, t)
-	shouldNotExist(packagejsonlock, t)
-}
+	filesExist([]string{appsodyFile, "package.json", "package-lock.json"}, sandbox.ProjectDir, false, t)
 
-func shouldNotExist(file string, t *testing.T) {
-	var err error
-	_, err = os.Stat(file)
-	if err == nil {
-		err = errors.New(file + " should not exist without overwrite.")
-
-		t.Fatal(err)
-	}
 }
 
 //This test makes sure that no project creation occurred because app.js existed prior to the call
@@ -290,37 +261,24 @@ func TestOverwrite(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	appjs := filepath.Join(sandbox.ProjectDir, "app.js")
-	_, err := os.Create(appjs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	//file should be 0 bytes
-	_, err = os.Stat(appjs)
-	if err != nil {
-		t.Fatal(err)
-	}
+	createAndStat(filepath.Join(sandbox.ProjectDir, appjs), t)
 
 	// appsody init nodejs-express
 	args := []string{"init", "nodejs-express", "--overwrite"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	checkExpressExists(sandbox.ProjectDir, t)
+	expressExist(sandbox.ProjectDir, true, t)
 
-	fileInfoFinal, err = os.Stat(appjs)
+	fileInfoFinal, err = os.Stat(filepath.Join(sandbox.ProjectDir, appjs))
 	if err != nil {
-		err = errors.New(appjs + " should exist with overwrite.")
-
-		t.Fatal(err)
+		t.Fatal(appjs + " should exist with overwrite.")
 	}
 
 	if fileInfoFinal.Size() == 0 {
-		err = errors.New(appjs + " should have data.")
-
-		t.Fatal(err)
+		t.Fatal(appjs + " should have data.")
 	}
 }
 
@@ -330,43 +288,27 @@ func TestNoTemplate(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	appsodyFile := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
-	appjs := filepath.Join(sandbox.ProjectDir, "app.js")
-	packagejson := filepath.Join(sandbox.ProjectDir, "package.json")
-	packagejsonlock := filepath.Join(sandbox.ProjectDir, "package-lock.json")
+	createAndStat(filepath.Join(sandbox.ProjectDir, appjs), t)
 
-	// file size should be 0 bytes
-	_, err := os.Create(appjs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	shouldExist(appjs, t)
+	filesExist([]string{appjs}, sandbox.ProjectDir, true, t)
 
 	// appsody init nodejs-express
 	args := []string{"init", "nodejs-express", "--no-template"}
-	_, err = cmdtest.RunAppsody(sandbox, args...)
+	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	shouldExist(appsodyFile, t)
+	filesExist([]string{appsodyFile}, sandbox.ProjectDir, true, t)
+	filesExist([]string{packagejson, packagejsonlock}, sandbox.ProjectDir, false, t)
 
-	shouldNotExist(packagejson, t)
-
-	shouldNotExist(packagejsonlock, t)
-
-	fileInfoFinal, err = os.Stat(appjs)
+	fileInfoFinal, err = os.Stat(filepath.Join(sandbox.ProjectDir, appjs))
 	if err != nil {
-		err = errors.New(appjs + " should exist without overwrite.")
-
-		t.Fatal(err)
+		t.Fatal(appjs + " should exist without overwrite.")
 	}
 	// if we accidentally overwrite the size would be >0
 	if fileInfoFinal.Size() != 0 {
-		err = errors.New(appjs + " should NOT have data.")
-
-		t.Fatal(err)
+		t.Fatal(appjs + " should NOT have data.")
 	}
 }
 
@@ -376,25 +318,14 @@ func TestWhiteList(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	vscode := filepath.Join(sandbox.ProjectDir, ".vscode")
-	project := filepath.Join(sandbox.ProjectDir, ".project")
-	cwSet := filepath.Join(sandbox.ProjectDir, ".cw-settings")
-	cwExtension := filepath.Join(sandbox.ProjectDir, ".cw-extension")
-	metadata := filepath.Join(sandbox.ProjectDir, ".metadata")
+	files := []string{".project", ".cw-settings", ".cw-extension"}
+	vscode := ".vscode"
+	metadata := ".metadata"
 
-	_, err := os.Create(project)
-	if err != nil {
-		t.Fatal(err)
+	for _, file := range files {
+		createAndStat(filepath.Join(sandbox.ProjectDir, file), t)
 	}
-	_, err = os.Create(cwSet)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = os.Create(cwExtension)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.MkdirAll(vscode, 0755)
+	err := os.MkdirAll(vscode, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,40 +341,38 @@ func TestWhiteList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	shouldExist(vscode, t)
-	checkExpressExists(sandbox.ProjectDir, t)
+	filesExist([]string{vscode}, sandbox.ProjectDir, true, t)
+	expressExist(sandbox.ProjectDir, true, t)
 }
 
-func shouldExist(file string, t *testing.T) {
-	var err error
-	_, err = os.Stat(file)
+func filesExist(files []string, projectDir string, expected bool, t *testing.T) {
+	for _, file := range files {
+		exist, err := cmdtest.Exists(filepath.Join(projectDir, file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if exist != expected {
+			if expected {
+				t.Fatal(file, " should exist but doesn't.")
+			} else {
+				t.Fatal(file, " should not exist without overwrite.")
+			}
+		}
+	}
+}
+
+func expressExist(projectDir string, expected bool, t *testing.T) {
+	filesExist([]string{appsodyFile, appjs, packagejson, packagejsonlock}, projectDir, expected, t)
+}
+
+func createAndStat(file string, t *testing.T) {
+	_, err := os.Create(file)
 	if err != nil {
-		t.Fatal(file, "should exist but didn't", err)
+		t.Fatal(err)
 	}
 
-}
-func checkExpressExists(projectDir string, t *testing.T) {
-
-	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
-	appjs := filepath.Join(projectDir, "app.js")
-	packagejson := filepath.Join(projectDir, "package.json")
-	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
-
-	shouldExist(appsodyFile, t)
-	shouldExist(appjs, t)
-	shouldExist(packagejson, t)
-	shouldExist(packagejsonlock, t)
-}
-
-func checkExpressNotExists(projectDir string, t *testing.T) {
-
-	appsodyFile := filepath.Join(projectDir, ".appsody-config.yaml")
-	appjs := filepath.Join(projectDir, "app.js")
-	packagejson := filepath.Join(projectDir, "package.json")
-	packagejsonlock := filepath.Join(projectDir, "package-lock.json")
-
-	shouldNotExist(appsodyFile, t)
-	shouldNotExist(appjs, t)
-	shouldNotExist(packagejson, t)
-	shouldNotExist(packagejsonlock, t)
+	_, err = os.Stat(file)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
