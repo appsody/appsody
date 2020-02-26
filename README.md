@@ -15,7 +15,7 @@ Infused with cloud native capabilities from the moment you start, Appsody provid
 See the [documentation](https://appsody.dev/docs) for more details:
 * [Quick Start](https://appsody.dev/docs/getting-started/quick-start)
 * [Installation](https://appsody.dev/docs/getting-started/installation)
-* [CLI Reference](https://appsody.dev/docs/using-appsody/cli-commands)
+* [CLI Reference](https://appsody.dev/docs/cli-commands)
 
 For information on building the Appsody CLI from source, see [Building from Source](build.md)
 
