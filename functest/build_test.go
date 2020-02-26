@@ -351,7 +351,11 @@ func makeKnativeAppDeployYaml(destination string, createKnativeService bool) err
 }
 
 func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploymentConfig) {
-	deploymentManifest := getAppDeployYaml(expectedDeploymentConfig.deployFile, t)
+	deploymentManifest, err := getAppDeployYaml(expectedDeploymentConfig.deployFile, t)
+	if err != nil {
+		t.Errorf("Could not get deployment manifest: %s", err)
+		return
+	}
 
 	expectedApplicationImage := expectedDeploymentConfig.imageTag
 	if expectedDeploymentConfig.pullURL != "" {
@@ -485,7 +489,11 @@ func makeOpenLibertyAppDeployYaml(destination string) error {
 }
 
 func checkOpenLibertyAppDeployYaml(source string, t *testing.T) {
-	deploymentManifest := getAppDeployYaml(source, t)
+	deploymentManifest, err := getAppDeployYaml(source, t)
+	if err != nil {
+		t.Errorf("Could not get deployment manifest: %s", err)
+		return
+	}
 
 	if deploymentManifest.APIVersion != "openliberty.io/v1beta1" {
 		t.Errorf("Incorrect APIVersion in app-deploy.yaml. Expected %s but found %s", "openliberty.io/v1beta1", deploymentManifest.APIVersion)
@@ -508,25 +516,25 @@ func checkOpenLibertyAppDeployYaml(source string, t *testing.T) {
 	}
 }
 
-func getAppDeployYaml(source string, t *testing.T) cmd.DeploymentManifest {
+func getAppDeployYaml(source string, t *testing.T) (cmd.DeploymentManifest, error) {
 	var deploymentManifest cmd.DeploymentManifest
 
 	_, err := os.Stat(source)
 	if err != nil && os.IsNotExist(err) {
-		t.Errorf("Could not find %s", source)
-		return deploymentManifest
+		return deploymentManifest, fmt.Errorf("Could not find %s", source)
 	}
+
 	yamlFileBytes, err := ioutil.ReadFile(source)
 	if err != nil {
-		t.Errorf("Could not read %s: %s", source, err)
+		return deploymentManifest, fmt.Errorf("Could not read %s: %s", source, err)
 	}
 
 	err = yaml.Unmarshal(yamlFileBytes, &deploymentManifest)
 	if err != nil {
-		t.Logf("app-deploy.yaml formatting error: %s", err)
+		return deploymentManifest, fmt.Errorf("app-deploy.yaml formatting error: %s", err)
 	}
 
-	return deploymentManifest
+	return deploymentManifest, nil
 }
 
 func writeAppDeployYaml(destination string, deploymentManifest cmd.DeploymentManifest) error {
