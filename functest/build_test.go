@@ -136,7 +136,6 @@ var appsodyCommitLabels = []string{
 }
 
 func TestBuildLabels(t *testing.T) {
-
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
