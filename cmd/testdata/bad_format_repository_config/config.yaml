@@ -1,5 +1,5 @@
 home: testdata/bad_format_repository_config
-images: index.docker.io
-lastversioncheck: 2019-12-03 11:41:54 +0000 GMT
+images: docker.io
+lastversioncheck: 2020-02-17 13:04:51 +0000 GMT
 operator: https://github.com/appsody/appsody-operator/releases/latest/download
 tektonserver: ""

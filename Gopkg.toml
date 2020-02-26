@@ -46,10 +46,6 @@
   name = "github.com/russross/blackfriday"
   version = "1.5.2"
 
-[[constraint]]
-  name = "github.com/appsody/appsody-operator"
-  version = "0.3.0"
-
 [[override]]
   name = "k8s.io/apimachinery"
   revision = "27d36303b6556f377b4f34e64705fa9024a12b0c"
