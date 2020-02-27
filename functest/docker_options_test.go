@@ -54,15 +54,6 @@ func TestRunWithDockerOptionsRegex(t *testing.T) {
 		t.Log("err ", err)
 		if !strings.Contains(runOutput, value+" is not allowed in --docker-options") {
 			t.Fatal("Error message not found:" + value + " is not allowed in --docker-options")
-
 		}
-		args = []string{"run", "--docker-options", value + "=", "--dryrun"}
-		runOutput, err = cmdtest.RunAppsody(sandbox, args...)
-		t.Log("err ", err)
-		if !strings.Contains(runOutput, value+"="+" is not allowed in --docker-options") {
-			t.Fatal("Error message not found:" + value + "=" + " is not allowed in --docker-options")
-
-		}
-
 	}
 }

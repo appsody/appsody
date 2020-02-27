@@ -189,7 +189,6 @@ func TestInitV2WithNonDefaultRepoSpecified(t *testing.T) {
 	defer cleanup()
 
 	functionjs := "function.js"
-	packagejson := "package.json"
 
 	args := []string{"init", "experimental/nodejs-functions"}
 
@@ -250,7 +249,7 @@ func TestNoOverwrite(t *testing.T) {
 		t.Errorf("Correct error message not given: %v", err)
 	}
 
-	filesExist([]string{appsodyFile, "package.json", "package-lock.json"}, sandbox.ProjectDir, false, t)
+	filesExist([]string{appsodyFile, packagejson, packagejsonlock}, sandbox.ProjectDir, false, t)
 
 }
 
