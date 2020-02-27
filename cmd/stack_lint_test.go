@@ -99,10 +99,10 @@ func TestLinterMissingValues(t *testing.T) {
 		removeFile  string
 		expectedLog string
 	}{
-		{"Missing Stack Yaml", "stack.yaml", "Missing stack.yaml"},
-		{"Missing Project And Config Dir", "image", "Missing image directory"},
-		{"Missing README", "README.md", "Missing README.md"},
-		{"Missing Templates Directory", "templates", "Missing template directory"},
+		{"Missing Stack Yaml", "stack.yaml", "Missing file: stack.yaml"},
+		{"Missing Project And Config Dir", "image", "Missing directory: "},
+		{"Missing README", "README.md", "Missing file: README.md"},
+		{"Missing Templates Directory", "templates", "Missing directory: "},
 	}
 	for _, testData := range linterMissingValues {
 		// need to set testData to a new variable scoped under the for loop
