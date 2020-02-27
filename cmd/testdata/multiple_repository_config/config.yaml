@@ -1,5 +1,5 @@
 home: testdata/multiple_repository_config
-images: index.docker.io
-lastversioncheck: 2019-10-30 17:08:22 +0000 GMT
+images: docker.io
+lastversioncheck: 2020-02-17 13:05:02 +0000 GMT
 operator: https://github.com/appsody/appsody-operator/releases/latest/download
 tektonserver: ""
