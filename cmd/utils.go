@@ -2439,3 +2439,14 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 	log.Info.logf("Succesfully generated file: %s", indexFilePath)
 	return nil
 }
+
+func checkOptions(options []string, regex string) error {
+	blackListedOptions := regexp.MustCompile(regex)
+	for _, value := range options {
+		isInBlackListed := blackListedOptions.MatchString(value)
+		if isInBlackListed {
+			return errors.Errorf("%s is not allowed in --docker-options", value)
+		}
+	}
+	return nil
+}

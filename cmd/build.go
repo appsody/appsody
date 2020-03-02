@@ -67,16 +67,7 @@ var supportedKubeLabels = []string{
 
 func checkBuildOptions(options []string) error {
 	buildOptionsTest := "(^((-t)|(--tag)|(--help)|(-f)|(--file))((=?$)|(=.*)))"
-
-	blackListedBuildOptionsRegexp := regexp.MustCompile(buildOptionsTest)
-	for _, value := range options {
-		isInBlackListed := blackListedBuildOptionsRegexp.MatchString(value)
-		if isInBlackListed {
-			return errors.Errorf("%s is not allowed in --docker-options", value)
-
-		}
-	}
-	return nil
+	return checkOptions(options, buildOptionsTest)
 
 }
 

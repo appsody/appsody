@@ -45,19 +45,8 @@ type devCommonConfig struct {
 }
 
 func checkDockerRunOptions(options []string) error {
-	//runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))((=?$)|(=.*)))"
 	runOptionsTest := "(^((--help)|(-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))((=?$)|(=.*)))"
-
-	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)
-	for _, value := range options {
-		isInBlackListed := blackListedRunOptionsRegexp.MatchString(value)
-		if isInBlackListed {
-			return errors.Errorf("%s is not allowed in --docker-options", value)
-
-		}
-	}
-	return nil
-
+	return checkOptions(options, runOptionsTest)
 }
 
 func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
