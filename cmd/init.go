@@ -210,7 +210,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		// 1. Check for empty directory
 		dir := config.ProjectDir
-		appsodyConfigFile := filepath.Join(dir, ".appsody-config.yaml")
+		appsodyConfigFile := filepath.Join(dir, ConfigFile)
 
 		_, err = os.Stat(appsodyConfigFile)
 		if err == nil {
@@ -240,6 +240,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			return errors.New("non-empty directory found with files which may conflict with the template project")
 
 		}
+		config.Debug.log("Project config file set to: ", appsodyConfigFile)
 
 		reqsMap := map[string]string{
 			"Docker":  stackReqs.Docker,
@@ -427,7 +428,7 @@ func initUntar(log *LoggingConfig, file string, noTemplate bool, overwrite bool,
 					}
 				}
 			} else if header.Typeflag == tar.TypeReg {
-				if !noTemplate || (noTemplate && strings.HasSuffix(filename, ".appsody-config.yaml")) {
+				if !noTemplate || (noTemplate && strings.HasSuffix(filename, ConfigFile)) {
 
 					f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 					if err != nil {

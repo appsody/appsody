@@ -384,7 +384,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				newStackStruct.Templates = append(newStackStruct.Templates, newTemplateStruct)
 
 				// create a config yaml file for the tarball
-				configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
+				configYaml := filepath.Join(templatePath, templates[i], ConfigFile)
 				log.Debug.Log("configYaml is: ", configYaml)
 
 				g, err := os.Create(configYaml)
