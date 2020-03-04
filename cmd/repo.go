@@ -284,6 +284,9 @@ func (index *RepoIndex) listProjects(repoName string, config *RootCommandConfig)
 
 	for _, value := range Stacks {
 		templatesListString := convertTemplatesArrayToString(value.Templates)
+		if value.Deprecated != "" {
+			value.ID = value.ID + " [Deprecated]"
+		}
 		table.AddRow(value.repoName, value.ID, value.Version, templatesListString, value.Description)
 	}
 	return table.String(), nil
