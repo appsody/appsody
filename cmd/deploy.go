@@ -170,7 +170,7 @@ Run this command from the root directory of your Appsody project.`,
 					config.Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
 				}
 			} else {
-				config.Info.logf("Not installing Appsody Operator. Deployment manifest of kind: %s, please install matching operator", deploymentManifest.Kind)
+				config.Info.logf("The deployment manifest is of kind: %s, you need to install a matching operator.", deploymentManifest.Kind)
 			}
 
 			// Performing the kubectl apply
