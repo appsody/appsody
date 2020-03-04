@@ -20,12 +20,12 @@ import (
 	"os/exec"
 	"os/signal"
 	"os/user"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 	"syscall"
-	"path/filepath"
 	"time"
 
 	"github.com/pkg/errors"
@@ -82,9 +82,9 @@ func addStackRegistryFlag(cmd *cobra.Command, flagVar *string, config *RootComma
 	stackRegistryInConfigFile, err := getStackRegistryFromConfigFile(config)
 	if err != nil {
 		if _, ok := err.(*NotAnAppsodyProject); ok {
-			
+
 		} else {
-		config.Debug.Logf("Error retrieving the stack registry from config file: %v", err)
+			config.Debug.Logf("Error retrieving the stack registry from config file: %v", err)
 		}
 		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images. [WARNING] Your current settings are incorrect - change your project config or use this flag to override the image registry.")
 	} else if stackRegistryInConfigFile == "" {
