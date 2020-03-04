@@ -39,6 +39,7 @@ type Stack struct {
 	Version     string     `yaml:"version" json:"version"`
 	Description string     `yaml:"description" json:"description"`
 	Templates   []Template `yaml:"templates,omitempty" json:"templates,omitempty"`
+	Deprecated  string     `yaml:"deprecated,omitempty" json:"deprecated,omitempty"`
 }
 
 type RepoIndex struct {
@@ -69,6 +70,7 @@ type ProjectVersion struct {
 	URLs            []string         `yaml:"urls"` //V1
 	Templates       []Template       `yaml:"templates,omitempty"`
 	DefaultTemplate string           `yaml:"default-template"`
+	Deprecated      string           `yaml:"deprecated,omitempty"`
 }
 
 type StackRequirement struct {
@@ -505,11 +507,11 @@ func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) []
 
 	for id, value := range index.Projects {
 		setDefaultTemplate(value[0].Templates[:], value[0].DefaultTemplate)
-		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, value[0].Templates})
+		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, value[0].Templates, value[0].Deprecated})
 	}
 	for _, value := range index.Stacks {
 		setDefaultTemplate(value.Templates[:], value.DefaultTemplate)
-		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, value.Templates})
+		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, value.Templates, value.Deprecated})
 	}
 
 	sort.Slice(Stacks, func(i, j int) bool {
@@ -562,6 +564,10 @@ func (r *RepositoryFile) listProjects(config *RootCommandConfig) (string, error)
 
 		if value.repoName == defaultRepoName {
 			value.repoName = "*" + value.repoName
+		}
+
+		if value.Deprecated != "" {
+			value.ID = value.ID + " [Deprecated]"
 		}
 
 		templatesListString := convertTemplatesArrayToString(value.Templates)
