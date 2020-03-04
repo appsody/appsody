@@ -365,7 +365,15 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	return config.ProjectDir, nil
 }
 
-// IsValidProjectName tests the given string against Appsody name rules.
+func IsValidProjectName(name string) (bool, error) {
+	return isValidParamName(name, "project-name")
+}
+
+func IsValidApplicationName(name string) (bool, error) {
+	return isValidParamName(name, "application-name")
+}
+
+// IsValidParamName tests the given string against Appsody name rules.
 // This common set of name rules for Appsody must comply to Kubernetes
 // resource name, Kubernetes label value, and Docker container name rules.
 // The current rules are:
@@ -373,12 +381,12 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 // 2. Must contain only lowercase letters, digits, and dashes
 // 3. Must end with a letter or digit
 // 4. Must be 68 characters or less
-func IsValidProjectName(name string) (bool, error) {
+func isValidParamName(name, param string) (bool, error) {
 	if name == "" {
-		return false, errors.New("Invalid project-name. The name cannot be an empty string")
+		return false, errors.Errorf("Invalid %s. The name cannot be an empty string", param)
 	}
 	if len(name) > 68 {
-		return false, errors.Errorf("Invalid project-name \"%s\". The name must be 68 characters or less", name)
+		return false, errors.Errorf("Invalid %s \"%s\". The name must be 68 characters or less", param, name)
 	}
 
 	match, err := regexp.MatchString("^[a-z]([a-z0-9-]*[a-z0-9])?$", name)
@@ -389,7 +397,7 @@ func IsValidProjectName(name string) (bool, error) {
 	if match {
 		return true, nil
 	}
-	return false, errors.Errorf("Invalid project-name \"%s\". The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash.", name)
+	return false, errors.Errorf("Invalid %s \"%s\". The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash.", param, name)
 }
 
 func IsValidKubernetesLabelValue(value string) (bool, error) {
@@ -604,6 +612,30 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 	config.Info.log("Your Appsody project name has been set to ", projectName)
 	return nil
 }
+
+func saveApplicationNameToConfig(applicationName string, config *RootCommandConfig) error {
+	valid, err := IsValidProjectName(applicationName)
+	if !valid {
+		return err
+	}
+
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err = v.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	v.Set("application-name", applicationName)
+	err = v.WriteConfig()
+	if err != nil {
+		return err
+	}
+
+	config.Info.log("Your Appsody application name has been set to ", applicationName)
+	return nil
+}
+
 func setStackRegistry(stackRegistry string, config *RootCommandConfig) error {
 
 	// Read in the config
