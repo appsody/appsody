@@ -41,7 +41,7 @@ func newRepoListCmd(config *RootCommandConfig) *cobra.Command {
 			}
 			var repos RepositoryFile
 
-			list, repoErr := repos.getRepos(config)
+			list, repoErr := repos.getRepoFile(config)
 			if repoErr != nil {
 				return repoErr
 			}

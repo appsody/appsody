@@ -40,7 +40,7 @@ The default repository is used when you run the "appsody init" command without s
 			var repoName = args[0]
 
 			var repoFile RepositoryFile
-			_, repoErr := repoFile.getRepos(config)
+			_, repoErr := repoFile.getRepoFile(config)
 			if repoErr != nil {
 				return repoErr
 			}

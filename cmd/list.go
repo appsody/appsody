@@ -44,7 +44,7 @@ An asterisk in the repository column denotes the default repository. An asterisk
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var repos RepositoryFile
 
-			if _, err := repos.getRepos(rootConfig); err != nil {
+			if _, err := repos.getRepoFile(rootConfig); err != nil {
 				return err
 			}
 			if len(args) > 1 {
@@ -74,7 +74,7 @@ An asterisk in the repository column denotes the default repository. An asterisk
 				}
 			} else {
 				repoName := args[0]
-				_, err := repos.getRepos(rootConfig)
+				_, err := repos.getRepoFile(rootConfig)
 				if err != nil {
 					return err
 				}
