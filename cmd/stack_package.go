@@ -235,7 +235,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				if err != nil {
 					return errors.Errorf("Error trying to unmarshall: %v", err)
 				}
-				indexYaml, _ = findStackAndRemove(log, stackID, indexYaml)
+				indexYaml, _ = removeStack(log, stackID, indexYaml)
 
 			} else {
 				// create the beginning of the index yaml
@@ -508,24 +508,26 @@ func initialiseStackData(stackID string, stackImage string, stackYaml StackYaml)
 	return newStackStruct
 }
 
-func findStackAndRemove(log *LoggingConfig, stackID string, indexYaml IndexYaml) (IndexYaml, bool) {
+func FindStack(stackID string, indexYaml IndexYaml) (IndexYaml, int) {
 	// find the index of the stack
-	stackExists := false
-	foundStack := -1
+	stackExists := -1
 	for i, stack := range indexYaml.Stacks {
 		if stack.ID == stackID {
-			log.Debug.Log("Existing stack: '" + stackID + "' found")
-			foundStack = i
+			stackExists = i
 			break
 		}
 	}
-
-	// delete index foundStack from indexYaml.Stacks as we will append the new stack later
-	if foundStack != -1 {
-		stackExists = true
-		indexYaml.Stacks = indexYaml.Stacks[:foundStack+copy(indexYaml.Stacks[foundStack:], indexYaml.Stacks[foundStack+1:])]
-	}
 	return indexYaml, stackExists
+}
+
+func removeStack(log *LoggingConfig, stackID string, indexYaml IndexYaml) (IndexYaml, bool) {
+	indexYaml, stackExists := FindStack(stackID, indexYaml)
+	if stackExists > 0 {
+		log.Debug.Log("Existing stack '" + stackID + "' found and removed")
+		indexYaml.Stacks = indexYaml.Stacks[:stackExists+copy(indexYaml.Stacks[stackExists:], indexYaml.Stacks[stackExists+1:])]
+		return indexYaml, true
+	}
+	return indexYaml, false
 }
 
 // GetLabelsForStackImage - Gets labels associated with the stack image

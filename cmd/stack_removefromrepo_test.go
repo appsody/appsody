@@ -30,8 +30,9 @@ func TestRemoveFromIncubatorRepo(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
+	stack := "nodejs"
 	// run stack remove-from-repo
-	args := []string{"stack", "remove-from-repo", "incubator", "nodejs"}
+	args := []string{"stack", "remove-from-repo", "incubator", stack}
 	_, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		t.Fatal(err)
@@ -51,15 +52,9 @@ func TestRemoveFromIncubatorRepo(t *testing.T) {
 		t.Fatalf("Error trying to unmarshall: %v", err)
 	}
 
-	foundStack := -1
-	for i, stack := range indexYaml.Stacks {
-		if stack.ID == "nodejs" {
-			foundStack = i
-			break
-		}
-	}
-	if foundStack != -1 {
-		t.Fatal("Stack found unexpectedly")
+	_, stackIndex := cmd.FindStack(stack, indexYaml)
+	if stackIndex != -1 {
+		t.Fatal(stack, " stack found unexpectedly")
 	}
 }
 
@@ -68,18 +63,18 @@ func TestRemoveFromRepoLocalCache(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// run stack remove-from-repo
-	args := []string{"stack", "remove-from-repo", "incubator", "nodejs"}
-	_, err := cmdtest.RunAppsody(sandbox, args...)
-	if err != nil {
-		t.Fatal(err)
-	}
+	stacksToRemove := []string{"nodejs", "kitura"}
 
-	// run stack remove-from-repo use local cache
-	argsRemoveLC := []string{"stack", "remove-from-repo", "incubator", "kitura", "--use-local-cache"}
-	_, err = cmdtest.RunAppsody(sandbox, argsRemoveLC...)
-	if err != nil {
-		t.Fatal(err)
+	for _, stack := range stacksToRemove {
+		// run stack remove-from-repo
+		args := []string{"stack", "remove-from-repo", "incubator", stack}
+		if stack == "kitura" {
+			args = append(args, "--use-local-cache")
+		}
+		_, err := cmdtest.RunAppsody(sandbox, args...)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	devLocal := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
@@ -96,15 +91,11 @@ func TestRemoveFromRepoLocalCache(t *testing.T) {
 		t.Fatalf("Error trying to unmarshall: %v", err)
 	}
 
-	foundStack := -1
-	for i, stack := range indexYaml.Stacks {
-		if stack.ID == "nodejs" || stack.ID == "kitura" {
-			foundStack = i
-			break
+	for _, stack := range stacksToRemove {
+		_, stackIndex := cmd.FindStack(stack, indexYaml)
+		if stackIndex != -1 {
+			t.Fatal(stack, " stack found unexpectedly")
 		}
-	}
-	if foundStack != -1 {
-		t.Fatal("Stack found unexpectedly")
 	}
 }
 
