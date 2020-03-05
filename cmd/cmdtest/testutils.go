@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -26,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/appsody/appsody/cmd"
 	"gopkg.in/yaml.v2"
@@ -405,4 +407,33 @@ func cleanUpTestDepDockerVolumes(t *testing.T, testDir string) {
 		t.Logf("WARNING - error cleaning up test volumes created: %v", err)
 	}
 
+}
+
+func RunDockerPs(t *testing.T, count int, containerName string) error {
+
+	// It will take a while for the container to spin up, so let's use docker ps to wait for it
+	t.Log("calling docker ps to wait for container")
+	containerRunning := false
+
+	for {
+		dockerOutput, dockerErr := RunCmdExec("docker", []string{"ps", "-q", "-f", "name=" + containerName}, t)
+		if dockerErr != nil {
+			t.Log("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
+		}
+		if dockerOutput != "" {
+			t.Log("docker container " + containerName + " was found")
+			containerRunning = true
+		} else {
+			time.Sleep(2 * time.Second)
+			count = count - 1
+		}
+		if count == 0 || containerRunning {
+			break
+		}
+	}
+
+	if !containerRunning {
+		return errors.New("Container never appeared to start")
+	}
+	return nil
 }
