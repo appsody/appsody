@@ -508,7 +508,7 @@ func initialiseStackData(stackID string, stackImage string, stackYaml StackYaml)
 	return newStackStruct
 }
 
-func FindStack(stackID string, indexYaml IndexYaml) (IndexYaml, int) {
+func FindStackIndex(stackID string, indexYaml IndexYaml) (IndexYaml, int) {
 	// find the index of the stack
 	stackExists := -1
 	for i, stack := range indexYaml.Stacks {
@@ -521,10 +521,10 @@ func FindStack(stackID string, indexYaml IndexYaml) (IndexYaml, int) {
 }
 
 func removeStack(log *LoggingConfig, stackID string, indexYaml IndexYaml) (IndexYaml, bool) {
-	indexYaml, stackExists := FindStack(stackID, indexYaml)
-	if stackExists > 0 {
+	indexYaml, stackIndex := FindStackIndex(stackID, indexYaml)
+	if stackIndex > 0 {
 		log.Debug.Log("Existing stack '" + stackID + "' found and removed")
-		indexYaml.Stacks = indexYaml.Stacks[:stackExists+copy(indexYaml.Stacks[stackExists:], indexYaml.Stacks[stackExists+1:])]
+		indexYaml.Stacks = indexYaml.Stacks[:stackIndex+copy(indexYaml.Stacks[stackIndex:], indexYaml.Stacks[stackIndex+1:])]
 		return indexYaml, true
 	}
 	return indexYaml, false

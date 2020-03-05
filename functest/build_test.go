@@ -218,6 +218,10 @@ func TestBuildLabels(t *testing.T) {
 	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, "", false})
 
 	//delete the image
+	deleteDockerImage(imageName, t)
+}
+
+func deleteDockerImage(imageName string, t *testing.T) {
 	deleteImage(imageName, "docker", t)
 }
 
@@ -268,7 +272,7 @@ func TestDeploymentConfig(t *testing.T) {
 		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, "", true})
 
 		//delete the image
-		deleteImage(imageName, "docker", t)
+		deleteDockerImage(imageName, t)
 	}
 }
 
@@ -336,7 +340,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 				checkDeploymentConfig(t, expectedDeploymentConfig{deployFilePath, "", expectedImageName, "", tt.appDeployExpected})
 
 				//delete the image
-				deleteImage(expectedImageName, "docker", t)
+				deleteDockerImage(expectedImageName, t)
 			})
 		}
 	}

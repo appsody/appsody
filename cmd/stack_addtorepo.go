@@ -127,19 +127,12 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.Errorf("Unmarshal: Error unmarshalling index.yaml")
 			}
 
-			stackFound := false
-			var stackToAddImage string
-			for i, stack := range devLocalIndexYaml.Stacks {
-				if stackID == stack.ID {
-					log.Debug.Log("Found stack attempting to add to repo in dev.local-index.yaml")
-					stackFound = true
-					stackToAddImage = devLocalIndexYaml.Stacks[i].Image
-					break
-				}
-			}
-			if !stackFound {
+			_, stackIndex := FindStackIndex(stackID, devLocalIndexYaml)
+			if stackIndex < 0 {
 				return errors.Errorf("Couldn't find stack in dev.local-index.yaml. Have you packaged this stack?")
 			}
+
+			stackToAddImage := devLocalIndexYaml.Stacks[stackIndex].Image
 
 			_, repoErr := repoFile.getRepoFile(rootConfig)
 			if repoErr != nil {

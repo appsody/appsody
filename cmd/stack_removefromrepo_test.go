@@ -52,7 +52,7 @@ func TestRemoveFromIncubatorRepo(t *testing.T) {
 		t.Fatalf("Error trying to unmarshall: %v", err)
 	}
 
-	_, stackIndex := cmd.FindStack(stack, indexYaml)
+	_, stackIndex := cmd.FindStackIndex(stack, indexYaml)
 	if stackIndex != -1 {
 		t.Fatal(stack, " stack found unexpectedly")
 	}
@@ -92,7 +92,7 @@ func TestRemoveFromRepoLocalCache(t *testing.T) {
 	}
 
 	for _, stack := range stacksToRemove {
-		_, stackIndex := cmd.FindStack(stack, indexYaml)
+		_, stackIndex := cmd.FindStackIndex(stack, indexYaml)
 		if stackIndex != -1 {
 			t.Fatal(stack, " stack found unexpectedly")
 		}
