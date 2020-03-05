@@ -64,69 +64,6 @@ func RunKube(log *LoggingConfig, kargs []string, dryrun bool) (string, error) {
 	return string(kout[:]), nil
 }
 
-/*
-func downloadOperatorYaml(url string, operatorNamespace string, watchNamespace string, target string) (string, error) {
-	if dryrun {
-		Info.log("Skipping download of operator yaml: ", url)
-		return "", nil
-
-	}
-	file, err := downloadYaml(url, target)
-	if err != nil {
-		return "", fmt.Errorf("Could not download Operator YAML file %s", url)
-	}
-
-	yamlReader, err := ioutil.ReadFile(file)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", errors.Errorf("Downloaded file does not exist %s. ", target)
-
-		}
-		return "", errors.Errorf("Failed reading file %s", target)
-
-	}
-
-	//output := bytes.Replace(yamlReader, []byte("APPSODY_OPERATOR_NAMESPACE"), []byte(operatorNamespace), -1)
-	output := bytes.Replace(yamlReader, []byte("APPSODY_WATCH_NAMESPACE"), []byte(watchNamespace), -1)
-
-	err = ioutil.WriteFile(target, output, 0666)
-	if err != nil {
-		return "", errors.Errorf("Failed to write local operator definition file: %s", err)
-	}
-	return target, nil
-}
-
-func downloadRBACYaml(url string, operatorNamespace string, target string) (string, error) {
-	if dryrun {
-		Info.log("Skipping download of RBAC yaml: ", url)
-		return "", nil
-
-	}
-	file, err := downloadYaml(url, target)
-	if err != nil {
-		return "", fmt.Errorf("Could not download RBAC YAML file %s", url)
-	}
-
-	yamlReader, err := ioutil.ReadFile(file)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", errors.Errorf("Downloaded file does not exist %s. ", target)
-
-		}
-		return "", errors.Errorf("Failed reading file %s", target)
-
-	}
-
-	output := bytes.Replace(yamlReader, []byte("APPSODY_OPERATOR_NAMESPACE"), []byte(operatorNamespace), -1)
-	//output = bytes.Replace(output, []byte("APPSODY_WATCH_NAMESPACE"), []byte(watchNamespace), -1)
-
-	err = ioutil.WriteFile(target, output, 0666)
-	if err != nil {
-		return "", errors.Errorf("Failed to write local operator definition file: %s", err)
-	}
-	return target, nil
-}
-*/
 func operatorExistsInNamespace(log *LoggingConfig, operatorNamespace string, dryrun bool) (bool, error) {
 
 	// check to see if this namespace already has an appsody-operator
@@ -199,49 +136,6 @@ func operatorExistsWithWatchspace(log *LoggingConfig, watchNamespace string, dry
 	}
 	return false, "", nil
 }
-
-/*
-
-func operatorExistsWithWatchspace(watchNamespace string, dryrun bool) (bool, string, error) {
-	Debug.log("Looking for an operator matching watchspace: ", watchNamespace)
-	var deploymentsWithOperatorsGetArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.namespace}'", "--all-namespaces"}
-	getOutput, getErr := RunKubeGet(deploymentsWithOperatorsGetArgs, dryrun)
-	if getErr != nil {
-		return false, "", getErr
-	}
-	getOutput = strings.Trim(getOutput, "'")
-	if getOutput == "" {
-		Info.log("There are no deployments with appsody-operator")
-		return false, "", nil
-	}
-	if watchNamespace == "" && getOutput != "" {
-		watchAllErr := errors.Errorf("You specified --watch-all, but there are already instances of the appsody operator on the cluster")
-		return true, "", watchAllErr
-	}
-	deployments := strings.Split(getOutput, " ")
-	Debug.log("deployments with operators: ", deployments)
-	for _, deploymentNamespace := range deployments {
-		var getDeploymentWatchNamespaceArgs = []string{"deployment", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].value}'", "-n", deploymentNamespace}
-		getOutput, getErr = RunKubeGet(getDeploymentWatchNamespaceArgs, dryrun)
-		Debug.logf("Deployment: %s is watching namespace %s", deploymentNamespace, getOutput)
-		if getErr != nil {
-			return false, "", getErr
-		}
-		if strings.Trim(getOutput, "'") == watchNamespace {
-			Debug.logf("An operator that is watching namespace %s already exists in namespace %s", watchNamespace, deploymentNamespace)
-			return true, deploymentNamespace, nil
-		}
-		// the operator is watching all namespaces
-		if strings.Trim(getOutput, "'") == "" {
-
-			Info.logf("An operator exists in namespace %s, that is watching all namespaces", deploymentNamespace)
-			return true, deploymentNamespace, nil
-		}
-	}
-	return false, "", nil
-}
-
-*/
 
 func operatorCount(log *LoggingConfig, dryrun bool) (int, error) {
 	var getAllOperatorsArgs = []string{"deployments", "-o=jsonpath='{.items[?(@.metadata.name==\"appsody-operator\")].metadata.name}'", "--all-namespaces"}
@@ -323,4 +217,10 @@ func getWatchSpaces(csvList string, dryrun bool) []string {
 
 	}
 	return watchList
+}
+
+func getOperatorHome(config *RootCommandConfig) string {
+	operatorHome := config.CliConfig.GetString("operator")
+	config.Debug.log("Operator home set to: ", operatorHome)
+	return operatorHome
 }
