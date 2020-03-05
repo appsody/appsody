@@ -135,7 +135,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if len(indices) == 0 {
 		return errors.Errorf("Your stack repository is empty - please use `appsody repo add` to add a repository.")
 	}
-	var index *RepoIndex
+	var index *IndexYaml
 
 	if stack != "" {
 		var projectName string
