@@ -167,6 +167,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 			if err != nil {
 				t.Log("WARNING - ignoring error cleaning up test directory: ", err)
 			}
+			cleanUpTestDepDockerVolumes(t, sandbox.ProjectName)
 		}
 	}
 	return sandbox, cleanupFunc
@@ -396,4 +397,12 @@ func GetEnvStacksList() string {
 		stacksList = "incubator/nodejs"
 	}
 	return stacksList
+}
+
+func cleanUpTestDepDockerVolumes(t *testing.T, testDir string) {
+	_, err := RunCmdExec("docker", []string{"volume", "rm", testDir + "-deps"}, t)
+	if err != nil {
+		t.Logf("WARNING - error cleaning up test volumes created: %v", err)
+	}
+
 }

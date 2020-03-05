@@ -22,9 +22,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 
 	"bytes"
@@ -46,6 +46,14 @@ type buildCommandConfig struct {
 	namespace            string
 }
 
+type DeploymentManifest struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   map[string]interface{} `json:"spec,omitempty"`
+	Status interface{}            `json:"status,omitempty"`
+}
+
 //These are the current supported labels for Kubernetes,
 //the rest of the labels provided will be annotations.
 var supportedKubeLabels = []string{
@@ -54,7 +62,7 @@ var supportedKubeLabels = []string{
 	"image.opencontainers.org/licenses",
 	"stack.appsody.dev/id",
 	"stack.appsody.dev/version",
-	"app.appsody.dev/name",
+	"app.kubernetes.io/part-of",
 }
 
 func checkBuildOptions(options []string) error {
@@ -280,6 +288,9 @@ func convertLabelsToKubeFormat(log *LoggingConfig, labels map[string]string) map
 
 	for key, value := range labels {
 		newKey, err := ConvertLabelToKubeFormat(key)
+		if newKey == "app.appsody.dev/name" {
+			newKey = "app.kubernetes.io/part-of"
+		}
 		if err != nil {
 			log.Debug.logf("Skipping image label \"%s\" - %v", key, err)
 		} else {
@@ -505,7 +516,7 @@ func generateDeploymentConfig(config *buildCommandConfig, imageName string, labe
 func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels map[string]string) error {
 	configFile := config.appDeployFile
 
-	appsodyApplication, err := getAppsodyApplication(configFile)
+	deploymentManifest, err := getDeploymentManifest(configFile)
 	if err != nil {
 		return err
 	}
@@ -520,41 +531,45 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 		}
 	}
 
-	if appsodyApplication.Labels == nil {
-		appsodyApplication.Labels = selectedLabels
+	if deploymentManifest.Labels == nil {
+		deploymentManifest.Labels = selectedLabels
 	} else {
 		for key, value := range selectedLabels {
-			appsodyApplication.Labels[key] = value
+			deploymentManifest.Labels[key] = value
 		}
 	}
 
-	if appsodyApplication.Annotations == nil {
-		appsodyApplication.Annotations = labels
+	if deploymentManifest.Annotations == nil {
+		deploymentManifest.Annotations = labels
 	} else {
 		for key, value := range labels {
-			appsodyApplication.Annotations[key] = value
+			deploymentManifest.Annotations[key] = value
 		}
 	}
 
-	if appsodyApplication.Spec.CreateKnativeService == nil || config.knativeFlagPresent {
-		appsodyApplication.Spec.CreateKnativeService = &config.knative
+	if deploymentManifest.Spec == nil {
+		deploymentManifest.Spec = make(map[string]interface{})
+	}
+
+	if deploymentManifest.Spec["createKnativeService"] == nil || config.knativeFlagPresent {
+		deploymentManifest.Spec["createKnativeService"] = config.knative
 	}
 
 	if config.pullURL != "" {
 		imageName = config.pullURL + "/" + findNamespaceRepositoryAndTag(imageName)
 	}
 
-	appsodyApplication.Spec.ApplicationImage = imageName
+	deploymentManifest.Spec["applicationImage"] = imageName
 
 	// This only applies to the deploy command flow:
-	// - if the namespace doesn't exist in the manifest, and a namespace flag is not set: we do not write a namespace
+	// - if the namespace doesn't exist in the manifest, and a namespace flag is not set: we write a "default" namespace
 	// - if the namespace does exist in the manifest, and a namespace flag is set: we verify that they are the same. If they are not we throw an error.
 	// - if the namespace doesn't exist in the manifest, and a namespace flag is set: we write the value passed an argument with the flag.
-	if appsodyApplication.Namespace == "" && config.namespaceFlagPresent {
-		appsodyApplication.Namespace = config.namespace
+	if deploymentManifest.Namespace == "" && config.namespaceFlagPresent {
+		deploymentManifest.Namespace = config.namespace
 	}
 
-	err = writeAppsodyApplication(appsodyApplication, config)
+	err = writeDeploymentManifest(deploymentManifest, config)
 	if err != nil {
 		return err
 	}
@@ -562,32 +577,32 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 	return nil
 }
 
-func getAppsodyApplication(configFile string) (v1beta1.AppsodyApplication, error) {
-	var appsodyApplication v1beta1.AppsodyApplication
+func getDeploymentManifest(configFile string) (DeploymentManifest, error) {
+	var deploymentManifest DeploymentManifest
 	yamlFileBytes, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		return appsodyApplication, errors.Errorf("Could not read %s file: %s", configFile, err)
+		return deploymentManifest, errors.Errorf("Could not read %s file: %s", configFile, err)
 	}
 
-	err = yaml.Unmarshal(yamlFileBytes, &appsodyApplication)
+	err = yaml.Unmarshal(yamlFileBytes, &deploymentManifest)
 	if err != nil {
-		return appsodyApplication, errors.Errorf("%s formatting error: %s", configFile, err)
+		return deploymentManifest, errors.Errorf("%s formatting error: %s", configFile, err)
 	}
 
-	return appsodyApplication, err
+	return deploymentManifest, err
 }
 
-func writeAppsodyApplication(appsodyApplication v1beta1.AppsodyApplication, config *buildCommandConfig) error {
+func writeDeploymentManifest(deploymentManifest DeploymentManifest, config *buildCommandConfig) error {
 	configFile := config.appDeployFile
 
-	output, err := yaml.Marshal(appsodyApplication)
+	output, err := yaml.Marshal(deploymentManifest)
 	if err != nil {
-		return errors.Errorf("Could not marshall AppsodyApplication to YAML when updating the %s: %s", configFile, err)
+		return errors.Errorf("Could not marshall deployment manifest to YAML when updating the %s: %s", configFile, err)
 	}
 
 	err = ioutil.WriteFile(configFile, output, 0666)
 	if err != nil {
-		return errors.Errorf("Failed to write local application configuration file: %s", err)
+		return errors.Errorf("Failed to write local deployment manifest configuration file: %s", err)
 	}
 
 	return nil

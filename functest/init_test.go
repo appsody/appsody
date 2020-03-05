@@ -16,6 +16,7 @@ package functest
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,6 +81,7 @@ func TestInitErrors(t *testing.T) {
 		{"TestInitWithBadTemplateSpecified", []string{"nodejs-express", "badtemplate"}, "", "Could not find a template", "Should have flagged non existing stack template"},
 		{"TestInitNoTemplateAndSimple", []string{"nodejs-express", "simple", "--no-template"}, "", "with both a template and --no-template", "Correct error message not given"},
 		{"TestInitWithBadProjectName", []string{"nodejs-express", "--project-name", "badprojectname!"}, "", "Invalid project-name", "Correct error message not given"},
+		{"TestInitWithBadApplicationName", []string{"nodejs-express", "--application-name", "badapplicationname!"}, "", "Invalid application-name", "Correct error message not given"},
 		{"TestInitWithBadlyFormattedConfig", []string{"nodejs-express"}, "bad_format_repository_config", "Failed to parse repository file yaml", "Correct error message not given"},
 		{"TestInitWithEmptyConfig", []string{"nodejs-express"}, "empty_repository_config", "Your stack repository is empty", "Correct error message not given"},
 		{"TestInitWithBadRepoUrlConfig", []string{"nodejs-express"}, "bad_repo_url_repository_config", "The following indices could not be read, skipping", "Correct error message not given"},
@@ -113,6 +115,29 @@ func TestInitErrors(t *testing.T) {
 			}
 			checkExpressNotExists(sandbox.ProjectDir, t)
 		})
+	}
+}
+
+func TestInitWithApplicationName(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	appsodyConfig := filepath.Join(sandbox.ProjectDir, ".appsody-config.yaml")
+
+	args := []string{"init", "nodejs", "--application-name", "my-big-app"}
+
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := ioutil.ReadFile(appsodyConfig)
+	if err != nil {
+		t.Fatalf("Error reading %s file: %v", appsodyConfig, err)
+	}
+	s := string(b)
+	if !strings.Contains(s, "application-name: my-big-app") {
+		t.Fatal("ApplicationName did not match expected value")
 	}
 }
 
