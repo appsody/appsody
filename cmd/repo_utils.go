@@ -68,7 +68,7 @@ type ProjectVersion struct {
 	DefaultTemplate string           `yaml:"default-template"`
 }
 
-//StackRequirement -
+//StackRequirement - Structure that holds information for minimum requirements to use stack stack
 type StackRequirement struct {
 	Docker  string `yaml:"docker-version,omitempty"`
 	Appsody string `yaml:"appsody-version,omitempty"`
