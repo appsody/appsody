@@ -358,7 +358,7 @@ func (r *RepositoryFile) Add(re ...*RepositoryEntry) {
 	r.Repositories = append(r.Repositories, re...)
 }
 
-func (r *RepositoryFile) Has(name string) bool {
+func (r *RepositoryFile) HasRepo(name string) bool {
 
 	for _, rf := range r.Repositories {
 		if rf.Name == name {
@@ -399,7 +399,7 @@ func (r *RepositoryFile) GetDefaultRepoName(rootConfig *RootCommandConfig) (stri
 	// If there's only one repo - set it as default
 	// And if incubator isn't there set the first one as default
 	var repoName string
-	if len(r.Repositories) == 1 || !r.Has("incubator") {
+	if len(r.Repositories) == 1 || !r.HasRepo("incubator") {
 		r.Repositories[0].IsDefault = true
 		repoName = r.Repositories[0].Name
 	} else {

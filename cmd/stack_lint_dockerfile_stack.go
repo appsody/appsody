@@ -58,7 +58,7 @@ func getENVDockerfile(log *LoggingConfig, stackPath string) (dockerfileStack map
 }
 
 func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
-	mendatoryEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN"}
+	requiredEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN"}
 	optionalEnvironmentVariables := [...]string{"APPSODY_DEBUG", "APPSODY_TEST", "APPSODY_DEPS", "APPSODY_PROJECT_DIR"}
 
 	stackLintErrorCount := 0
@@ -72,10 +72,10 @@ func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
 	variableFound := false
 	variable := ""
 
-	for i := 0; i < len(mendatoryEnvironmentVariables); i++ {
-		variable = mendatoryEnvironmentVariables[i]
+	for i := 0; i < len(requiredEnvironmentVariables); i++ {
+		variable = requiredEnvironmentVariables[i]
 		for k := range dockerfileStack {
-			if k == mendatoryEnvironmentVariables[i] {
+			if k == requiredEnvironmentVariables[i] {
 				variableFound = true
 			}
 		}

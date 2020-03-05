@@ -146,7 +146,7 @@ Run this command from the root directory of your Appsody project.`,
 				return repoErr
 			}
 
-			if repoFile.Has(repoName) {
+			if repoFile.HasRepo(repoName) {
 				// The repoName exists within the repository list
 				log.Debug.Log(repoName, " exists within the repository list")
 				repo := repoFile.GetRepo(repoName)

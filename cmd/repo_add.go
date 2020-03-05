@@ -62,7 +62,7 @@ func repoAdd(repoName, repoURL string, config *RootCommandConfig) error {
 	if repoErr != nil {
 		return repoErr
 	}
-	if repoFile.Has(repoName) {
+	if repoFile.HasRepo(repoName) {
 		return errors.Errorf("A repository with the name '%s' already exists.", repoName)
 
 	}

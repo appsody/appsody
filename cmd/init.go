@@ -145,7 +145,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		if err != nil {
 			return err
 		}
-		if !repos.Has(repoName) {
+		if !repos.HasRepo(repoName) {
 			return errors.Errorf("Repository %s is not in configured list of repositories", repoName)
 		}
 		var templateName string
