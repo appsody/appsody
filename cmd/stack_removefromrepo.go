@@ -82,7 +82,7 @@ The updated repository index file is created in  ~/.appsody/stacks/dev.local dir
 
 			var indexYaml IndexYaml
 
-			_, repoErr := repoFile.getRepos(rootConfig)
+			_, repoErr := repoFile.getRepoFile(rootConfig)
 			if repoErr != nil {
 				return repoErr
 			}
