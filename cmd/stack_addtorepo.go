@@ -141,7 +141,7 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.Errorf("Couldn't find stack in dev.local-index.yaml. Have you packaged this stack?")
 			}
 
-			_, repoErr := repoFile.getRepos(rootConfig)
+			_, repoErr := repoFile.getRepoFile(rootConfig)
 			if repoErr != nil {
 				return repoErr
 			}

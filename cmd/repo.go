@@ -33,6 +33,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Stack - Structure of how stack will appear in the repository index YAML
 type Stack struct {
 	repoName    string
 	ID          string     `yaml:"id,omitempty" json:"id,omitempty"`
@@ -41,6 +42,7 @@ type Stack struct {
 	Templates   []Template `yaml:"templates,omitempty" json:"templates,omitempty"`
 }
 
+// RepoIndex - Structure of a repo index YAML
 type RepoIndex struct {
 	APIVersion string                     `yaml:"apiVersion"`
 	Generated  time.Time                  `yaml:"generated"`
@@ -71,24 +73,28 @@ type ProjectVersion struct {
 	DefaultTemplate string           `yaml:"default-template"`
 }
 
+//StackRequirement -
 type StackRequirement struct {
 	Docker  string `yaml:"docker-version,omitempty"`
 	Appsody string `yaml:"appsody-version,omitempty"`
 	Buildah string `yaml:"buildah-version,omitempty"`
 }
 
+// RepositoryFile - Structure of the repository.yaml file in the .appsody directory
 type RepositoryFile struct {
 	APIVersion   string             `yaml:"apiVersion" json:"apiVersion"`
 	Generated    time.Time          `yaml:"generated" json:"generated"`
 	Repositories []*RepositoryEntry `yaml:"repositories" json:"repositories"`
 }
 
+//RepositoryEntry - Strcuture for how a repo entry appears in the RepositoryFile
 type RepositoryEntry struct {
 	Name      string `yaml:"name" json:"name"`
 	URL       string `yaml:"url" json:"url"`
 	IsDefault bool   `yaml:"default,omitempty" json:"default,omitempty"`
 }
 
+//Template -Structure of template entry in the Repository Index
 type Template struct {
 	ID        string `yaml:"id" json:"id"`
 	URL       string `yaml:"url" json:"url"`
@@ -197,12 +203,12 @@ func ensureConfig(rootConfig *RootCommandConfig) error {
 		} else {
 
 			repo := NewRepoFile()
-			repo.Add(&RepositoryEntry{
+			repo.AddRepo(&RepositoryEntry{
 				Name:      "incubator",
 				URL:       incubatorRepositoryURL,
 				IsDefault: true,
 			})
-			repo.Add(&RepositoryEntry{
+			repo.AddRepo(&RepositoryEntry{
 				Name: "experimental",
 				URL:  experimentalRepositoryURL,
 			})
@@ -303,7 +309,7 @@ func (r *RepositoryFile) listRepoProjects(repoName string, config *RootCommandCo
 	return "", errors.New("cannot locate repository named " + repoName)
 }
 
-func (r *RepositoryFile) getRepos(rootConfig *RootCommandConfig) (*RepositoryFile, error) {
+func (r *RepositoryFile) getRepoFile(rootConfig *RootCommandConfig) (*RepositoryFile, error) {
 	var repoFileLocation = getRepoFileLocation(rootConfig)
 	repoReader, err := ioutil.ReadFile(repoFileLocation)
 	if err != nil {
@@ -346,6 +352,7 @@ func (r *RepositoryFile) listRepos(rootConfig *RootCommandConfig) (string, error
 	return table.String(), nil
 }
 
+// NewRepoFile - Creates new RepositoryFile
 func NewRepoFile() *RepositoryFile {
 	return &RepositoryFile{
 		APIVersion:   APIVersionV1,
@@ -354,10 +361,12 @@ func NewRepoFile() *RepositoryFile {
 	}
 }
 
-func (r *RepositoryFile) Add(re ...*RepositoryEntry) {
+//AddRepo - Adds RepositoryEntry to RepositoryFile
+func (r *RepositoryFile) AddRepo(re ...*RepositoryEntry) {
 	r.Repositories = append(r.Repositories, re...)
 }
 
+// HasRepo - Check if RepositoryFile has specified Repository
 func (r *RepositoryFile) HasRepo(name string) bool {
 
 	for _, rf := range r.Repositories {
@@ -367,6 +376,8 @@ func (r *RepositoryFile) HasRepo(name string) bool {
 	}
 	return false
 }
+
+//GetRepo - Get RepoEntry from RepositoryFile, return nil if not found
 func (r *RepositoryFile) GetRepo(name string) *RepositoryEntry {
 	for _, rf := range r.Repositories {
 		if rf.Name == name {
@@ -376,6 +387,7 @@ func (r *RepositoryFile) GetRepo(name string) *RepositoryEntry {
 	return nil
 }
 
+//HasURL - Check if RepositoryFile has specified URL
 func (r *RepositoryFile) HasURL(url string) bool {
 	for _, rf := range r.Repositories {
 		if rf.URL == url {
@@ -384,6 +396,8 @@ func (r *RepositoryFile) HasURL(url string) bool {
 	}
 	return false
 }
+
+//GetDefaultRepoName - Get default Repository name from RepositoryFile, return nil if not found
 func (r *RepositoryFile) GetDefaultRepoName(rootConfig *RootCommandConfig) (string, error) {
 	// Check if there are any repos first
 	if len(r.Repositories) < 1 {
@@ -415,7 +429,8 @@ func (r *RepositoryFile) GetDefaultRepoName(rootConfig *RootCommandConfig) (stri
 	return repoName, nil
 }
 
-func (r *RepositoryFile) Remove(name string, log *LoggingConfig) {
+//RemoveRepo - Removes specified Repository from RepositoryFile
+func (r *RepositoryFile) RemoveRepo(name string, log *LoggingConfig) {
 	for index, rf := range r.Repositories {
 		if rf.Name == name {
 			r.Repositories[index] = r.Repositories[0]
@@ -426,6 +441,7 @@ func (r *RepositoryFile) Remove(name string, log *LoggingConfig) {
 	}
 }
 
+//SetDefaultRepoName - Sets default repository to specified repo name
 func (r *RepositoryFile) SetDefaultRepoName(name string, defaultRepoName string, rootConfig *RootCommandConfig) (string, error) {
 	var repoName string
 	for index, rf := range r.Repositories {
@@ -446,6 +462,7 @@ func (r *RepositoryFile) SetDefaultRepoName(name string, defaultRepoName string,
 	return repoName, nil
 }
 
+//WriteFile - Writes file to RepositoryFile
 func (r *RepositoryFile) WriteFile(path string) error {
 	data, err := yaml.Marshal(r)
 	if err != nil {
@@ -454,6 +471,7 @@ func (r *RepositoryFile) WriteFile(path string) error {
 	return ioutil.WriteFile(path, data, 0644)
 }
 
+//GetIndices - Gets the indices of a RepositoryFile
 func (r *RepositoryFile) GetIndices(log *LoggingConfig) (RepoIndices, error) {
 	indices := make(map[string]*RepoIndex)
 	brokenRepos := make([]indexError, 0)
@@ -570,12 +588,14 @@ func (r *RepositoryFile) listProjects(config *RootCommandConfig) (string, error)
 	return table.String(), nil
 }
 
-// Type for outputting stacks of a repository in JSON and YAML
+//IndexOutputFormat - Type for outputting repositories of the RepositoryFile in JSON and YAML
 type IndexOutputFormat struct {
 	APIVersion   string                   `yaml:"apiVersion" json:"apiVersion"`
 	Generated    time.Time                `yaml:"generated" json:"generated"`
 	Repositories []RepositoryOutputFormat `yaml:"repositories" json:"repositories"`
 }
+
+//RepositoryOutputFormat - Type for outputting stacks of a repository in JSON and YAML
 type RepositoryOutputFormat struct {
 	Name   string  `yaml:"repositoryName" json:"repositoryName"`
 	Stacks []Stack `yaml:"stacks" json:"stacks"`

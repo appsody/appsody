@@ -115,7 +115,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 	//var index RepoIndex
 	var repos RepositoryFile
-	if _, err := repos.getRepos(config.RootCommandConfig); err != nil {
+	if _, err := repos.getRepoFile(config.RootCommandConfig); err != nil {
 		return err
 	}
 	var proceedWithTemplate bool
@@ -631,7 +631,7 @@ func parseProjectParm(projectParm string, config *RootCommandConfig) (string, st
 	if len(parms) == 1 {
 		config.Debug.log("Non-fully qualified stack - retrieving default repo...")
 		var r RepositoryFile
-		if _, err := r.getRepos(config); err != nil {
+		if _, err := r.getRepoFile(config); err != nil {
 			return "", "", err
 		}
 		defaultRepoName, err := r.GetDefaultRepoName(config)

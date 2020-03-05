@@ -1995,7 +1995,7 @@ func setNewIndexURL(config *RootCommandConfig) {
 // this code should be removed when we think everyone is using the new name.
 func setNewRepoName(config *RootCommandConfig) {
 	var repoFile RepositoryFile
-	_, repoErr := repoFile.getRepos(config)
+	_, repoErr := repoFile.getRepoFile(config)
 	if repoErr != nil {
 		config.Warning.log("Unable to read repository file")
 	}
