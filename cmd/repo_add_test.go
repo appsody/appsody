@@ -146,7 +146,7 @@ func TestRepoAddWithV1Index(t *testing.T) {
 		t.Error("Expected non-zero exit code.")
 	}
 
-	expectedError := "Could not download index. Does the APIVersion of your repository match what the Appsody CLI currently supports (v2)"
+	expectedError := "Could not download index. Does the APIVersion of your repository match what the Appsody CLI currently supports? (v2)"
 
 	if !strings.Contains(output, expectedError) {
 		t.Errorf("Did not find expected error '%s' in output: ", expectedError)
