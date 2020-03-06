@@ -58,9 +58,9 @@ The Appsody CLI is made available by creating a tagged GitHub release
 1. Go to the [appsody-buildah releases](https://github.com/appsody/appsody-buildah/releases) and create a new release.
 
 ## Create a new appsody-k8s release
-1. Go to the [Travis settings](https://travis-ci.com/appsody/appsody-kube/settings) of appsody-k8s
+1. Go to the [Travis settings](https://travis-ci.com/appsody/appsody-k8s/settings) of appsody-k8s
 1. Update the CLI_VERSION variable and CONTROLLER_VERSION variable if applicable to match the release you created above. Note you need to delete and recreate the variable. Select "DISPLAY VALUE IN BUILD LOG".
-1. Go to the [appsody-k8s releases](https://github.com/appsody/appsody-kube/releases) and create a new release.
+1. Go to the [appsody-k8s releases](https://github.com/appsody/appsody-k8s/releases) and create a new release.
 
 ## Inform users about the new release
 1.  Post a message to the `cli` slack channel about the new release, providing a link to the relevant release notes
