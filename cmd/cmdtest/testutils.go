@@ -347,7 +347,7 @@ func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string,
 func RunCmdExec(cmdName string, args []string, t *testing.T) (string, error) {
 	cmdArgs := []string{cmdName}
 	cmdArgs = append(cmdArgs, args...)
-	t.Log(cmdArgs)
+	t.Logf("About to run %s", cmdArgs)
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	outReader, outWriter := io.Pipe()
 	execCmd.Stdout = outWriter
@@ -361,7 +361,6 @@ func RunCmdExec(cmdName string, args []string, t *testing.T) (string, error) {
 			out := outScanner.Bytes()
 			outBuffer.Write(out)
 			outBuffer.WriteByte('\n')
-			t.Log(string(out))
 		}
 		wg.Done()
 	}()
