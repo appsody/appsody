@@ -243,7 +243,7 @@ func execAndWaitWithWorkDirReturnErr(log *LoggingConfig, command string, args []
 	return err
 }
 
-//Compares the minimum requirements of a stack against the user to determine whether they can use the stack or not.
+//CheckStackRequirements - Compares the minimum requirements of a stack against the user to determine whether they can use the stack or not.
 func CheckStackRequirements(log *LoggingConfig, requirementArray map[string]string, buildah bool) error {
 	versionRegex := regexp.MustCompile(`(\d)+\.(\d)+\.(\d)+`)
 	upgradesRequired := 0
