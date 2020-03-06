@@ -146,8 +146,10 @@ func TestRepoAddWithV1Index(t *testing.T) {
 		t.Error("Expected non-zero exit code.")
 	}
 
-	if !strings.Contains(output, "The repository .yaml for v1index-test-repo has an older APIVersion that the Appsody CLI no longer supports.") {
-		t.Errorf("Did not find expected error '%s' in output: ", "The repository .yaml for v1index-test-repo has an older APIVersion that the Appsody CLI no longer supports.")
+	expectedError := "Could not download index. Does the APIVersion of your repository match what the Appsody CLI currently supports (v2)"
+
+	if !strings.Contains(output, expectedError) {
+		t.Errorf("Did not find expected error '%s' in output: ", expectedError)
 	}
 }
 
