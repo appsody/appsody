@@ -72,7 +72,7 @@ func repoAdd(repoName, repoURL string, config *RootCommandConfig) error {
 	}
 	index, err := downloadIndex(config.LoggingConfig, repoURL)
 	if err != nil {
-		return errors.Errorf("Could not download index. Does the APIVersion of your repository match what the Appsody CLI currently supports (%v) Full error:  %v", supportedIndexAPIVersion, err)
+		return errors.Errorf("Could not download index. Does the APIVersion of your repository match what the Appsody CLI currently supports? (%v) Full error:  %v", supportedIndexAPIVersion, err)
 	}
 	if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 		config.Warning.log("The repository " + repoName + " contains an APIVersion in its .yaml file more recent than the current Appsody CLI supports(" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
