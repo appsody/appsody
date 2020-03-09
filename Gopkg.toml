@@ -32,7 +32,7 @@
 
 [[constraint]]
   name = "golang.org/x/crypto"
-  revision = "78000ba7a073cafc0278790f6bce552a0f25850e"
+  branch = "master"
 
 [[override]]
   name = "golang.org/x/sys"

@@ -218,6 +218,7 @@
   version = "v1.3.2"
 
 [[projects]]
+  branch = "master"
   digest = "1:9d5b5d543996dd584da1db1e0de1926f3e4c3a8dba0fa2f8db70f3ebee2342e0"
   name = "golang.org/x/crypto"
   packages = [

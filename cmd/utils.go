@@ -70,7 +70,7 @@ type ProjectEntry struct {
 	Volumes []*Volume `yaml:"volumes,omitempty"`
 }
 type Volume struct {
-	VolumeName, VolumePath string
+	Name, Path string
 }
 
 type NotAnAppsodyProject string
@@ -2649,8 +2649,8 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 			volumeMaps = append(volumeMaps, "-v", depsMount)
 
 			var v *Volume = new(Volume)
-			v.VolumeName = volName
-			v.VolumePath = volume
+			v.Name = volName
+			v.Path = volume
 			project.Volumes = append(project.Volumes, v)
 		}
 
@@ -2659,7 +2659,7 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 		}
 	} else { // else if project entry has existing dependency volumes, loop through volumes in the current project entry, and add each volume mount to volumeMaps
 		for _, v := range project.Volumes {
-			depsMount := v.VolumeName + ":" + v.VolumePath
+			depsMount := v.Name + ":" + v.Path
 			rootConfig.Debug.log("Adding dependency cache to volume mounts: ", depsMount)
 			volumeMaps = append(volumeMaps, "-v", depsMount)
 		}
