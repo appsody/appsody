@@ -15,8 +15,10 @@ package cmd
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -70,7 +72,7 @@ Run this command from the root directory of your Appsody project.`,
 			rootConfig.Info.Log("stackPath is: ", stackPath)
 
 			// check for templates dir, error out if its not there
-			check, err := Exists("templates")
+			check, err := Exists(filepath.Join(stackPath, "templates"))
 			if err != nil {
 				return errors.New("Error checking stack root directory: " + err.Error())
 			}
@@ -266,7 +268,15 @@ func TestInit(log *LoggingConfig, stack string, template string, projectDir stri
 func TestRun(log *LoggingConfig, stack string, template string, projectDir string, rootConfig *RootCommandConfig) error {
 
 	runChannel := make(chan error)
-	containerName := "testRunContainer"
+	var containerPrefix int
+
+	for {
+		containerPrefix = rand.New(rand.NewSource(time.Now().UnixNano())).Int() % 100000000
+		if containerPrefix > 10000000 {
+			break
+		}
+	}
+	containerName := strconv.Itoa(containerPrefix) + "-testRunContainer"
 	go func() {
 		log.Info.Log("**************************************************************************")
 		log.Info.Log("Running appsody run against stack:" + stack + "template: " + template)
@@ -320,7 +330,7 @@ func TestRun(log *LoggingConfig, stack string, template string, projectDir strin
 	log.Info.Log("Appsody run did not fail")
 
 	// stop and clean up after the run
-	_, err := RunAppsodyCmdExec([]string{"stop", "--name", "testRunContainer"}, projectDir, rootConfig)
+	_, err := RunAppsodyCmdExec([]string{"stop", "--name", containerName}, projectDir, rootConfig)
 	if err != nil {
 		log.Error.Log("appsody stop failed")
 	}
