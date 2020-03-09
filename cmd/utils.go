@@ -19,11 +19,10 @@ import (
 	"bytes"
 	"compress/gzip"
 
-	//"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
-	//"hash"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -40,6 +39,7 @@ import (
 	"github.com/mitchellh/go-spdx"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/bcrypt"
 
 	"gopkg.in/yaml.v2"
 )
@@ -60,6 +60,17 @@ type OwnerReference struct {
 	Controller         bool   `yaml:"controller"`
 	Name               string `yaml:"name"`
 	UID                string `yaml:"uid"`
+}
+type ProjectFile struct {
+	Projects []*ProjectEntry `yaml:"projects"`
+}
+type ProjectEntry struct {
+	ID      string    `yaml:"id"`
+	Path    string    `yaml:"path"`
+	Volumes []*Volume `yaml:"volumes,omitempty"`
+}
+type Volume struct {
+	Name, Path string
 }
 
 type NotAnAppsodyProject string
@@ -2438,4 +2449,221 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 
 	log.Info.logf("Succesfully generated file: %s", indexFilePath)
 	return nil
+}
+
+func getProjectYamlFile(rootConfig *RootCommandConfig) string {
+	return filepath.Join(getHome(rootConfig), "project.yaml")
+}
+
+// add a new project entry to the project.yaml file
+func (p *ProjectFile) add(pe ...*ProjectEntry) {
+	p.Projects = append(p.Projects, pe...)
+}
+
+// write to the project.yaml file
+func (p *ProjectFile) writeFile(path string) error {
+	data, err := yaml.Marshal(p)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, data, 0644)
+}
+
+// check if project.yaml file had a project with given id
+func (p *ProjectFile) hasID(id string) bool {
+	for _, pf := range p.Projects {
+		if id == pf.ID {
+			return true
+		}
+	}
+	return false
+}
+
+// get project from project.yaml with given id
+func (p *ProjectFile) getProject(id string) *ProjectEntry {
+	for _, pf := range p.Projects {
+		if id == pf.ID {
+			return pf
+		}
+	}
+	return nil
+}
+
+// get all project entries from project.yaml
+func (p *ProjectFile) getProjects(rootConfig *RootCommandConfig) (*ProjectFile, error) {
+	var fileLocation = getProjectYamlFile(rootConfig)
+	projectReader, err := ioutil.ReadFile(fileLocation)
+	if err != nil {
+		return nil, err
+	}
+	err = yaml.Unmarshal(projectReader, p)
+	if err != nil {
+		return nil, errors.Errorf("Failed to parse project file %v", err)
+	}
+	return p, nil
+}
+
+// create unique project id for .appsody-config.yaml
+func generateIDHash(config *RootCommandConfig) string {
+	var password = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
+	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+
+	id := hex.EncodeToString(hash)
+	if len(id) > 100 {
+		config.Debug.Logf("Successfully generated ID: %s", id[0:100])
+		return id[0:100]
+	}
+	config.Debug.Logf("Successfully generated ID: %s", id)
+	return id
+}
+
+// add new project entry to ~/.appsody/project.yaml
+func addNewProject(ID string, config *RootCommandConfig) error {
+	projectDir, err := getProjectDir(config)
+	if err != nil {
+		return err
+	}
+	var projectFile ProjectFile
+	fileLocation := getProjectYamlFile(config)
+
+	_, err = projectFile.getProjects(config)
+	if err != nil {
+		return err
+	}
+
+	var newEntry = ProjectEntry{
+		ID:   ID,
+		Path: projectDir,
+	}
+	projectFile.add(&newEntry)
+	err = projectFile.writeFile(fileLocation)
+	if err != nil {
+		return errors.Errorf("Failed to write file to repository location: %v", err)
+	}
+	config.Info.Logf("Successfully added your project to %s", getProjectYamlFile(config))
+	return nil
+}
+
+// get APPSODY_DEPS environment variable and split it into and array
+func getDepVolumeArgs(config *RootCommandConfig) ([]string, error) {
+	stackDeps, envErr := GetEnvVar("APPSODY_DEPS", config)
+	if envErr != nil {
+		return nil, envErr
+	}
+	if stackDeps == "" {
+		config.Warning.log("The stack image does not contain APPSODY_DEPS")
+		return nil, nil
+	}
+	volumeArgs := strings.Split(stackDeps, ";")
+	return volumeArgs, nil
+}
+
+// create unique name for APPSODY_DEPS volumes
+func generateVolumeName(config *RootCommandConfig) string {
+	projectName, perr := getProjectName(config)
+	if perr != nil {
+		if _, ok := perr.(*NotAnAppsodyProject); !ok {
+			config.Error.logf("Error occurred retrieving project name... exiting: %s", perr)
+			os.Exit(1)
+		}
+	}
+	ID := generateIDHash(config)
+	volumeName := "appsody-" + projectName + "-" + ID
+
+	if len(volumeName) > 100 {
+		config.Debug.Logf("Using docker volume name: %s", volumeName[0:100])
+		return volumeName[0:100]
+	}
+	config.Debug.Logf("Using docker volume name: %s", volumeName)
+	return volumeName
+}
+
+// save project id to .appsody-config.yaml
+func saveIDToConfig(ID string, config *RootCommandConfig) error {
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	v.Set("id", ID)
+	err = v.WriteConfig()
+	if err != nil {
+		return err
+	}
+
+	config.Info.log("Your Appsody project ID has been set to ", ID)
+	return nil
+}
+
+// get project id from .appsody-config.yaml
+func getIDFromConfig(config *RootCommandConfig) (string, error) {
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+	if err != nil {
+		return "", err
+	}
+	id := v.GetString("id")
+	return id, nil
+}
+
+// create new project entry in ~/.appsody/project.yaml and add id to .appsody-config.yaml
+func generateNewProjectAndID(config *RootCommandConfig) error {
+	ID := generateIDHash(config)
+	addNewProject(ID, config)
+
+	err := saveIDToConfig(ID, config)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// create docker volume names for every path in APPSODY_DEPS and put it in project.yaml
+func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID string, volumeMaps []string, rootConfig *RootCommandConfig) ([]string, error) {
+	_, err := p.getProjects(rootConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// if id exists in .appsody-config.yaml but not in project.yaml, add a new project entry in project.yaml with that id, and get projects again
+	if !p.hasID(ID) {
+		addNewProject(ID, rootConfig)
+		_, err := p.getProjects(rootConfig)
+		if err != nil {
+			return nil, err
+		}
+	}
+	project := p.getProject(ID)
+
+	// if the project entry does not have existing dependency volumes, for every path in APPSODY_DEPS, generate a new volume name, assign it to that path, and write it to the current project entry in project.yaml
+	if project.Volumes == nil {
+		for _, volume := range depsEnvVars {
+			volName := generateVolumeName(rootConfig)
+			depsMount := volName + ":" + volume
+			rootConfig.Debug.log("Adding dependency cache to volume mounts: ", depsMount)
+			// add the volume mounts to volumeMaps
+			volumeMaps = append(volumeMaps, "-v", depsMount)
+
+			var v *Volume = new(Volume)
+			v.Name = volName
+			v.Path = volume
+			project.Volumes = append(project.Volumes, v)
+		}
+
+		if err := p.writeFile(getProjectYamlFile(rootConfig)); err != nil {
+			return volumeMaps, err
+		}
+	} else { // else if project entry has existing dependency volumes, loop through volumes in the current project entry, and add each volume mount to volumeMaps
+		for _, v := range project.Volumes {
+			depsMount := v.Name + ":" + v.Path
+			rootConfig.Debug.log("Adding dependency cache to volume mounts: ", depsMount)
+			volumeMaps = append(volumeMaps, "-v", depsMount)
+		}
+	}
+
+	return volumeMaps, nil
 }
