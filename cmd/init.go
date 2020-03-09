@@ -304,6 +304,12 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if err != nil {
 		return err
 	}
+
+	err = generateNewProjectAndID(config.RootCommandConfig)
+	if err != nil {
+		return err
+	}
+
 	if template == "" {
 		config.Info.logf("Successfully initialized Appsody project with the %s stack and the default template.", stack)
 	} else if template != "none" {
@@ -673,7 +679,7 @@ func defaultProjectName(config *RootCommandConfig) string {
 	}
 	return projectName
 }
+
 func addStackRegistryFlagInit(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
 	cmd.PersistentFlags().StringVar(flagVar, "stack-registry", "", "Specify the URL of the registry that hosts your stack images.")
-
 }
