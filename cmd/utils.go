@@ -2613,9 +2613,12 @@ func getIDFromConfig(config *RootCommandConfig) (string, error) {
 // create new project entry in ~/.appsody/project.yaml and add id to .appsody-config.yaml
 func generateNewProjectAndID(config *RootCommandConfig) error {
 	ID := generateIDHash(config)
-	addNewProject(ID, config)
+	err := addNewProject(ID, config)
+	if err != nil {
+		return err
+	}
 
-	err := saveIDToConfig(ID, config)
+	err = saveIDToConfig(ID, config)
 	if err != nil {
 		return err
 	}
@@ -2631,8 +2634,11 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 
 	// if id exists in .appsody-config.yaml but not in project.yaml, add a new project entry in project.yaml with that id, and get projects again
 	if !p.hasID(ID) {
-		addNewProject(ID, rootConfig)
-		_, err := p.getProjects(rootConfig)
+		err := addNewProject(ID, rootConfig)
+		if err != nil {
+			return nil, err
+		}
+		_, err = p.getProjects(rootConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -2648,7 +2654,7 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 			// add the volume mounts to volumeMaps
 			volumeMaps = append(volumeMaps, "-v", depsMount)
 
-			var v *Volume = new(Volume)
+			v := new(Volume)
 			v.Name = volName
 			v.Path = volume
 			project.Volumes = append(project.Volumes, v)

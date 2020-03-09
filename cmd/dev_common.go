@@ -36,7 +36,6 @@ type devCommonConfig struct {
 	*RootCommandConfig
 	disableWatcher  bool
 	containerName   string
-	depsVolumeName  string
 	ports           []string
 	publishAllPorts bool
 	interactive     bool
