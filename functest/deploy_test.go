@@ -69,9 +69,10 @@ func TestDeploySimple(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		imageTag := sandbox.ProjectName + "-" + stackRaw[i]
 		// appsody deploy
 		t.Log("Running appsody deploy...")
-		_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", "testdeploy/testimage", "--dryrun")
+		_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", imageTag, "--dryrun")
 		if err != nil {
 			t.Log("WARNING: deploy dryrun failed. Ignoring for now until that gets fixed.")
 			// TODO We need to fix the deploy --dryrun option so it doesn't fail, then uncomment the line below
@@ -109,7 +110,7 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		imageTag := "testdeploy/testimage"
+		imageTag := sandbox.ProjectName + "-" + stackRaw[i]
 		pullURL := "my-pull-url"
 		namespace := "myNamespace"
 		// appsody deploy
@@ -137,7 +138,7 @@ func TestDeployNoNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	imageTag := "testdeploy/testimage"
+	imageTag := sandbox.ProjectName + "/genonly"
 	// appsody deploy
 	t.Logf("Running appsody deploy with no namespace")
 	_, err = cmdtest.RunAppsody(sandbox, "deploy", "-t", imageTag, "--generate-only")
@@ -272,8 +273,10 @@ func TestNoCheckFlag(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	imageTag := sandbox.ProjectName + "/noflag"
+
 	t.Log("Running appsody deploy...")
-	output, err := cmdtest.RunAppsody(sandbox, "deploy", "-t", "testdeploy/testimage", "--dryrun", "--no-operator-check")
+	output, err := cmdtest.RunAppsody(sandbox, "deploy", "-t", imageTag, "--dryrun", "--no-operator-check")
 	if err != nil {
 		t.Log("WARNING: deploy dryrun failed.")
 	}
