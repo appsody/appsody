@@ -281,7 +281,7 @@ func TestNoCheckFlag(t *testing.T) {
 		t.Log("WARNING: deploy dryrun failed.")
 	}
 
-	if !strings.Contains(output, "kubectl get pods \"-o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}'\" -n") {
+	if !strings.Contains(output, "kubectl get pods -o=jsonpath='{.items[?(@.metadata.labels.name==\"appsody-operator\")].metadata.namespace}' -n") {
 		t.Fatal(err, ": Expected kubectl get pods to run only against the targeted namespace rather than all namespaces.")
 	}
 }

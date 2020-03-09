@@ -130,7 +130,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	indices, err := repos.GetIndices(config.LoggingConfig)
 
 	if err != nil {
-		config.Error.logf("The following indices could not be read. Does the APIVersion of your repository match what the Appsody CLI currently supports? (%v) skipping:\n%v", supportedIndexAPIVersion, err)
+		config.Error.logf("Does the APIVersion of your repository match what the Appsody CLI currently supports? (%v). The following indices could not be read. skipping:\n%v", supportedIndexAPIVersion, err)
 	}
 	if len(indices) == 0 {
 		return errors.Errorf("Your stack repository is empty - please use `appsody repo add` to add a repository.")

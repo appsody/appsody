@@ -64,8 +64,8 @@ type RepositoryEntry struct {
 	IsDefault bool   `yaml:"default,omitempty" json:"default,omitempty"`
 }
 
-func findTemplateURL(projectVersion IndexYamlStack, templateName string) string {
-	templates := projectVersion.Templates
+func findTemplateURL(stackData IndexYamlStack, templateName string) string {
+	templates := stackData.Templates
 
 	for _, value := range templates {
 		if value.ID == templateName {
