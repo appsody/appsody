@@ -2508,8 +2508,13 @@ func generateIDHash(config *RootCommandConfig) string {
 	var password = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 
-	config.Debug.Logf("Successfully generated ID: %s", hex.EncodeToString(hash))
-	return hex.EncodeToString(hash)
+	id := hex.EncodeToString(hash)
+	if len(id) > 100 {
+		config.Debug.Logf("Successfully generated ID: %s", id[0:100])
+		return id[0:100]
+	}
+	config.Debug.Logf("Successfully generated ID: %s", id)
+	return id
 }
 
 // add new project entry to ~/.appsody/project.yaml
