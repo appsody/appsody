@@ -218,6 +218,16 @@
   version = "v1.3.2"
 
 [[projects]]
+  digest = "1:9d5b5d543996dd584da1db1e0de1926f3e4c3a8dba0fa2f8db70f3ebee2342e0"
+  name = "golang.org/x/crypto"
+  packages = [
+    "bcrypt",
+    "blowfish",
+  ]
+  pruneopts = "UT"
+  revision = "78000ba7a073cafc0278790f6bce552a0f25850e"
+
+[[projects]]
   branch = "master"
   digest = "1:69ee2954e0006a4b8907ce5130a2df12195f443a7c570aa3afb98f8aae65ae7a"
   name = "golang.org/x/net"
@@ -337,6 +347,7 @@
     "github.com/spf13/cobra",
     "github.com/spf13/cobra/doc",
     "github.com/spf13/viper",
+    "golang.org/x/crypto/bcrypt",
     "gopkg.in/yaml.v2",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/klog",

@@ -30,6 +30,10 @@
   name = "github.com/mitchellh/go-spdx"
   version = "0.1.0"
 
+[[constraint]]
+  name = "golang.org/x/crypto"
+  revision = "78000ba7a073cafc0278790f6bce552a0f25850e"
+
 [[override]]
   name = "golang.org/x/sys"
   branch = "master"
