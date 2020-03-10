@@ -487,7 +487,7 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 	return projectName, nil
 }
 
-func GetDeprecated(config *RootCommandConfig, log *LoggingConfig) error {
+func GetDeprecated(config *RootCommandConfig) error {
 	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
@@ -499,18 +499,22 @@ func GetDeprecated(config *RootCommandConfig, log *LoggingConfig) error {
 	if stackInfo == nil {
 		return errors.New("stack information not found in .appsody-config.yaml file")
 	}
-	dockerOutput, err := RunDockerCmdExec([]string{"inspect", "-f", "'{{ index .Config.Labels \"dev.appsody.stack.deprecated\"}}'", stackInfo.(string)}, log)
+	stackLabels, err := getStackLabels(config)
 	if err != nil {
 		return err
 	}
-	if dockerOutput != "" {
-		fmt.Printf("*\n*\n*\nStack deprecated: %v \n*\n*\n*\n", dockerOutput)
+	if stackLabels["dev.appsody.stack.deprecated"] != "" {
+		fmt.Printf("*\n*\n*\nStack deprecated: %v \n*\n*\n*\n", stackLabels["dev.appsody.stack.deprecated"])
 	}
 
 	return nil
 }
 
 func getStackIndexYaml(repoID string, stackID string, config *RootCommandConfig) (*IndexYamlStack, error) {
+
+	if config.Dryrun {
+		return nil, nil
+	}
 
 	var stackEntry *IndexYamlStack
 	extractDir := filepath.Join(getHome(config), "extract")
@@ -548,25 +552,20 @@ func getStackIndexYaml(repoID string, stackID string, config *RootCommandConfig)
 		return stackEntry, err
 	}
 	defer os.Remove(tempRepoIndex)
-	if !config.Dryrun {
-		tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
-		if err != nil {
-			return stackEntry, errors.Errorf("Error trying to read: %v", err)
-		}
+	tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
+	if err != nil {
+		return stackEntry, errors.Errorf("Error trying to read: %v", err)
+	}
 
-		err = yaml.Unmarshal(tempRepoIndexFile, &repoIndex)
-		if err != nil {
-			return stackEntry, errors.Errorf("Error parsing the index.yaml file: %v", err)
-		}
+	err = yaml.Unmarshal(tempRepoIndexFile, &repoIndex)
+	if err != nil {
+		return stackEntry, errors.Errorf("Error parsing the index.yaml file: %v", err)
+	}
 
-		// get specified stack and get URL
-		stackEntry = getStack(&repoIndex, stackID)
-		if stackEntry == nil {
-			return stackEntry, errors.New("Could not find stack specified in repository index")
-		}
-
-	} else {
-		return nil, nil
+	// get specified stack and get URL
+	stackEntry = getStack(&repoIndex, stackID)
+	if stackEntry == nil {
+		return stackEntry, errors.New("Could not find stack specified in repository index")
 	}
 
 	return stackEntry, nil

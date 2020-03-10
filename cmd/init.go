@@ -312,7 +312,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		config.Info.logf("Successfully initialized Appsody project with the %s stack and no template.", stack)
 	}
 
-	depErr := GetDeprecated(config.RootCommandConfig, config.LoggingConfig)
+	depErr := GetDeprecated(config.RootCommandConfig)
 	if depErr != nil {
 		return depErr
 	}

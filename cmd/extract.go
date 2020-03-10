@@ -316,7 +316,7 @@ func extract(config *extractCommandConfig) error {
 		}
 	}
 
-	depErr := GetDeprecated(config.RootCommandConfig, config.LoggingConfig)
+	depErr := GetDeprecated(config.RootCommandConfig)
 	if depErr != nil {
 		return depErr
 	}

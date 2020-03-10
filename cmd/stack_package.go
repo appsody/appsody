@@ -390,8 +390,9 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				configYaml := filepath.Join(templatePath, templates[i], ".appsody-config.yaml")
 				log.Debug.Log("configYaml is: ", configYaml)
 				g, err := os.Create(configYaml)
+				g.Close()
 				if err != nil {
-					return err
+					return errors.Errorf("Error trying to create file: %v", err)
 				}
 				v := viper.New()
 				v.SetConfigFile(configYaml)
@@ -404,7 +405,6 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				if err != nil {
 					return err
 				}
-				g.Close()
 
 				// tar the files
 				log.Info.Log("Creating tar for: " + templates[i])
