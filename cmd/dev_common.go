@@ -62,9 +62,7 @@ func checkDockerRunOptions(options []string) error {
 func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
 	projectName, perr := getProjectName(config)
 	if perr != nil {
-		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			//Debug.log("Cannot retrieve the project name - continuing: ", perr)
-		} else {
+		if _, ok := perr.(*NotAnAppsodyProject); !ok {
 			config.Error.logf("Error occurred retrieving project name... exiting: %s", perr)
 			os.Exit(1)
 		}
@@ -101,17 +99,6 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 }
 
 func commonCmd(config *devCommonConfig, mode string) error {
-	id, err := getIDFromConfig(config.RootCommandConfig)
-	if err != nil {
-		return err
-	}
-	// create id if it does not exist in .appsody-config.yaml and add it to project.yaml
-	if id == "" {
-		err = generateNewProjectAndID(config.RootCommandConfig)
-		if err != nil {
-			return err
-		}
-	}
 	// Checking whether the controller is being overridden
 	overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
 	if overrideControllerImage == "" {
@@ -145,7 +132,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		return configErr
 	}
 
-	err = CheckPrereqs(config.RootCommandConfig)
+	err := CheckPrereqs(config.RootCommandConfig)
 	if err != nil {
 		config.Warning.logf("Failed to check prerequisites: %v\n", err)
 	}
@@ -172,7 +159,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	if depsEnvVars != nil {
-		id, err = getIDFromConfig(config.RootCommandConfig)
+		id, err := getIDFromConfig(config.RootCommandConfig)
 		if err != nil {
 			return err
 		}

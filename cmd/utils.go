@@ -2451,13 +2451,13 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 	return nil
 }
 
-func getProjectYamlFile(rootConfig *RootCommandConfig) string {
+func getProjectYamlPath(rootConfig *RootCommandConfig) string {
 	return filepath.Join(getHome(rootConfig), "project.yaml")
 }
 
 // add a new project entry to the project.yaml file
-func (p *ProjectFile) add(pe ...*ProjectEntry) {
-	p.Projects = append(p.Projects, pe...)
+func (p *ProjectFile) add(projectEntry ...*ProjectEntry) {
+	p.Projects = append(p.Projects, projectEntry...)
 }
 
 // write to the project.yaml file
@@ -2491,7 +2491,7 @@ func (p *ProjectFile) getProject(id string) *ProjectEntry {
 
 // get all project entries from project.yaml
 func (p *ProjectFile) getProjects(rootConfig *RootCommandConfig) (*ProjectFile, error) {
-	var fileLocation = getProjectYamlFile(rootConfig)
+	var fileLocation = getProjectYamlPath(rootConfig)
 	projectReader, err := ioutil.ReadFile(fileLocation)
 	if err != nil {
 		return nil, err
@@ -2524,7 +2524,7 @@ func addNewProject(ID string, config *RootCommandConfig) error {
 		return err
 	}
 	var projectFile ProjectFile
-	fileLocation := getProjectYamlFile(config)
+	fileLocation := getProjectYamlPath(config)
 
 	_, err = projectFile.getProjects(config)
 	if err != nil {
@@ -2540,7 +2540,7 @@ func addNewProject(ID string, config *RootCommandConfig) error {
 	if err != nil {
 		return errors.Errorf("Failed to write file to repository location: %v", err)
 	}
-	config.Info.Logf("Successfully added your project to %s", getProjectYamlFile(config))
+	config.Info.Logf("Successfully added your project to %s", getProjectYamlPath(config))
 	return nil
 }
 
@@ -2597,7 +2597,7 @@ func saveIDToConfig(ID string, config *RootCommandConfig) error {
 	return nil
 }
 
-// get project id from .appsody-config.yaml
+// get project id from .appsody-config.yaml and create project entry if id does not exist
 func getIDFromConfig(config *RootCommandConfig) (string, error) {
 	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
 	v := viper.New()
@@ -2607,6 +2607,10 @@ func getIDFromConfig(config *RootCommandConfig) (string, error) {
 		return "", err
 	}
 	id := v.GetString("id")
+	if id == "" {
+		err := generateNewProjectAndID(config)
+		return id, err
+	}
 	return id, nil
 }
 
@@ -2647,20 +2651,20 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 
 	// if the project entry does not have existing dependency volumes, for every path in APPSODY_DEPS, generate a new volume name, assign it to that path, and write it to the current project entry in project.yaml
 	if project.Volumes == nil {
-		for _, volume := range depsEnvVars {
-			volName := generateVolumeName(rootConfig)
-			depsMount := volName + ":" + volume
+		for _, volumePath := range depsEnvVars {
+			volumeName := generateVolumeName(rootConfig)
+			depsMount := volumeName + ":" + volumePath
 			rootConfig.Debug.log("Adding dependency cache to volume mounts: ", depsMount)
 			// add the volume mounts to volumeMaps
 			volumeMaps = append(volumeMaps, "-v", depsMount)
 
 			v := new(Volume)
-			v.Name = volName
-			v.Path = volume
+			v.Name = volumeName
+			v.Path = volumePath
 			project.Volumes = append(project.Volumes, v)
 		}
 
-		if err := p.writeFile(getProjectYamlFile(rootConfig)); err != nil {
+		if err := p.writeFile(getProjectYamlPath(rootConfig)); err != nil {
 			return volumeMaps, err
 		}
 	} else { // else if project entry has existing dependency volumes, loop through volumes in the current project entry, and add each volume mount to volumeMaps

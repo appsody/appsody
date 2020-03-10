@@ -664,9 +664,7 @@ func parseProjectParm(projectParm string, config *RootCommandConfig) (string, st
 func defaultProjectName(config *RootCommandConfig) string {
 	projectDirPath, perr := getProjectDir(config)
 	if perr != nil {
-		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			//Debug.log("Cannot retrieve the project dir - continuing: ", perr)
-		} else {
+		if _, ok := perr.(*NotAnAppsodyProject); !ok {
 			config.Error.logf("Error occurred retrieving project dir... exiting: %s", perr)
 			os.Exit(1)
 		}

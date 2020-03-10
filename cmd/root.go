@@ -167,7 +167,7 @@ func setupConfig(args []string, config *RootCommandConfig) error {
 
 // create project.yaml if it does not exist
 func ensureProjectConfig(config *RootCommandConfig) error {
-	projectFile := getProjectYamlFile(config)
+	projectFile := getProjectYamlPath(config)
 	if _, err := os.Stat(projectFile); err != nil {
 		project := NewProjectFile()
 		if err := project.writeFile(projectFile); err != nil {

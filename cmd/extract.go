@@ -322,9 +322,7 @@ func defaultExtractContainerName(config *RootCommandConfig) string {
 	projectName, perr := getProjectName(config)
 
 	if perr != nil {
-		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			//Debug.log("Cannot retrieve the project name - continuing: ", perr)
-		} else {
+		if _, ok := perr.(*NotAnAppsodyProject); !ok {
 			config.Error.log("Error occurred retrieving project name... exiting: ", perr)
 			os.Exit(1)
 		}
