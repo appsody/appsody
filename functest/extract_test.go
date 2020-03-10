@@ -71,8 +71,7 @@ func TestExtract(t *testing.T) {
 
 		// Main extraction test logic:
 		// 1. Get the environment variables from the images that was
-		// just extracted - GetEnvVar. Switch the current directory
-		// to meet the API's needs. (refactor it so that this isn't needed)
+		// just extracted.
 		// 2. For each mount that is a file, make sure the source and
 		// destination file sizes match.
 		// 3. For each mount that is a folder, make sure the source and
@@ -81,19 +80,13 @@ func TestExtract(t *testing.T) {
 		// 5. For all cases, make sure we have a Dockerfile extracted
 		// at the vortex of the extraction.
 
-		oldDir, err := os.Getwd()
-		if err != nil {
-			t.Fatal("Error getting current directory: ", err)
-		}
-
-		err = os.Chdir(sandbox.ProjectDir)
-		if err != nil {
-			t.Fatal("Error changing directory: ", err)
-		}
 		var outBuffer bytes.Buffer
 		loggingConfig := &cmd.LoggingConfig{}
 		loggingConfig.InitLogging(&outBuffer, &outBuffer)
 		config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+
+		config.ProjectDir = sandbox.ProjectDir
+
 		err = cmd.InitConfig(config)
 		if err != nil {
 			t.Fatal("Could not init appsody config", err)
@@ -101,11 +94,6 @@ func TestExtract(t *testing.T) {
 		mounts, _ := cmd.GetEnvVar("APPSODY_MOUNTS", config)
 		pDir, _ := cmd.GetEnvVar("APPSODY_PROJECT_DIR", config)
 		t.Log(outBuffer.String())
-
-		err = os.Chdir(oldDir)
-		if err != nil {
-			t.Fatal("Error changing directory: ", err)
-		}
 
 		t.Log("Stack mounts:", mounts)
 		if pDir == "" {
