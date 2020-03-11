@@ -15,14 +15,9 @@
 package cmd
 
 import (
-	"archive/zip"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -51,8 +46,6 @@ The stack name must start with a lowercase letter, and can contain only lowercas
   appsody stack create my-stack --copy incubator/nodejs-express  
   Creates a stack called my-stack, based on the Node.js Express stack.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			currentTime := time.Now().Format("20060102150405")
 
 			if len(args) < 1 {
 				return errors.New("Required parameter missing. You must specify a stack name")
@@ -153,9 +146,7 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 				stackEntryURL := stackEntry.SourceURL
 
 				if stackEntryURL == "" {
-					//TODO: REMOVE OLD CREATE METHOD AFTER NEXT RELEASE AND UPDATE STACKS
-					//return errors.New("No source URL specified.  Use the add-to-repo command with the --release-url flag to your repo")
-					return oldCreateMethod(rootConfig.LoggingConfig, rootConfig, config, stack, currentTime)
+					return errors.New("No source URL found for stack in repository index file.  Use the add-to-repo command with the --release-url flag to your repository")
 				}
 
 				// download source.tar.gz of selected stack source
@@ -195,141 +186,4 @@ func getStack(stackList *IndexYaml, name string) *IndexYamlStack {
 		}
 	}
 	return nil
-}
-
-// To be removed in next release
-func oldCreateMethod(log *LoggingConfig, rootConfig *RootCommandConfig, config *stackCreateCommandConfig, stack string, currentTime string) error {
-	err := downloadFileToDisk(rootConfig.LoggingConfig, "https://github.com/appsody/stacks/archive/master.zip", filepath.Join(getHome(rootConfig), "extract", "repo.zip"), config.Dryrun)
-	if err != nil {
-		return err
-	}
-	_, stackTempDir, err := parseProjectParm(config.copy, config.RootCommandConfig)
-	if err != nil {
-		return err
-	}
-
-	valid, unzipErr := unzip(rootConfig.LoggingConfig, filepath.Join(getHome(rootConfig), "extract", "repo.zip"), stack, config.copy, config.Dryrun)
-	if unzipErr != nil {
-		return unzipErr
-	}
-
-	if !valid {
-		return errors.Errorf("Invalid stack name: " + config.copy + ". Stack name must be in the format <repo>/<stack>")
-	}
-
-	//deleting the stacks repo zip
-	os.Remove(filepath.Join(getHome(rootConfig), "extract", "repo.zip"))
-
-	//moving out the stack which we need
-	if config.Dryrun {
-		config.Info.logf("Dry Run -Skipping moving out of stack: %s from %s", stackTempDir, filepath.Join(stack, "stacks-master", config.copy))
-
-	} else {
-		stackTempDir = ".temp-" + stackTempDir + "-" + currentTime
-
-		err = os.Rename(filepath.Join(stack, "stacks-master", config.copy), stackTempDir)
-		if err != nil {
-			return err
-		}
-	}
-
-	//deleting the folder from which stack is extracted
-	os.RemoveAll(stack)
-
-	// rename the stack to the name which user want
-	if config.Dryrun {
-		config.Info.logf("Dry Run -Skipping renaming of stack from: %s to %s", stackTempDir, stack)
-
-	} else {
-		err = os.Rename(stackTempDir, filepath.Join(rootConfig.ProjectDir, stack))
-		if err != nil {
-			return err
-		}
-	}
-
-	if !config.Dryrun {
-		rootConfig.Info.log("Stack created: ", stack)
-	} else {
-		rootConfig.Info.log("Dry run complete")
-	}
-
-	return nil
-}
-
-// Unzip will decompress a zip archive - TO BE REMOVED NEXT RELEASE
-// within the zip file (parameter 1) to an output directory (parameter 2).
-func unzip(log *LoggingConfig, src string, dest string, copy string, dryrun bool) (bool, error) {
-	if dryrun {
-		log.Info.logf("Dry Run -Skipping unzip of file: %s from %s", copy, src)
-
-	} else {
-		valid := false
-
-		r, err := zip.OpenReader(src)
-		if err != nil {
-			return valid, err
-		}
-		defer r.Close()
-
-		for _, f := range r.File {
-
-			// Store filename/path for returning and using later on
-			fpath := filepath.Join(dest, f.Name)
-
-			// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
-			if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
-				return valid, errors.Errorf("%s: illegal file path", fpath)
-			}
-
-			if runtime.GOOS == "windows" {
-				if !strings.HasPrefix(f.Name, "stacks-master/"+copy+"/") {
-					continue
-				} else {
-					valid = true
-				}
-			} else {
-				if !strings.HasPrefix(f.Name, filepath.Join("stacks-master", string(os.PathSeparator), copy)+string(os.PathSeparator)) {
-					continue
-				} else {
-					valid = true
-				}
-			}
-
-			if f.FileInfo().IsDir() {
-				// Make Folder
-				err := os.MkdirAll(fpath, os.ModePerm)
-				if err != nil {
-					return valid, err
-				}
-				continue
-			}
-
-			// Make File
-			if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
-				return valid, err
-			}
-
-			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-			if err != nil {
-				return valid, err
-			}
-
-			rc, err := f.Open()
-			if err != nil {
-				return valid, err
-			}
-
-			_, err = io.Copy(outFile, rc)
-
-			// Close the file without defer to close before next iteration of loop
-			outFile.Close()
-			rc.Close()
-
-			if err != nil {
-				return valid, err
-			}
-		}
-		return valid, nil
-	}
-	return true, nil
 }

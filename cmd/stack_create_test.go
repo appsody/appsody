@@ -28,7 +28,8 @@ func TestStackCreateValidCases(t *testing.T) {
 		stackName string
 	}{
 		{"No args", []string{}, "test-stack-no-args"},
-		{"Existing default repo", []string{"--copy", "incubator/nodejs"}, "test-stack-existing-repo"},
+		{"Existing repo", []string{"--copy", "incubator/nodejs"}, "test-stack-existing-repo"},
+		{"Existing default repo", []string{"--copy", "nodejs"}, "test-stack-default-repo"},
 	}
 	for _, testData := range stackCreateValidTests {
 		// need to set testData to a new variable scoped under the for loop
@@ -135,5 +136,21 @@ func TestStackCreateSampleStackDryrun(t *testing.T) {
 		if !strings.Contains(output, "Dry run complete") {
 			t.Error("String \"Dry run complete\" not found in output")
 		}
+	}
+}
+
+func TestStackCreateInvalidRepoFail(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	createArgs := []string{"stack", "create", "testing-stack", "--copy", "invalid/starter"}
+	output, err := cmdtest.RunAppsody(sandbox, createArgs...)
+	if err != nil {
+		if !strings.Contains(output, "Repository: 'invalid' was not found in the repository.yaml file") {
+			t.Errorf("String \"Repository: 'invalid' was not found in the repository.yaml file\" not found in output")
+		}
+	} else {
+		t.Error("Stack create command unexpectedly passed with an invalid repository name")
 	}
 }

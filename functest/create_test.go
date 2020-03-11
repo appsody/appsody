@@ -14,6 +14,7 @@
 package functest
 
 import (
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -21,156 +22,151 @@ import (
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
-func TestStackCreateDevLocal(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
-	// folder within the temp directory that has been generated for sandboxing purposes, rather than
-	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	packageArgs := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
-	if err != nil {
-		t.Fatal(err)
+func TestFuncCreateValidCases(t *testing.T) {
+	var stackCreateValidTests = []struct {
+		testName   string
+		addToRepo  bool
+		createArgs []string
+		stackName  string
+	}{
+		{"Create with dev.local stack", false, []string{"dev.local/starter"}, "testing-stack"},
+		{"Create with custom repo stack", true, []string{"test-repo/starter"}, "testing-stack"},
 	}
+	for _, testData := range stackCreateValidTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "dev.local/starter"}
-	_, err = cmdtest.RunAppsody(sandbox, createArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
+			sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
-	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, "testing-stack"))
+			packageArgs := []string{"stack", "package"}
+			_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			testStackName := tt.stackName
 
-	if err != nil {
-		t.Fatal("Error checking if the stack exists: ", err)
-	}
-	if !exists {
-		t.Fatal("Stack doesn't exist despite appsody stack create executing correctly.")
-	}
+			if tt.addToRepo {
 
-}
+				devlocalFolder := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
 
-func TestStackCreateCustomRepo(t *testing.T) {
+				addToRepoArgs := []string{"stack", "add-to-repo", "test-repo", "--release-url", "file://" + devlocalFolder + "/"}
 
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
+				_, err = cmdtest.RunAppsody(sandbox, addToRepoArgs...)
+				if err != nil {
+					t.Fatal(err)
+				}
 
-	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
-	// folder within the temp directory that has been generated for sandboxing purposes, rather than
-	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
+				testRepoIndex := filepath.Join(devlocalFolder, "test-repo-index.yaml")
 
-	packageArgs := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
+				addRepoArgs := []string{"repo", "add", "test-repo", "file://" + testRepoIndex}
+				_, err = cmdtest.RunAppsody(sandbox, addRepoArgs...)
+				if err != nil {
+					t.Fatal(err)
+				}
 
-	devlocalFolder := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
+			}
+			createArgs := append([]string{"stack", "create", "testing-stack", "--copy"}, tt.createArgs...)
+			_, err = cmdtest.RunAppsody(sandbox, createArgs...)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	addToRepoArgs := []string{"stack", "add-to-repo", "test-repo", "--release-url", "file://" + devlocalFolder + "/"}
-
-	_, err = cmdtest.RunAppsody(sandbox, addToRepoArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testRepoIndex := filepath.Join(devlocalFolder, "test-repo-index.yaml")
-
-	addRepoArgs := []string{"repo", "add", "test-repo", "file://" + testRepoIndex}
-	_, err = cmdtest.RunAppsody(sandbox, addRepoArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "test-repo/starter"}
-	_, err = cmdtest.RunAppsody(sandbox, createArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, "testing-stack"))
-
-	if err != nil {
-		t.Fatal("Error checking if the stack exists: ", err)
-	}
-	if !exists {
-		t.Fatal("Stack doesn't exist despite appsody stack create executing correctly.")
+			exists, err := cmdtest.Exists(filepath.Join(sandbox.ProjectDir, testStackName))
+			if !exists {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
-func TestStackCreateInvalidStackFail(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
-	// folder within the temp directory that has been generated for sandboxing purposes, rather than
-	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	packageArgs := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
-	if err != nil {
-		t.Fatal(err)
+func TestFuncCreateInvalidCases(t *testing.T) {
+	var stackCreateInvalidTests = []struct {
+		testName       string
+		addToRepo      bool
+		removeSrc      bool
+		createArgs     []string
+		expectedOutput string
+	}{
+		{"Create with invalid stack", false, false, []string{"dev.local/invalid"}, "Could not find stack specified in repository index"},
+		{"Create with no src", false, true, []string{"dev.local/starter"}, "No source URL found"},
+		{"Create with invalid url", true, false, []string{"test-repo/starter"}, "Could not download file://invalidurl"},
 	}
+	for _, testData := range stackCreateInvalidTests {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "dev.local/invalid"}
-	_, err = cmdtest.RunAppsody(sandbox, createArgs...)
-	if err != nil {
-		if !strings.Contains(err.Error(), "Could not find stack specified in repository index") {
-			t.Errorf("String \"Could not find stack specified in repository index\" not found in output")
-		}
-	} else {
-		t.Error("Stack create command unexpectededly passed with an invalid repository name")
+			sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
+
+			packageArgs := []string{"stack", "package"}
+			_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if tt.addToRepo {
+
+				devlocalFolder := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
+
+				addToRepoArgs := []string{"stack", "add-to-repo", "test-repo", "--release-url", "file://invalidurl/"}
+
+				_, err = cmdtest.RunAppsody(sandbox, addToRepoArgs...)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				testRepoIndex := filepath.Join(devlocalFolder, "test-repo-index.yaml")
+
+				addRepoArgs := []string{"repo", "add", "test-repo", "file://" + testRepoIndex}
+				_, err = cmdtest.RunAppsody(sandbox, addRepoArgs...)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+			}
+
+			if tt.removeSrc {
+				devlocalFile := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local", "dev.local-index.yaml")
+
+				file, err := ioutil.ReadFile(devlocalFile)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				lines := strings.Split(string(file), "\n")
+
+				for i, line := range lines {
+					if strings.Contains(line, "src:") {
+						lines[i] = ""
+					}
+				}
+				output := strings.Join(lines, "\n")
+				err = ioutil.WriteFile(devlocalFile, []byte(output), 0644)
+
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			createArgs := append([]string{"stack", "create", "testing-stack", "--copy"}, tt.createArgs...)
+			output, err := cmdtest.RunAppsody(sandbox, createArgs...)
+			if err != nil {
+				if !strings.Contains(output, tt.expectedOutput) {
+					t.Errorf("String " + tt.expectedOutput + " not found in output")
+				}
+			} else {
+				t.Error("Stack create command unexpectedly passed")
+			}
+		})
 	}
-
-}
-func TestStackCreateInvalidURLFail(t *testing.T) {
-
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	// Because the 'starter' folder has been copied, the stack.yaml file will be in the 'starter'
-	// folder within the temp directory that has been generated for sandboxing purposes, rather than
-	// the usual core temp directory
-	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
-
-	packageArgs := []string{"stack", "package"}
-	_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	devlocalFolder := filepath.Join(sandbox.ConfigDir, "stacks", "dev.local")
-
-	addToRepoArgs := []string{"stack", "add-to-repo", "test-repo", "--release-url", "file://invalidurl/"}
-
-	_, err = cmdtest.RunAppsody(sandbox, addToRepoArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testRepoIndex := filepath.Join(devlocalFolder, "test-repo-index.yaml")
-
-	addRepoArgs := []string{"repo", "add", "test-repo", "file://" + testRepoIndex}
-	_, err = cmdtest.RunAppsody(sandbox, addRepoArgs...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	createArgs := []string{"stack", "create", "testing-stack", "--copy", "test-repo/starter"}
-	_, err = cmdtest.RunAppsody(sandbox, createArgs...)
-	if err != nil {
-		if !strings.Contains(err.Error(), "Could not download file://invalidurl") {
-			t.Errorf("String \"Could not download file://invalidurl\" not found in output")
-		}
-	} else {
-		t.Error("Stack create command unexpectededly passed with an invalid repository name")
-	}
-
 }
