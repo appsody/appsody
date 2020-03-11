@@ -102,7 +102,7 @@ Run this command from the root directory of your Appsody project.`,
 				if manifestNamespace != "" {
 					if namespace != "" && manifestNamespace != namespace {
 						config.Info.Logf("Overriding namespace %s in the deployment manifest to: %s", manifestNamespace, namespace)
-						manifestNamespace = namespace
+						deploymentManifest.Namespace = namespace
 						err = writeDeploymentManifest(deploymentManifest, config.appDeployFile)
 						if err != nil {
 							return err
