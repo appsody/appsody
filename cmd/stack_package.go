@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strings"
 	"text/template"
+	"time"
 	"unicode"
 
 	"github.com/andrew-d/isbinary"
@@ -56,7 +57,9 @@ type Maintainer struct {
 }
 
 type IndexYaml struct {
-	APIVersion string `yaml:"apiVersion"`
+	APIVersion string                     `yaml:"apiVersion"`
+	Generated  time.Time                  `yaml:"generated"`
+	Projects   map[string]ProjectVersions `yaml:"projects"`
 	Stacks     []IndexYamlStack
 }
 type IndexYamlStack struct {
@@ -75,8 +78,9 @@ type IndexYamlStack struct {
 	Deprecated      string           `yaml:"deprecated,omitempty"`
 }
 type IndexYamlStackTemplate struct {
-	ID  string `yaml:"id"`
-	URL string `yaml:"url"`
+	ID        string `yaml:"id"`
+	URL       string `yaml:"url"`
+	IsDefault bool   `yaml:"default,omitempty" json:"default,omitempty"`
 }
 
 // struct to convert yaml to json files
