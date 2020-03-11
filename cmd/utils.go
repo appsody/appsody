@@ -1979,26 +1979,6 @@ func checkTime(config *RootCommandConfig) {
 
 }
 
-// TEMPORARY CODE: sets the old v1 index to point to the new v2 index (latest)
-// this code should be removed when we think everyone is using the latest index.
-func setNewIndexURL(config *RootCommandConfig) {
-
-	var repoFile = getRepoFileLocation(config)
-	var oldIndexURL = "https://raw.githubusercontent.com/appsody/stacks/master/index.yaml"
-	var newIndexURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
-
-	data, err := ioutil.ReadFile(repoFile)
-	if err != nil {
-		config.Warning.log("Unable to read repository file")
-	}
-
-	replaceURL := bytes.Replace(data, []byte(oldIndexURL), []byte(newIndexURL), -1)
-
-	if err = ioutil.WriteFile(repoFile, replaceURL, 0644); err != nil {
-		config.Warning.log(err)
-	}
-}
-
 // TEMPORARY CODE: sets the old repo name "appsodyhub" to the new name "incubator"
 // this code should be removed when we think everyone is using the new name.
 func setNewRepoName(config *RootCommandConfig) {
@@ -2132,18 +2112,20 @@ func Targz(log *LoggingConfig, source, target, filename string) error {
 			}
 			header, err := tar.FileInfoHeader(info, info.Name())
 			if err != nil {
-				return err
+				return errors.Wrap(err, "tar.FileInfoHeader")
 			}
+
+			log.Debug.logf("FileInfoHeader %s: %+v", info.Name(), header)
 
 			if baseDir != "" {
 				header.Name = "." + strings.TrimPrefix(path, source)
 			}
 
 			if err := tarball.WriteHeader(header); err != nil {
-				return err
+				return errors.Wrap(err, "tarball.WriteHeader")
 			}
 
-			if info.IsDir() {
+			if !info.Mode().IsRegular() {
 				return nil
 			}
 
@@ -2153,7 +2135,7 @@ func Targz(log *LoggingConfig, source, target, filename string) error {
 			}
 			defer file.Close()
 			_, err = io.Copy(tarball, file)
-			return err
+			return errors.Wrap(err, "io.Copy")
 		})
 }
 
