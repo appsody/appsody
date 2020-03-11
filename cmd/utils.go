@@ -2518,15 +2518,14 @@ func generateIDHash(config *RootCommandConfig) string {
 }
 
 // add new project entry to ~/.appsody/project.yaml
-func addNewProject(ID string, config *RootCommandConfig) error {
+func (p *ProjectFile) addNewProject(ID string, config *RootCommandConfig) error {
 	projectDir, err := getProjectDir(config)
 	if err != nil {
 		return err
 	}
-	var projectFile ProjectFile
 	fileLocation := getProjectYamlPath(config)
 
-	_, err = projectFile.getProjects(config)
+	_, err = p.getProjects(config)
 	if err != nil {
 		return err
 	}
@@ -2535,8 +2534,8 @@ func addNewProject(ID string, config *RootCommandConfig) error {
 		ID:   ID,
 		Path: projectDir,
 	}
-	projectFile.add(&newEntry)
-	err = projectFile.writeFile(fileLocation)
+	p.add(&newEntry)
+	err = p.writeFile(fileLocation)
 	if err != nil {
 		return errors.Errorf("Failed to write file to repository location: %v", err)
 	}
@@ -2608,25 +2607,26 @@ func getIDFromConfig(config *RootCommandConfig) (string, error) {
 	}
 	id := v.GetString("id")
 	if id == "" {
-		err := generateNewProjectAndID(config)
+		id, err := generateNewProjectAndID(config)
 		return id, err
 	}
 	return id, nil
 }
 
 // create new project entry in ~/.appsody/project.yaml and add id to .appsody-config.yaml
-func generateNewProjectAndID(config *RootCommandConfig) error {
+func generateNewProjectAndID(config *RootCommandConfig) (string, error) {
+	var projectFile ProjectFile
 	ID := generateIDHash(config)
-	err := addNewProject(ID, config)
+	err := projectFile.addNewProject(ID, config)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = saveIDToConfig(ID, config)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return ID, nil
 }
 
 // create docker volume names for every path in APPSODY_DEPS and put it in project.yaml
@@ -2638,11 +2638,7 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 
 	// if id exists in .appsody-config.yaml but not in project.yaml, add a new project entry in project.yaml with that id, and get projects again
 	if !p.hasID(ID) {
-		err := addNewProject(ID, rootConfig)
-		if err != nil {
-			return nil, err
-		}
-		_, err = p.getProjects(rootConfig)
+		err = p.addNewProject(ID, rootConfig)
 		if err != nil {
 			return nil, err
 		}

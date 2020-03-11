@@ -305,7 +305,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		return err
 	}
 
-	err = generateNewProjectAndID(config.RootCommandConfig)
+	_, err = generateNewProjectAndID(config.RootCommandConfig)
 	if err != nil {
 		return err
 	}
