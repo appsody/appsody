@@ -365,7 +365,15 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 	return config.ProjectDir, nil
 }
 
-// IsValidProjectName tests the given string against Appsody name rules.
+func IsValidProjectName(name string) (bool, error) {
+	return isValidParamName(name, "project-name")
+}
+
+func IsValidApplicationName(name string) (bool, error) {
+	return isValidParamName(name, "application-name")
+}
+
+// IsValidParamName tests the given string against Appsody name rules.
 // This common set of name rules for Appsody must comply to Kubernetes
 // resource name, Kubernetes label value, and Docker container name rules.
 // The current rules are:
@@ -373,12 +381,12 @@ func getProjectDir(config *RootCommandConfig) (string, error) {
 // 2. Must contain only lowercase letters, digits, and dashes
 // 3. Must end with a letter or digit
 // 4. Must be 68 characters or less
-func IsValidProjectName(name string) (bool, error) {
+func isValidParamName(name, param string) (bool, error) {
 	if name == "" {
-		return false, errors.New("Invalid project-name. The name cannot be an empty string")
+		return false, errors.Errorf("Invalid %s. The name cannot be an empty string", param)
 	}
 	if len(name) > 68 {
-		return false, errors.Errorf("Invalid project-name \"%s\". The name must be 68 characters or less", name)
+		return false, errors.Errorf("Invalid %s \"%s\". The name must be 68 characters or less", param, name)
 	}
 
 	match, err := regexp.MatchString("^[a-z]([a-z0-9-]*[a-z0-9])?$", name)
@@ -389,7 +397,7 @@ func IsValidProjectName(name string) (bool, error) {
 	if match {
 		return true, nil
 	}
-	return false, errors.Errorf("Invalid project-name \"%s\". The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash.", name)
+	return false, errors.Errorf("Invalid %s \"%s\". The name must start with a lowercase letter, contain only lowercase letters, numbers, or dashes, and cannot end in a dash.", param, name)
 }
 
 func IsValidKubernetesLabelValue(value string) (bool, error) {
@@ -517,6 +525,30 @@ func saveProjectNameToConfig(projectName string, config *RootCommandConfig) erro
 	config.Info.log("Your Appsody project name has been set to ", projectName)
 	return nil
 }
+
+func saveApplicationNameToConfig(applicationName string, config *RootCommandConfig) error {
+	valid, err := IsValidProjectName(applicationName)
+	if !valid {
+		return err
+	}
+
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err = v.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	v.Set("application-name", applicationName)
+	err = v.WriteConfig()
+	if err != nil {
+		return err
+	}
+
+	config.Info.log("Your Appsody application name has been set to ", applicationName)
+	return nil
+}
+
 func setStackRegistry(stackRegistry string, config *RootCommandConfig) error {
 
 	// Read in the config
@@ -1939,26 +1971,6 @@ func checkTime(config *RootCommandConfig) {
 
 }
 
-// TEMPORARY CODE: sets the old v1 index to point to the new v2 index (latest)
-// this code should be removed when we think everyone is using the latest index.
-func setNewIndexURL(config *RootCommandConfig) {
-
-	var repoFile = getRepoFileLocation(config)
-	var oldIndexURL = "https://raw.githubusercontent.com/appsody/stacks/master/index.yaml"
-	var newIndexURL = "https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml"
-
-	data, err := ioutil.ReadFile(repoFile)
-	if err != nil {
-		config.Warning.log("Unable to read repository file")
-	}
-
-	replaceURL := bytes.Replace(data, []byte(oldIndexURL), []byte(newIndexURL), -1)
-
-	if err = ioutil.WriteFile(repoFile, replaceURL, 0644); err != nil {
-		config.Warning.log(err)
-	}
-}
-
 // TEMPORARY CODE: sets the old repo name "appsodyhub" to the new name "incubator"
 // this code should be removed when we think everyone is using the new name.
 func setNewRepoName(config *RootCommandConfig) {
@@ -2092,18 +2104,20 @@ func Targz(log *LoggingConfig, source, target, filename string) error {
 			}
 			header, err := tar.FileInfoHeader(info, info.Name())
 			if err != nil {
-				return err
+				return errors.Wrap(err, "tar.FileInfoHeader")
 			}
+
+			log.Debug.logf("FileInfoHeader %s: %+v", info.Name(), header)
 
 			if baseDir != "" {
 				header.Name = "." + strings.TrimPrefix(path, source)
 			}
 
 			if err := tarball.WriteHeader(header); err != nil {
-				return err
+				return errors.Wrap(err, "tarball.WriteHeader")
 			}
 
-			if info.IsDir() {
+			if !info.Mode().IsRegular() {
 				return nil
 			}
 
@@ -2113,7 +2127,7 @@ func Targz(log *LoggingConfig, source, target, filename string) error {
 			}
 			defer file.Close()
 			_, err = io.Copy(tarball, file)
-			return err
+			return errors.Wrap(err, "io.Copy")
 		})
 }
 

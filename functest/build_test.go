@@ -24,7 +24,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/appsody/appsody-operator/pkg/apis/appsody/v1beta1"
 	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 	"sigs.k8s.io/yaml"
@@ -73,7 +72,7 @@ func TestSimpleBuildCases(t *testing.T) {
 				defer cleanup()
 
 				// first add the test repo index
-				_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
+				_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -136,12 +135,11 @@ var appsodyCommitLabels = []string{
 }
 
 func TestBuildLabels(t *testing.T) {
-
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
 	// first add the test repo index
-	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +244,7 @@ func TestDeploymentConfig(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -319,7 +317,8 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				err = makeAppDeployYaml(sandbox.ProjectDir, tt.appDeployStart)
+				deployFilePath := filepath.Join(sandbox.ProjectDir, deployFile)
+				err = makeKnativeAppDeployYaml(deployFilePath, tt.appDeployStart)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -334,7 +333,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 					t.Error("appsody build command returned err: ", err)
 				}
 				expectedImageName := "dev.local/" + sandbox.ProjectName
-				checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", expectedImageName, "", tt.appDeployExpected})
+				checkDeploymentConfig(t, expectedDeploymentConfig{deployFilePath, "", expectedImageName, "", tt.appDeployExpected})
 
 				//delete the image
 				deleteImage(expectedImageName, "docker", t)
@@ -343,40 +342,18 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 	}
 }
 
-func makeAppDeployYaml(projectDir string, createKnativeService bool) error {
-	appsodyApplication := v1beta1.AppsodyApplication{}
-	appsodyApplication.Spec.CreateKnativeService = &createKnativeService
-	data, err := yaml.Marshal(appsodyApplication)
-	if err != nil {
-		return fmt.Errorf("error marshalling yaml: %v", err)
-	}
-
-	// write to file
-	deployFilePath := filepath.Join(projectDir, deployFile)
-	err = ioutil.WriteFile(deployFilePath, data, 0666)
-	if err != nil {
-		return fmt.Errorf("error writing deployment yaml to file %s: %v", deployFilePath, err)
-	}
-	return nil
+func makeKnativeAppDeployYaml(destination string, createKnativeService bool) error {
+	deploymentManifest := cmd.DeploymentManifest{}
+	deploymentManifest.Spec = make(map[string]interface{})
+	deploymentManifest.Spec["createKnativeService"] = createKnativeService
+	return writeAppDeployYaml(destination, deploymentManifest)
 }
 
 func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploymentConfig) {
-	deployFile := expectedDeploymentConfig.deployFile
-	_, err := os.Stat(deployFile)
-	if err != nil && os.IsNotExist(err) {
-		t.Errorf("Could not find %s", deployFile)
+	deploymentManifest, err := getAppDeployYaml(expectedDeploymentConfig.deployFile, t)
+	if err != nil {
+		t.Errorf("Could not get deployment manifest: %s", err)
 		return
-	}
-	yamlFileBytes, err := ioutil.ReadFile(deployFile)
-	if err != nil {
-		t.Errorf("Could not read %s: %s", deployFile, err)
-	}
-
-	var appsodyApplication v1beta1.AppsodyApplication
-
-	err = yaml.Unmarshal(yamlFileBytes, &appsodyApplication)
-	if err != nil {
-		t.Logf("app-deploy.yaml formatting error: %s", err)
 	}
 
 	expectedApplicationImage := expectedDeploymentConfig.imageTag
@@ -384,22 +361,22 @@ func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploy
 		expectedApplicationImage = expectedDeploymentConfig.pullURL + "/" + expectedDeploymentConfig.imageTag
 	}
 
-	if appsodyApplication.Spec.ApplicationImage != expectedApplicationImage {
-		t.Errorf("Incorrect ApplicationImage in app-deploy.yaml. Expected %s but found %s", expectedApplicationImage, appsodyApplication.Spec.ApplicationImage)
+	if deploymentManifest.Spec["applicationImage"] != expectedApplicationImage {
+		t.Errorf("Incorrect ApplicationImage in app-deploy.yaml. Expected %s but found %s", expectedApplicationImage, deploymentManifest.Spec["applicationImage"])
 	}
 
-	if *appsodyApplication.Spec.CreateKnativeService != expectedDeploymentConfig.knative {
+	if deploymentManifest.Spec["createKnativeService"] != expectedDeploymentConfig.knative {
 		t.Error("CreateKnativeService not set to true in the app-deploy.yaml when using --knative flag")
 	}
 
-	if appsodyApplication.Namespace != expectedDeploymentConfig.namespace {
-		t.Errorf("Incorrect Namespace in app-deploy.yaml. Expected %s but found %s", expectedDeploymentConfig.namespace, appsodyApplication.Namespace)
+	if deploymentManifest.Namespace != expectedDeploymentConfig.namespace {
+		t.Errorf("Incorrect Namespace in app-deploy.yaml. Expected %s but found %s", expectedDeploymentConfig.namespace, deploymentManifest.Namespace)
 	}
 
-	verifyImageAndConfigLabelsMatch(t, appsodyApplication, expectedDeploymentConfig.imageTag)
+	verifyImageAndConfigLabelsMatch(t, deploymentManifest, expectedDeploymentConfig.imageTag)
 }
 
-func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.AppsodyApplication, imageTag string) {
+func verifyImageAndConfigLabelsMatch(t *testing.T, deploymentManifest cmd.DeploymentManifest, imageTag string) {
 	args := []string{"inspect", "--format='{{json .Config.Labels }}'", imageTag}
 	output, err := cmdtest.RunCmdExec("docker", args, t)
 	if err != nil {
@@ -415,12 +392,15 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, appsodyApplication v1beta1.Ap
 
 	for key, value := range imageLabels {
 		key, err = cmd.ConvertLabelToKubeFormat(key)
+		if key == "app.appsody.dev/name" {
+			key = "app.kubernetes.io/part-of"
+		}
 		if err != nil {
 			t.Errorf("Could not convert label to Kubernetes format: %s", err)
 		}
 
-		label := appsodyApplication.Labels[key]
-		annotation := appsodyApplication.Annotations[key]
+		label := deploymentManifest.Labels[key]
+		annotation := deploymentManifest.Annotations[key]
 		if label == "" && annotation == "" {
 			t.Errorf("Could not find label %s in deployment config", key)
 		}
@@ -463,4 +443,112 @@ func TestBuildMissingTagFail(t *testing.T) {
 		t.Error("Build with missing tag did not fail as expected")
 	}
 
+}
+
+func TestOpenLibertyDeploymentConfig(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// appsody init
+	t.Log("Running appsody init...")
+	_, err := cmdtest.RunAppsody(sandbox, "init", "starter")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	deployFilePath := filepath.Join(sandbox.ProjectDir, deployFile)
+
+	err = makeOpenLibertyAppDeployYaml(deployFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("Running appsody build...")
+	args := []string{"build"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedImageName := "dev.local/" + sandbox.ProjectName
+	checkDeploymentConfig(t, expectedDeploymentConfig{deployFilePath, "", expectedImageName, "", false})
+	checkOpenLibertyAppDeployYaml(deployFilePath, t)
+}
+
+// Sample values taken from the OpenLiberty Operator documentation:
+// https://github.com/OpenLiberty/open-liberty-operator/blob/master/doc/user-guide.md#day-2-operations
+func makeOpenLibertyAppDeployYaml(destination string) error {
+	deploymentManifest := cmd.DeploymentManifest{}
+	deploymentManifest.APIVersion = "openliberty.io/v1beta1"
+	deploymentManifest.Kind = "OpenLibertyApplication"
+	deploymentManifest.Annotations = make(map[string]string)
+	deploymentManifest.Annotations["openliberty.io/day2operations"] = "OpenLibertyTrace,OpenLibertyDump"
+	deploymentManifest.Spec = make(map[string]interface{})
+	deploymentManifest.Spec["podName"] = "PodName"
+	deploymentManifest.Spec["traceSpecification"] = "*=info:com.ibm.ws.webcontainer*=all"
+
+	return writeAppDeployYaml(destination, deploymentManifest)
+}
+
+func checkOpenLibertyAppDeployYaml(source string, t *testing.T) {
+	deploymentManifest, err := getAppDeployYaml(source, t)
+	if err != nil {
+		t.Errorf("Could not get deployment manifest: %s", err)
+		return
+	}
+
+	if deploymentManifest.APIVersion != "openliberty.io/v1beta1" {
+		t.Errorf("Incorrect APIVersion in app-deploy.yaml. Expected %s but found %s", "openliberty.io/v1beta1", deploymentManifest.APIVersion)
+	}
+
+	if deploymentManifest.Kind != "OpenLibertyApplication" {
+		t.Errorf("Incorrect Kind in app-deploy.yaml. Expected %s but found %s", "OpenLibertyApplication", deploymentManifest.Kind)
+	}
+
+	if deploymentManifest.Annotations["openliberty.io/day2operations"] != "OpenLibertyTrace,OpenLibertyDump" {
+		t.Errorf("Could not find Day 2 annotation for Open Liberty in app-deploy.yaml. Expected %s but found %s", "OpenLibertyTrace,OpenLibertyDump", deploymentManifest.Annotations["openliberty.io/day2operations"])
+	}
+
+	if deploymentManifest.Spec["podName"] != "PodName" {
+		t.Errorf("Could not find podName in app-deploy.yaml. Expected %s but found %s", "PodName", deploymentManifest.Spec["podName"])
+	}
+
+	if deploymentManifest.Spec["traceSpecification"] != "*=info:com.ibm.ws.webcontainer*=all" {
+		t.Errorf("Could not find traceSpecification in app-deploy.yaml. Expected %s but found %s", "*=info:com.ibm.ws.webcontainer*=all", deploymentManifest.Spec["traceSpecification"])
+	}
+}
+
+func getAppDeployYaml(source string, t *testing.T) (cmd.DeploymentManifest, error) {
+	var deploymentManifest cmd.DeploymentManifest
+
+	_, err := os.Stat(source)
+	if err != nil && os.IsNotExist(err) {
+		return deploymentManifest, fmt.Errorf("Could not find %s", source)
+	}
+
+	yamlFileBytes, err := ioutil.ReadFile(source)
+	if err != nil {
+		return deploymentManifest, fmt.Errorf("Could not read %s: %s", source, err)
+	}
+
+	err = yaml.Unmarshal(yamlFileBytes, &deploymentManifest)
+	if err != nil {
+		return deploymentManifest, fmt.Errorf("app-deploy.yaml formatting error: %s", err)
+	}
+
+	return deploymentManifest, nil
+}
+
+func writeAppDeployYaml(destination string, deploymentManifest cmd.DeploymentManifest) error {
+	data, err := yaml.Marshal(deploymentManifest)
+	if err != nil {
+		return fmt.Errorf("error marshalling yaml: %v", err)
+	}
+
+	// write to file
+	err = ioutil.WriteFile(destination, data, 0666)
+	if err != nil {
+		return fmt.Errorf("error writing deployment yaml to file %s: %v", destination, err)
+	}
+	return nil
 }

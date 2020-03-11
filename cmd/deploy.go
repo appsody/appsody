@@ -93,17 +93,17 @@ Run this command from the root directory of your Appsody project.`,
 			if exists {
 				config.Info.Logf("Found deployment manifest %s", configFile)
 
-				appsodyApplication, err := getAppsodyApplication(configFile)
+				deploymentManifest, err := getDeploymentManifest(configFile)
 				if err != nil {
 					return err
 				}
 
-				manifestNamespace := appsodyApplication.Namespace
+				manifestNamespace := deploymentManifest.Namespace
 				if manifestNamespace != "" {
 					if namespace != "" && manifestNamespace != namespace {
 						config.Info.Logf("Overriding namespace %s in the deployment manifest to: %s", manifestNamespace, namespace)
-						appsodyApplication.Namespace = namespace
-						err = writeAppsodyApplication(appsodyApplication, configFile)
+						manifestNamespace = namespace
+						err = writeDeploymentManifest(deploymentManifest, config.appDeployFile)
 						if err != nil {
 							return err
 						}
@@ -147,7 +147,12 @@ Run this command from the root directory of your Appsody project.`,
 				return nil
 			}
 
-			if !config.noOperatorInstall {
+			deploymentManifest, err := getDeploymentManifest(configFile)
+			if err != nil {
+				return err
+			}
+
+			if !config.noOperatorInstall && deploymentManifest.Kind == "AppsodyApplication" {
 				// Check for the Appsody Operator
 				operatorExists, existingNamespace, operatorExistsErr := operatorExistsWithWatchspace(config.LoggingConfig, namespace, config.Dryrun, config.noOperatorCheck)
 				if operatorExistsErr != nil {
@@ -168,8 +173,9 @@ Run this command from the root directory of your Appsody project.`,
 					}
 				} else {
 					config.Debug.logf("Operator exists in %s, watching %s ", existingNamespace, namespace)
-
 				}
+			} else {
+				config.Info.logf("The deployment manifest is of kind: %s, you need to install a matching operator.", deploymentManifest.Kind)
 			}
 
 			// Performing the kubectl apply
@@ -178,14 +184,10 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.Errorf("Failed to deploy to your Kubernetes cluster: %v", err)
 			}
 
-			appsodyApplication, err := getAppsodyApplication(configFile)
-			if err != nil {
-				return err
-			}
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
-			config.Info.log("Appsody Deployment name is: ", appsodyApplication.Name)
-			out, err := KubeGetDeploymentURL(config.LoggingConfig, appsodyApplication.Name, namespace, dryrun)
+			config.Info.log("Appsody Deployment name is: ", deploymentManifest.Name)
+			out, err := KubeGetDeploymentURL(config.LoggingConfig, deploymentManifest.Name, namespace, dryrun)
 			// Performing the kubectl apply
 			if err != nil {
 				return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
