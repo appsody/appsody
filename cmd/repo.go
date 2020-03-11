@@ -39,6 +39,7 @@ type Stack struct {
 	Version     string                   `yaml:"version" json:"version"`
 	Description string                   `yaml:"description" json:"description"`
 	Templates   []IndexYamlStackTemplate `yaml:"templates,omitempty" json:"templates,omitempty"`
+	Deprecated  string                   `yaml:"deprecated,omitempty" json:"deprecated,omitempty"`
 }
 
 // RepoIndices maps repos to their RepoIndex (i.e. the projects in a repo)
