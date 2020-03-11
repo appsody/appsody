@@ -423,8 +423,8 @@ func TestInvalidBuild(t *testing.T) {
 		expectedLog string
 	}{
 		{"Missing Tag ", []string{"--push"}, "Cannot specify --push or --push-url without a --tag"},
-		{"KnativeFlagAndAppDeployFalse", []string{"--push-url", "i.am.not.a.real.url", "--tag", "£"}, "invalid argument \"i.am.not.a.real.url/£\" for \"-t, --tag"},
-		{"NoKnativeFlagAndAppDeployTrue", []string{"--push-url", "i.am.not.a.real.url", "--tag", "notgonna/work"}, "Could not push the image: exit status 1 exit status 1: Get https://i.am.not.a.real.url/v2/: Service Unavailable"},
+		{"Invalid Tag with Push URL", []string{"--push-url", "i.am.not.a.real.url", "--tag", "£"}, "invalid argument \"i.am.not.a.real.url/£\" for \"-t, --tag"},
+		{"Invalid Push URL", []string{"--push-url", "i.am.not.a.real.url", "--tag", "notgonna/work"}, "Could not push the image: exit status 1 exit status 1: Get https://i.am.not.a.real.url/v2/: Service Unavailable"},
 	}
 	for _, testData := range knativeFlagTests {
 		tt := testData
