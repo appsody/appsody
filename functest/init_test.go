@@ -86,7 +86,7 @@ func TestInitErrors(t *testing.T) {
 		{"TestInitWithBadApplicationName", []string{"nodejs-express", "--application-name", "badapplicationname!"}, "", "Invalid application-name", "Correct error message not given"},
 		{"TestInitWithBadlyFormattedConfig", []string{"nodejs-express"}, "bad_format_repository_config", "Failed to parse repository file yaml", "Correct error message not given"},
 		{"TestInitWithEmptyConfig", []string{"nodejs-express"}, "empty_repository_config", "Your stack repository is empty", "Correct error message not given"},
-		{"TestInitWithBadRepoUrlConfig", []string{"nodejs-express"}, "bad_repo_url_repository_config", "The following indices could not be read, skipping", "Correct error message not given"},
+		{"TestInitWithBadRepoUrlConfig", []string{"nodejs-express"}, "bad_repo_url_repository_config", "Does the APIVersion of your repository match what the Appsody CLI currently supports?", "Correct error message not given"},
 		{"TestInitV2WithStackHasInitScriptDryrun", []string{"java-microprofile", "--dryrun"}, "Dry Run - Skipping", "", "Commands should be skipped on dry run"},
 		{"TestInitDryRun", []string{"nodejs-express", "--dryrun"}, "Dry Run - Skipping", "", "Commands should be skipped on dry run"},
 		{"TestInitMalformedStackParm", []string{"/nodejs-express"}, "", "malformed project parameter - slash at the beginning or end should be removed", "Malformed stack parameter should be flagged."},
