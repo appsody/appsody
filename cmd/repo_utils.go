@@ -29,43 +29,16 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type RepoIndices map[string]*IndexYaml
+
+type ProjectVersions []*IndexYamlStack
+
 type Stack struct {
 	repoName    string
-	ID          string     `yaml:"id,omitempty" json:"id,omitempty"`
-	Version     string     `yaml:"version" json:"version"`
-	Description string     `yaml:"description" json:"description"`
-	Templates   []Template `yaml:"templates,omitempty" json:"templates,omitempty"`
-}
-
-// RepoIndex - Structure of a repo index YAML
-type RepoIndex struct {
-	APIVersion string                     `yaml:"apiVersion"`
-	Generated  time.Time                  `yaml:"generated"`
-	Projects   map[string]ProjectVersions `yaml:"projects"`
-	Stacks     []ProjectVersion           `yaml:"stacks"`
-}
-
-// RepoIndices maps repos to their RepoIndex (i.e. the projects in a repo)
-type RepoIndices map[string]*RepoIndex
-
-type ProjectVersions []*ProjectVersion
-
-type ProjectVersion struct {
-	APIVersion      string           `yaml:"apiVersion"`
-	ID              string           `yaml:"id,omitempty"`
-	Created         time.Time        `yaml:"created"`
-	Name            string           `yaml:"name"`
-	Home            string           `yaml:"home"`
-	Version         string           `yaml:"version"`
-	Description     string           `yaml:"description"`
-	Keywords        []string         `yaml:"keywords"`
-	Maintainers     []interface{}    `yaml:"maintainers"`
-	Requirements    StackRequirement `yaml:"requirements,omitempty"`
-	Icon            string           `yaml:"icon"`
-	Digest          string           `yaml:"digest"`
-	URLs            []string         `yaml:"urls"` //V1
-	Templates       []Template       `yaml:"templates,omitempty"`
-	DefaultTemplate string           `yaml:"default-template"`
+	ID          string                   `yaml:"id,omitempty" json:"id,omitempty"`
+	Version     string                   `yaml:"version" json:"version"`
+	Description string                   `yaml:"description" json:"description"`
+	Templates   []IndexYamlStackTemplate `yaml:"templates,omitempty" json:"templates,omitempty"`
 }
 
 //StackRequirement - Structure that holds information for minimum requirements to use stack stack
@@ -96,8 +69,8 @@ type Template struct {
 	IsDefault bool   `yaml:"default,omitempty" json:"default,omitempty"`
 }
 
-func findTemplateURL(projectVersion ProjectVersion, templateName string) string {
-	templates := projectVersion.Templates
+func findTemplateURL(stackData IndexYamlStack, templateName string) string {
+	templates := stackData.Templates
 
 	for _, value := range templates {
 		if value.ID == templateName {
@@ -231,7 +204,7 @@ func ensureConfig(rootConfig *RootCommandConfig) error {
 	return nil
 }
 
-func downloadIndex(log *LoggingConfig, url string) (*RepoIndex, error) {
+func downloadIndex(log *LoggingConfig, url string) (*IndexYaml, error) {
 	log.Debug.log("Downloading appsody repository index from ", url)
 	indexBuffer := bytes.NewBuffer(nil)
 	err := downloadFile(log, url, indexBuffer)
@@ -243,7 +216,7 @@ func downloadIndex(log *LoggingConfig, url string) (*RepoIndex, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Could not read buffer into byte array")
 	}
-	var index RepoIndex
+	var index IndexYaml
 	err = yaml.Unmarshal(yamlFile, &index)
 	if err != nil {
 		log.Debug.logf("Contents of downloaded index from %s\n%s", url, yamlFile)
@@ -252,7 +225,7 @@ func downloadIndex(log *LoggingConfig, url string) (*RepoIndex, error) {
 	return &index, nil
 }
 
-func (index *RepoIndex) listProjects(repoName string, config *RootCommandConfig) (string, error) {
+func (index *IndexYaml) listProjects(repoName string, config *RootCommandConfig) (string, error) {
 	var Stacks []Stack
 	table := uitable.New()
 	table.MaxColWidth = 60
@@ -452,7 +425,7 @@ func (r *RepositoryFile) WriteFile(path string) error {
 
 //GetIndices - Gets the indices of a RepositoryFile
 func (r *RepositoryFile) GetIndices(log *LoggingConfig) (RepoIndices, error) {
-	indices := make(map[string]*RepoIndex)
+	indices := make(map[string]*IndexYaml)
 	brokenRepos := make([]indexError, 0)
 	for _, rf := range r.Repositories {
 		var index, err = downloadIndex(log, rf.URL)
@@ -469,7 +442,7 @@ func (r *RepositoryFile) GetIndices(log *LoggingConfig) (RepoIndices, error) {
 	return indices, nil
 }
 
-func convertTemplatesArrayToString(Templates []Template) string {
+func convertTemplatesArrayToString(Templates []IndexYamlStackTemplate) string {
 	templatesListString := ""
 	if len(Templates) > 0 {
 		sort.Slice(Templates, func(i, j int) bool { return Templates[i].ID < Templates[j].ID })
@@ -491,14 +464,14 @@ func convertTemplatesArrayToString(Templates []Template) string {
 	return templatesListString
 }
 
-func setDefaultTemplate(Templates []Template, DefaultTemplate string) {
+func setDefaultTemplate(Templates []IndexYamlStackTemplate, DefaultTemplate string) {
 	for index, template := range Templates {
 		if template.ID == DefaultTemplate {
 			Templates[index].IsDefault = true
 		}
 	}
 }
-func (index *RepoIndex) buildStacksFromIndex(repoName string, Stacks []Stack) []Stack {
+func (index *IndexYaml) buildStacksFromIndex(repoName string, Stacks []Stack) []Stack {
 
 	for id, value := range index.Projects {
 		setDefaultTemplate(value[0].Templates[:], value[0].DefaultTemplate)

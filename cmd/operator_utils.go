@@ -55,13 +55,19 @@ func RunKube(log *LoggingConfig, kargs []string, dryrun bool) (string, error) {
 	}
 	log.Info.log("Running command: ", kcmd, " ", ArgsToString(kargs))
 	execCmd := exec.Command(kcmd, kargs...)
-	kout, kerr := execCmd.Output()
+	kout, err := execCmd.Output()
 
-	if kerr != nil {
-		return "", errors.Errorf("kubectl command failed: %s", string(kout[:]))
+	if err != nil {
+		kerr := kout
+
+		// On failure, stderr is most likely to have the diagnostics.
+		if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
+			kerr = ee.Stderr
+		}
+		return "", errors.Errorf("kubectl command failed: %s", kerr)
 	}
 	log.Debug.log("Command successful...")
-	return string(kout[:]), nil
+	return string(kout), nil
 }
 
 func operatorExistsInNamespace(log *LoggingConfig, operatorNamespace string, dryrun bool) (bool, error) {
