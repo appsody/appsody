@@ -2478,7 +2478,7 @@ func (p *ProjectFile) hasID(id string) bool {
 }
 
 // get project from project.yaml with given id
-func (p *ProjectFile) getProject(id string) *ProjectEntry {
+func (p *ProjectFile) GetProject(id string) *ProjectEntry {
 	for _, pf := range p.Projects {
 		if id == pf.ID {
 			return pf
@@ -2488,8 +2488,7 @@ func (p *ProjectFile) getProject(id string) *ProjectEntry {
 }
 
 // get all project entries from project.yaml
-func (p *ProjectFile) getProjects(rootConfig *RootCommandConfig) (*ProjectFile, error) {
-	var fileLocation = getProjectYamlPath(rootConfig)
+func (p *ProjectFile) GetProjects(fileLocation string) (*ProjectFile, error) {
 	projectReader, err := ioutil.ReadFile(fileLocation)
 	if err != nil {
 		return nil, err
@@ -2502,10 +2501,10 @@ func (p *ProjectFile) getProjects(rootConfig *RootCommandConfig) (*ProjectFile, 
 }
 
 // create unique project id for .appsody-config.yaml
-func generateID(config *RootCommandConfig) string {
+func generateID(log *LoggingConfig) string {
 	var id = time.Now().Format("20060102150405.00000000")
 
-	config.Debug.Logf("Successfully generated ID: %s", id)
+	log.Debug.Logf("Successfully generated ID: %s", id)
 	return id
 }
 
@@ -2517,7 +2516,7 @@ func (p *ProjectFile) addNewProject(ID string, config *RootCommandConfig) error 
 	}
 	fileLocation := getProjectYamlPath(config)
 
-	_, err = p.getProjects(config)
+	_, err = p.GetProjects(fileLocation)
 	if err != nil {
 		return err
 	}
@@ -2558,7 +2557,7 @@ func generateVolumeName(config *RootCommandConfig) string {
 			os.Exit(1)
 		}
 	}
-	ID := generateID(config)
+	ID := generateID(config.LoggingConfig)
 	volumeName := "appsody-" + projectName + "-" + ID
 
 	config.Debug.Logf("Using docker volume name: %s", volumeName)
@@ -2585,7 +2584,7 @@ func saveIDToConfig(ID string, config *RootCommandConfig) error {
 }
 
 // get project id from .appsody-config.yaml and create project entry if id does not exist
-func getIDFromConfig(config *RootCommandConfig) (string, error) {
+func GetIDFromConfig(config *RootCommandConfig) (string, error) {
 	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
@@ -2604,7 +2603,7 @@ func getIDFromConfig(config *RootCommandConfig) (string, error) {
 // create new project entry in ~/.appsody/project.yaml and add id to .appsody-config.yaml
 func generateNewProjectAndID(config *RootCommandConfig) (string, error) {
 	var projectFile ProjectFile
-	ID := generateID(config)
+	ID := generateID(config.LoggingConfig)
 	err := projectFile.addNewProject(ID, config)
 	if err != nil {
 		return "", err
@@ -2619,7 +2618,8 @@ func generateNewProjectAndID(config *RootCommandConfig) (string, error) {
 
 // create docker volume names for every path in APPSODY_DEPS and put it in project.yaml
 func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID string, volumeMaps []string, rootConfig *RootCommandConfig) ([]string, error) {
-	_, err := p.getProjects(rootConfig)
+	var fileLocation = getProjectYamlPath(rootConfig)
+	_, err := p.GetProjects(fileLocation)
 	if err != nil {
 		return nil, err
 	}
@@ -2631,7 +2631,7 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 			return nil, err
 		}
 	}
-	project := p.getProject(ID)
+	project := p.GetProject(ID)
 
 	projectDir, err := getProjectDir(rootConfig)
 	if err != nil {
@@ -2640,7 +2640,7 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 	// if the user moves their Appsody project, (same project id different path), update the project path in project.yaml
 	if project.Path != projectDir {
 		project.Path = projectDir
-		if err := p.writeFile(getProjectYamlPath(rootConfig)); err != nil {
+		if err := p.writeFile(fileLocation); err != nil {
 			return nil, err
 		}
 	}
@@ -2660,7 +2660,7 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 			project.Volumes = append(project.Volumes, v)
 		}
 
-		if err := p.writeFile(getProjectYamlPath(rootConfig)); err != nil {
+		if err := p.writeFile(fileLocation); err != nil {
 			return volumeMaps, err
 		}
 	} else { // else if project entry has existing dependency volumes, loop through volumes in the current project entry, and add each volume mount to volumeMaps

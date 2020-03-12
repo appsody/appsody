@@ -186,3 +186,27 @@ func TestRunTooManyArgs(t *testing.T) {
 		t.Error("Failed to flag too many arguments.")
 	}
 }
+
+func TestRunUsesCorrectProjectVolumes(t *testing.T) {
+
+	sandbox, _ := cmdtest.TestSetupWithSandbox(t, true)
+	//sdefer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args = []string{"run", "--dryrun"}
+
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+
+	project, _ := getCurrentProjectEntry(t, sandbox)
+
+	depsMount := project.Volumes[0].Name + ":" + project.Volumes[0].Path
+
+	if !strings.Contains(output, depsMount) {
+		t.Fatalf("Did not find expected docker volume mount in run command output: %s", depsMount)
+	}
+}

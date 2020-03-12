@@ -159,7 +159,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	if depsEnvVars != nil {
-		id, err := getIDFromConfig(config.RootCommandConfig)
+		id, err := GetIDFromConfig(config.RootCommandConfig)
 		if err != nil {
 			return err
 		}

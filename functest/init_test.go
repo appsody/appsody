@@ -17,11 +17,13 @@ package functest
 import (
 	"errors"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -446,4 +448,76 @@ func checkExpressNotExists(projectDir string, t *testing.T) {
 	shouldNotExist(appjs, t)
 	shouldNotExist(packagejson, t)
 	shouldNotExist(packagejsonlock, t)
+}
+
+func getCurrentProjectEntry(t *testing.T, sandbox *cmdtest.TestSandbox) (*cmd.ProjectEntry, string) {
+	config := new(cmd.RootCommandConfig)
+	config.ProjectDir = sandbox.ProjectDir
+	configID, err := cmd.GetIDFromConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	projectYaml := filepath.Join(sandbox.ConfigDir, "project.yaml")
+	var p cmd.ProjectFile
+	_, err = p.GetProjects(projectYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := p.GetProject(configID)
+	return project, configID
+}
+
+//check project id in .appsody-config.yaml matches the project entry id in project.yaml
+func TestProjectIDMatches(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	project, configID := getCurrentProjectEntry(t, sandbox)
+
+	if project.ID != configID {
+		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
+	}
+	if project.Path != sandbox.ProjectDir {
+		t.Fatalf("Expected project path in project.yaml to match the project directory path.")
+	}
+}
+
+// check project entry path in project.yaml gets updated when project moves
+func TestProjectPathGetsUpdated(t *testing.T) {
+
+	sandbox, _ := cmdtest.TestSetupWithSandbox(t, true)
+	//sdefer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args = []string{"run", "--dryrun"}
+
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+
+	tmpDir := filepath.Join(sandbox.TestDataPath, "tmp")
+	err = os.Rename(sandbox.ProjectDir, tmpDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sandbox.ProjectDir = tmpDir
+
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+
+	project, _ := getCurrentProjectEntry(t, sandbox)
+
+	if project.Path != tmpDir {
+		t.Fatalf("Expected project entry path to be updated to %s but found %s", tmpDir, project.Path)
+	}
 }
