@@ -2433,8 +2433,8 @@ What it does:
 How it works:
 	It works by iterating over each element in the string.
 	When the element is a Quotation Mark, it stores it in the variable `lastQuote`.
-	It continues iterating until we find the next matching quote, if the next quote is escape when don't match.
-	While this quote block hasn't been closed,  we don't split even if we find a space.
+	It continues iterating until we find the next matching quote, if the next quote is escaped (\') when don't match.
+	While this quote block hasn't been closed,  we don't split if we find a space.
 	Once the next matching quote is found, we clear `lastQuote` and if any subsequent space is found we split.
 
 Inspired from: https://play.golang.org/p/gJrqdeCr7k
