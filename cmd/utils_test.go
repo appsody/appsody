@@ -1597,6 +1597,7 @@ var splitBuildOptions = []struct {
 	{"--build-arg IBM_JAVA_OPTIONS='-XX:+UseJITServer -XX:JITServerAddress=ibm-java-acceleration-server -XX:JITServerPort=38400'", []string{"--build-arg", "IBM_JAVA_OPTIONS='-XX:+UseJITServer -XX:JITServerAddress=ibm-java-acceleration-server -XX:JITServerPort=38400'"}},
 	{"-v /Users/appsody/project:/project", []string{"-v", "/Users/appsody/project:/project"}},
 	{"--format=docker --tls-verify=false", []string{"--format=docker", "--tls-verify=false"}},
+	{`--env option1='suboption1=\'my option\'' option2='my option2'`, []string{"--env", `option1='suboption1=\'my option\''`, "option2='my option2'"}},
 }
 
 func TestSplitBuildOptions(t *testing.T) {

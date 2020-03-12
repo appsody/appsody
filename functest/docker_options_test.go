@@ -44,7 +44,6 @@ func TestRunWithDockerOptionsRegex(t *testing.T) {
 		"--tty",
 		"--rm",
 		"--entrypoint",
-		"--build-arg",
 		"-v", "--volume"}
 
 	for _, value := range testOptions {

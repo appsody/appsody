@@ -2433,30 +2433,35 @@ What it does:
 How it works:
 	It works by iterating over each element in the string.
 	When the element is a Quotation Mark, it stores it in the variable `lastQuote`.
-	It continues iterating until we find the next matching quote.
+	It continues iterating until we find the next matching quote, if the next quote is escape when don't match.
 	While this quote block hasn't been closed,  we don't split even if we find a space.
 	Once the next matching quote is found, we clear `lastQuote` and if any subsequent space is found we split.
 
-Known problem:
-	e.g "option1='suboption='my option''" --> ["option1='suboption='my", "option''"]
-
+Inspired from: https://play.golang.org/p/gJrqdeCr7k
 **/
 
 func SplitBuildOptions(options string) []string {
+	slash := rune(92) // \ symbol
+
 	lastQuote := rune(0)
+	previousChar := rune(0)
 	f := func(c rune) bool {
+		result := false
 		switch {
 		case c == lastQuote:
-			lastQuote = rune(0)
-			return false
+			if previousChar != slash {
+				lastQuote = rune(0)
+			}
 		case lastQuote != rune(0):
-			return false
+			break
 		case unicode.In(c, unicode.Quotation_Mark):
 			lastQuote = c
-			return false
 		default:
-			return unicode.IsSpace(c)
+			result = unicode.IsSpace(c)
 		}
+
+		previousChar = c
+		return result
 	}
 
 	return strings.FieldsFunc(options, f)
