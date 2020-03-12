@@ -504,7 +504,7 @@ func GetDeprecated(config *RootCommandConfig) error {
 		return err
 	}
 	if stackLabels["dev.appsody.stack.deprecated"] != "" {
-		fmt.Printf("*\n*\n*\nStack deprecated: %v \n*\n*\n*\n", stackLabels["dev.appsody.stack.deprecated"])
+		config.Info.logf("*\n*\n*\nStack deprecated: %v \n*\n*\n*", stackLabels["dev.appsody.stack.deprecated"])
 	}
 
 	return nil
