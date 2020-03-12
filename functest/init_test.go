@@ -505,6 +505,9 @@ func TestProjectPathGetsUpdated(t *testing.T) {
 	args = []string{"run", "--dryrun"}
 
 	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tmpDir := filepath.Join(sandbox.TestDataPath, "tmp")
 	err = os.Rename(sandbox.ProjectDir, tmpDir)
@@ -514,6 +517,9 @@ func TestProjectPathGetsUpdated(t *testing.T) {
 	sandbox.ProjectDir = tmpDir
 
 	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project, _ := getCurrentProjectEntry(t, sandbox)
 

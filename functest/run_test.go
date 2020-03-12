@@ -201,7 +201,9 @@ func TestRunUsesCorrectProjectVolumes(t *testing.T) {
 	args = []string{"run", "--dryrun"}
 
 	output, err := cmdtest.RunAppsody(sandbox, args...)
-
+	if err != nil {
+		t.Fatal(err)
+	}
 	project, _ := getCurrentProjectEntry(t, sandbox)
 
 	depsMount := project.Volumes[0].Name + ":" + project.Volumes[0].Path
