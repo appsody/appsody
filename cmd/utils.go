@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"compress/gzip"
 
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -39,7 +38,6 @@ import (
 	"github.com/mitchellh/go-spdx"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"golang.org/x/crypto/bcrypt"
 
 	"gopkg.in/yaml.v2"
 )
@@ -2504,15 +2502,9 @@ func (p *ProjectFile) getProjects(rootConfig *RootCommandConfig) (*ProjectFile, 
 }
 
 // create unique project id for .appsody-config.yaml
-func generateIDHash(config *RootCommandConfig) string {
-	var password = time.Now().Format("2006-01-02 15:04:05 -0700 MST")
-	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+func generateID(config *RootCommandConfig) string {
+	var id = time.Now().Format("20060102150405.00000000")
 
-	id := hex.EncodeToString(hash)
-	if len(id) > 100 {
-		config.Debug.Logf("Successfully generated ID: %s", id[0:100])
-		return id[0:100]
-	}
 	config.Debug.Logf("Successfully generated ID: %s", id)
 	return id
 }
@@ -2566,13 +2558,9 @@ func generateVolumeName(config *RootCommandConfig) string {
 			os.Exit(1)
 		}
 	}
-	ID := generateIDHash(config)
+	ID := generateID(config)
 	volumeName := "appsody-" + projectName + "-" + ID
 
-	if len(volumeName) > 100 {
-		config.Debug.Logf("Using docker volume name: %s", volumeName[0:100])
-		return volumeName[0:100]
-	}
 	config.Debug.Logf("Using docker volume name: %s", volumeName)
 	return volumeName
 }
@@ -2616,7 +2604,7 @@ func getIDFromConfig(config *RootCommandConfig) (string, error) {
 // create new project entry in ~/.appsody/project.yaml and add id to .appsody-config.yaml
 func generateNewProjectAndID(config *RootCommandConfig) (string, error) {
 	var projectFile ProjectFile
-	ID := generateIDHash(config)
+	ID := generateID(config)
 	err := projectFile.addNewProject(ID, config)
 	if err != nil {
 		return "", err
@@ -2644,6 +2632,18 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 		}
 	}
 	project := p.getProject(ID)
+
+	projectDir, err := getProjectDir(rootConfig)
+	if err != nil {
+		return nil, err
+	}
+	// if the user moves their Appsody project, (same project id different path), update the project path in project.yaml
+	if project.Path != projectDir {
+		project.Path = projectDir
+		if err := p.writeFile(getProjectYamlPath(rootConfig)); err != nil {
+			return nil, err
+		}
+	}
 
 	// if the project entry does not have existing dependency volumes, for every path in APPSODY_DEPS, generate a new volume name, assign it to that path, and write it to the current project entry in project.yaml
 	if project.Volumes == nil {
