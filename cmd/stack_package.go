@@ -36,7 +36,7 @@ type packageCommandConfig struct {
 	buildahBuildOptions string
 }
 
-// structs for parsing the yaml files
+// StackYaml - Struct for parsing the yaml files
 type StackYaml struct {
 	Name            string `yaml:"name"`
 	Version         string `yaml:"version"`
