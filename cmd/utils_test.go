@@ -1589,6 +1589,47 @@ func TestArgsToString(t *testing.T) {
 
 	}
 }
+
+var splitBuildOptions = []struct {
+	input          string
+	expectedOutput []string
+}{
+	{"--build-arg IBM_JAVA_OPTIONS='-XX:+UseJITServer -XX:JITServerAddress=ibm-java-acceleration-server -XX:JITServerPort=38400'", []string{"--build-arg", "IBM_JAVA_OPTIONS='-XX:+UseJITServer -XX:JITServerAddress=ibm-java-acceleration-server -XX:JITServerPort=38400'"}},
+	{"-v /Users/appsody/project:/project", []string{"-v", "/Users/appsody/project:/project"}},
+	{"--format=docker --tls-verify=false", []string{"--format=docker", "--tls-verify=false"}},
+}
+
+func TestSplitBuildOptions(t *testing.T) {
+
+	for _, testData := range splitBuildOptions {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		test := testData
+
+		t.Run(fmt.Sprint(test.input), func(t *testing.T) {
+			output := cmd.SplitBuildOptions(test.input)
+			if !compareArray(output, test.expectedOutput) {
+				t.Errorf("Expected %s to convert to %s but got %s", test.input, test.expectedOutput, output)
+			}
+		})
+
+	}
+}
+
+// Return false if arrays are different, or true if equal
+func compareArray(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func TestRemoveIfExists(t *testing.T) {
 
 	err := os.MkdirAll("./test/test-child/", 0700)

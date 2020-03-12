@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"unicode"
 
 	//"crypto/sha256"
 	"encoding/json"
@@ -2420,4 +2421,43 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 
 	log.Info.logf("Succesfully generated file: %s", indexFilePath)
 	return nil
+}
+
+/**
+
+What it does:
+	This function splits the build options by spaces, but only if the space is outside of any quotation mark block
+	e.g "option1 option2" ---> ["option1", "option2"]
+	e.g "option1='my option1' option2='my option2'" ---> ["option1='my option1'", "option2='my option2"]
+
+How it works:
+	It works by iterating over each element in the string.
+	When the element is a Quotation Mark, it stores it in the variable `lastQuote`.
+	It continues iterating until we find the next matching quote.
+	While this quote block hasn't been closed,  we don't split even if we find a space.
+	Once the next matching quote is found, we clear `lastQuote` and if any subsequent space is found we split.
+
+Known problem:
+	e.g "option1='suboption='my option''" --> ["option1='suboption='my", "option''"]
+
+**/
+
+func SplitBuildOptions(options string) []string {
+	lastQuote := rune(0)
+	f := func(c rune) bool {
+		switch {
+		case c == lastQuote:
+			lastQuote = rune(0)
+			return false
+		case lastQuote != rune(0):
+			return false
+		case unicode.In(c, unicode.Quotation_Mark):
+			lastQuote = c
+			return false
+		default:
+			return unicode.IsSpace(c)
+		}
+	}
+
+	return strings.FieldsFunc(options, f)
 }

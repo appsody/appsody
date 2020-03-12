@@ -285,7 +285,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo)
 
 			if buildOptions != "" {
-				options := strings.Split(buildOptions, " ")
+				options := SplitBuildOptions(buildOptions)
 				err := checkBuildOptions(options)
 				if err != nil {
 					return err
