@@ -2547,7 +2547,7 @@ func generateVolumeName(config *RootCommandConfig) string {
 }
 
 // save project id to .appsody-config.yaml
-func saveIDToConfig(ID string, config *RootCommandConfig) error {
+func SaveIDToConfig(ID string, config *RootCommandConfig) error {
 	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
@@ -2591,7 +2591,7 @@ func generateNewProjectAndID(config *RootCommandConfig) (string, error) {
 		return "", err
 	}
 
-	err = saveIDToConfig(ID, config)
+	err = SaveIDToConfig(ID, config)
 	if err != nil {
 		return "", err
 	}

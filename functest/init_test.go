@@ -449,8 +449,7 @@ func checkExpressNotExists(projectDir string, t *testing.T) {
 	shouldNotExist(packagejsonlock, t)
 }
 
-func getCurrentProjectEntry(t *testing.T, sandbox *cmdtest.TestSandbox) (*cmd.ProjectEntry, string) {
-	config := new(cmd.RootCommandConfig)
+func getCurrentProjectEntry(t *testing.T, sandbox *cmdtest.TestSandbox, config *cmd.RootCommandConfig) (cmd.ProjectFile, *cmd.ProjectEntry, string) {
 	config.ProjectDir = sandbox.ProjectDir
 	configID, err := cmd.GetIDFromConfig(config)
 	if err != nil {
@@ -464,11 +463,11 @@ func getCurrentProjectEntry(t *testing.T, sandbox *cmdtest.TestSandbox) (*cmd.Pr
 		t.Fatal(err)
 	}
 	project := p.GetProject(configID)
-	return project, configID
+	return p, project, configID
 }
 
-//check project id in .appsody-config.yaml matches the project entry id in project.yaml
-func TestProjectIDMatches(t *testing.T) {
+//check project id and path in .appsody-config.yaml matches the project entry id and path in project.yaml
+func TestProjectIDAndPathMatches(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
@@ -479,7 +478,8 @@ func TestProjectIDMatches(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	project, configID := getCurrentProjectEntry(t, sandbox)
+	config := new(cmd.RootCommandConfig)
+	_, project, configID := getCurrentProjectEntry(t, sandbox, config)
 
 	if project.ID != configID {
 		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
