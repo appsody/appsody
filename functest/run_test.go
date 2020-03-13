@@ -310,8 +310,8 @@ func TestIfProjectIDNotExistInProjectYaml(t *testing.T) {
 // check if id does not exists in .appsody-config.yaml, a new project entry in project.yaml gets created with the same id
 func TestIfProjectIDNotExistInConfigYaml(t *testing.T) {
 
-	sandbox, _ := cmdtest.TestSetupWithSandbox(t, true)
-	//defer cleanup()
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	args := []string{"init", "nodejs"}
 	_, err := cmdtest.RunAppsody(sandbox, args...)
