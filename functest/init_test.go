@@ -17,7 +17,6 @@ package functest
 import (
 	"errors"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -487,43 +486,5 @@ func TestProjectIDMatches(t *testing.T) {
 	}
 	if project.Path != sandbox.ProjectDir {
 		t.Fatalf("Expected project path in project.yaml to match the project directory path.")
-	}
-}
-
-// check project entry path in project.yaml gets updated when project moves
-func TestProjectPathGetsUpdated(t *testing.T) {
-
-	sandbox, _ := cmdtest.TestSetupWithSandbox(t, true)
-	//sdefer cleanup()
-
-	args := []string{"init", "nodejs"}
-	_, err := cmdtest.RunAppsody(sandbox, args...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	args = []string{"run", "--dryrun"}
-
-	_, err = cmdtest.RunAppsody(sandbox, args...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tmpDir := filepath.Join(sandbox.TestDataPath, "tmp")
-	err = os.Rename(sandbox.ProjectDir, tmpDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-	sandbox.ProjectDir = tmpDir
-
-	_, err = cmdtest.RunAppsody(sandbox, args...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	project, _ := getCurrentProjectEntry(t, sandbox)
-
-	if project.Path != tmpDir {
-		t.Fatalf("Expected project entry path to be updated to %s but found %s", tmpDir, project.Path)
 	}
 }

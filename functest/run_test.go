@@ -14,7 +14,9 @@
 package functest
 
 import (
+	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -189,8 +191,8 @@ func TestRunTooManyArgs(t *testing.T) {
 
 func TestRunUsesCorrectProjectVolumes(t *testing.T) {
 
-	sandbox, _ := cmdtest.TestSetupWithSandbox(t, true)
-	//sdefer cleanup()
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
 
 	args := []string{"init", "nodejs"}
 	_, err := cmdtest.RunAppsody(sandbox, args...)
@@ -210,5 +212,43 @@ func TestRunUsesCorrectProjectVolumes(t *testing.T) {
 
 	if !strings.Contains(output, depsMount) {
 		t.Fatalf("Did not find expected docker volume mount in run command output: %s", depsMount)
+	}
+}
+
+// check project entry path in project.yaml gets updated when project moves
+func TestProjectPathGetsUpdated(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args = []string{"run", "--dryrun"}
+
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tmpDir := filepath.Join(sandbox.TestDataPath, "tmp")
+	err = os.Rename(sandbox.ProjectDir, tmpDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sandbox.ProjectDir = tmpDir
+
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	project, _ := getCurrentProjectEntry(t, sandbox)
+
+	if project.Path != tmpDir {
+		t.Fatalf("Expected project entry path to be updated to %s but found %s", tmpDir, project.Path)
 	}
 }
