@@ -36,7 +36,7 @@ type packageCommandConfig struct {
 	buildahBuildOptions string
 }
 
-// structs for parsing the yaml files
+// StackYaml - Struct for parsing the yaml files
 type StackYaml struct {
 	Name            string `yaml:"name"`
 	Version         string `yaml:"version"`
@@ -239,7 +239,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				if err != nil {
 					return errors.Errorf("Error trying to unmarshall: %v", err)
 				}
-				indexYaml, _ = findStackAndRemove(log, stackID, indexYaml)
+				indexYaml, _ = removeStack(log, stackID, indexYaml)
 
 			} else {
 				// create the beginning of the index yaml
@@ -437,7 +437,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 
 			// list repos
 			var repoFile RepositoryFile
-			repos, repoErr := repoFile.getRepos(rootConfig)
+			repos, repoErr := repoFile.getRepoFile(rootConfig)
 			if repoErr != nil {
 				return repoErr
 			}
@@ -449,7 +449,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				// the repo is setup wrong, delete and recreate it
 				if repo != nil {
 					log.Info.logf("Appsody repo %s is configured with the wrong URL. Deleting and recreating it.", repoName)
-					repos.Remove(repoName, rootConfig.LoggingConfig)
+					repos.RemoveRepo(repoName, rootConfig.LoggingConfig)
 				}
 				// check for a different repo with the same file url
 				var repoNameToDelete string
@@ -461,7 +461,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				}
 				if repoNameToDelete != "" {
 					log.Info.logf("Appsody repo %s is configured with %s's URL. Deleting it to setup %s.", repoNameToDelete, repoName, repoName)
-					repos.Remove(repoNameToDelete, rootConfig.LoggingConfig)
+					repos.RemoveRepo(repoNameToDelete, rootConfig.LoggingConfig)
 				}
 				err = repos.WriteFile(getRepoFileLocation(rootConfig))
 				if err != nil {
@@ -512,24 +512,26 @@ func initialiseStackData(stackID string, stackImage string, stackYaml StackYaml)
 	return newStackStruct
 }
 
-func findStackAndRemove(log *LoggingConfig, stackID string, indexYaml IndexYaml) (IndexYaml, bool) {
+func FindStackIndex(stackID string, indexYaml IndexYaml) (IndexYaml, int) {
 	// find the index of the stack
-	stackExists := false
-	foundStack := -1
+	stackExists := -1
 	for i, stack := range indexYaml.Stacks {
 		if stack.ID == stackID {
-			log.Debug.Log("Existing stack: '" + stackID + "' found")
-			foundStack = i
+			stackExists = i
 			break
 		}
 	}
-
-	// delete index foundStack from indexYaml.Stacks as we will append the new stack later
-	if foundStack != -1 {
-		stackExists = true
-		indexYaml.Stacks = indexYaml.Stacks[:foundStack+copy(indexYaml.Stacks[foundStack:], indexYaml.Stacks[foundStack+1:])]
-	}
 	return indexYaml, stackExists
+}
+
+func removeStack(log *LoggingConfig, stackID string, indexYaml IndexYaml) (IndexYaml, bool) {
+	indexYaml, stackIndex := FindStackIndex(stackID, indexYaml)
+	if stackIndex > 0 {
+		log.Debug.Log("Existing stack '" + stackID + "' found and removed")
+		indexYaml.Stacks = indexYaml.Stacks[:stackIndex+copy(indexYaml.Stacks[stackIndex:], indexYaml.Stacks[stackIndex+1:])]
+		return indexYaml, true
+	}
+	return indexYaml, false
 }
 
 // GetLabelsForStackImage - Gets labels associated with the stack image

@@ -161,7 +161,6 @@ func removeOperator(operatorNamespace string, config *operatorUninstallCommandCo
 					return errors.Errorf("Could not remove appsody apps: %v %s", err, deleteOut)
 				}
 			} else {
-				config.Debug.log("There are outstanding appsody applications for this operator - resubmit the command with --force if you want to remove them.")
 				return errors.Errorf("There are outstanding appsody applications for this operator - resubmit the command with --force if you want to remove them.")
 			}
 		}

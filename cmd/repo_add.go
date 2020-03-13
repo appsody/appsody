@@ -58,11 +58,11 @@ func repoAdd(repoName, repoURL string, config *RootCommandConfig) error {
 
 	var repoFile RepositoryFile
 
-	_, repoErr := repoFile.getRepos(config)
+	_, repoErr := repoFile.getRepoFile(config)
 	if repoErr != nil {
 		return repoErr
 	}
-	if repoFile.Has(repoName) {
+	if repoFile.HasRepo(repoName) {
 		return errors.Errorf("A repository with the name '%s' already exists.", repoName)
 
 	}
@@ -89,7 +89,7 @@ func repoAdd(repoName, repoURL string, config *RootCommandConfig) error {
 			URL:  repoURL,
 		}
 
-		repoFile.Add(&newEntry)
+		repoFile.AddRepo(&newEntry)
 		err = repoFile.WriteFile(getRepoFileLocation(config))
 		if err != nil {
 			return errors.Errorf("Failed to write file to repository location: %v", err)

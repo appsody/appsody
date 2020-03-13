@@ -145,31 +145,10 @@ func TestRunSimple(t *testing.T) {
 			}
 		}()
 
-		// It will take a while for the container to spin up, so let's use docker ps to wait for it
-		t.Log("calling docker ps to wait for container")
-		containerRunning := false
-		count := 100
-		for {
-			dockerOutput, dockerErr := cmdtest.RunCmdExec("docker", []string{"ps", "-q", "-f", "name=" + containerName}, t)
-			if dockerErr != nil {
-				t.Log("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
-			}
-			if dockerOutput != "" {
-				t.Log("docker container " + containerName + " was found")
-				containerRunning = true
-			} else {
-				time.Sleep(2 * time.Second)
-				count = count - 1
-			}
-			if count == 0 || containerRunning {
-				break
-			}
+		err = cmdtest.RunDockerPs(t, 100, containerName)
+		if err != nil {
+			t.Fatal(err)
 		}
-
-		if !containerRunning {
-			t.Fatal("container never appeared to start")
-		}
-
 	}
 }
 

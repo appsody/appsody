@@ -127,26 +127,19 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.Errorf("Unmarshal: Error unmarshalling index.yaml")
 			}
 
-			stackFound := false
-			var stackToAddImage string
-			for i, stack := range devLocalIndexYaml.Stacks {
-				if stackID == stack.ID {
-					log.Debug.Log("Found stack attempting to add to repo in dev.local-index.yaml")
-					stackFound = true
-					stackToAddImage = devLocalIndexYaml.Stacks[i].Image
-					break
-				}
-			}
-			if !stackFound {
+			_, stackIndex := FindStackIndex(stackID, devLocalIndexYaml)
+			if stackIndex < 0 {
 				return errors.Errorf("Couldn't find stack in dev.local-index.yaml. Have you packaged this stack?")
 			}
 
-			_, repoErr := repoFile.getRepos(rootConfig)
+			stackToAddImage := devLocalIndexYaml.Stacks[stackIndex].Image
+
+			_, repoErr := repoFile.getRepoFile(rootConfig)
 			if repoErr != nil {
 				return repoErr
 			}
 
-			if repoFile.Has(repoName) {
+			if repoFile.HasRepo(repoName) {
 				// The repoName exists within the repository list
 				log.Debug.Log(repoName, " exists within the repository list")
 				repo := repoFile.GetRepo(repoName)
@@ -224,7 +217,7 @@ Run this command from the root directory of your Appsody project.`,
 
 			// At this point we should have the indexFile loaded that want to use for updating / adding stack info
 			// find the index of the stack
-			indexYaml, stackExists := findStackAndRemove(log, stackID, indexYaml)
+			indexYaml, stackExists := removeStack(log, stackID, indexYaml)
 
 			if stackExists {
 				log.Debug.Logf("Stack: %v already exists in repo", stackID)

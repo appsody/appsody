@@ -41,20 +41,20 @@ You cannot remove the default repository, but you can make a different repositor
 			var repoName = args[0]
 
 			var repoFile RepositoryFile
-			_, repoErr := repoFile.getRepos(config)
+			_, repoErr := repoFile.getRepoFile(config)
 			if repoErr != nil {
 				return repoErr
 			}
 			if config.Dryrun {
 				config.Info.log("Dry Run - Skipping appsody repo remove ", repoName)
 			} else {
-				if repoFile.Has(repoName) {
+				if repoFile.HasRepo(repoName) {
 					defaultRepoName, err := repoFile.GetDefaultRepoName(config)
 					if err != nil {
 						return err
 					}
 					if repoName != defaultRepoName {
-						repoFile.Remove(repoName, config.LoggingConfig)
+						repoFile.RemoveRepo(repoName, config.LoggingConfig)
 					} else {
 						return errors.New("You cannot remove the default repository " + repoName)
 					}

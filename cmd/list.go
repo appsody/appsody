@@ -44,11 +44,17 @@ An asterisk in the repository column denotes the default repository. An asterisk
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var repos RepositoryFile
 
-			if _, err := repos.getRepos(rootConfig); err != nil {
+			if _, err := repos.getRepoFile(rootConfig); err != nil {
 				return err
 			}
 			if len(args) > 1 {
 				return errors.Errorf("One argument expected. Use 'appsody [command] --help' for more information about a command")
+			}
+
+			var list IndexOutputFormat
+
+			if len(rootConfig.UnsupportedRepos) > 0 {
+				rootConfig.Warning.log("The following repositories are of APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
 			}
 			//var index RepoIndex
 			if len(args) < 1 {
@@ -56,38 +62,19 @@ An asterisk in the repository column denotes the default repository. An asterisk
 				if err != nil {
 					return errors.Errorf("%v", err)
 				}
-				if len(rootConfig.UnsupportedRepos) > 0 {
-					rootConfig.Warning.log("The following repositories .yaml have an  APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
-				}
 
 				if listConfig.output == "" {
 					rootConfig.Info.log("\n", projects)
 					return nil
 				}
 
-				list, err := repos.getRepositories(rootConfig.LoggingConfig)
+				list, err = repos.getRepositories(rootConfig.LoggingConfig)
 				if err != nil {
 					return err
 				}
-
-				if listConfig.output == "yaml" {
-					bytes, err := yaml.Marshal(&list)
-					if err != nil {
-						return err
-					}
-					result := string(bytes)
-					rootConfig.Info.log("\n", result)
-				} else if listConfig.output == "json" {
-					bytes, err := json.Marshal(&list)
-					if err != nil {
-						return err
-					}
-					result := string(bytes)
-					rootConfig.Info.log("\n", result)
-				}
 			} else {
 				repoName := args[0]
-				_, err := repos.getRepos(rootConfig)
+				_, err := repos.getRepoFile(rootConfig)
 				if err != nil {
 					return err
 				}
@@ -95,35 +82,32 @@ An asterisk in the repository column denotes the default repository. An asterisk
 				if err != nil {
 					return err
 				}
-				if len(rootConfig.UnsupportedRepos) > 0 {
-					rootConfig.Warning.log("The following repositories are of APIVersion greater than "+supportedIndexAPIVersion+" which your installed Appsody CLI supports, it is strongly suggested that you update your Appsody CLI to the latest version: ", rootConfig.UnsupportedRepos)
-				}
 
 				if listConfig.output == "" {
 					rootConfig.Info.log("\n", repoProjects)
 					return nil
 				}
 
-				repoList, err := repos.getRepository(rootConfig.LoggingConfig, repoName)
+				list, err = repos.getRepository(rootConfig.LoggingConfig, repoName)
 				if err != nil {
 					return err
 				}
+			}
 
-				if listConfig.output == "yaml" {
-					bytes, err := yaml.Marshal(&repoList)
-					if err != nil {
-						return err
-					}
-					result := string(bytes)
-					rootConfig.Info.log("\n", result)
-				} else if listConfig.output == "json" {
-					bytes, err := json.Marshal(&repoList)
-					if err != nil {
-						return err
-					}
-					result := string(bytes)
-					rootConfig.Info.log("\n", result)
+			if listConfig.output == "yaml" {
+				bytes, err := yaml.Marshal(&list)
+				if err != nil {
+					return err
 				}
+				result := string(bytes)
+				rootConfig.Info.log("\n", result)
+			} else if listConfig.output == "json" {
+				bytes, err := json.Marshal(&list)
+				if err != nil {
+					return err
+				}
+				result := string(bytes)
+				rootConfig.Info.log("\n", result)
 			}
 			return nil
 		},

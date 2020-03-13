@@ -251,3 +251,62 @@ func RunGit(log *LoggingConfig, workDir string, kargs []string, dryrun bool) (st
 	result = strings.TrimRight(result, "\n")
 	return result, nil
 }
+
+func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
+	gitInfo, err := GetGitInfo(config)
+	if err != nil {
+		return nil, err
+	}
+
+	var labels = make(map[string]string)
+
+	if gitInfo.RemoteURL != "" {
+		labels[ociKeyPrefix+"url"] = gitInfo.RemoteURL
+		labels[ociKeyPrefix+"documentation"] = gitInfo.RemoteURL
+		labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + gitInfo.Branch
+		upstreamSplit := strings.Split(gitInfo.Upstream, "/")
+		if len(upstreamSplit) > 1 {
+			labels[ociKeyPrefix+"source"] = gitInfo.RemoteURL + "/tree/" + upstreamSplit[1]
+		}
+
+	}
+
+	var commitInfo = gitInfo.Commit
+	revisionKey := ociKeyPrefix + "revision"
+	if commitInfo.SHA != "" {
+		labels[revisionKey] = commitInfo.SHA
+		if gitInfo.ChangesMade {
+			labels[revisionKey] += "-modified"
+		}
+	}
+
+	if commitInfo.Author != "" {
+		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author
+	}
+
+	if commitInfo.AuthorEmail != "" {
+		labels[appsodyImageCommitKeyPrefix+"author"] += " <" + commitInfo.AuthorEmail + ">"
+	}
+
+	if commitInfo.Committer != "" {
+		labels[appsodyImageCommitKeyPrefix+"committer"] = commitInfo.Committer
+	}
+
+	if commitInfo.CommitterEmail != "" {
+		labels[appsodyImageCommitKeyPrefix+"committer"] += " <" + commitInfo.CommitterEmail + ">"
+	}
+
+	if commitInfo.Date != "" {
+		labels[appsodyImageCommitKeyPrefix+"date"] = commitInfo.Date
+	}
+
+	if commitInfo.Message != "" {
+		labels[appsodyImageCommitKeyPrefix+"message"] = commitInfo.Message
+	}
+
+	if commitInfo.contextDir != "" {
+		labels[appsodyImageCommitKeyPrefix+"contextDir"] = commitInfo.contextDir
+	}
+
+	return labels, nil
+}

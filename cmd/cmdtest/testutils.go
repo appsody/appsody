@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -26,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/appsody/appsody/cmd"
 	"gopkg.in/yaml.v2"
@@ -165,7 +167,7 @@ func TestSetupWithSandbox(t *testing.T, parallel bool) (*TestSandbox, func()) {
 		if CLEANUP {
 			err := os.RemoveAll(testDir)
 			if err != nil {
-				t.Log("WARNING - ignoring error cleaning up test directory: ", err)
+				t.Log("Ignoring error cleaning up test directory.")
 			}
 			cleanUpTestDepDockerVolumes(t, sandbox.ProjectName)
 		}
@@ -345,7 +347,7 @@ func AddLocalRepo(t *TestSandbox, repoName string, repoFilePath string) (string,
 func RunCmdExec(cmdName string, args []string, t *testing.T) (string, error) {
 	cmdArgs := []string{cmdName}
 	cmdArgs = append(cmdArgs, args...)
-	t.Log(cmdArgs)
+	t.Logf("About to run %s", cmdArgs)
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	outReader, outWriter := io.Pipe()
 	execCmd.Stdout = outWriter
@@ -359,7 +361,6 @@ func RunCmdExec(cmdName string, args []string, t *testing.T) (string, error) {
 			out := outScanner.Bytes()
 			outBuffer.Write(out)
 			outBuffer.WriteByte('\n')
-			t.Log(string(out))
 		}
 		wg.Done()
 	}()
@@ -402,7 +403,36 @@ func GetEnvStacksList() string {
 func cleanUpTestDepDockerVolumes(t *testing.T, testDir string) {
 	_, err := RunCmdExec("docker", []string{"volume", "rm", testDir + "-deps"}, t)
 	if err != nil {
-		t.Logf("WARNING - error cleaning up test volumes created: %v", err)
+		t.Log("Ignoring error cleaning up test volumes.")
 	}
 
+}
+
+func RunDockerPs(t *testing.T, count int, containerName string) error {
+
+	// It will take a while for the container to spin up, so let's use docker ps to wait for it
+	t.Log("calling docker ps to wait for container")
+	containerRunning := false
+
+	for {
+		dockerOutput, dockerErr := RunCmdExec("docker", []string{"ps", "-q", "-f", "name=" + containerName}, t)
+		if dockerErr != nil {
+			t.Log("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
+		}
+		if dockerOutput != "" {
+			t.Log("docker container " + containerName + " was found")
+			containerRunning = true
+		} else {
+			time.Sleep(2 * time.Second)
+			count = count - 1
+		}
+		if count == 0 || containerRunning {
+			break
+		}
+	}
+
+	if !containerRunning {
+		return errors.New("Container never appeared to start")
+	}
+	return nil
 }

@@ -62,93 +62,40 @@ Run this command from the root directory of your stack, or specify the path to y
 				stackLintErrorCount++
 			}
 
-			fileCheck, err := Exists(filepath.Join(stackPath, "/README.md"))
-			if err != nil {
-				rootConfig.Error.log("Error attempting to determine file: ", err)
-				stackLintErrorCount++
-			} else if !fileCheck {
-				rootConfig.Error.log("Missing README.md in: ", stackPath)
-				stackLintErrorCount++
-			}
-			fileCheck, err = Exists(filepath.Join(stackPath, "/stack.yaml"))
-			if err != nil {
-				rootConfig.Error.log("Error attempting to determine file: ", err)
-				stackLintErrorCount++
-			} else if !fileCheck {
-				rootConfig.Error.log("Missing stack.yaml in: ", stackPath)
-				stackLintErrorCount++
-			}
-
-			fileCheck, err = Exists(imagePath)
-			if err != nil {
-				rootConfig.Error.log("Error attempting to determine file: ", err)
-				stackLintErrorCount++
-			} else if !fileCheck {
-				rootConfig.Error.log("Missing image directory in ", stackPath)
-				stackLintErrorCount++
+			var lintErrorFiles = []struct {
+				prefix string
+				name   string
+				err    bool
+			}{
+				{stackPath, "README.md", true},
+				{stackPath, "stack.yaml", true},
+				{imagePath, "", true},
+				{imagePath, "Dockerfile-stack", true},
+				{imagePath, "LICENSE", true},
+				{templatePath, "", true},
+				{configPath, "", false},
+				{configPath, "app-deploy.yaml", false},
+				{projectPath, "", false},
+				{projectPath, "Dockerfile", false},
 			}
 
-			fileCheck, err = Exists(filepath.Join(imagePath, "/Dockerfile-stack"))
-			if err != nil {
-				rootConfig.Error.log("Error attempting to determine file: ", err)
-				stackLintErrorCount++
-			} else if !fileCheck {
-				rootConfig.Error.log("Missing Dockerfile-stack in ", imagePath)
-				stackLintErrorCount++
-			}
-
-			fileCheck, err = Exists(filepath.Join(imagePath, "/LICENSE"))
-			if err != nil {
-				rootConfig.Error.log("Error attempting to determine file: ", err)
-				stackLintErrorCount++
-			} else if !fileCheck {
-				rootConfig.Error.log("Missing LICENSE in ", imagePath)
-				stackLintErrorCount++
-			}
-
-			fileCheck, err = Exists(configPath)
-			if err != nil {
-				rootConfig.Error.log("Error attempting to determine file: ", err)
-				stackLintErrorCount++
-			} else if !fileCheck {
-				rootConfig.Warning.log("Missing config directory in ", imagePath, " (Knative deployment will be used over Kubernetes)")
-				stackLintWarningCount++
-			}
-
-			fileCheck, err = Exists(filepath.Join(configPath, "/app-deploy.yaml"))
-			if err != nil {
-				rootConfig.Error.log("Error attempting to determine file: ", err)
-				stackLintErrorCount++
-			} else if !fileCheck {
-				rootConfig.Warning.log("Missing app-deploy.yaml in ", configPath, " (Knative deployment will be used over Kubernetes)")
-				stackLintWarningCount++
-			}
-
-			fileCheck, err = Exists(projectPath)
-			if err != nil {
-				rootConfig.Error.log("Error attempting to determine file: ", err)
-				stackLintErrorCount++
-			} else if !fileCheck {
-				rootConfig.Warning.log("Missing project directory in ", imagePath)
-				stackLintWarningCount++
-			}
-
-			fileCheck, err = Exists(filepath.Join(projectPath, "/Dockerfile"))
-			if err != nil {
-				rootConfig.Error.log("Error attempting to determine file: ", err)
-				stackLintErrorCount++
-			} else if !fileCheck {
-				rootConfig.Warning.log("Missing Dockerfile in ", projectPath)
-				stackLintWarningCount++
-			}
-
-			fileCheck, err = Exists(templatePath)
-			if err != nil {
-				rootConfig.Error.log("Error attempting to determine file: ", err)
-				stackLintErrorCount++
-			} else if !fileCheck {
-				rootConfig.Error.log("Missing template directory in: ", stackPath)
-				stackLintErrorCount++
+			for _, file := range lintErrorFiles {
+				fileCheck, err := Exists(filepath.Join(file.prefix, file.name))
+				if err != nil {
+					rootConfig.Error.log("Error attempting to determine file: ", err)
+					stackLintErrorCount++
+				} else if !fileCheck {
+					if file.name == "" {
+						rootConfig.Error.log("Missing directory: ", file.prefix)
+					} else {
+						rootConfig.Error.log("Missing file: ", file.name, " in ", file.prefix)
+					}
+					if file.err {
+						stackLintErrorCount++
+					} else {
+						stackLintWarningCount++
+					}
+				}
 			}
 
 			if IsEmptyDir(templatePath) {
@@ -158,7 +105,7 @@ Run this command from the root directory of your stack, or specify the path to y
 
 			templates, _ := ioutil.ReadDir(templatePath)
 			for _, f := range templates {
-				fileCheck, err = Exists(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml"))
+				fileCheck, err := Exists(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml"))
 				if (err != nil) && f.Name() != ".DS_Store" {
 					rootConfig.Error.log("Error attempting to determine file: ", err)
 					stackLintErrorCount++
