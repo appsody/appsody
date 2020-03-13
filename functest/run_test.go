@@ -299,7 +299,7 @@ func TestIfProjectIDNotExistInProjectYaml(t *testing.T) {
 	p, project, configID := getCurrentProjectEntry(t, sandbox, config)
 	projectsAfter := len(p.Projects)
 
-	if projectsBefore+2 != projectsAfter {
+	if projectsBefore+1 != projectsAfter {
 		t.Fatalf("Expected number of project entries to be %v but found %v", projectsBefore+1, projectsAfter)
 	}
 	if project.ID != configID {
