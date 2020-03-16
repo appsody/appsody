@@ -184,11 +184,12 @@ func build(config *buildCommandConfig) error {
 	cmdArgs := []string{"-t", buildImage}
 
 	if buildOptions != "" {
-		options := strings.Split(buildOptions, " ")
+		options := SplitBuildOptions(buildOptions)
 		err := checkBuildOptions(options)
 		if err != nil {
 			return err
 		}
+
 		cmdArgs = append(cmdArgs, options...)
 	}
 
