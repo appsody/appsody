@@ -2190,18 +2190,20 @@ func Targz(log *LoggingConfig, source, target, filename string) error {
 			}
 			header, err := tar.FileInfoHeader(info, info.Name())
 			if err != nil {
-				return err
+				return errors.Wrap(err, "tar.FileInfoHeader")
 			}
+
+			log.Debug.logf("FileInfoHeader %s: %+v", info.Name(), header)
 
 			if baseDir != "" {
 				header.Name = "." + strings.TrimPrefix(path, source)
 			}
 
 			if err := tarball.WriteHeader(header); err != nil {
-				return err
+				return errors.Wrap(err, "tarball.WriteHeader")
 			}
 
-			if info.IsDir() {
+			if !info.Mode().IsRegular() {
 				return nil
 			}
 
@@ -2211,7 +2213,7 @@ func Targz(log *LoggingConfig, source, target, filename string) error {
 			}
 			defer file.Close()
 			_, err = io.Copy(tarball, file)
-			return err
+			return errors.Wrap(err, "io.Copy")
 		})
 }
 
