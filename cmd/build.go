@@ -110,6 +110,11 @@ Run this command from the root directory of your Appsody project.`,
 			}
 			config.appDeployFile = filepath.Join(projectDir, config.appDeployFile)
 
+			var project ProjectFile
+			_, _, err = project.ensureProjectIDAndEntryExists(config.RootCommandConfig)
+			if err != nil {
+				return err
+			}
 			return build(config)
 		},
 	}

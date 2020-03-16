@@ -2598,33 +2598,44 @@ func generateNewProjectAndID(config *RootCommandConfig) (string, error) {
 	return ID, nil
 }
 
-// create docker volume names for every path in APPSODY_DEPS and put it in project.yaml
-func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID string, volumeMaps []string, rootConfig *RootCommandConfig) ([]string, error) {
-	var fileLocation = getProjectYamlPath(rootConfig)
-	_, err := p.GetProjects(fileLocation)
+func (p *ProjectFile) ensureProjectIDAndEntryExists(rootConfig *RootCommandConfig) (*ProjectEntry, string, error) {
+	id, err := GetIDFromConfig(rootConfig)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-
+	var fileLocation = getProjectYamlPath(rootConfig)
+	_, err = p.GetProjects(fileLocation)
+	if err != nil {
+		return nil, "", err
+	}
 	// if id exists in .appsody-config.yaml but not in project.yaml, add a new project entry in project.yaml with that id, and get projects again
-	if !p.hasID(ID) {
-		err = p.addNewProject(ID, rootConfig)
+	if !p.hasID(id) {
+		err = p.addNewProject(id, rootConfig)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
-	project := p.GetProject(ID)
+	project := p.GetProject(id)
 
 	projectDir, err := getProjectDir(rootConfig)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	// if the user moves their Appsody project, (same project id different path), update the project path in project.yaml
 	if project.Path != projectDir {
 		project.Path = projectDir
 		if err := p.writeFile(fileLocation); err != nil {
-			return nil, err
+			return nil, "", err
 		}
+	}
+	return project, id, nil
+}
+
+// create docker volume names for every path in APPSODY_DEPS and put it in project.yaml
+func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, volumeMaps []string, rootConfig *RootCommandConfig) ([]string, error) {
+	project, _, err := p.ensureProjectIDAndEntryExists(rootConfig)
+	if err != nil {
+		return nil, err
 	}
 
 	// if the project entry does not have existing dependency volumes, for every path in APPSODY_DEPS, generate a new volume name, assign it to that path, and write it to the current project entry in project.yaml
@@ -2642,6 +2653,7 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, ID stri
 			project.Volumes = append(project.Volumes, v)
 		}
 
+		var fileLocation = getProjectYamlPath(rootConfig)
 		if err := p.writeFile(fileLocation); err != nil {
 			return volumeMaps, err
 		}

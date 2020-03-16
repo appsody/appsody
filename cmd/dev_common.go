@@ -159,15 +159,10 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	if depsEnvVars != nil {
-		id, err := GetIDFromConfig(config.RootCommandConfig)
-		if err != nil {
-			return err
-		}
-
 		var project ProjectFile
 
 		//add volumes to project entry of current Appsody project
-		volumeMaps, err = project.addDepsVolumesToProjectEntry(depsEnvVars, id, volumeMaps, config.RootCommandConfig)
+		volumeMaps, err = project.addDepsVolumesToProjectEntry(depsEnvVars, volumeMaps, config.RootCommandConfig)
 		if err != nil {
 			return err
 		}

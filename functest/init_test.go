@@ -467,7 +467,7 @@ func getCurrentProjectEntry(t *testing.T, sandbox *cmdtest.TestSandbox, config *
 }
 
 //check project id and path in .appsody-config.yaml matches the project entry id and path in project.yaml
-func TestProjectIDAndPathMatches(t *testing.T) {
+func TestInitProjectIDAndPathMatches(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()

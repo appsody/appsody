@@ -221,7 +221,7 @@ func TestRunUsesCorrectProjectVolumes(t *testing.T) {
 }
 
 // check project entry path in project.yaml gets updated when project moves
-func TestProjectPathGetsUpdated(t *testing.T) {
+func TestRunUpdatesProjectPath(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
@@ -268,7 +268,7 @@ func TestProjectPathGetsUpdated(t *testing.T) {
 }
 
 // check if id exists in .appsody-config.yaml but not in project.yaml, a new project entry in project.yaml gets created with the same id
-func TestIfProjectIDNotExistInProjectYaml(t *testing.T) {
+func TestRunIfProjectIDNotExistInProjectYaml(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
@@ -308,7 +308,7 @@ func TestIfProjectIDNotExistInProjectYaml(t *testing.T) {
 }
 
 // check if id does not exists in .appsody-config.yaml, a new project entry in project.yaml gets created with the same id
-func TestIfProjectIDNotExistInConfigYaml(t *testing.T) {
+func TestRunIfProjectIDNotExistInConfigYaml(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
