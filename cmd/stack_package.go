@@ -88,10 +88,10 @@ type IndexJSONStack struct {
 	ProjectType  string `json:"projectType"`
 	ProjectStyle string `json:"projectStyle"`
 	Location     string `json:"location"`
-	Links
+	Links        Link   `json:"links"`
 }
 
-type Links struct {
+type Link struct {
 	Self string `json:"self"`
 }
 
@@ -285,7 +285,7 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 			cmdArgs = append(cmdArgs, "-t", namespaceAndRepo)
 
 			if buildOptions != "" {
-				options := strings.Split(buildOptions, " ")
+				options := SplitBuildOptions(buildOptions)
 				err := checkBuildOptions(options)
 				if err != nil {
 					return err

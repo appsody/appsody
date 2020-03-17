@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"unicode"
 
 	//"crypto/sha256"
 	"encoding/json"
@@ -314,6 +315,9 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 			mappedMount = strings.Replace(mount, "~", homeDir, 1)
 			overridden = homeDirOverridden
 		} else {
+			if strings.HasPrefix(mount, ".:") {
+				mount = strings.TrimPrefix(mount, ".")
+			}
 			mappedMount = filepath.Join(projectDir, mount)
 			overridden = projectDirOverridden
 		}
@@ -2398,7 +2402,7 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 			stackJSON.ProjectStyle = "Appsody"
 			stackJSON.Location = template.URL
 
-			link := Links{}
+			link := Link{}
 			link.Self = "/devfiles/" + stack.ID + "/devfile.yaml"
 			stackJSON.Links = link
 
@@ -2420,4 +2424,48 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 
 	log.Info.logf("Succesfully generated file: %s", indexFilePath)
 	return nil
+}
+
+/**
+
+What it does:
+	This function splits the build options by spaces, but only if the space is outside of any quotation mark block
+	e.g "option1 option2" ---> ["option1", "option2"]
+	e.g "option1='my option1' option2='my option2'" ---> ["option1='my option1'", "option2='my option2"]
+
+How it works:
+	It works by iterating over each element in the string.
+	When the element is a Quotation Mark, it stores it in the variable `lastQuote`.
+	It continues iterating until we find the next matching quote, if the next quote is escaped (\') when don't match.
+	While this quote block hasn't been closed,  we don't split if we find a space.
+	Once the next matching quote is found, we clear `lastQuote` and if any subsequent space is found we split.
+
+Inspired from: https://play.golang.org/p/gJrqdeCr7k
+**/
+
+func SplitBuildOptions(options string) []string {
+	slash := rune(92) // \ symbol
+
+	lastQuote := rune(0)
+	previousChar := rune(0)
+	f := func(c rune) bool {
+		result := false
+		switch {
+		case c == lastQuote:
+			if previousChar != slash {
+				lastQuote = rune(0)
+			}
+		case lastQuote != rune(0):
+			break
+		case unicode.In(c, unicode.Quotation_Mark):
+			lastQuote = c
+		default:
+			result = unicode.IsSpace(c)
+		}
+
+		previousChar = c
+		return result
+	}
+
+	return strings.FieldsFunc(options, f)
 }
