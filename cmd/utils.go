@@ -2402,7 +2402,7 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 			stackJSON.ProjectStyle = "Appsody"
 			stackJSON.Location = template.URL
 
-			link := Links{}
+			link := Link{}
 			link.Self = "/devfiles/" + stack.ID + "/devfile.yaml"
 			stackJSON.Links = link
 

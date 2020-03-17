@@ -88,10 +88,10 @@ type IndexJSONStack struct {
 	ProjectType  string `json:"projectType"`
 	ProjectStyle string `json:"projectStyle"`
 	Location     string `json:"location"`
-	Links
+	Links        Link   `json:"links"`
 }
 
-type Links struct {
+type Link struct {
 	Self string `json:"self"`
 }
 
