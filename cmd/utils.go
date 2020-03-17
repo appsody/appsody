@@ -315,6 +315,9 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 			mappedMount = strings.Replace(mount, "~", homeDir, 1)
 			overridden = homeDirOverridden
 		} else {
+			if strings.HasPrefix(mount, ".:") {
+				mount = strings.TrimPrefix(mount, ".")
+			}
 			mappedMount = filepath.Join(projectDir, mount)
 			overridden = projectDirOverridden
 		}
@@ -2485,7 +2488,7 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 			stackJSON.ProjectStyle = "Appsody"
 			stackJSON.Location = template.URL
 
-			link := Links{}
+			link := Link{}
 			link.Self = "/devfiles/" + stack.ID + "/devfile.yaml"
 			stackJSON.Links = link
 
