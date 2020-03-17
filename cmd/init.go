@@ -33,9 +33,10 @@ import (
 
 type initCommandConfig struct {
 	*RootCommandConfig
-	overwrite   bool
-	noTemplate  bool
-	projectName string
+	overwrite       bool
+	noTemplate      bool
+	projectName     string
+	applicationName string
 }
 
 // these are global constants
@@ -90,7 +91,8 @@ Use 'appsody list' to see the available stacks and templates.`,
 	initCmd.PersistentFlags().BoolVar(&config.overwrite, "overwrite", false, "Download and extract the template project, overwriting existing files.  This option is not intended to be used in Appsody project directories.")
 	initCmd.PersistentFlags().BoolVar(&config.noTemplate, "no-template", false, "Only create the .appsody-config.yaml file. Do not unzip the template project. [Deprecated]")
 	defaultName := defaultProjectName(rootConfig)
-	initCmd.PersistentFlags().StringVar(&config.projectName, "project-name", defaultName, "Project Name for Kubernetes Service")
+	initCmd.PersistentFlags().StringVar(&config.projectName, "project-name", defaultName, "Project Name for Kubernetes Service.")
+	initCmd.PersistentFlags().StringVar(&config.applicationName, "application-name", "", "Specifies the greater application which this project belongs to.")
 	return initCmd
 }
 
@@ -103,6 +105,14 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if !valid {
 		return err
 	}
+
+	if config.applicationName != "" {
+		valid, err := IsValidApplicationName(config.applicationName)
+		if !valid {
+			return err
+		}
+	}
+
 	//var index RepoIndex
 	var repos RepositoryFile
 	if _, err := repos.getRepos(config.RootCommandConfig); err != nil {
@@ -120,12 +130,12 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	indices, err := repos.GetIndices(config.LoggingConfig)
 
 	if err != nil {
-		config.Error.logf("The following indices could not be read, skipping:\n%v", err)
+		config.Error.logf("Does the APIVersion of your repository match what the Appsody CLI currently supports? (%v). The following indices could not be read. skipping:\n%v", supportedIndexAPIVersion, err)
 	}
 	if len(indices) == 0 {
 		return errors.Errorf("Your stack repository is empty - please use `appsody repo add` to add a repository.")
 	}
-	var index *RepoIndex
+	var index *IndexYaml
 
 	if stack != "" {
 		var projectName string
@@ -153,25 +163,14 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		config.Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
 		index = indices[repoName]
-		projectFound := false
 		stackFound := false
 		var stackReqs StackRequirement
 
-		// we should remove this as we no longer have use for the v1 index and it is bringing down our code coverage
 		if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 			config.Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
 		}
-		if len(index.Projects[projectType]) >= 1 { //V1 repos
-			projectFound = true
-			//return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
-			config.Debug.log("Project ", projectType, " found in repo ", repoName)
-
-			// need to check template name vs default
-			if !noTemplate && !(templateName == "" || templateName == index.Projects[projectType][0].DefaultTemplate) {
-				return errors.Errorf("template name is not \"none\" and does not match %s.", index.Projects[projectType][0].DefaultTemplate)
-			}
-			projectName = index.Projects[projectType][0].URLs[0]
-
+		if index.APIVersion == "v1" {
+			return errors.Errorf("The repository .yaml for " + repoName + " has an older APIVersion that the Appsody CLI no longer supports. Supported APIVersion: " + supportedIndexAPIVersion)
 		}
 		for indexNo, stack := range index.Stacks {
 			if stack.ID == projectType {
@@ -190,7 +189,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 				projectName = URL
 			}
 		}
-		if !projectFound && !stackFound {
+		if !stackFound {
 			return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
 		}
 
@@ -346,6 +345,14 @@ func install(config *initCommandConfig) error {
 			return err
 		}
 	}
+
+	if config.applicationName != "" {
+		err := saveApplicationNameToConfig(config.applicationName, config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
+	}
+
 	platformDefinition := projectConfig.Stack
 
 	config.Debug.logf("Setting up the development environment for projectDir: %s and platform: %s", projectDir, platformDefinition)

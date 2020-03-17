@@ -24,7 +24,6 @@ import (
 
 // Simple test for appsody debug command. A future enhancement would be to verify the debug output
 func TestDebugSimple(t *testing.T) {
-
 	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
@@ -39,7 +38,7 @@ func TestDebugSimple(t *testing.T) {
 		defer cleanup()
 
 		// first add the test repo index
-		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "index.yaml"))
+		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -55,7 +54,7 @@ func TestDebugSimple(t *testing.T) {
 		runChannel := make(chan error)
 		containerName := "testDebugSimpleContainer" + strings.ReplaceAll(stackRaw[i], "/", "_")
 		go func() {
-			_, err := cmdtest.RunAppsody(sandbox, "debug", "--name", containerName, "-P")
+			_, err := cmdtest.RunAppsody(sandbox, "debug", "--name", containerName)
 			runChannel <- err
 			close(runChannel)
 		}()
@@ -78,7 +77,7 @@ func TestDebugSimple(t *testing.T) {
 		containerRunning := false
 		count := 50
 		for {
-			dockerOutput, dockerErr := cmdtest.RunDockerCmdExec([]string{"ps", "-q", "-f", "name=" + containerName}, t)
+			dockerOutput, dockerErr := cmdtest.RunCmdExec("docker", []string{"ps", "-q", "-f", "name=" + containerName}, t)
 			if dockerErr != nil {
 				t.Log("Ignoring error running docker ps -q -f name="+containerName, dockerErr)
 			}

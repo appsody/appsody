@@ -1,5 +1,5 @@
 home: testdata/empty_repository_config
 images: docker.io
-lastversioncheck: 2020-01-09 06:23:39 -0600 CST
+lastversioncheck: 2020-02-17 13:12:50 +0000 GMT
 operator: https://github.com/appsody/appsody-operator/releases/latest/download
 tektonserver: ""

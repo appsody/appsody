@@ -1,6 +1,5 @@
 # Appsody repo/list/init
 - repo URLs:
-    - https://raw.githubusercontent.com/appsody/stacks/master/index.yaml
     - https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml
     - https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml
 
