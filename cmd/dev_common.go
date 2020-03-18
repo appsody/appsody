@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"os/user"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -80,7 +81,9 @@ func addStackRegistryFlag(cmd *cobra.Command, flagVar *string, config *RootComma
 	defaultRegistry := getDefaultStackRegistry(config)
 	stackRegistryInConfigFile, err := getStackRegistryFromConfigFile(config)
 	if err != nil {
-		config.Debug.Logf("Error retrieving the stack registry from config file: %v", err)
+		if _, ok := err.(*NotAnAppsodyProject); !ok {
+			config.Debug.Logf("Error retrieving the stack registry from config file: %v", err)
+		}
 		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images. [WARNING] Your current settings are incorrect - change your project config or use this flag to override the image registry.")
 	} else if stackRegistryInConfigFile == "" {
 		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images.")
@@ -118,6 +121,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if depErr != nil {
 		return depErr
 	}
+	config.Debug.Log("Default stack registry set to: ", &config.StackRegistry)
 	// Checking whether the controller is being overridden
 	overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
 	if overrideControllerImage == "" {
@@ -144,6 +148,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if perr != nil {
 		return perr
 	}
+	config.Debug.log("Project config file set to: ", filepath.Join(projectDir, ConfigFile))
 
 	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
 	if configErr != nil {
