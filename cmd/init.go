@@ -172,9 +172,9 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		if index.APIVersion == "v1" {
 			return errors.Errorf("The repository .yaml for " + repoName + " has an older APIVersion that the Appsody CLI no longer supports. Supported APIVersion: " + supportedIndexAPIVersion)
 		}
-		for indexNo, stack := range index.Stacks {
+		for _, stack := range index.Stacks {
 			if stack.ID == projectType {
-				stackReqs = index.Stacks[indexNo].Requirements
+				stackReqs = stack.Requirements
 				stackFound = true
 				config.Debug.log("Stack ", projectType, " found in repo ", repoName)
 				URL := ""
@@ -302,6 +302,10 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		config.Info.logf("Successfully initialized Appsody project with the %s stack and no template.", stack)
 	}
 
+	depErr := GetDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
 	return nil
 }
 

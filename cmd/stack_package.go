@@ -26,6 +26,7 @@ import (
 	"github.com/andrew-d/isbinary"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"gopkg.in/yaml.v2"
 )
@@ -47,6 +48,7 @@ type StackYaml struct {
 	DefaultTemplate string            `yaml:"default-template"`
 	TemplatingData  map[string]string `yaml:"templating-data"`
 	Requirements    StackRequirement  `yaml:"requirements,omitempty"`
+	Deprecated      string            `yaml:"deprecated,omitempty"`
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -73,6 +75,7 @@ type IndexYamlStack struct {
 	Templates       []IndexYamlStackTemplate
 	Requirements    StackRequirement `yaml:"requirements,omitempty"`
 	Image           string           `yaml:"image"`
+	Deprecated      string           `yaml:"deprecated,omitempty"`
 }
 type IndexYamlStackTemplate struct {
 	ID        string `yaml:"id"`
@@ -390,19 +393,22 @@ The packaging process builds the stack image, generates the "tar.gz" archive fil
 				// create a config yaml file for the tarball
 				configYaml := filepath.Join(templatePath, templates[i], ConfigFile)
 				log.Debug.Log("configYaml is: ", configYaml)
-
 				g, err := os.Create(configYaml)
+				g.Close()
 				if err != nil {
 					return errors.Errorf("Error trying to create file: %v", err)
 				}
-
-				// Only use major.minor version here
-				_, err = g.WriteString("stack: " + namespaceAndRepo + ":" + semver["majorminor"])
+				v := viper.New()
+				v.SetConfigFile(configYaml)
+				err = v.ReadInConfig()
 				if err != nil {
-					return errors.Errorf("Error trying to write: %v", err)
+					return err
 				}
-
-				g.Close()
+				v.Set("stack", namespaceAndRepo+":"+semver["majorminor"])
+				err = v.WriteConfig()
+				if err != nil {
+					return err
+				}
 
 				// tar the files
 				log.Info.Log("Creating tar for: " + templates[i])
@@ -508,6 +514,7 @@ func initialiseStackData(stackID string, stackImage string, stackYaml StackYaml)
 	newStackStruct.DefaultTemplate = stackYaml.DefaultTemplate
 	newStackStruct.Requirements = stackYaml.Requirements
 	newStackStruct.Image = stackImage
+	newStackStruct.Deprecated = stackYaml.Deprecated
 
 	return newStackStruct
 }
@@ -569,6 +576,10 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	}
 	configLabels[appsodyStackKeyPrefix+"id"] = stackID
 	configLabels[appsodyStackKeyPrefix+"tag"] = buildImage
+
+	if stackYaml.Deprecated != "" {
+		configLabels[appsodyStackKeyPrefix+"deprecated"] = stackYaml.Deprecated
+	}
 
 	for key, value := range configLabels {
 		labels[key] = value

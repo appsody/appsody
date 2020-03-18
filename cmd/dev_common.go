@@ -117,6 +117,10 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 }
 
 func commonCmd(config *devCommonConfig, mode string) error {
+	depErr := GetDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
 	config.Debug.Log("Default stack registry set to: ", &config.StackRegistry)
 	// Checking whether the controller is being overridden
 	overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
@@ -143,7 +147,6 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
 		return perr
-
 	}
 	config.Debug.log("Project config file set to: ", filepath.Join(projectDir, ConfigFile))
 
@@ -183,7 +186,6 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	// Mount the controller
-
 	controllerImageName := overrideControllerImage
 	if controllerImageName == "" {
 		controllerImageName = fmt.Sprintf("%s:%s", "appsody/init-controller", CONTROLLERVERSION)

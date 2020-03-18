@@ -235,6 +235,11 @@ func build(config *buildCommandConfig) error {
 		return err
 	}
 
+	depErr := GetDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
+
 	return nil
 }
 
