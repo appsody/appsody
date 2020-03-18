@@ -33,6 +33,7 @@ type CommitInfo struct {
 	URL            string
 	Message        string
 	contextDir     string
+	Pushed         bool
 }
 
 type GitInfo struct {
@@ -107,18 +108,15 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 		errMsg += "Received error getting current commit: " + gitErr.Error()
 	}
 
-	gitArgs := []string{"branch", "-r", "--contains", gitInfo.Commit.SHA}
-
-	output, gitErr := RunGit(config.LoggingConfig, config.ProjectDir, gitArgs, config.Dryrun)
-	if gitErr != nil {
-		return gitInfo, gitErr
-	}
-
 	lineSeparator := "\n"
 	if runtime.GOOS == "windows" {
 		lineSeparator = "\r\n"
 	}
-	outputLines := strings.Split(output, lineSeparator)
+
+	outputLines, err := RunGitBranchContains(config.LoggingConfig, gitInfo.Commit.SHA, config.ProjectDir, lineSeparator, config.Dryrun)
+	if err != nil {
+		return gitInfo, err
+	}
 
 	gitInfo.Upstream = outputLines[0]
 	for _, upstream := range outputLines {
@@ -133,6 +131,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	gitInfo.Upstream = strings.TrimSpace(gitInfo.Upstream)
 
 	if gitInfo.Upstream == "" {
+		gitInfo.Commit.Pushed = false
 		gitRemoteOutput, err := RunGitRemote(config.LoggingConfig, config.ProjectDir, lineSeparator, config.Dryrun)
 		if err != nil {
 			return gitInfo, err
@@ -179,14 +178,11 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 
 	if outputLength > 1 {
 		changesMade = true
-
 	}
 	gitInfo.ChangesMade = changesMade
 
 	if gitInfo.Upstream != "" {
 		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(config.LoggingConfig, config.ProjectDir, gitInfo.Upstream, config.Dryrun)
-		config.Info.log("UPSTREAM: ", gitInfo.Upstream)
-		config.Info.log("REMOTE: ", gitInfo.RemoteURL)
 		if gitErr != nil {
 			errMsg += fmt.Sprintf("Could not construct repository URL %v ", gitErr)
 		}
@@ -199,6 +195,21 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 		return gitInfo, errors.New(errMsg)
 	}
 	return gitInfo, nil
+}
+
+func RunGitBranchContains(log *LoggingConfig, commitSHA string, workDir string, lineSeparator string, dryrun bool) ([]string, error) {
+	log.Debug.log("Attempting to run git branch -r --contains CommitSHA")
+
+	kargs := []string{"branch", "-r", "--contains", commitSHA}
+
+	output, gitErr := RunGit(log, workDir, kargs, dryrun)
+	if gitErr != nil {
+		return []string{}, gitErr
+	}
+
+	outputLines := strings.Split(output, lineSeparator)
+	return outputLines, nil
+
 }
 
 func RunGitRemote(log *LoggingConfig, workDir string, lineSeparator string, dryrun bool) ([]string, error) {

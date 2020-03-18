@@ -898,6 +898,9 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		if gitInfo.ChangesMade {
 			labels[revisionKey] += "-modified"
 		}
+		if !gitInfo.Commit.Pushed {
+			labels[revisionKey] += "-not-pushed"
+		}
 	}
 
 	if commitInfo.Author != "" {
