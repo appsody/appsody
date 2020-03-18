@@ -172,9 +172,9 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		if index.APIVersion == "v1" {
 			return errors.Errorf("The repository .yaml for " + repoName + " has an older APIVersion that the Appsody CLI no longer supports. Supported APIVersion: " + supportedIndexAPIVersion)
 		}
-		for indexNo, stack := range index.Stacks {
+		for _, stack := range index.Stacks {
 			if stack.ID == projectType {
-				stackReqs = index.Stacks[indexNo].Requirements
+				stackReqs = stack.Requirements
 				stackFound = true
 				config.Debug.log("Stack ", projectType, " found in repo ", repoName)
 				URL := ""
@@ -199,7 +199,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		// 1. Check for empty directory
 		dir := config.ProjectDir
-		appsodyConfigFile := filepath.Join(dir, ".appsody-config.yaml")
+		appsodyConfigFile := filepath.Join(dir, ConfigFile)
 
 		_, err = os.Stat(appsodyConfigFile)
 		if err == nil {
@@ -229,6 +229,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			return errors.New("non-empty directory found with files which may conflict with the template project")
 
 		}
+		config.Debug.log("Project config file set to: ", appsodyConfigFile)
 
 		reqsMap := map[string]string{
 			"Docker":  stackReqs.Docker,
@@ -307,6 +308,10 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		config.Info.logf("Successfully initialized Appsody project with the %s stack and no template.", stack)
 	}
 
+	depErr := GetDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
 	return nil
 }
 
@@ -422,7 +427,7 @@ func initUntar(log *LoggingConfig, file string, noTemplate bool, overwrite bool,
 					}
 				}
 			} else if header.Typeflag == tar.TypeReg {
-				if !noTemplate || (noTemplate && strings.HasSuffix(filename, ".appsody-config.yaml")) {
+				if !noTemplate || (noTemplate && strings.HasSuffix(filename, ConfigFile)) {
 
 					f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 					if err != nil {

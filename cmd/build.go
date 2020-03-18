@@ -108,6 +108,8 @@ Run this command from the root directory of your Appsody project.`,
 			if err != nil {
 				return err
 			}
+			config.Debug.Log("Default stack registry set to: ", &rootConfig.StackRegistry)
+			config.Debug.log("Project config file set to: ", filepath.Join(projectDir, ConfigFile))
 			config.appDeployFile = filepath.Join(projectDir, config.appDeployFile)
 
 			var project ProjectFile
@@ -189,11 +191,12 @@ func build(config *buildCommandConfig) error {
 	cmdArgs := []string{"-t", buildImage}
 
 	if buildOptions != "" {
-		options := strings.Split(buildOptions, " ")
+		options := SplitBuildOptions(buildOptions)
 		err := checkBuildOptions(options)
 		if err != nil {
 			return err
 		}
+
 		cmdArgs = append(cmdArgs, options...)
 	}
 
@@ -237,6 +240,11 @@ func build(config *buildCommandConfig) error {
 		return err
 	}
 
+	depErr := GetDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
+
 	return nil
 }
 
@@ -253,7 +261,7 @@ func getLabels(config *RootCommandConfig) (map[string]string, error) {
 		return labels, projectConfigErr
 	}
 
-	configLabels, err := getConfigLabels(*projectConfig, ".appsody-config.yaml", config.LoggingConfig)
+	configLabels, err := getConfigLabels(*projectConfig, ConfigFile, config.LoggingConfig)
 	if err != nil {
 		return labels, err
 	}
@@ -574,7 +582,7 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 		deploymentManifest.Namespace = config.namespace
 	}
 
-	err = writeDeploymentManifest(deploymentManifest, config)
+	err = writeDeploymentManifest(deploymentManifest, configFile)
 	if err != nil {
 		return err
 	}
@@ -597,9 +605,7 @@ func getDeploymentManifest(configFile string) (DeploymentManifest, error) {
 	return deploymentManifest, err
 }
 
-func writeDeploymentManifest(deploymentManifest DeploymentManifest, config *buildCommandConfig) error {
-	configFile := config.appDeployFile
-
+func writeDeploymentManifest(deploymentManifest DeploymentManifest, configFile string) error {
 	output, err := yaml.Marshal(deploymentManifest)
 	if err != nil {
 		return errors.Errorf("Could not marshall deployment manifest to YAML when updating the %s: %s", configFile, err)
