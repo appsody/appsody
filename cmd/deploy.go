@@ -81,8 +81,7 @@ Run this command from the root directory of your Appsody project.`,
 
 			dryrun := config.Dryrun
 			namespace := config.namespace
-			config.appDeployFile = filepath.Join(projectDir, config.appDeployFile)
-			configFile := config.appDeployFile
+			configFile := filepath.Join(projectDir, config.appDeployFile)
 
 			exists, err := Exists(configFile)
 			if err != nil {
@@ -106,7 +105,7 @@ Run this command from the root directory of your Appsody project.`,
 					if namespace != "" && manifestNamespace != namespace {
 						config.Info.Logf("Overriding namespace %s in the deployment manifest to: %s", manifestNamespace, namespace)
 						deploymentManifest.Namespace = namespace
-						err = writeDeploymentManifest(deploymentManifest, config.appDeployFile)
+						err = writeDeploymentManifest(deploymentManifest, configFile)
 						if err != nil {
 							return err
 						}
