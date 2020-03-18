@@ -132,6 +132,22 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 
 	gitInfo.Upstream = strings.TrimSpace(gitInfo.Upstream)
 
+	if gitInfo.Upstream == "" {
+		gitRemoteOutput, err := RunGitRemote(config.LoggingConfig, config.ProjectDir, lineSeparator, config.Dryrun)
+		if err != nil {
+			return gitInfo, err
+		}
+
+		for _, remotes := range gitRemoteOutput {
+			if strings.Contains(remotes, "origin") {
+				gitInfo.Upstream = remotes
+				break
+			} else if strings.Contains(remotes, "upstream") {
+				gitInfo.Upstream = remotes
+			}
+		}
+	}
+
 	const noCommits = "## No commits yet on "
 	const branchPrefix = "## "
 	const branchSeparatorString = "..."
@@ -169,6 +185,8 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 
 	if gitInfo.Upstream != "" {
 		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(config.LoggingConfig, config.ProjectDir, gitInfo.Upstream, config.Dryrun)
+		config.Info.log("UPSTREAM: ", gitInfo.Upstream)
+		config.Info.log("REMOTE: ", gitInfo.RemoteURL)
 		if gitErr != nil {
 			errMsg += fmt.Sprintf("Could not construct repository URL %v ", gitErr)
 		}
@@ -181,6 +199,19 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 		return gitInfo, errors.New(errMsg)
 	}
 	return gitInfo, nil
+}
+
+func RunGitRemote(log *LoggingConfig, workDir string, lineSeparator string, dryrun bool) ([]string, error) {
+	log.Debug.log("Attempting to run git remote")
+
+	kargs := []string{"remote"}
+	remoteOutput, err := RunGit(log, workDir, kargs, dryrun)
+	if err != nil {
+		return []string{}, err
+	}
+
+	remoteOutputLines := strings.Split(remoteOutput, lineSeparator)
+	return remoteOutputLines, nil
 }
 
 //RunGitConfigLocalRemoteOriginURL
