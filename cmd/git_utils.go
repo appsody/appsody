@@ -89,6 +89,9 @@ func StringBetween(value string, pre string, post string) string {
 //RunGitFindBranch issues git status
 func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	var gitInfo GitInfo
+	var gitErr error
+	errMsg := ""
+
 	version, vErr := RunGitVersion(config.LoggingConfig, config.ProjectDir, false)
 	if vErr != nil {
 		return gitInfo, vErr
@@ -99,9 +102,14 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 
 	config.Debug.log("git version: ", version)
 
-	kargs := []string{"status", "-sb"}
+	gitInfo.Commit, gitErr = RunGitGetLastCommit(gitInfo.RemoteURL, config)
+	if gitErr != nil {
+		errMsg += "Received error getting current commit: " + gitErr.Error()
+	}
 
-	output, gitErr := RunGit(config.LoggingConfig, config.ProjectDir, kargs, config.Dryrun)
+	gitArgs := []string{"branch", "-r", "--contains", gitInfo.Commit.SHA}
+
+	output, gitErr := RunGit(config.LoggingConfig, config.ProjectDir, gitArgs, config.Dryrun)
 	if gitErr != nil {
 		return gitInfo, gitErr
 	}
@@ -110,20 +118,38 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	if runtime.GOOS == "windows" {
 		lineSeparator = "\r\n"
 	}
-	output = strings.Trim(output, trimChars)
 	outputLines := strings.Split(output, lineSeparator)
+
+	gitInfo.Upstream = outputLines[0]
+	for _, upstream := range outputLines {
+		if strings.Contains(upstream, "origin") {
+			gitInfo.Upstream = upstream
+			break
+		} else if strings.Contains(upstream, "upstream") {
+			gitInfo.Upstream = upstream
+		}
+	}
+
+	gitInfo.Upstream = strings.TrimSpace(gitInfo.Upstream)
 
 	const noCommits = "## No commits yet on "
 	const branchPrefix = "## "
 	const branchSeparatorString = "..."
 
-	value := strings.Trim(outputLines[0], trimChars)
+	kargs := []string{"status", "-sb"}
+	statusOutput, gitErr := RunGit(config.LoggingConfig, config.ProjectDir, kargs, config.Dryrun)
+	if gitErr != nil {
+		return gitInfo, gitErr
+	}
+
+	statusOutput = strings.Trim(statusOutput, trimChars)
+	statusOutputLines := strings.Split(statusOutput, lineSeparator)
+
+	value := strings.Trim(statusOutputLines[0], trimChars)
 
 	if strings.HasPrefix(value, branchPrefix) {
 		if strings.Contains(value, branchSeparatorString) {
 			gitInfo.Branch = strings.Trim(StringBetween(value, branchPrefix, branchSeparatorString), trimChars)
-			gitInfo.Upstream = strings.Trim(StringAfter(value, branchSeparatorString), trimChars)
-			gitInfo.Upstream = strings.Split(gitInfo.Upstream, " ")[0]
 		} else {
 			gitInfo.Branch = strings.Trim(StringAfter(value, branchPrefix), trimChars)
 		}
@@ -141,7 +167,6 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	}
 	gitInfo.ChangesMade = changesMade
 
-	errMsg := ""
 	if gitInfo.Upstream != "" {
 		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(config.LoggingConfig, config.ProjectDir, gitInfo.Upstream, config.Dryrun)
 		if gitErr != nil {
@@ -152,10 +177,6 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 		errMsg += "Unable to determine origin to compute repository URL "
 	}
 
-	gitInfo.Commit, gitErr = RunGitGetLastCommit(gitInfo.RemoteURL, config)
-	if gitErr != nil {
-		errMsg += "Received error getting current commit: " + gitErr.Error()
-	}
 	if errMsg != "" {
 		return gitInfo, errors.New(errMsg)
 	}
