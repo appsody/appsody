@@ -490,13 +490,97 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 
 	return projectName, nil
 }
+
+func GetDeprecated(config *RootCommandConfig) error {
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	stackInfo := v.Get("stack")
+	if stackInfo == nil {
+		return errors.New("stack information not found in .appsody-config.yaml file")
+	}
+	stackLabels, err := getStackLabels(config)
+	if err != nil {
+		return err
+	}
+	if stackLabels["dev.appsody.stack.deprecated"] != "" {
+		config.Info.logf("*\n*\n*\nStack deprecated: %v \n*\n*\n*", stackLabels["dev.appsody.stack.deprecated"])
+	}
+
+	return nil
+}
+
+func getStackIndexYaml(repoID string, stackID string, config *RootCommandConfig) (*IndexYamlStack, error) {
+
+	if config.Dryrun {
+		return nil, nil
+	}
+
+	var stackEntry *IndexYamlStack
+	extractDir := filepath.Join(getHome(config), "extract")
+
+	// Get Repository directory and unmarshal
+	repoDir := getRepoDir(config)
+	var repoFile RepositoryFile
+	source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
+	if err != nil {
+		return stackEntry, errors.Errorf("Error trying to read: %v", err)
+	}
+
+	err = yaml.Unmarshal(source, &repoFile)
+	if err != nil {
+		return stackEntry, errors.Errorf("Error parsing the repository.yaml file: %v", err)
+	}
+
+	// get specificed repo and unmarshal
+	repoEntry := repoFile.GetRepo(repoID)
+
+	// error if repo not found in repository.yaml
+	if repoEntry == nil {
+		return stackEntry, errors.Errorf("Repository: '%s' was not found in the repository.yaml file", repoID)
+	}
+	repoEntryURL := repoEntry.URL
+
+	if repoEntryURL == "" {
+		return stackEntry, errors.Errorf("URL for specified repository is empty")
+	}
+
+	var repoIndex IndexYaml
+	tempRepoIndex := filepath.Join(extractDir, "index.yaml")
+	err = downloadFileToDisk(config.LoggingConfig, repoEntryURL, tempRepoIndex, config.Dryrun)
+	if err != nil {
+		return stackEntry, err
+	}
+	defer os.Remove(tempRepoIndex)
+	tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
+	if err != nil {
+		return stackEntry, errors.Errorf("Error trying to read: %v", err)
+	}
+
+	err = yaml.Unmarshal(tempRepoIndexFile, &repoIndex)
+	if err != nil {
+		return stackEntry, errors.Errorf("Error parsing the index.yaml file: %v", err)
+	}
+
+	// get specified stack and get URL
+	stackEntry = getStack(&repoIndex, stackID)
+	if stackEntry == nil {
+		return stackEntry, errors.New("Could not find stack specified in repository index")
+	}
+
+	return stackEntry, nil
+
+}
+
 func getDefaultStackRegistry(config *RootCommandConfig) string {
 	defaultStackRegistry := config.CliConfig.Get("images").(string)
 	if defaultStackRegistry == "" {
-		config.Debug.Log("Appsody config file does not contain a default stack registry images property - setting it to docker.io")
 		defaultStackRegistry = "docker.io"
 	}
-	config.Debug.Log("Default stack registry set to: ", defaultStackRegistry)
 	return defaultStackRegistry
 }
 
@@ -589,7 +673,6 @@ func getProjectConfigFileContents(config *RootCommandConfig) (*ProjectConfig, er
 
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
-	config.Debug.log("Project config file set to: ", appsodyConfig)
 
 	err := v.ReadInConfig()
 
@@ -614,7 +697,6 @@ func getStackRegistryFromConfigFile(config *RootCommandConfig) (string, error) {
 		// stack is in .appsody-config.yaml
 		stackElements := strings.Split(stack, "/")
 		if len(stackElements) == 3 {
-			config.Debug.Log("Stack registry detected in project config file: ", stackElements[0])
 			return stackElements[0], nil
 		}
 		if len(stackElements) < 3 {

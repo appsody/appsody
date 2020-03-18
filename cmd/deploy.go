@@ -70,10 +70,12 @@ Run this command from the root directory of your Appsody project.`,
 			if len(args) > 0 {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
+			config.Debug.Log("Default stack registry set to: ", &config.RootCommandConfig.StackRegistry)
 			projectDir, err := getProjectDir(config.RootCommandConfig)
 			if err != nil {
 				return err
 			}
+			config.Debug.log("Project config file set to: ", filepath.Join(projectDir, ConfigFile))
 			config.knativeFlagPresent = cmd.Flag("knative").Changed
 			config.namespaceFlagPresent = cmd.Flag("namespace").Changed
 
@@ -196,6 +198,11 @@ Run this command from the root directory of your Appsody project.`,
 				rootConfig.Info.log("Deployed project running at ", out)
 			} else {
 				rootConfig.Info.log("Dry run complete")
+			}
+
+			depErr := GetDeprecated(config.RootCommandConfig)
+			if depErr != nil {
+				return depErr
 			}
 
 			return nil

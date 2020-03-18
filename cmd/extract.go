@@ -315,6 +315,11 @@ func extract(config *extractCommandConfig) error {
 			config.Info.log("Project extracted to ", targetDir)
 		}
 	}
+
+	depErr := GetDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
 	return nil
 }
 
