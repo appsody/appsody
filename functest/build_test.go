@@ -458,7 +458,7 @@ func TestInvalidBuild(t *testing.T) {
 	}
 }
 
-func TestBuildConfigAlreadyExists(t *testing.T) {
+func TestBuildDeploymentConfigAlreadyExists(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
