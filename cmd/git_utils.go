@@ -115,20 +115,19 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 
 	outputLines, err := RunGitBranchContains(config.LoggingConfig, gitInfo.Commit.SHA, config.ProjectDir, lineSeparator, config.Dryrun)
 	if err != nil {
-		return gitInfo, err
-	}
-
-	gitInfo.Upstream = outputLines[0]
-	for _, upstream := range outputLines {
-		if strings.Contains(upstream, "origin") {
-			gitInfo.Upstream = upstream
-			break
-		} else if strings.Contains(upstream, "upstream") {
-			gitInfo.Upstream = upstream
+		errMsg += "Unable to locate latest commit in remote."
+	} else {
+		gitInfo.Upstream = outputLines[0]
+		for _, upstream := range outputLines {
+			if strings.Contains(upstream, "origin") {
+				gitInfo.Upstream = upstream
+				break
+			} else if strings.Contains(upstream, "upstream") {
+				gitInfo.Upstream = upstream
+			}
 		}
+		gitInfo.Upstream = strings.TrimSpace(gitInfo.Upstream)
 	}
-
-	gitInfo.Upstream = strings.TrimSpace(gitInfo.Upstream)
 
 	if gitInfo.Upstream == "" {
 		gitInfo.Commit.Pushed = false
