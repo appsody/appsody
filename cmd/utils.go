@@ -493,10 +493,8 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 func getDefaultStackRegistry(config *RootCommandConfig) string {
 	defaultStackRegistry := config.CliConfig.Get("images").(string)
 	if defaultStackRegistry == "" {
-		config.Debug.Log("Appsody config file does not contain a default stack registry images property - setting it to docker.io")
 		defaultStackRegistry = "docker.io"
 	}
-	config.Debug.Log("Default stack registry set to: ", defaultStackRegistry)
 	return defaultStackRegistry
 }
 
@@ -589,7 +587,6 @@ func getProjectConfigFileContents(config *RootCommandConfig) (*ProjectConfig, er
 
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
-	config.Debug.log("Project config file set to: ", appsodyConfig)
 
 	err := v.ReadInConfig()
 
@@ -614,7 +611,6 @@ func getStackRegistryFromConfigFile(config *RootCommandConfig) (string, error) {
 		// stack is in .appsody-config.yaml
 		stackElements := strings.Split(stack, "/")
 		if len(stackElements) == 3 {
-			config.Debug.Log("Stack registry detected in project config file: ", stackElements[0])
 			return stackElements[0], nil
 		}
 		if len(stackElements) < 3 {

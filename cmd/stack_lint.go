@@ -158,7 +158,7 @@ Run this command from the root directory of your stack, or specify the path to y
 
 			templates, _ := ioutil.ReadDir(templatePath)
 			for _, f := range templates {
-				fileCheck, err = Exists(filepath.Join(templatePath, f.Name(), ".appsody-config.yaml"))
+				fileCheck, err = Exists(filepath.Join(templatePath, f.Name(), ConfigFile))
 				if (err != nil) && f.Name() != ".DS_Store" {
 					rootConfig.Error.log("Error attempting to determine file: ", err)
 					stackLintErrorCount++
