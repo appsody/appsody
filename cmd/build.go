@@ -577,7 +577,7 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 		deploymentManifest.Namespace = config.namespace
 	}
 
-	err = writeDeploymentManifest(deploymentManifest, config)
+	err = writeDeploymentManifest(deploymentManifest, configFile)
 	if err != nil {
 		return err
 	}
@@ -600,9 +600,7 @@ func getDeploymentManifest(configFile string) (DeploymentManifest, error) {
 	return deploymentManifest, err
 }
 
-func writeDeploymentManifest(deploymentManifest DeploymentManifest, config *buildCommandConfig) error {
-	configFile := config.appDeployFile
-
+func writeDeploymentManifest(deploymentManifest DeploymentManifest, configFile string) error {
 	output, err := yaml.Marshal(deploymentManifest)
 	if err != nil {
 		return errors.Errorf("Could not marshall deployment manifest to YAML when updating the %s: %s", configFile, err)
