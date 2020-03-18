@@ -81,7 +81,8 @@ Run this command from the root directory of your Appsody project.`,
 
 			dryrun := config.Dryrun
 			namespace := config.namespace
-			configFile := filepath.Join(projectDir, config.appDeployFile)
+			config.appDeployFile = filepath.Join(projectDir, config.appDeployFile)
+			configFile := config.appDeployFile
 
 			exists, err := Exists(configFile)
 			if err != nil {

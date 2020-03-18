@@ -577,7 +577,7 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 		deploymentManifest.Namespace = config.namespace
 	}
 
-	err = writeDeploymentManifest(deploymentManifest, config.appDeployFile)
+	err = writeDeploymentManifest(deploymentManifest, configFile)
 	if err != nil {
 		return err
 	}

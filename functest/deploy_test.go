@@ -180,6 +180,14 @@ func TestDeployChangeNamespace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	deploymentManifest, err := getAppDeployYaml(filepath.Join(sandbox.ProjectDir, deployFile), t)
+	if err != nil {
+		t.Errorf("Could not get deployment manifest: %s", err)
+		return
+	}
+	if deploymentManifest.Namespace != secondNamespace {
+		t.Errorf("Did not find expected namespace in app-deploy.yaml. Expected %s but found %s", secondNamespace, deploymentManifest.Namespace)
+	}
 }
 
 // Testing deploy delete when the required config file cannot be found
