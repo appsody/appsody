@@ -117,27 +117,39 @@ func TestGetGitInfoWithNotAGitRepo(t *testing.T) {
 	}
 }
 
-func TestGetGitInfoWithNoCommits(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	loggingConfig := &cmd.LoggingConfig{}
-	loggingConfig.InitLogging(&outBuffer, &outBuffer)
-	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
-
-	// Change the config ProjectDir to be in the sandboxing folder because that's where
-	// we want to execute the commands
-	config.ProjectDir = sandbox.ProjectDir
-
-	_, gitErr := cmd.RunGit(loggingConfig, sandbox.ProjectDir, []string{"init"}, false)
-	if gitErr != nil {
-		t.Error(gitErr)
+func TestGitInfo(t *testing.T) {
+	var gitInfoValues = []struct {
+		testName      string
+		expectedError string
+	}{
+		{"TestGetGitInfoWithNoCommits", "does not have any commits yet"},
+		{"TestGetGitInfoWithCommitNotPushed", "Unable to locate latest commit in remote"},
 	}
-	_, err := cmd.GetGitInfo(config)
-	expectedError := "does not have any commits yet"
-	if err == nil || !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Should had flagged error: %v", expectedError)
-	}
+	for _, testData := range gitInfoValues {
+		tt := testData
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 
+			var outBuffer bytes.Buffer
+			loggingConfig := &cmd.LoggingConfig{}
+			loggingConfig.InitLogging(&outBuffer, &outBuffer)
+			config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+
+			// Change the config ProjectDir to be in the sandboxing folder because that's where
+			// we want to execute the commands
+			config.ProjectDir = sandbox.ProjectDir
+
+			_, gitErr := cmd.RunGit(loggingConfig, sandbox.ProjectDir, []string{"init"}, false)
+			if gitErr != nil {
+				t.Error(gitErr)
+			}
+
+			_, err := cmd.GetGitInfo(config)
+
+			if err == nil || !strings.Contains(err.Error(), tt.expectedError) {
+				t.Errorf("Should had flagged error: %v", tt.expectedError)
+			}
+		})
+	}
 }
