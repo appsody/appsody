@@ -44,20 +44,30 @@ type devCommonConfig struct {
 	dockerOptions   string
 }
 
-func checkDockerRunOptions(options []string) error {
-	//runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))((=?$)|(=.*)))"
-	runOptionsTest := "(^((--help)|(-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))((=?$)|(=.*)))"
-
+func checkDockerRunOptions(options []string, config *RootCommandConfig) error {
+	runOptionsTest := "(^((--help)|(-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint))((=?$)|(=.*)))"
 	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)
-	for _, value := range options {
+
+	for ind, value := range options {
 		isInBlackListed := blackListedRunOptionsRegexp.MatchString(value)
 		if isInBlackListed {
 			return errors.Errorf("%s is not allowed in --docker-options", value)
-
+		}
+		if value == "-v" || value == "--volume" {
+			var p ProjectFile
+			project, _, err := p.ensureProjectIDAndEntryExists(config)
+			if err != nil {
+				return err
+			}
+			for _, volume := range project.Volumes {
+				userSpecifiedMount := options[ind+1]
+				if strings.Contains(userSpecifiedMount, volume.Path) {
+					return errors.Errorf("User specified mount %s is not allowed in --docker-options, as it interferes with the stack specified mount %s", userSpecifiedMount, volume.Path)
+				}
+			}
 		}
 	}
 	return nil
-
 }
 
 func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
@@ -280,7 +290,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		dockerOptions = strings.TrimPrefix(dockerOptions, " ")
 		dockerOptions = strings.TrimSuffix(dockerOptions, " ")
 		dockerOptionsCmd := strings.Split(dockerOptions, " ")
-		err := checkDockerRunOptions(dockerOptionsCmd)
+		err := checkDockerRunOptions(dockerOptionsCmd, config.RootCommandConfig)
 		if err != nil {
 			return err
 		}
