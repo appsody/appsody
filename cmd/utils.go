@@ -524,9 +524,8 @@ func getStackIndexYaml(repoID string, stackID string, config *RootCommandConfig)
 	extractDir := filepath.Join(getHome(config), "extract")
 
 	// Get Repository directory and unmarshal
-	repoDir := getRepoDir(config)
 	var repoFile RepositoryFile
-	source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
+	source, err := ioutil.ReadFile(getRepoFileLocation(config))
 	if err != nil {
 		return stackEntry, errors.Errorf("Error trying to read: %v", err)
 	}
