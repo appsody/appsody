@@ -351,3 +351,28 @@ func TestRunIfProjectIDNotExistInConfigYaml(t *testing.T) {
 		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
 	}
 }
+
+// check error if user specified mount interferes with stack mounts
+func TestRunUserSpecifiedVolumes(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	userSpecifiedMount := "volume:/project/user-app/node_modules"
+	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err == nil {
+		t.Fatal("Expected non-zero exit code")
+	}
+
+	expectedError := "User specified mount " + userSpecifiedMount + " is not allowed in --docker-options, as it interferes with the stack specified mount /project/user-app/node_modules"
+	if !strings.Contains(output, expectedError) {
+		t.Fatalf("Expected error not found: %s", expectedError)
+	}
+}
