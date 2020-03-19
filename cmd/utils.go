@@ -2109,6 +2109,9 @@ func downloadFile(log *LoggingConfig, href string, writer io.Writer) error {
 		return err
 	}
 
+	token := os.Getenv("GH_TOKEN")
+	req.Header.Add("Authorization", token)
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
