@@ -89,6 +89,9 @@ func StringBetween(value string, pre string, post string) string {
 
 //RunGitFindBranch issues git status
 func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
+	const noCommits = "## No commits yet on "
+	const branchPrefix = "## "
+	const branchSeparatorString = "..."
 	var gitInfo GitInfo
 	var gitErr error
 	errMsg := ""
@@ -113,43 +116,6 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 		lineSeparator = "\r\n"
 	}
 
-	outputLines, err := RunGitBranchContains(config.LoggingConfig, gitInfo.Commit.SHA, config.ProjectDir, lineSeparator, config.Dryrun)
-	if err != nil {
-		errMsg += "Unable to locate latest commit in remote. "
-	} else {
-		gitInfo.Upstream = outputLines[0]
-		for _, upstream := range outputLines {
-			if strings.Contains(upstream, "origin") {
-				gitInfo.Upstream = upstream
-				break
-			} else if strings.Contains(upstream, "upstream") {
-				gitInfo.Upstream = upstream
-			}
-		}
-		gitInfo.Upstream = strings.TrimSpace(gitInfo.Upstream)
-	}
-
-	if gitInfo.Upstream == "" {
-		gitInfo.Commit.Pushed = false
-		gitRemoteOutput, err := RunGitRemote(config.LoggingConfig, config.ProjectDir, lineSeparator, config.Dryrun)
-		if err != nil {
-			return gitInfo, err
-		}
-
-		for _, remotes := range gitRemoteOutput {
-			if strings.Contains(remotes, "origin") {
-				gitInfo.Upstream = remotes
-				break
-			} else if strings.Contains(remotes, "upstream") {
-				gitInfo.Upstream = remotes
-			}
-		}
-	}
-
-	const noCommits = "## No commits yet on "
-	const branchPrefix = "## "
-	const branchSeparatorString = "..."
-
 	kargs := []string{"status", "-sb"}
 	statusOutput, gitErr := RunGit(config.LoggingConfig, config.ProjectDir, kargs, config.Dryrun)
 	if gitErr != nil {
@@ -164,21 +130,61 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	if strings.HasPrefix(value, branchPrefix) {
 		if strings.Contains(value, branchSeparatorString) {
 			gitInfo.Branch = strings.Trim(StringBetween(value, branchPrefix, branchSeparatorString), trimChars)
+			gitInfo.Upstream = strings.Trim(StringAfter(value, branchSeparatorString), trimChars)
+			gitInfo.Upstream = strings.Split(gitInfo.Upstream, " ")[0]
 		} else {
 			gitInfo.Branch = strings.Trim(StringAfter(value, branchPrefix), trimChars)
 		}
 
 	}
+
 	if strings.Contains(value, noCommits) {
 		gitInfo.Branch = StringAfter(value, noCommits)
 	}
+
 	changesMade := false
-	outputLength := len(outputLines)
+	outputLength := len(statusOutputLines)
 
 	if outputLength > 1 {
 		changesMade = true
 	}
 	gitInfo.ChangesMade = changesMade
+
+	if gitInfo.Upstream == "" {
+		config.Debug.log("Failed to retrieve upstream from git status -sb. Looking via latest commit")
+		outputLines, err := RunGitBranchContains(config.LoggingConfig, gitInfo.Commit.SHA, config.ProjectDir, lineSeparator, config.Dryrun)
+		if err != nil {
+			errMsg += "Unable to locate latest commit in remote. "
+		} else {
+			gitInfo.Upstream = outputLines[0]
+			for _, upstream := range outputLines {
+				if upstream == "origin" {
+					gitInfo.Upstream = upstream
+					break
+				} else if upstream == "upstream" {
+					gitInfo.Upstream = upstream
+				}
+			}
+			gitInfo.Upstream = strings.TrimSpace(gitInfo.Upstream)
+		}
+	}
+
+	if gitInfo.Upstream == "" {
+		gitInfo.Commit.Pushed = false
+		gitRemoteOutput, err := RunGitRemote(config.LoggingConfig, config.ProjectDir, lineSeparator, config.Dryrun)
+		if err != nil {
+			return gitInfo, err
+		}
+		gitInfo.Upstream = gitRemoteOutput[0]
+		for _, remote := range gitRemoteOutput {
+			if remote == "origin" {
+				gitInfo.Upstream = remote
+				break
+			} else if remote == "upstream" {
+				gitInfo.Upstream = remote
+			}
+		}
+	}
 
 	if gitInfo.Upstream != "" {
 		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(config.LoggingConfig, config.ProjectDir, gitInfo.Upstream, config.Dryrun)
