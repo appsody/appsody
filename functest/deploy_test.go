@@ -149,7 +149,7 @@ func TestDeployNoNamespace(t *testing.T) {
 	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageTag, "", false})
 }
 
-func TestDeployNamespaceMismatch(t *testing.T) {
+func TestDeployChangeNamespace(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
@@ -173,14 +173,21 @@ func TestDeployNamespaceMismatch(t *testing.T) {
 	t.Logf("Running appsody deploy with namespace: %s ...", secondNamespace)
 	output, err := cmdtest.RunAppsody(sandbox, "deploy", "--generate-only", "-n", secondNamespace)
 
-	if err != nil {
-		if !strings.Contains(output, "the namespace \""+firstNamespace+"\" from the deployment manifest does not match the namespace \""+secondNamespace+"\" passed as an argument.") {
-			t.Errorf("Expecting namespace error to be thrown, but another error was thrown: %s", err)
-		}
-	} else {
-		t.Error("Deploy with conflicting namespace did not fail as expected")
+	expectedOutput := "Overriding namespace " + firstNamespace + " in the deployment manifest to: " + secondNamespace
+	if !strings.Contains(output, expectedOutput) {
+		t.Errorf("Did not get expected output: %s", expectedOutput)
 	}
-
+	if err != nil {
+		t.Fatal(err)
+	}
+	deploymentManifest, err := getAppDeployYaml(filepath.Join(sandbox.ProjectDir, deployFile), t)
+	if err != nil {
+		t.Errorf("Could not get deployment manifest: %s", err)
+		return
+	}
+	if deploymentManifest.Namespace != secondNamespace {
+		t.Errorf("Did not find expected namespace in app-deploy.yaml. Expected %s but found %s", secondNamespace, deploymentManifest.Namespace)
+	}
 }
 
 // Testing deploy delete when the required config file cannot be found
