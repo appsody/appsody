@@ -8,6 +8,9 @@ go_import_path: github.com/appsody/appsody
 services:
   - docker
 
+env:
+  - GH_READ_TOKEN: "05a26637e299a0d3481c9f9c62c8d5a373c74af9"
+
 # skip the default language's install and script steps, we implement job stages instead
 install: skip
 script: skip
