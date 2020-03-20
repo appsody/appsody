@@ -130,7 +130,6 @@ func TestStackAddToRepoErrors(t *testing.T) {
 	}
 }
 
-/*
 var stackAddToRepoStackExists = []struct {
 	testName string
 	args     []string // input
@@ -184,4 +183,4 @@ func TestStackAddToRepoUseLocalCache(t *testing.T) {
 			}
 		})
 	}
-}*/
+}
