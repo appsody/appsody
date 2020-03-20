@@ -39,6 +39,7 @@ type Stack struct {
 	Version     string                   `yaml:"version" json:"version"`
 	Description string                   `yaml:"description" json:"description"`
 	Templates   []IndexYamlStackTemplate `yaml:"templates,omitempty" json:"templates,omitempty"`
+	Deprecated  string                   `yaml:"deprecated,omitempty" json:"deprecated,omitempty"`
 }
 
 // RepoIndices maps repos to their RepoIndex (i.e. the projects in a repo)
@@ -251,6 +252,9 @@ func (index *IndexYaml) listProjects(repoName string, config *RootCommandConfig)
 
 	for _, value := range Stacks {
 		templatesListString := convertTemplatesArrayToString(value.Templates)
+		if value.Deprecated != "" {
+			value.ID = value.ID + " [Deprecated]"
+		}
 		table.AddRow(value.repoName, value.ID, value.Version, templatesListString, value.Description)
 	}
 	return table.String(), nil
@@ -474,11 +478,11 @@ func (index *IndexYaml) buildStacksFromIndex(repoName string, Stacks []Stack) []
 
 	for id, value := range index.Projects {
 		setDefaultTemplate(value[0].Templates[:], value[0].DefaultTemplate)
-		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, value[0].Templates})
+		Stacks = append(Stacks, Stack{repoName, id, value[0].Version, value[0].Description, value[0].Templates, value[0].Deprecated})
 	}
 	for _, value := range index.Stacks {
 		setDefaultTemplate(value.Templates[:], value.DefaultTemplate)
-		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, value.Templates})
+		Stacks = append(Stacks, Stack{repoName, value.ID, value.Version, value.Description, value.Templates, value.Deprecated})
 	}
 
 	sort.Slice(Stacks, func(i, j int) bool {
@@ -531,6 +535,10 @@ func (r *RepositoryFile) listProjects(config *RootCommandConfig) (string, error)
 
 		if value.repoName == defaultRepoName {
 			value.repoName = "*" + value.repoName
+		}
+
+		if value.Deprecated != "" {
+			value.ID = value.ID + " [Deprecated]"
 		}
 
 		templatesListString := convertTemplatesArrayToString(value.Templates)
