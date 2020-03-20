@@ -533,9 +533,8 @@ func getStackIndexYaml(repoID string, stackID string, config *RootCommandConfig)
 	extractDir := filepath.Join(getHome(config), "extract")
 
 	// Get Repository directory and unmarshal
-	repoDir := getRepoDir(config)
 	var repoFile RepositoryFile
-	source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
+	source, err := ioutil.ReadFile(getRepoFileLocation(config))
 	if err != nil {
 		return stackEntry, errors.Errorf("Error trying to read: %v", err)
 	}
@@ -2117,6 +2116,14 @@ func downloadFile(log *LoggingConfig, href string, writer io.Writer) error {
 	req, err := http.NewRequest("GET", href, nil)
 	if err != nil {
 		return err
+	}
+
+	if strings.Contains(href, "http") {
+		token := os.Getenv("GH_READ_TOKEN")
+		if token != "" {
+			token = "token " + token
+			req.Header.Add("Authorization", token)
+		}
 	}
 
 	resp, err := httpClient.Do(req)
