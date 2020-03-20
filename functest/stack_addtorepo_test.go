@@ -150,21 +150,13 @@ func TestStackAddToRepoUseLocalCache(t *testing.T) {
 
 			sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
-			args := append([]string{"repo", "add"}, tt.args...)
-			args = append(args, "file://"+filepath.Join(sandbox.TestDataPath, tt.repoName)+"-index.yaml")
-
-			_, err := cmdtest.RunAppsody(sandbox, args...)
-			if err != nil {
-				t.Fatalf("Error adding repo to configured list of repositories: %v", err)
-			}
-
 			packageArgs := []string{"stack", "package"}
-			_, err = cmdtest.RunAppsody(sandbox, packageArgs...)
+			_, err := cmdtest.RunAppsody(sandbox, packageArgs...)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			args = append([]string{"stack", "add-to-repo"}, tt.args...)
+			args := append([]string{"stack", "add-to-repo"}, tt.args...)
 			_, err = cmdtest.RunAppsody(sandbox, args...)
 			if err != nil {
 				t.Fatalf("Error adding stack to repository: %v", err)
