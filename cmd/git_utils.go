@@ -94,6 +94,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	const branchSeparatorString = "..."
 	var gitInfo GitInfo
 	var gitErr error
+	var noRemoteFound bool
 	errMsg := ""
 
 	version, vErr := RunGitVersion(config.LoggingConfig, config.ProjectDir, false)
@@ -154,7 +155,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 		config.Debug.log("Failed to retrieve upstream from git status -sb. Looking via latest commit")
 		outputLines, err := RunGitBranchContains(config.LoggingConfig, gitInfo.Commit.SHA, config.ProjectDir, lineSeparator, config.Dryrun)
 		if err != nil {
-			errMsg += "Unable to locate latest commit in remote. "
+			noRemoteFound = true
 		} else {
 			gitInfo.Upstream = outputLines[0]
 			for _, upstream := range outputLines {
@@ -166,6 +167,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 				}
 			}
 			gitInfo.Upstream = strings.TrimSpace(gitInfo.Upstream)
+			config.Debug.log("Successfully retrieved upstream via git branch --contains")
 		}
 	}
 
@@ -187,6 +189,8 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	}
 
 	if gitInfo.Upstream != "" {
+		config.Debug.log("Successfully retrieved remote name")
+		noRemoteFound = false
 		gitInfo.RemoteURL, gitErr = RunGitConfigLocalRemoteOriginURL(config.LoggingConfig, config.ProjectDir, gitInfo.Upstream, config.Dryrun)
 		if gitErr != nil {
 			errMsg += fmt.Sprintf("Could not construct repository URL %v ", gitErr)
@@ -194,6 +198,10 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 
 	} else {
 		errMsg += "Unable to determine origin to compute repository URL "
+	}
+
+	if noRemoteFound == true {
+		errMsg += "Unable to retrieve remote via git status, git branch --contains, or git remote."
 	}
 
 	if errMsg != "" {
@@ -212,6 +220,10 @@ func RunGitBranchContains(log *LoggingConfig, commitSHA string, workDir string, 
 		return []string{}, gitErr
 	}
 
+	if output == "" {
+		return []string{}, errors.New("No remotes returned from git branch command")
+	}
+
 	outputLines := strings.Split(output, lineSeparator)
 	return outputLines, nil
 
@@ -224,6 +236,10 @@ func RunGitRemote(log *LoggingConfig, workDir string, lineSeparator string, dryr
 	remoteOutput, err := RunGit(log, workDir, kargs, dryrun)
 	if err != nil {
 		return []string{}, err
+	}
+
+	if remoteOutput == "" {
+		return []string{}, errors.New("No remotes returned from git remote command")
 	}
 
 	remoteOutputLines := strings.Split(remoteOutput, lineSeparator)

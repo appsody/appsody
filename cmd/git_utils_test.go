@@ -124,6 +124,7 @@ func TestGitInfo(t *testing.T) {
 	}{
 		{"TestGetGitInfoWithNoCommits", "does not have any commits yet"},
 		{"TestGetGitInfoWithCommitNotPushed", "Unable to locate latest commit in remote"},
+		{"TestGetGitInfoWithRemote", "Successfully retrieved remote name"}
 	}
 	for _, testData := range gitInfoValues {
 		tt := testData
@@ -143,6 +144,13 @@ func TestGitInfo(t *testing.T) {
 			_, gitErr := cmd.RunGit(loggingConfig, sandbox.ProjectDir, []string{"init"}, false)
 			if gitErr != nil {
 				t.Error(gitErr)
+			}
+
+			if tt.testName == "TestGetGitInfoWithRemote" {
+				_, gitErr := cmd.RunGit(loggingConfig, sandbox.ProjectDir, []string{"remote", "add", "testRemote", "testURL"}, false)
+				if gitErr != nil {
+					t.Error(gitErr)
+				}
 			}
 
 			_, err := cmd.GetGitInfo(config)
