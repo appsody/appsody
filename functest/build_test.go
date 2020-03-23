@@ -424,7 +424,9 @@ func TestInvalidBuild(t *testing.T) {
 	}{
 		{"Missing Tag ", []string{"--push"}, "Cannot specify --push or --push-url without a --tag"},
 		{"Invalid Tag with Push URL", []string{"--push-url", "i.am.not.a.real.url", "--tag", "£"}, "invalid argument \"i.am.not.a.real.url/£\" for \"-t, --tag"},
-		{"Invalid Push URL", []string{"--push-url", "i.am.not.a.real.url", "--tag", "notgonna/work"}, "Could not push the docker image"},
+		{"Invalid Push URL", []string{"--push-url", "this.should.not.be.valid.", "--tag", "notgonna/work"}, "Push URL provided is not valid"},
+		{"Invalid Push URL 2", []string{"--push-url", "htt://www.appsody.com", "--tag", "notgonna/work"}, "Push URL provided is not valid"},
+		{"Invalid Push URL 3", []string{"--push-url", "://www.appsody.com", "--tag", "notgonna/work"}, "Push URL provided is not valid"},
 	}
 	for _, testData := range knativeFlagTests {
 		tt := testData
