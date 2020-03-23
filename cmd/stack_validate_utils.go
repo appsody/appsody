@@ -16,7 +16,6 @@ package cmd
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -53,7 +52,7 @@ func RunAppsodyCmdExec(args []string, workingDir string, rootConfig *RootCommand
 		cmdArgs = append(cmdArgs, "-v")
 	}
 	cmdArgs = append(cmdArgs, args...)
-	fmt.Println(cmdArgs)
+	rootConfig.LoggingConfig.Info.log(cmdArgs)
 
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	outReader, outWriter, err := os.Pipe()
@@ -74,7 +73,7 @@ func RunAppsodyCmdExec(args []string, workingDir string, rootConfig *RootCommand
 			out := outScanner.Bytes()
 			outBuffer.Write(out)
 			outBuffer.WriteByte('\n')
-			fmt.Println(string(out))
+			rootConfig.LoggingConfig.Info.logf(string(out))
 		}
 	}()
 
@@ -97,11 +96,11 @@ func RunAppsodyCmdExec(args []string, workingDir string, rootConfig *RootCommand
 // The stdout and stderr are captured, printed, and returned
 // args will be passed to the docker command
 // workingDir will be the directory the command runs in
-func RunDockerCmdExec(args []string) (string, error) {
+func RunDockerCmdExec(args []string, log *LoggingConfig) (string, error) {
 
 	cmdArgs := []string{"docker"}
 	cmdArgs = append(cmdArgs, args...)
-	fmt.Println(cmdArgs)
+	log.Debug.logf("Running command: %v", cmdArgs)
 
 	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	outReader, outWriter, err := os.Pipe()
@@ -121,8 +120,7 @@ func RunDockerCmdExec(args []string) (string, error) {
 		for outScanner.Scan() {
 			out := outScanner.Bytes()
 			outBuffer.Write(out)
-			outBuffer.WriteByte('\n')
-			fmt.Println(string(out))
+			log.Debug.Log(string(out))
 		}
 	}()
 

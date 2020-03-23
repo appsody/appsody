@@ -136,3 +136,29 @@ func TestPackageBuildahWithOptions(t *testing.T) {
 	}
 
 }
+
+func TestPackageDeprecatedStack(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	projectDir := sandbox.ProjectDir
+	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "deprecated-stack")
+
+	args := []string{"stack", "package"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sandbox.ProjectDir = projectDir
+	args = []string{"init", "dev.local/deprecated-stack"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedOutput := "Stack deprecated: 01/01/0001 - this is a test"
+	if !strings.Contains(output, expectedOutput) {
+		t.Fatalf("Did not get expected error: %s", expectedOutput)
+	}
+}
