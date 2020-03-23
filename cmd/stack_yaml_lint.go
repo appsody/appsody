@@ -65,7 +65,7 @@ func (stackDetails *StackYaml) validateFields(rootConfig *RootCommandConfig) int
 
 	for i := 0; i < v.NumField(); i++ {
 		yamlValues[i] = v.Field(i).Interface()
-		if yamlValues[i] == "" {
+		if yamlValues[i] == "" && v.Type().Field(i).Name != "Deprecated" {
 			rootConfig.Error.log("Missing value for field: ", strings.ToLower(v.Type().Field(i).Name))
 			stackLintErrorCount++
 		}
