@@ -53,7 +53,7 @@ func TestLinterInvalidValues(t *testing.T) {
 		{"Invalid Name Length", "stack.yaml", "sample stack", "name: This name is far too long to pass and therefore should also fail.", "Stack name must be under "},
 		{"Invalid Description Length", "stack.yaml", "description: ", "description: This stack description is far too long (greater than 70 characters) and therefore should also fail.", "Description must be under "},
 		{"Invalid License Field", "stack.yaml", "license: ", "license: invalidLicense", "The stack.yaml SPDX license ID is invalid"},
-		{"Invalid Templating Value", "stack.yaml", "  key1: ", "  key&@_1: value", "is not in an alphanumeric format"},
+		{"Invalid Templating Value", "stack.yaml", "  key1: ", "  key&@_1: value", "stack.yaml templating-data key is not alphanumeric:"},
 		{"Invalid Requirements", "stack.yaml", "  appsody-version:", "  appsody-version: invalid-req", "is not in the correct format. See:"},
 	}
 	for _, testData := range linterInvalidValues {
