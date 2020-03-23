@@ -584,7 +584,7 @@ func (r *RepositoryFile) getRepositories(config *RootCommandConfig) (IndexOutput
 	return indexOutput, nil
 }
 
-func (r *RepositoryFile) getRepository(config *RootCommandConfig, index *IndexYaml, repoName string) (IndexOutputFormat, error) {
+func (r *RepositoryFile) getRepository(index *IndexYaml, repoName string) (IndexOutputFormat, error) {
 	var indexOutput IndexOutputFormat
 	indexOutput.APIVersion = r.APIVersion
 	indexOutput.Generated = r.Generated

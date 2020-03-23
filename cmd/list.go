@@ -100,7 +100,7 @@ An asterisk in the repository column denotes the default repository. An asterisk
 					return nil
 				}
 
-				repoList, err := repos.getRepository(rootConfig, index, repoName)
+				repoList, err := repos.getRepository(index, repoName)
 				if err != nil {
 					return err
 				}
