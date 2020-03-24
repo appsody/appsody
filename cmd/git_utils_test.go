@@ -124,7 +124,7 @@ func TestGitInfo(t *testing.T) {
 	}{
 		{"TestGetGitInfoWithNoCommits", "does not have any commits yet"},
 		{"TestGetGitInfoWithCommitNotPushed", "Unable to locate latest commit in remote"},
-		{"TestGetGitInfoWithRemote", "Successfully retrieved remote name"}
+		{"TestGetGitInfoWithRemote", "Successfully retrieved remote name"},
 	}
 	for _, testData := range gitInfoValues {
 		tt := testData
