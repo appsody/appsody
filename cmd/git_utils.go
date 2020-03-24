@@ -96,6 +96,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	var gitErr error
 	var noRemoteFound bool
 	errMsg := ""
+	gitInfo.Commit.Pushed = true
 
 	version, vErr := RunGitVersion(config.LoggingConfig, config.ProjectDir, false)
 	if vErr != nil {
