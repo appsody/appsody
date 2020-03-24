@@ -17,7 +17,6 @@ package cmd
 import (
 	"archive/zip"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -26,7 +25,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 type stackCreateCommandConfig struct {
@@ -100,87 +98,42 @@ The stack name must start with a lowercase letter, and can contain only lowercas
 			extractDir := filepath.Join(getHome(rootConfig), "extract")
 			extractDirFile := filepath.Join(extractDir, extractFilename)
 
-			// Get Repository directory and unmarshal
-			repoDir := getRepoDir(rootConfig)
-			var repoFile RepositoryFile
-			source, err := ioutil.ReadFile(filepath.Join(repoDir, "repository.yaml"))
-			if err != nil {
-				return errors.Errorf("Error trying to read: %v", err)
-			}
-
-			err = yaml.Unmarshal(source, &repoFile)
-			if err != nil {
-				return errors.Errorf("Error parsing the repository.yaml file: %v", err)
-			}
-
-			// get specificed repo and unmarshal
-			repoEntry := repoFile.GetRepo(repoID)
-
-			// error if repo not found in repository.yaml
-			if repoEntry == nil {
-				return errors.Errorf("Repository: '%s' was not found in the repository.yaml file", repoID)
-			}
-			repoEntryURL := repoEntry.URL
-
-			if repoEntryURL == "" {
-				return errors.Errorf("URL for specified repository is empty")
-			}
-
-			var repoIndex IndexYaml
-			tempRepoIndex := filepath.Join(extractDir, "index.yaml")
-			err = downloadFileToDisk(rootConfig.LoggingConfig, repoEntryURL, tempRepoIndex, config.Dryrun)
+			stackEntry, err := getStackIndexYaml(repoID, stackID, rootConfig)
 			if err != nil {
 				return err
 			}
-			defer os.Remove(tempRepoIndex)
-			if !config.Dryrun {
-				tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
-				if err != nil {
-					return errors.Errorf("Error trying to read: %v", err)
-				}
-
-				err = yaml.Unmarshal(tempRepoIndexFile, &repoIndex)
-				if err != nil {
-					return errors.Errorf("Error parsing the index.yaml file: %v", err)
-				}
-
-				// get specified stack and get URL
-				stackEntry := getStack(&repoIndex, stackID)
-				if stackEntry == nil {
-					return errors.New("Could not find stack specified in repository index")
-				}
-
-				stackEntryURL := stackEntry.SourceURL
-
-				if stackEntryURL == "" {
-					//TODO: REMOVE OLD CREATE METHOD AFTER NEXT RELEASE AND UPDATE STACKS
-					//return errors.New("No source URL specified.  Use the add-to-repo command with the --release-url flag to your repo")
-					return oldCreateMethod(rootConfig.LoggingConfig, rootConfig, config, stack, currentTime)
-				}
-
-				// download source.tar.gz of selected stack source
-				err = downloadFileToDisk(rootConfig.LoggingConfig, stackEntryURL, extractDirFile, config.Dryrun)
-				if err != nil {
-					return err
-				}
-
-				//deleting the stacks targz
-				defer os.Remove(extractDirFile)
-
-				extractFile, err := os.Open(extractDirFile)
-				if err != nil {
-					return err
-				}
-
-				untarErr := untar(rootConfig.LoggingConfig, stackPath, extractFile, config.Dryrun)
-				if untarErr != nil {
-					return untarErr
-				}
-
-				rootConfig.Info.log("Stack created: ", stack)
-			} else {
-				rootConfig.Info.log("Dry run complete")
+			if rootConfig.Dryrun {
+				rootConfig.Info.Log("Dry run complete")
+				return nil
 			}
+			stackEntryURL := stackEntry.SourceURL
+
+			if stackEntryURL == "" {
+				//TODO: REMOVE OLD CREATE METHOD AFTER NEXT RELEASE AND UPDATE STACKS
+				//return errors.New("No source URL specified.  Use the add-to-repo command with the --release-url flag to your repo")
+				return oldCreateMethod(rootConfig.LoggingConfig, rootConfig, config, stack, currentTime)
+			}
+
+			// download source.tar.gz of selected stack source
+			err = downloadFileToDisk(rootConfig.LoggingConfig, stackEntryURL, extractDirFile, config.Dryrun)
+			if err != nil {
+				return err
+			}
+
+			//deleting the stacks targz
+			defer os.Remove(extractDirFile)
+
+			extractFile, err := os.Open(extractDirFile)
+			if err != nil {
+				return err
+			}
+
+			untarErr := untar(rootConfig.LoggingConfig, stackPath, extractFile, config.Dryrun)
+			if untarErr != nil {
+				return untarErr
+			}
+
+			rootConfig.Info.log("Stack created: ", stack)
 			return nil
 		},
 	}

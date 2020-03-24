@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"unicode"
 
 	//"crypto/sha256"
 	"encoding/json"
@@ -322,6 +323,9 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 			}
 			overridden = homeDirOverridden
 		} else {
+			if strings.HasPrefix(mount, ".:") {
+				mount = strings.TrimPrefix(mount, ".")
+			}
 			mappedMount = filepath.Join(projectDir, mount)
 			overridden = projectDirOverridden
 		}
@@ -494,13 +498,96 @@ func getProjectName(config *RootCommandConfig) (string, error) {
 
 	return projectName, nil
 }
+
+func GetDeprecated(config *RootCommandConfig) error {
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	stackInfo := v.Get("stack")
+	if stackInfo == nil {
+		return errors.New("stack information not found in .appsody-config.yaml file")
+	}
+	stackLabels, err := getStackLabels(config)
+	if err != nil {
+		return err
+	}
+	if stackLabels["dev.appsody.stack.deprecated"] != "" {
+		config.Info.logf("*\n*\n*\nStack deprecated: %v \n*\n*\n*", stackLabels["dev.appsody.stack.deprecated"])
+	}
+
+	return nil
+}
+
+func getStackIndexYaml(repoID string, stackID string, config *RootCommandConfig) (*IndexYamlStack, error) {
+
+	if config.Dryrun {
+		return nil, nil
+	}
+
+	var stackEntry *IndexYamlStack
+	extractDir := filepath.Join(getHome(config), "extract")
+
+	// Get Repository directory and unmarshal
+	var repoFile RepositoryFile
+	source, err := ioutil.ReadFile(getRepoFileLocation(config))
+	if err != nil {
+		return stackEntry, errors.Errorf("Error trying to read: %v", err)
+	}
+
+	err = yaml.Unmarshal(source, &repoFile)
+	if err != nil {
+		return stackEntry, errors.Errorf("Error parsing the repository.yaml file: %v", err)
+	}
+
+	// get specificed repo and unmarshal
+	repoEntry := repoFile.GetRepo(repoID)
+
+	// error if repo not found in repository.yaml
+	if repoEntry == nil {
+		return stackEntry, errors.Errorf("Repository: '%s' was not found in the repository.yaml file", repoID)
+	}
+	repoEntryURL := repoEntry.URL
+
+	if repoEntryURL == "" {
+		return stackEntry, errors.Errorf("URL for specified repository is empty")
+	}
+
+	var repoIndex IndexYaml
+	tempRepoIndex := filepath.Join(extractDir, "index.yaml")
+	err = downloadFileToDisk(config.LoggingConfig, repoEntryURL, tempRepoIndex, config.Dryrun)
+	if err != nil {
+		return stackEntry, err
+	}
+	defer os.Remove(tempRepoIndex)
+	tempRepoIndexFile, err := ioutil.ReadFile(tempRepoIndex)
+	if err != nil {
+		return stackEntry, errors.Errorf("Error trying to read: %v", err)
+	}
+
+	err = yaml.Unmarshal(tempRepoIndexFile, &repoIndex)
+	if err != nil {
+		return stackEntry, errors.Errorf("Error parsing the index.yaml file: %v", err)
+	}
+
+	// get specified stack and get URL
+	stackEntry = getStack(&repoIndex, stackID)
+	if stackEntry == nil {
+		return stackEntry, errors.New("Could not find stack specified in repository index")
+	}
+
+	return stackEntry, nil
+
+}
+
 func getDefaultStackRegistry(config *RootCommandConfig) string {
 	defaultStackRegistry := config.CliConfig.Get("images").(string)
 	if defaultStackRegistry == "" {
-		config.Debug.Log("Appsody config file does not contain a default stack registry images property - setting it to docker.io")
 		defaultStackRegistry = "docker.io"
 	}
-	config.Debug.Log("Default stack registry set to: ", defaultStackRegistry)
 	return defaultStackRegistry
 }
 
@@ -593,7 +680,6 @@ func getProjectConfigFileContents(config *RootCommandConfig) (*ProjectConfig, er
 
 	v := viper.New()
 	v.SetConfigFile(appsodyConfig)
-	config.Debug.log("Project config file set to: ", appsodyConfig)
 
 	err := v.ReadInConfig()
 
@@ -618,7 +704,6 @@ func getStackRegistryFromConfigFile(config *RootCommandConfig) (string, error) {
 		// stack is in .appsody-config.yaml
 		stackElements := strings.Split(stack, "/")
 		if len(stackElements) == 3 {
-			config.Debug.Log("Stack registry detected in project config file: ", stackElements[0])
 			return stackElements[0], nil
 		}
 		if len(stackElements) < 3 {
@@ -2032,6 +2117,14 @@ func downloadFile(log *LoggingConfig, href string, writer io.Writer) error {
 		return err
 	}
 
+	if strings.Contains(href, "http") {
+		token := os.Getenv("GH_READ_TOKEN")
+		if token != "" {
+			token = "token " + token
+			req.Header.Add("Authorization", token)
+		}
+	}
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
@@ -2406,7 +2499,7 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 			stackJSON.ProjectStyle = "Appsody"
 			stackJSON.Location = template.URL
 
-			link := Links{}
+			link := Link{}
 			link.Self = "/devfiles/" + stack.ID + "/devfile.yaml"
 			stackJSON.Links = link
 
@@ -2428,4 +2521,48 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 
 	log.Info.logf("Succesfully generated file: %s", indexFilePath)
 	return nil
+}
+
+/**
+
+What it does:
+	This function splits the build options by spaces, but only if the space is outside of any quotation mark block
+	e.g "option1 option2" ---> ["option1", "option2"]
+	e.g "option1='my option1' option2='my option2'" ---> ["option1='my option1'", "option2='my option2"]
+
+How it works:
+	It works by iterating over each element in the string.
+	When the element is a Quotation Mark, it stores it in the variable `lastQuote`.
+	It continues iterating until we find the next matching quote, if the next quote is escaped (\') when don't match.
+	While this quote block hasn't been closed,  we don't split if we find a space.
+	Once the next matching quote is found, we clear `lastQuote` and if any subsequent space is found we split.
+
+Inspired from: https://play.golang.org/p/gJrqdeCr7k
+**/
+
+func SplitBuildOptions(options string) []string {
+	slash := rune(92) // \ symbol
+
+	lastQuote := rune(0)
+	previousChar := rune(0)
+	f := func(c rune) bool {
+		result := false
+		switch {
+		case c == lastQuote:
+			if previousChar != slash {
+				lastQuote = rune(0)
+			}
+		case lastQuote != rune(0):
+			break
+		case unicode.In(c, unicode.Quotation_Mark):
+			lastQuote = c
+		default:
+			result = unicode.IsSpace(c)
+		}
+
+		previousChar = c
+		return result
+	}
+
+	return strings.FieldsFunc(options, f)
 }
