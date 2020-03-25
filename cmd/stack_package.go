@@ -58,8 +58,8 @@ type Maintainer struct {
 
 type IndexYaml struct {
 	APIVersion string                     `yaml:"apiVersion"`
-	Generated  time.Time                  `yaml:"generated"`
-	Projects   map[string]ProjectVersions `yaml:"projects"`
+	Generated  time.Time                  `yaml:"generated,omitempty"`
+	Projects   map[string]ProjectVersions `yaml:"projects,omitempty"`
 	Stacks     []IndexYamlStack
 }
 type IndexYamlStack struct {
