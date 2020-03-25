@@ -201,7 +201,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 		errMsg += "Unable to determine origin to compute repository URL "
 	}
 
-	if noRemoteFound == true {
+	if noRemoteFound {
 		errMsg += "Unable to retrieve remote via git status, git branch --contains, or git remote."
 	}
 
