@@ -26,6 +26,11 @@ func TestStackValidateNoLintFlag(t *testing.T) {
 	defer cleanup()
 	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
+	_, err := cmdtest.AddLocalRepo(sandbox, "dev.local", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	args := []string{"stack", "validate", "--no-lint"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
