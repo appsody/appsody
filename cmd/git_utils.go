@@ -121,7 +121,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	kargs := []string{"status", "-sb"}
 	statusOutput, gitErr := RunGit(config.LoggingConfig, config.ProjectDir, kargs, config.Dryrun)
 	if gitErr != nil {
-		return gitInfo, gitErr
+		return gitInfo, errors.Errorf("%v. Error running git status -sb. Full error: %v", errMsg, gitErr)
 	}
 
 	statusOutput = strings.Trim(statusOutput, trimChars)
@@ -176,7 +176,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 		gitInfo.Commit.Pushed = false
 		gitRemoteOutput, err := RunGitRemote(config.LoggingConfig, config.ProjectDir, lineSeparator, config.Dryrun)
 		if err != nil {
-			return gitInfo, err
+			return gitInfo, errors.Errorf("%v. Error running git remote. Full error: %v", errMsg, err)
 		}
 		gitInfo.Upstream = gitRemoteOutput[0]
 		for _, remote := range gitRemoteOutput {

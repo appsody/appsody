@@ -119,11 +119,10 @@ func TestGetGitInfoWithNotAGitRepo(t *testing.T) {
 
 func TestGitInfo(t *testing.T) {
 	var gitInfoValues = []struct {
-		testName      string
-		expectedError string
+		testName    string
+		expectedLog string
 	}{
 		{"TestGetGitInfoWithNoCommits", "does not have any commits yet"},
-		{"TestGetGitInfoWithCommitNotPushed", "Unable to locate latest commit in remote"},
 		{"TestGetGitInfoWithRemote", "Successfully retrieved remote name"},
 	}
 	for _, testData := range gitInfoValues {
@@ -153,11 +152,18 @@ func TestGitInfo(t *testing.T) {
 				}
 			}
 
-			_, err := cmd.GetGitInfo(config)
+			output, err := cmd.GetGitInfo(config)
 
-			if err == nil || !strings.Contains(err.Error(), tt.expectedError) {
-				t.Errorf("Should had flagged error: %v", tt.expectedError)
+			if tt.testName == "TestGetGitInfoWithRemote" {
+				if output.Upstream != "testRemote" {
+					t.Errorf("Did not return expected upstream: testRemote, instead got: %v", output.Upstream)
+				}
+			} else {
+				if err == nil || !strings.Contains(err.Error(), tt.expectedLog) {
+					t.Errorf("Should have flagged error: %v. Got: %v", tt.expectedLog, err)
+				}
 			}
+
 		})
 	}
 }
