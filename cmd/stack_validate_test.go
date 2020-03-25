@@ -44,7 +44,8 @@ func TestStackValidateNoPackageFlag(t *testing.T) {
 	defer cleanup()
 	sandbox.ProjectDir = filepath.Join(sandbox.TestDataPath, "starter")
 
-	_, err := cmdtest.AddLocalRepo(sandbox, "dev.local", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
+	_, err := cmdtest.RunAppsody(sandbox, "stack", "package", "--image-namespace", "appsody", "--image-registry", "dev.local")
+
 	if err != nil {
 		t.Fatal(err)
 	}
