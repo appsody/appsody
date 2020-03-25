@@ -155,23 +155,6 @@ func build(config *buildCommandConfig) error {
 		return errors.New("Cannot specify --push or --push-url without a --tag")
 	}
 
-	if config.pushURL != "" {
-		// check to see if the pushURL provided is in the expected format
-		// Valid examples would be:
-		// https://www.appsody.co.uk
-		// http://www.appsody.co.uk
-		// www.appsody.co.uk
-		// appsody.co.uk
-		matched, err := regexp.MatchString("^(http:\\/\\/www\\.|https:\\/\\/www\\.|http:\\/\\/|https:\\/\\/)?[a-z0-9]+([\\-\\.]{1}[a-z0-9]+)*\\.[a-z]{2,5}(:[0-9]{1,5})?(\\/.*)?$", config.pushURL)
-		if err != nil {
-			return err
-		}
-
-		if !matched {
-			return errors.New("Push URL provided is not valid")
-		}
-	}
-
 	extractConfig := &extractCommandConfig{RootCommandConfig: config.RootCommandConfig}
 
 	projectName, perr := getProjectName(config.RootCommandConfig)
