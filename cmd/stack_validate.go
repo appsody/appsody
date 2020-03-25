@@ -14,7 +14,6 @@
 package cmd
 
 import (
-	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -363,9 +362,9 @@ func TestBuild(log *LoggingConfig, stack string, template string, projectDir str
 	}
 
 	// use docker image ls to check for the image
-	fmt.Println("calling docker image ls to check for the image")
+	log.Info.log("calling docker image ls to check for the image")
 	imageBuilt := false
-	dockerOutput, dockerErr := RunDockerCmdExec([]string{"image", "ls", imageName})
+	dockerOutput, dockerErr := RunDockerCmdExec([]string{"image", "ls", imageName}, log)
 	if dockerErr != nil {
 		log.Error.Log("Error running docker image ls "+imageName, dockerErr)
 		return dockerErr
@@ -382,7 +381,7 @@ func TestBuild(log *LoggingConfig, stack string, template string, projectDir str
 	}
 
 	//delete the image
-	_, err = RunDockerCmdExec([]string{"image", "rm", imageName})
+	_, err = RunDockerCmdExec([]string{"image", "rm", imageName}, log)
 	if err != nil {
 		log.Error.Log(err)
 		return err

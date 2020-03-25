@@ -130,12 +130,12 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	indices, err := repos.GetIndices(config.LoggingConfig)
 
 	if err != nil {
-		config.Error.logf("The following indices could not be read, skipping:\n%v", err)
+		config.Error.logf("Does the APIVersion of your repository match what the Appsody CLI currently supports? (%v). The following indices could not be read. skipping:\n%v", supportedIndexAPIVersion, err)
 	}
 	if len(indices) == 0 {
 		return errors.Errorf("Your stack repository is empty - please use `appsody repo add` to add a repository.")
 	}
-	var index *RepoIndex
+	var index *IndexYaml
 
 	if stack != "" {
 		var projectName string
@@ -163,29 +163,18 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		config.Debug.log("Attempting to locate stack ", projectType, " in repo ", repoName)
 		index = indices[repoName]
-		projectFound := false
 		stackFound := false
 		var stackReqs StackRequirement
 
-		// we should remove this as we no longer have use for the v1 index and it is bringing down our code coverage
 		if strings.Compare(index.APIVersion, supportedIndexAPIVersion) == 1 {
 			config.Warning.log("The repository .yaml for " + repoName + " has a more recent APIVersion than the current Appsody CLI supports (" + supportedIndexAPIVersion + "), it is strongly suggested that you update your Appsody CLI to the latest version.")
 		}
-		if len(index.Projects[projectType]) >= 1 { //V1 repos
-			projectFound = true
-			//return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
-			config.Debug.log("Project ", projectType, " found in repo ", repoName)
-
-			// need to check template name vs default
-			if !noTemplate && !(templateName == "" || templateName == index.Projects[projectType][0].DefaultTemplate) {
-				return errors.Errorf("template name is not \"none\" and does not match %s.", index.Projects[projectType][0].DefaultTemplate)
-			}
-			projectName = index.Projects[projectType][0].URLs[0]
-
+		if index.APIVersion == "v1" {
+			return errors.Errorf("The repository .yaml for " + repoName + " has an older APIVersion that the Appsody CLI no longer supports. Supported APIVersion: " + supportedIndexAPIVersion)
 		}
-		for indexNo, stack := range index.Stacks {
+		for _, stack := range index.Stacks {
 			if stack.ID == projectType {
-				stackReqs = index.Stacks[indexNo].Requirements
+				stackReqs = stack.Requirements
 				stackFound = true
 				config.Debug.log("Stack ", projectType, " found in repo ", repoName)
 				URL := ""
@@ -200,7 +189,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 				projectName = URL
 			}
 		}
-		if !projectFound && !stackFound {
+		if !stackFound {
 			return errors.Errorf("Could not find a stack with the id \"%s\" in repository \"%s\". Run `appsody list` to see the available stacks or -h for help.", projectType, repoName)
 		}
 
@@ -210,7 +199,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		// 1. Check for empty directory
 		dir := config.ProjectDir
-		appsodyConfigFile := filepath.Join(dir, ".appsody-config.yaml")
+		appsodyConfigFile := filepath.Join(dir, ConfigFile)
 
 		_, err = os.Stat(appsodyConfigFile)
 		if err == nil {
@@ -240,6 +229,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			return errors.New("non-empty directory found with files which may conflict with the template project")
 
 		}
+		config.Debug.log("Project config file set to: ", appsodyConfigFile)
 
 		reqsMap := map[string]string{
 			"Docker":  stackReqs.Docker,
@@ -312,6 +302,10 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		config.Info.logf("Successfully initialized Appsody project with the %s stack and no template.", stack)
 	}
 
+	depErr := GetDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
 	return nil
 }
 
@@ -427,7 +421,7 @@ func initUntar(log *LoggingConfig, file string, noTemplate bool, overwrite bool,
 					}
 				}
 			} else if header.Typeflag == tar.TypeReg {
-				if !noTemplate || (noTemplate && strings.HasSuffix(filename, ".appsody-config.yaml")) {
+				if !noTemplate || (noTemplate && strings.HasSuffix(filename, ConfigFile)) {
 
 					f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 					if err != nil {
