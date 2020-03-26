@@ -50,6 +50,11 @@ func TestStackValidateNoPackageFlag(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	_, err = cmdtest.RunAppsody(sandbox, "repo", "list")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	args := []string{"stack", "validate", "--no-package"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
