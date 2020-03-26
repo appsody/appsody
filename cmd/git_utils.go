@@ -108,7 +108,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 
 	config.Debug.log("git version: ", version)
 
-	gitInfo.Commit, gitErr = RunGitGetLastCommit(gitInfo.RemoteURL, config)
+	gitInfo.Commit, gitErr = RunGitGetLastCommit(config)
 	if gitErr != nil {
 		errMsg += "Received error getting current commit: " + gitErr.Error()
 	}
@@ -152,11 +152,16 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	}
 	gitInfo.ChangesMade = changesMade
 
-	if gitInfo.Upstream == "" {
-		config.Debug.log("Failed to retrieve upstream from git status -sb. Looking via latest commit")
-		outputLines, err := RunGitBranchContains(config.LoggingConfig, gitInfo.Commit.SHA, config.ProjectDir, lineSeparator, config.Dryrun)
-		if err != nil {
-			noRemoteFound = true
+	outputLines, err := RunGitBranchContains(config.LoggingConfig, gitInfo.Commit.SHA, config.ProjectDir, lineSeparator, config.Dryrun)
+	if err != nil {
+		noRemoteFound = true
+	} else {
+		if gitInfo.Upstream != "" {
+			for _, upstream := range outputLines {
+				if gitInfo.Upstream == upstream {
+					gitInfo.Commit.Pushed = true
+				}
+			}
 		} else {
 			gitInfo.Upstream = outputLines[0]
 			for _, upstream := range outputLines {
@@ -170,6 +175,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 			gitInfo.Upstream = strings.TrimSpace(gitInfo.Upstream)
 			config.Debug.log("Successfully retrieved upstream via git branch --contains")
 		}
+
 	}
 
 	if gitInfo.Upstream == "" {
@@ -202,7 +208,11 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	}
 
 	if noRemoteFound {
-		errMsg += "Unable to retrieve remote via git status, git branch --contains, or git remote."
+		errMsg += "Unable to retrieve remote via git status or git branch --contains"
+	}
+
+	if gitInfo.RemoteURL != "" {
+		gitInfo.Commit.setURL(gitInfo.RemoteURL)
 	}
 
 	if errMsg != "" {
@@ -269,8 +279,14 @@ func RunGitConfigLocalRemoteOriginURL(log *LoggingConfig, workDir string, upstre
 	return remote, err
 }
 
+func (commitInfo *CommitInfo) setURL(URL string) {
+	if URL != "" {
+		commitInfo.URL = StringBefore(URL, ".git") + "/commit/" + commitInfo.SHA
+	}
+}
+
 //RunGitLog issues git log
-func RunGitGetLastCommit(URL string, config *RootCommandConfig) (CommitInfo, error) {
+func RunGitGetLastCommit(config *RootCommandConfig) (CommitInfo, error) {
 	//git log -n 1 --pretty=format:"{"author":"%cn","sha":"%h","date":"%cd”,}”
 	kargs := []string{"log", "-n", "1", "--pretty=format:'{\"author\":\"%an\", \"authoremail\":\"%ae\", \"sha\":\"%H\", \"date\":\"%cd\", \"committer\":\"%cn\", \"committeremail\":\"%ce\", \"message\":\"%s\"}'"}
 	var commitInfo CommitInfo
@@ -282,10 +298,6 @@ func RunGitGetLastCommit(URL string, config *RootCommandConfig) (CommitInfo, err
 	if err != nil {
 		return commitInfo, errors.Errorf("JSON Unmarshall error: %v", err)
 	}
-	if URL != "" {
-		commitInfo.URL = StringBefore(URL, ".git") + "/commit/" + commitInfo.SHA
-	}
-
 	gitLocation, gitErr := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if gitErr != nil {
 		return commitInfo, gitErr
