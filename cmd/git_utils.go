@@ -307,9 +307,7 @@ func RunGitGetLastCommit(config *RootCommandConfig) (CommitInfo, error) {
 
 	projectDir, err := getProjectDir(config)
 	if err != nil {
-		if _, ok := err.(*NotAnAppsodyProject); ok {
-			// ignore this, we don't care it it is not an appsody project here
-		} else {
+		if _, ok := err.(*NotAnAppsodyProject); !ok {
 			return commitInfo, err
 		}
 	}

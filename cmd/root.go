@@ -152,11 +152,34 @@ func setupConfig(args []string, config *RootCommandConfig) error {
 	if err != nil {
 		return err
 	}
+	// ensure project.yaml file exists
+	err = ensureProjectConfig(config)
+	if err != nil {
+		return err
+	}
 
 	checkTime(config)
 	setNewRepoName(config)
 	config.setupConfigRun = true
 	return nil
+}
+
+// create project.yaml if it does not exist
+func ensureProjectConfig(config *RootCommandConfig) error {
+	projectFile := getProjectYamlPath(config)
+	if _, err := os.Stat(projectFile); err != nil {
+		project := NewProjectFile()
+		if err := project.writeFile(projectFile); err != nil {
+			return errors.Errorf("Error writing %s file: %s ", projectFile, err)
+		}
+	}
+	return nil
+}
+
+func NewProjectFile() *ProjectFile {
+	return &ProjectFile{
+		Projects: []*ProjectEntry{},
+	}
 }
 
 func InitConfig(config *RootCommandConfig) error {
