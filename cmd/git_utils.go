@@ -96,7 +96,6 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	var gitErr error
 	var noRemoteFound bool
 	errMsg := ""
-	gitInfo.Commit.Pushed = true
 
 	version, vErr := RunGitVersion(config.LoggingConfig, config.ProjectDir, false)
 	if vErr != nil {
@@ -112,6 +111,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 	if gitErr != nil {
 		errMsg += "Received error getting current commit: " + gitErr.Error()
 	}
+	gitInfo.Commit.Pushed = true
 
 	lineSeparator := "\n"
 	if runtime.GOOS == "windows" {
@@ -160,6 +160,7 @@ func GetGitInfo(config *RootCommandConfig) (GitInfo, error) {
 			for _, upstream := range outputLines {
 				if gitInfo.Upstream == upstream {
 					gitInfo.Commit.Pushed = true
+					break
 				}
 			}
 		} else {
