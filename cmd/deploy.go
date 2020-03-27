@@ -194,7 +194,7 @@ Run this command from the root directory of your Appsody project.`,
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
 			config.Info.log("Appsody Deployment name is: ", deploymentManifest.Name)
-			out, err := KubeGetDeploymentURL(config.LoggingConfig, deploymentManifest.Name, namespace, dryrun)
+			out, err := KubeGetDeploymentURL(config.LoggingConfig, deploymentManifest.Name, deploymentManifest.Spec["service"].(map[string]interface{}), namespace, dryrun)
 			// Performing the kubectl apply
 			if err != nil {
 				return errors.Errorf("Failed to find deployed service IP and Port: %s", err)

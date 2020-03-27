@@ -1703,13 +1703,54 @@ func KubeDelete(log *LoggingConfig, fileToApply string, namespace string, dryrun
 	return kerr
 }
 
+//KubeGetNodePortURLIBMCloud issues several kubectl commands and prints the concatenated URL
+func KubeGetNodePortURLIBMCloud(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
+	kargs := []string{"pod"}
+	kargs = append(kargs, "-l", "app.kubernetes.io/name="+service, "-o", "jsonpath={.items[].spec.nodeName}")
+	nodeName, err := KubeGet(log, kargs, namespace, dryrun)
+	// Performing the kubectl apply
+	if err != nil {
+		return "", errors.Errorf("Failed to find nodeName for deployed service: %s", err)
+	}
+
+	kargs = append([]string{"node"}, nodeName)
+	kargs = append(kargs, "-o", "jsonpath=http://{.status.addresses[?(@.type=='ExternalIP')].address}")
+	hostURL, err := KubeGet(log, kargs, namespace, dryrun)
+	// Performing the kubectl apply
+	if err != nil {
+		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
+	}
+	kargs = append([]string{"svc"}, service)
+	kargs = append(kargs, "-o", "jsonpath="+hostURL+":{.spec.ports[0].nodePort}")
+	out, err := KubeGet(log, kargs, namespace, dryrun)
+	// Performing the kubectl apply
+	if err != nil {
+		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
+	}
+	return out, nil
+}
+
+//KubeGetClusterURL kubectl get svc <service> -o jsonpath=http://{.spec.clusterIP}:{.spec.ports[0].port} and prints the return URL
+func KubeGetClusterURL(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
+	kargs := append([]string{"svc"}, service)
+	kargs = append(kargs, "-o", "jsonpath=http://{.spec.clusterIP}:{.spec.ports[0].port}")
+	out, err := KubeGet(log, kargs, namespace, dryrun)
+	// Performing the kubectl apply
+	if err != nil {
+		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
+	}
+	out = out + "\nHowever, as the ServiceType was specified as ClusterIP this url is only accessible to other applications in the same cluster." +
+		"\nTo access it try using 'kubectl port-forward', or exposing it further by 'oc expose'"
+	return out, nil
+}
+
 //KubeGetNodePortURL kubectl get svc <service> -o jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort} and prints the return URL
 func KubeGetNodePortURL(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
 	kargs := append([]string{"svc"}, service)
 	kargs = append(kargs, "-o", "jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort}")
 	out, err := KubeGet(log, kargs, namespace, dryrun)
 	// Performing the kubectl apply
-	if err != nil {
+	if err != nil || strings.Contains(out, "://:") {
 		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
 	}
 	return out, nil
@@ -1750,18 +1791,34 @@ func KubeGetKnativeURL(log *LoggingConfig, service string, namespace string, dry
 }
 
 //KubeGetDeploymentURL searches for an exposed hostname and port for the deployed service
-func KubeGetDeploymentURL(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
-	url, err = KubeGetKnativeURL(log, service, namespace, dryrun)
-	if err == nil {
-		return url, nil
+func KubeGetDeploymentURL(log *LoggingConfig, serviceName string, service map[string]interface{}, namespace string, dryrun bool) (url string, err error) {
+	serviceType := ""
+	if service != nil {
+		serviceType = service["type"].(string)
 	}
-	url, err = KubeGetRouteURL(log, service, namespace, dryrun)
-	if err == nil {
-		return url, nil
-	}
-	url, err = KubeGetNodePortURL(log, service, namespace, dryrun)
-	if err == nil {
-		return url, nil
+	if serviceType == "ClusterIP" {
+		// We have a ClusterIP type
+		url, err = KubeGetClusterURL(log, serviceName, namespace, dryrun)
+		if err == nil {
+			return url, nil
+		}
+	} else {
+		url, err = KubeGetKnativeURL(log, serviceName, namespace, dryrun)
+		if err == nil {
+			return url, nil
+		}
+		url, err = KubeGetRouteURL(log, serviceName, namespace, dryrun)
+		if err == nil {
+			return url, nil
+		}
+		url, err = KubeGetNodePortURL(log, serviceName, namespace, dryrun)
+		if err == nil {
+			return url, nil
+		}
+		url, err = KubeGetNodePortURLIBMCloud(log, serviceName, namespace, dryrun)
+		if err == nil {
+			return url, nil
+		}
 	}
 	log.Error.log("Failed to get deployment hostname and port: ", err)
 	return "", err
