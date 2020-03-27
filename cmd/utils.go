@@ -1696,7 +1696,7 @@ func KubeDelete(log *LoggingConfig, fileToApply string, namespace string, dryrun
 
 //KubeGetNodePortURLIBMCloud issues several kubectl commands and prints the concatenated URL
 func KubeGetNodePortURLIBMCloud(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
-	kargs := append([]string{"pod"})
+	kargs := []string{"pod"}
 	kargs = append(kargs, "-l", "app.kubernetes.io/name="+service, "-o", "jsonpath={.items[].spec.nodeName}")
 	nodeName, err := KubeGet(log, kargs, namespace, dryrun)
 	// Performing the kubectl apply
