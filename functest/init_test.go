@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -446,4 +447,44 @@ func checkExpressNotExists(projectDir string, t *testing.T) {
 	shouldNotExist(appjs, t)
 	shouldNotExist(packagejson, t)
 	shouldNotExist(packagejsonlock, t)
+}
+
+func getCurrentProjectEntry(t *testing.T, sandbox *cmdtest.TestSandbox, config *cmd.RootCommandConfig) (cmd.ProjectFile, *cmd.ProjectEntry, string) {
+	config.ProjectDir = sandbox.ProjectDir
+	configID, err := cmd.GetIDFromConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	projectYaml := filepath.Join(sandbox.ConfigDir, "project.yaml")
+	var p cmd.ProjectFile
+	_, err = p.GetProjects(projectYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := p.GetProject(configID)
+	return p, project, configID
+}
+
+//check project id and path in .appsody-config.yaml matches the project entry id and path in project.yaml
+func TestInitProjectIDAndPathMatches(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config := new(cmd.RootCommandConfig)
+	_, project, configID := getCurrentProjectEntry(t, sandbox, config)
+
+	if project.ID != configID {
+		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
+	}
+	if project.Path != sandbox.ProjectDir {
+		t.Fatalf("Expected project path in project.yaml to match the project directory path.")
+	}
 }
