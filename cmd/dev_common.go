@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"os/user"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -36,7 +37,6 @@ type devCommonConfig struct {
 	*RootCommandConfig
 	disableWatcher  bool
 	containerName   string
-	depsVolumeName  string
 	ports           []string
 	publishAllPorts bool
 	interactive     bool
@@ -63,9 +63,7 @@ func checkDockerRunOptions(options []string) error {
 func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
 	projectName, perr := getProjectName(config)
 	if perr != nil {
-		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			//Debug.log("Cannot retrieve the project name - continuing: ", perr)
-		} else {
+		if _, ok := perr.(*NotAnAppsodyProject); !ok {
 			config.Error.logf("Error occurred retrieving project name... exiting: %s", perr)
 			os.Exit(1)
 		}
@@ -80,7 +78,9 @@ func addStackRegistryFlag(cmd *cobra.Command, flagVar *string, config *RootComma
 	defaultRegistry := getDefaultStackRegistry(config)
 	stackRegistryInConfigFile, err := getStackRegistryFromConfigFile(config)
 	if err != nil {
-		config.Debug.Logf("Error retrieving the stack registry from config file: %v", err)
+		if _, ok := err.(*NotAnAppsodyProject); !ok {
+			config.Debug.Logf("Error retrieving the stack registry from config file: %v", err)
+		}
 		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images. [WARNING] Your current settings are incorrect - change your project config or use this flag to override the image registry.")
 	} else if stackRegistryInConfigFile == "" {
 		cmd.PersistentFlags().StringVar(flagVar, "stack-registry", defaultRegistry, "Specify the URL of the registry that hosts your stack images.")
@@ -90,30 +90,23 @@ func addStackRegistryFlag(cmd *cobra.Command, flagVar *string, config *RootComma
 }
 
 func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
-	projectName, perr := getProjectName(config.RootCommandConfig)
-	if perr != nil {
-		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			// rootConfig.Debug.log("Cannot retrieve the project name - continuing: ", perr)
-		} else {
-			config.Error.logf("Error occurred retrieving project name... exiting: %s", perr)
-			os.Exit(1)
-		}
-	}
-	defaultDepsVolume := projectName + "-deps"
 
 	addNameFlag(cmd, &config.containerName, config.RootCommandConfig)
 	addStackRegistryFlag(cmd, &config.StackRegistry, config.RootCommandConfig)
 	cmd.PersistentFlags().StringVar(&config.dockerNetwork, "network", "", "Specify the network for docker to use.")
-	cmd.PersistentFlags().StringVar(&config.depsVolumeName, "deps-volume", defaultDepsVolume, "Docker volume to use for dependencies. Mounts to APPSODY_DEPS dir.")
 	cmd.PersistentFlags().StringArrayVarP(&config.ports, "publish", "p", nil, "Publish the container's ports to the host. The stack's exposed ports will always be published, but you can publish addition ports or override the host ports with this option.")
 	cmd.PersistentFlags().BoolVarP(&config.publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
 	cmd.PersistentFlags().BoolVar(&config.disableWatcher, "no-watcher", false, "Disable file watching, regardless of container environment variable settings.")
 	cmd.PersistentFlags().BoolVarP(&config.interactive, "interactive", "i", false, "Attach STDIN to the container for interactive TTY mode")
 	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\". The following Docker options are not supported:  '--help','-p','--publish-all','-P','-u','-—user','-—name','-—network','-t','-—tty,'—rm','—entrypoint','-v','—volume'.")
-
 }
 
 func commonCmd(config *devCommonConfig, mode string) error {
+	depErr := GetDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
+	config.Debug.Log("Default stack registry set to: ", &config.StackRegistry)
 	// Checking whether the controller is being overridden
 	overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
 	if overrideControllerImage == "" {
@@ -139,8 +132,8 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	projectDir, perr := getProjectDir(config.RootCommandConfig)
 	if perr != nil {
 		return perr
-
 	}
+	config.Debug.log("Project config file set to: ", filepath.Join(projectDir, ConfigFile))
 
 	projectConfig, configErr := getProjectConfig(config.RootCommandConfig)
 	if configErr != nil {
@@ -166,19 +159,24 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	if volumeErr != nil {
 		return volumeErr
 	}
+
 	// Mount the APPSODY_DEPS cache volume if it exists
-	depsEnvVar, envErr := GetEnvVar("APPSODY_DEPS", config.RootCommandConfig)
+	depsEnvVars, envErr := getDepVolumeArgs(config.RootCommandConfig)
 	if envErr != nil {
 		return envErr
 	}
-	if depsEnvVar != "" {
-		depsMount := config.depsVolumeName + ":" + depsEnvVar
-		config.Debug.log("Adding dependency cache to volume mounts: ", depsMount)
-		volumeMaps = append(volumeMaps, "-v", depsMount)
+
+	if depsEnvVars != nil {
+		var project ProjectFile
+
+		//add volumes to project entry of current Appsody project
+		volumeMaps, err = project.addDepsVolumesToProjectEntry(depsEnvVars, volumeMaps, config.RootCommandConfig)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Mount the controller
-
 	controllerImageName := overrideControllerImage
 	if controllerImageName == "" {
 		controllerImageName = fmt.Sprintf("%s:%s", "appsody/init-controller", CONTROLLERVERSION)

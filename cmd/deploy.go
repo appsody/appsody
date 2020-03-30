@@ -70,10 +70,17 @@ Run this command from the root directory of your Appsody project.`,
 			if len(args) > 0 {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
+			var project ProjectFile
+			_, _, err := project.ensureProjectIDAndEntryExists(config.RootCommandConfig)
+			if err != nil {
+				return err
+			}
+			config.Debug.Log("Default stack registry set to: ", &config.RootCommandConfig.StackRegistry)
 			projectDir, err := getProjectDir(config.RootCommandConfig)
 			if err != nil {
 				return err
 			}
+			config.Debug.log("Project config file set to: ", filepath.Join(projectDir, ConfigFile))
 			config.knativeFlagPresent = cmd.Flag("knative").Changed
 			config.namespaceFlagPresent = cmd.Flag("namespace").Changed
 
@@ -101,10 +108,15 @@ Run this command from the root directory of your Appsody project.`,
 				manifestNamespace := deploymentManifest.Namespace
 				if manifestNamespace != "" {
 					if namespace != "" && manifestNamespace != namespace {
-						return errors.Errorf("the namespace \"%s\" from the deployment manifest does not match the namespace \"%s\" passed as an argument.", manifestNamespace, namespace)
+						config.Info.Logf("Overriding namespace %s in the deployment manifest to: %s", manifestNamespace, namespace)
+						deploymentManifest.Namespace = namespace
+						err = writeDeploymentManifest(deploymentManifest, configFile)
+						if err != nil {
+							return err
+						}
+					} else {
+						namespace = manifestNamespace
 					}
-
-					namespace = manifestNamespace
 				}
 			}
 
@@ -182,7 +194,7 @@ Run this command from the root directory of your Appsody project.`,
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
 			config.Info.log("Appsody Deployment name is: ", deploymentManifest.Name)
-			out, err := KubeGetDeploymentURL(config.LoggingConfig, deploymentManifest.Name, namespace, dryrun)
+			out, err := KubeGetDeploymentURL(config.LoggingConfig, deploymentManifest.Name, deploymentManifest.Spec["service"].(map[string]interface{}), namespace, dryrun)
 			// Performing the kubectl apply
 			if err != nil {
 				return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
@@ -191,6 +203,11 @@ Run this command from the root directory of your Appsody project.`,
 				rootConfig.Info.log("Deployed project running at ", out)
 			} else {
 				rootConfig.Info.log("Dry run complete")
+			}
+
+			depErr := GetDeprecated(config.RootCommandConfig)
+			if depErr != nil {
+				return depErr
 			}
 
 			return nil

@@ -172,9 +172,9 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		if index.APIVersion == "v1" {
 			return errors.Errorf("The repository .yaml for " + repoName + " has an older APIVersion that the Appsody CLI no longer supports. Supported APIVersion: " + supportedIndexAPIVersion)
 		}
-		for indexNo, stack := range index.Stacks {
+		for _, stack := range index.Stacks {
 			if stack.ID == projectType {
-				stackReqs = index.Stacks[indexNo].Requirements
+				stackReqs = stack.Requirements
 				stackFound = true
 				config.Debug.log("Stack ", projectType, " found in repo ", repoName)
 				URL := ""
@@ -199,7 +199,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 		// 1. Check for empty directory
 		dir := config.ProjectDir
-		appsodyConfigFile := filepath.Join(dir, ".appsody-config.yaml")
+		appsodyConfigFile := filepath.Join(dir, ConfigFile)
 
 		_, err = os.Stat(appsodyConfigFile)
 		if err == nil {
@@ -229,6 +229,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 			return errors.New("non-empty directory found with files which may conflict with the template project")
 
 		}
+		config.Debug.log("Project config file set to: ", appsodyConfigFile)
 
 		reqsMap := map[string]string{
 			"Docker":  stackReqs.Docker,
@@ -293,6 +294,12 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if err != nil {
 		return err
 	}
+
+	_, err = generateNewProjectAndID(config.RootCommandConfig)
+	if err != nil {
+		return err
+	}
+
 	if template == "" {
 		config.Info.logf("Successfully initialized Appsody project with the %s stack and the default template.", stack)
 	} else if template != "none" {
@@ -301,6 +308,10 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		config.Info.logf("Successfully initialized Appsody project with the %s stack and no template.", stack)
 	}
 
+	depErr := GetDeprecated(config.RootCommandConfig)
+	if depErr != nil {
+		return depErr
+	}
 	return nil
 }
 
@@ -416,7 +427,7 @@ func initUntar(log *LoggingConfig, file string, noTemplate bool, overwrite bool,
 					}
 				}
 			} else if header.Typeflag == tar.TypeReg {
-				if !noTemplate || (noTemplate && strings.HasSuffix(filename, ".appsody-config.yaml")) {
+				if !noTemplate || (noTemplate && strings.HasSuffix(filename, ConfigFile)) {
 
 					f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 					if err != nil {
@@ -647,9 +658,7 @@ func parseProjectParm(projectParm string, config *RootCommandConfig) (string, st
 func defaultProjectName(config *RootCommandConfig) string {
 	projectDirPath, perr := getProjectDir(config)
 	if perr != nil {
-		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			//Debug.log("Cannot retrieve the project dir - continuing: ", perr)
-		} else {
+		if _, ok := perr.(*NotAnAppsodyProject); !ok {
 			config.Error.logf("Error occurred retrieving project dir... exiting: %s", perr)
 			os.Exit(1)
 		}
@@ -662,7 +671,7 @@ func defaultProjectName(config *RootCommandConfig) string {
 	}
 	return projectName
 }
+
 func addStackRegistryFlagInit(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
 	cmd.PersistentFlags().StringVar(flagVar, "stack-registry", "", "Specify the URL of the registry that hosts your stack images.")
-
 }

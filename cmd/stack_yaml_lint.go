@@ -65,7 +65,7 @@ func (stackDetails *StackYaml) validateFields(rootConfig *RootCommandConfig) int
 
 	for i := 0; i < v.NumField(); i++ {
 		yamlValues[i] = v.Field(i).Interface()
-		if yamlValues[i] == "" {
+		if yamlValues[i] == "" && v.Type().Field(i).Name != "Deprecated" {
 			rootConfig.Error.log("Missing value for field: ", strings.ToLower(v.Type().Field(i).Name))
 			stackLintErrorCount++
 		}
@@ -113,8 +113,7 @@ func (stackDetails *StackYaml) checkTemplatingData(log *LoggingConfig) (int, int
 	keyRegex := regexp.MustCompile("^[a-zA-Z0-9]*$")
 
 	if len(stackDetails.TemplatingData) == 0 {
-		log.Warning.log("No custom templating variables defined - You will not be able to reuse variables across the stack")
-		stackLintWarningCount++
+		log.Info.log("No custom stack variables used (see https://appsody.dev/docs/stacks/develop/#custom-stack-variables)")
 		return stackLintErrorCount, stackLintWarningCount
 	}
 
@@ -122,7 +121,7 @@ func (stackDetails *StackYaml) checkTemplatingData(log *LoggingConfig) (int, int
 		checkKey := keyRegex.FindString(string(key))
 
 		if checkKey == "" {
-			log.Error.log("Key variable: ", key, " is not in an alphanumeric format")
+			log.Error.log("stack.yaml templating-data key is not alphanumeric: ", key)
 			stackLintErrorCount++
 		}
 

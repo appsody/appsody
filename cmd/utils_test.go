@@ -1259,7 +1259,7 @@ func TestKubeGetDeploymentURLFailNoService(t *testing.T) {
 	loggingConfig := &cmd.LoggingConfig{}
 	loggingConfig.InitLogging(&outBuffer, &outBuffer)
 
-	_, err := cmd.KubeGetDeploymentURL(loggingConfig, "", "namespace", false)
+	_, err := cmd.KubeGetDeploymentURL(loggingConfig, "", nil, "namespace", false)
 
 	if err != nil {
 		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: error: resource name may not be empty") {
@@ -1280,7 +1280,7 @@ func TestKubeGetDeploymentURLFailInvalidService(t *testing.T) {
 
 	service := "definitelynotaservice"
 
-	_, err := cmd.KubeGetDeploymentURL(loggingConfig, service, "", false)
+	_, err := cmd.KubeGetDeploymentURL(loggingConfig, service, nil, "", false)
 
 	if err != nil {
 		if !strings.Contains(err.Error(), "Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services \""+service+"\" not found") {
@@ -1301,7 +1301,7 @@ func TestKubeGetDeploymentURLDryrun(t *testing.T) {
 
 	service := "svc"
 
-	_, err := cmd.KubeGetDeploymentURL(loggingConfig, service, "", true)
+	_, err := cmd.KubeGetDeploymentURL(loggingConfig, service, nil, "", true)
 
 	if err != nil {
 		t.Errorf("Unexpected error from kube get: %v", err)
