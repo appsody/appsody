@@ -2886,13 +2886,15 @@ func (p *ProjectFile) cleanupDockerVolumes(config *RootCommandConfig) error {
 	id := ""
 	removeVolumes := []string{"volume", "rm"}
 	for _, project := range p.Projects {
-		configPath := filepath.Join(project.Path, ".appsody-config.yaml")
-		configExists, err := Exists(configPath)
+		projectConfig := RootCommandConfig{}
+		projectConfig.ProjectDir = project.Path
+		projectConfigPath := filepath.Join(projectConfig.ProjectDir, ".appsody-config.yaml")
+		projectConfigExists, err := Exists(projectConfigPath)
 		if err != nil {
 			return err
 		}
-		if configExists {
-			id, err = GetIDFromConfig(config)
+		if projectConfigExists {
+			id, err = GetIDFromConfig(&projectConfig)
 			if err != nil {
 				return err
 			}
