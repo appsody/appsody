@@ -114,7 +114,7 @@ func TestGetGitInfoWithNotAGitRepo(t *testing.T) {
 	expectedError := "not a git repository"
 	if err != nil {
 		if !strings.Contains(err.Error(), expectedError) {
-			t.Errorf("String \""+exepectedError+"\" not found in output: %v", output)
+			t.Errorf("String \"not a git repository\" not found in output: %v", output)
 		}
 	} else {
 		t.Errorf("Test unexpectedly passed")
