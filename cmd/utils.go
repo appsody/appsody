@@ -1074,8 +1074,7 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 
 	imageAndDigest := data[0]["RepoDigests"].([]interface{})
 	if len(imageAndDigest) > 0 { //Check that the image has a digest
-		imageAndDigestStr := fmt.Sprintf("%v", imageAndDigest[0])
-		digest := strings.Split(imageAndDigestStr, "@")
+		digest := strings.Split(imageAndDigest[0].(string), ":")
 		labels[appsodyStackKeyPrefix+"digest"] = digest[1]
 	}
 
