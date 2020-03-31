@@ -44,8 +44,6 @@ type devCommonConfig struct {
 	dockerOptions   string
 }
 
-var defaultVolumesPath = []string{"/.appsody", "/.appsody/appsody-controller"}
-
 func checkDockerRunOptions(options []string, config *RootCommandConfig) error {
 	runOptionsTest := "(^((--help)|(-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint))((=?$)|(=.*)))"
 	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)

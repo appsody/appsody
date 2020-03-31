@@ -353,7 +353,7 @@ func TestRunIfProjectIDNotExistInConfigYaml(t *testing.T) {
 }
 
 // check error if user specified mount interferes with stack mounts
-func TestRunUserSpecifiedVolumes(t *testing.T) {
+func TestRunUserSpecifiedVolumesStack(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
@@ -365,14 +365,67 @@ func TestRunUserSpecifiedVolumes(t *testing.T) {
 	}
 
 	userSpecifiedMount := "volume:/project/user-app/node_modules"
+	userSpecifiedMountSplit := strings.Split(userSpecifiedMount, ":")
 	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err == nil {
 		t.Fatal("Expected non-zero exit code")
 	}
 
-	expectedError := "User specified mount " + userSpecifiedMount + " is not allowed in --docker-options, as it interferes with the stack specified mount /project/user-app/node_modules"
+	expectedError := "User specified mount path " + userSpecifiedMountSplit[1] + " is not allowed in --docker-options, as it interferes with the stack specified mount path /project/user-app/node_modules"
 	if !strings.Contains(output, expectedError) {
 		t.Fatalf("Expected error not found: %s", expectedError)
+	}
+}
+
+// check error if user specified mount interferes with stack mounts
+func TestRunUserSpecifiedVolumesDefault(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	userSpecifiedMount := "volume:/project/user-app"
+	userSpecifiedMountSplit := strings.Split(userSpecifiedMount, ":")
+	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err == nil {
+		t.Fatal("Expected non-zero exit code")
+	}
+
+	expectedError := "User specified mount path " + userSpecifiedMountSplit[1] + " is not allowed in --docker-options, as it interferes with the default specified mount path /project/user-app"
+	if !strings.Contains(output, expectedError) {
+		t.Fatalf("Expected error not found: %s", expectedError)
+	}
+}
+
+// check that user specified mount doesnt interferes with stack mounts
+func TestRunUserSpecifiedVolumesSimilar(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	userSpecifiedMount := "volume:/project/user-app/node_modules2"
+	userSpecifiedMountSplit := strings.Split(userSpecifiedMount, ":")
+	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		unexpectedError := "User specified mount path " + userSpecifiedMountSplit[1] + " is not allowed in --docker-options, as it interferes with the stack specified mount path /project/user-app/node_modules2"
+		if strings.Contains(output, unexpectedError) {
+			t.Fatalf("Unexpected error found: %s", unexpectedError)
+		} else {
+			t.Fatal("Expected zero exit code")
+		}
 	}
 }
