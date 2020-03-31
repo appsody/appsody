@@ -112,7 +112,7 @@ func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig)
 		}
 	}
 
-	defaultName := projectName + "-dev"
+	defaultName := projectName
 	cmd.PersistentFlags().StringVar(flagVar, "name", defaultName, "Assign a name to your development container.")
 }
 
