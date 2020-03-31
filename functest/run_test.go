@@ -366,7 +366,7 @@ func TestRunUserSpecifiedVolumesStack(t *testing.T) {
 
 	userSpecifiedMount := "volume:/project/user-app/node_modules"
 	userSpecifiedMountSplit := strings.Split(userSpecifiedMount, ":")
-	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount}
+	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount, "--dryrun"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err == nil {
 		t.Fatal("Expected non-zero exit code")
@@ -392,7 +392,7 @@ func TestRunUserSpecifiedVolumesDefault(t *testing.T) {
 
 	userSpecifiedMount := "volume:/project/user-app"
 	userSpecifiedMountSplit := strings.Split(userSpecifiedMount, ":")
-	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount}
+	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount, "--dryrun"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err == nil {
 		t.Fatal("Expected non-zero exit code")
@@ -418,7 +418,7 @@ func TestRunUserSpecifiedVolumesSimilar(t *testing.T) {
 
 	userSpecifiedMount := "volume:/project/user-app/node_modules2"
 	userSpecifiedMountSplit := strings.Split(userSpecifiedMount, ":")
-	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount}
+	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount, "--dryrun"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 		unexpectedError := "User specified mount path " + userSpecifiedMountSplit[1] + " is not allowed in --docker-options, as it interferes with the stack specified mount path /project/user-app/node_modules2"
