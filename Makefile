@@ -126,7 +126,7 @@ build-linux-s390x: ## Build the linux s390x binary
 .PHONY: build-windows
 build-windows: ## Build the windows binary
 
-build-linux build-linux-ppc64le build-windows: ## Build the binary of the respective operating system
+build-linux build-linux-ppc64le build-linux-s390x build-windows: ## Build the binary of the respective operating system
 	GOOS=$(os) CGO_ENABLED=0 GOARCH=$(arch) go build -o $(BUILD_PATH)/$(build_binary) -ldflags "-X main.VERSION=$(VERSION) -X main.CONTROLLERVERSION=$(APPSODY_CONTROLLER_VERSION)"
 
 .PHONY: build-darwin
@@ -153,9 +153,11 @@ package: build-docs tar-linux tar-linux-ppc64le deb-linux rpm-linux tar-darwin b
 tar-linux: build-linux ## Build the linux binary and package it in a .tar.gz file
 .PHONY: tar-linux-ppc64le
 tar-linux-ppc64le: build-linux-ppc64le ## Build the linux binary and package it in a .tar.gz file
+.PHONY: tar-linux-s390x
+tar-linux-s390x: build-linux-s390x ## Build the linux binary and package it in a .tar.gz file
 .PHONY: tar-darwin
 tar-darwin: build-darwin ## Build the OSX binary and package it in a .tar.gz file
-tar-linux tar-linux-ppc64le tar-darwin:
+tar-linux tar-linux-ppc64le tar-linux-s390x tar-darwin:
 	cp -p $(BUILD_PATH)/$(build_binary) $(package_binary)
 	tar cfz $(build_name).tar.gz LICENSE README.md $(package_binary)
 	mkdir -p $(PACKAGE_PATH)
