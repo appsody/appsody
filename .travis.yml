@@ -5,8 +5,6 @@ go:
 
 go_import_path: github.com/appsody/appsody
 
-env: APPSODY_CONTROLLER_IMAGE=cameronmcwilliam/init-controller:latest
-
 services:
   - docker
 

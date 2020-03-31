@@ -24,7 +24,7 @@ BINARY_EXT_windows := .exe
 DOCKER_IMAGE_RPM := alectolytic/rpmbuilder
 DOCKER_IMAGE_DEB := appsody/debian-builder:0.1.0
 GH_ORG ?= appsody
-export APPSODY_CONTROLLER_VERSION ?=0.3.4
+export APPSODY_CONTROLLER_VERSION ?=0.3.5
 
 #### Dynamic variables. These change depending on the target name.
 # Gets the current os and arch from the target name, e.g. the 'build-linux' target will result in os = 'linux'
