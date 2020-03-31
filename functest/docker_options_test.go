@@ -43,8 +43,7 @@ func TestRunWithDockerOptionsRegex(t *testing.T) {
 		"-t",
 		"--tty",
 		"--rm",
-		"--entrypoint",
-		"-v", "--volume"}
+		"--entrypoint"}
 
 	for _, value := range testOptions {
 		t.Log("Option is", value)
