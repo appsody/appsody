@@ -36,8 +36,8 @@ jobs:
       name: Full Test on Linux amd64
       os: linux
       arch: amd64
-      # installation instructions for Buildah taken from https://github.com/containers/buildah/blob/master/install.md
       dist: xenial
+      # installation instructions for Buildah taken from https://github.com/containers/buildah/blob/master/install.md
       before_install:
         - sudo apt-get update -qq
         - sudo apt-get install -qq -y software-properties-common
