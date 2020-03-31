@@ -10,12 +10,8 @@ import (
 
 //DockerRunAndListen runs a Docker command with arguments in args
 //This function does NOT override the image registry (uses args as is)
-func DockerRunAndListen(config *RootCommandConfig, args []string, verbose bool, logger appsodylogger, interactive bool) (*exec.Cmd, error) {
-	var runArgs = []string{}
-	if verbose {
-		runArgs = []string{"--log-level", "debug"}
-	}
-	runArgs = append(runArgs, "run")
+func DockerRunAndListen(config *RootCommandConfig, args []string, logger appsodylogger, interactive bool) (*exec.Cmd, error) {
+	var runArgs = []string{"run"}
 	runArgs = append(runArgs, args...)
 	return RunDockerCommandAndListen(config, runArgs, logger, interactive)
 }

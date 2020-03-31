@@ -255,7 +255,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if updateController {
 			config.Debug.Logf("Controller volume not found or version is latest - launching the %s image to populate it", controllerImageName)
 			downloaderArgs := []string{"--rm", "-v", controllerVolumeMount, controllerImageName}
-			controllerDownloader, err := DockerRunAndListen(config.RootCommandConfig, downloaderArgs, config.Verbose, config.Info, false)
+			controllerDownloader, err := DockerRunAndListen(config.RootCommandConfig, downloaderArgs, config.Info, false)
 			if config.Dryrun {
 				config.Info.log("Dry Run - Skipping execCmd.Wait")
 			} else {
@@ -334,6 +334,9 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	cmdArgs = append(cmdArgs, "-t", "--entrypoint", "/.appsody/appsody-controller", platformDefinition, "--mode="+mode)
+	if config.Verbose {
+		cmdArgs = append(cmdArgs, "-v")
+	}
 	if config.disableWatcher {
 		cmdArgs = append(cmdArgs, "--no-watcher")
 	}
@@ -342,7 +345,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 	if !config.Buildah {
 		config.Debug.logf("Attempting to start image %s with container name %s", platformDefinition, config.containerName)
-		execCmd, err := DockerRunAndListen(config.RootCommandConfig, cmdArgs, config.Verbose, config.Container, config.interactive)
+		execCmd, err := DockerRunAndListen(config.RootCommandConfig, cmdArgs, config.Container, config.interactive)
 		if config.Dryrun {
 			config.Info.log("Dry Run - Skipping execCmd.Wait")
 		} else {
