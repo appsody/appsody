@@ -2877,3 +2877,52 @@ func SplitBuildOptions(options string) []string {
 
 	return strings.FieldsFunc(options, f)
 }
+
+func (p *ProjectFile) remove(id string) {
+	for ind, pf := range p.Projects {
+		if id == pf.ID {
+			p.Projects[ind] = p.Projects[0]
+			p.Projects = p.Projects[1:]
+			return
+		}
+	}
+}
+
+func (p *ProjectFile) cleanupDockerVolumes(config *RootCommandConfig) error {
+	id := ""
+	removeVolumes := []string{"volume", "rm"}
+	for _, project := range p.Projects {
+		projectConfig := RootCommandConfig{}
+		projectConfig.ProjectDir = project.Path
+		projectConfigPath := filepath.Join(projectConfig.ProjectDir, ".appsody-config.yaml")
+		projectConfigExists, err := Exists(projectConfigPath)
+		if err != nil {
+			return err
+		}
+		if projectConfigExists {
+			id, err = GetIDFromConfig(&projectConfig)
+			if err != nil {
+				return err
+			}
+		}
+		if id != project.ID {
+			for _, volume := range project.Volumes {
+				removeVolumes = append(removeVolumes, volume.Name)
+			}
+			p.remove(project.ID)
+			fileLocation := getProjectYamlPath(config)
+			err = p.writeFile(fileLocation)
+			if err != nil {
+				return errors.Errorf("Failed to write file to repository location: %v", err)
+			}
+		}
+	}
+	if len(removeVolumes) > 2 {
+		config.Debug.logf("Cleaning up unused docker volumes.")
+		_, err := RunDockerCmdExec(removeVolumes, config.LoggingConfig)
+		if err != nil {
+			config.Debug.logf("Skipping some docker volumes that could not be removed: %v", err)
+		}
+	}
+	return nil
+}
