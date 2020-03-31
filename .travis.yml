@@ -49,17 +49,20 @@ jobs:
       os: linux
       arch: ppc64le
       dist: xenial
-      script: make unittest
+      script: 
+      - make unittest
     - <<: *test-template
       name: Unit Test on Linux s390x
       os: linux
       arch: s390x
       dist: xenial
-      script: make unittest
+      script: 
+      - make unittest
     - <<: *test-template
       name: Unit Test on MacOS
       os: osx
-      script: make unittest
+      script: 
+      - make unittest
     - <<: *test-template
       name: Unit Test on Windows
       os: windows
