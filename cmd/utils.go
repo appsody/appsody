@@ -282,17 +282,27 @@ func getExtractDir(config *RootCommandConfig) (string, error) {
 	return extractDir, nil
 }
 
-func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
-	volumeArgs := []string{}
+func getStackMounts(config *RootCommandConfig) ([]string, error) {
+	stackMountList := []string{}
 	stackMounts, envErr := GetEnvVar("APPSODY_MOUNTS", config)
 	if envErr != nil {
 		return nil, envErr
 	}
 	if stackMounts == "" {
 		config.Warning.log("The stack image does not contain APPSODY_MOUNTS")
-		return volumeArgs, nil
+		return stackMountList, nil
 	}
-	stackMountList := strings.Split(stackMounts, ";")
+	stackMountList = strings.Split(stackMounts, ";")
+	return stackMountList, nil
+}
+
+func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
+	volumeArgs := []string{}
+	stackMountList, err := getStackMounts(config)
+	if err != nil {
+		return stackMountList, err
+	}
+
 	homeDir := UserHomeDir(config.LoggingConfig)
 	homeDirOverride := os.Getenv("APPSODY_MOUNT_HOME")
 	homeDirOverridden := false
@@ -1070,6 +1080,12 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 		for key, value := range labelsMap {
 			labels[key] = value.(string)
 		}
+	}
+
+	imageAndDigest := data[0]["RepoDigests"].([]interface{})
+	if len(imageAndDigest) > 0 { //Check that the image has a digest
+		digest := strings.Split(imageAndDigest[0].(string), "@")
+		labels[appsodyStackKeyPrefix+"digest"] = digest[1]
 	}
 
 	return labels, nil
