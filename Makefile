@@ -112,13 +112,16 @@ clean: ## Removes existing build artifacts in order to get a fresh build
 	go clean
 
 .PHONY: build
-build: build-linux build-darwin build-windows build-linux-ppc64le ## Build binaries for all operating systems and store them in the build/ dir
+build: build-linux build-darwin build-windows build-linux-ppc64le build-linux-s390x ## Build binaries for all operating systems and store them in the build/ dir
 
 .PHONY: build-linux
 build-linux: ## Build the linux binary
 
 .PHONY: build-linux-ppc64le
 build-linux-ppc64le: ## Build the linux ppc64le binary
+
+.PHONY: build-linux-s390x
+build-linux-s390x: ## Build the linux s390x binary
 
 .PHONY: build-windows
 build-windows: ## Build the windows binary
