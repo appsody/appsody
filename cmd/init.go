@@ -300,6 +300,19 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 		return err
 	}
 
+	var p ProjectFile
+	fileLocation := getProjectYamlPath(config.RootCommandConfig)
+
+	_, err = p.GetProjects(fileLocation)
+	if err != nil {
+		return err
+	}
+
+	err = p.cleanupDockerVolumes(config.RootCommandConfig)
+	if err != nil {
+		return err
+	}
+
 	if template == "" {
 		config.Info.logf("Successfully initialized Appsody project with the %s stack and the default template.", stack)
 	} else if template != "none" {

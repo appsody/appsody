@@ -488,3 +488,50 @@ func TestInitProjectIDAndPathMatches(t *testing.T) {
 		t.Fatalf("Expected project path in project.yaml to match the project directory path.")
 	}
 }
+
+//check appsody init cleanups unused docker volumes
+func TestInitVolumeCleanup(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	//create first Appsody project
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args = []string{"run", "--dryrun"}
+
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := new(cmd.RootCommandConfig)
+	_, project, _ := getCurrentProjectEntry(t, sandbox, config)
+	depsVolume := project.Volumes[0].Name
+
+	//remove config file
+	err = os.Remove(filepath.Join(sandbox.ProjectDir, cmd.ConfigFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newAppsodyProject := filepath.Join(sandbox.ProjectDir, "newAppsodyProject")
+	err = os.Mkdir(newAppsodyProject, 0775)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sandbox.ProjectDir = newAppsodyProject
+	//create new Appsody project
+	args = []string{"init", "nodejs"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// check correct volume of old Appsody project is deleted
+	if !strings.Contains(output, "docker volume rm "+depsVolume) {
+		t.Fatalf("Did not delete expected unused docker volume during init: %s", depsVolume)
+	}
+}
