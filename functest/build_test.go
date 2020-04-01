@@ -230,7 +230,9 @@ func deleteImage(imageName string, cmdName string, t *testing.T) {
 }
 
 func TestDeploymentConfig(t *testing.T) {
-
+	if sys.GOARCH != "amd64" {
+		t.Skip("Not amd64... skipping tests")
+	}
 	stacksList := cmdtest.GetEnvStacksList()
 
 	// split the appsodyStack env variable
