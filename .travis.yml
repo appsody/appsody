@@ -55,8 +55,9 @@ jobs:
         - sudo apt-get update -qq
         - sudo apt-get -qq -y install buildah
       before_script:
+      - make build-linux-ppc64le
       - cd ./cmd/testdata/starter
-      - appsody stack package
+      - /build/appsody-0.0.0-linux-ppc64le stack package
     - <<: *test-template
       name: Full Test on Linux s390x
       env: STACKS_LIST=dev.local/starter
@@ -70,8 +71,9 @@ jobs:
         - sudo apt-get update -qq
         - sudo apt-get -qq -y install buildah
       before_script:
+      - make build-linux-s390x
       - cd ./cmd/testdata/starter
-      - appsody stack package
+      - /build/appsody-0.0.0-linux-s390x stack package
     - <<: *test-template
       name: Unit Test on MacOS
       os: osx
