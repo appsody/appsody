@@ -110,11 +110,11 @@ func TestGetGitInfoWithNotAGitRepo(t *testing.T) {
 	// we want to execute the commands
 	config.ProjectDir = sandbox.ProjectDir
 
-	output, err := cmd.GetGitInfo(config)
+	_, err := cmd.GetGitInfo(config)
 	expectedError := "not a git repository"
 	if err != nil {
 		if !strings.Contains(err.Error(), expectedError) {
-			t.Errorf("String \"not a git repository\" not found in output: %v", output)
+			t.Errorf("String \"not a git repository\" not found in output: %v", err)
 		}
 	} else {
 		t.Errorf("Test unexpectedly passed")
