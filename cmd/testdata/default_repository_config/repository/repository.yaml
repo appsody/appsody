@@ -4,6 +4,3 @@ repositories:
 - name: incubator
   url: https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml
   default: true
-- name: dev.local
-  url: file:///$HOME/.appsody/stacks/dev.local/dev.local-index.yaml
-  default: false
