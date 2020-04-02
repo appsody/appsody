@@ -151,7 +151,8 @@ func TestBuildLabels(t *testing.T) {
 	stacksList := cmdtest.GetEnvStacksList()
 
 	if stacksList == "dev.local/starter" {
-		// appsody init nodejs-express
+		cmdtest.ZAndPDevLocal(t, sandbox)
+		// appsody init dev.local/starter
 		args := []string{"init", "dev.local/starter"}
 		_, err := cmdtest.RunAppsody(sandbox, args...)
 		if err != nil {
@@ -263,6 +264,8 @@ func TestDeploymentConfig(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		cmdtest.ZAndPDevLocal(t, sandbox)
 
 		// appsody init
 		t.Log("Running appsody init...")
