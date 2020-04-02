@@ -14,6 +14,7 @@
 package functest
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -36,6 +37,20 @@ func TestDebugSimple(t *testing.T) {
 
 		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 		defer cleanup()
+
+		// z and p use locally packaged dev.local so we need to add it to the config of the sandbox for it to work
+		if stacksList == "dev.local/starter" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				t.Fatal(err)
+			}
+			devlocal := filepath.Join(home, ".appsody", "stacks", "dev.local", "dev.local-index.yaml")
+			devlocalPath := "file://" + devlocal
+			_, err = cmdtest.RunAppsody(sandbox, "repo", "add", "dev.local", devlocalPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
 
 		// first add the test repo index
 		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
