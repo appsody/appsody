@@ -68,8 +68,8 @@ func TestPS(t *testing.T) {
 
 	defer func() {
 		// run appsody stop to close the docker container
-		args = []string{"stop", "--name", containerName}
-		_, err = cmdtest.RunAppsody(sandbox, args...)
+		args := []string{"stop", "--name", containerName}
+		_, err := cmdtest.RunAppsody(sandbox, args...)
 		if err != nil {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}
