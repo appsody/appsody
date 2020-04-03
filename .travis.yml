@@ -59,6 +59,7 @@ jobs:
         - sudo apt-get update -qq
         - sudo apt-get -qq -y install buildah
         - sudo apt-get install -y uidmap
+        - sudo apt-get -qq -y install podman
       before_script:
       - id
       - make build-linux-ppc64le
@@ -67,6 +68,7 @@ jobs:
       - cd ../../../
       - cat /etc/subgid
       - cat /etc/subuid
+      - podman system migrate
     - <<: *test-template
       name: Full Test on Linux s390x
       env: STACKS_LIST=dev.local/starter
@@ -80,6 +82,7 @@ jobs:
         - sudo apt-get update -qq
         - sudo apt-get -qq -y install buildah
         - sudo apt-get install -y uidmap
+        - sudo apt-get -qq -y install podman
       before_script:
       - id
       - make build-linux-s390x
@@ -88,6 +91,7 @@ jobs:
       - cd ../../../
       - cat /etc/subgid
       - cat /etc/subuid
+      - podman system migrate
     - <<: *test-template
       name: Unit Test on MacOS
       os: osx
