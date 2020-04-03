@@ -44,6 +44,8 @@ jobs:
         - sudo apt-get -qq -y install buildah
       before_script:
       - id
+      - cat /etc/subgid
+      - cat /etc/subuid
     - <<: *test-template
       name: Full Test on Linux ppc64le
       env: STACKS_LIST=dev.local/starter
