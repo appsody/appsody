@@ -1079,6 +1079,7 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 			digest := strings.Split(imageAndDigest[0].(string), "@")
 			if len(digest) > 0 {
 				labels[appsodyStackKeyPrefix+"digest"] = digest[1]
+				config.Debug.log("Digest label successfully added")
 			} else {
 				config.Warning.log("Unable to add image digest label. Continuing...")
 			}
@@ -1094,11 +1095,12 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 
 	if config.Buildah {
 		buildahDigest, err := getBuildahDigest(labels["dev.appsody.stack.tag"], config)
-		if err != nil {
+		if err != nil || buildahDigest == "" {
 			config.Warning.log(err)
 			return labels, nil
 		}
 		labels[appsodyStackKeyPrefix+"digest"] = buildahDigest
+		config.Debug.log("Digest label successfully added")
 	}
 
 	return labels, nil
@@ -1106,31 +1108,31 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 
 func getBuildahDigest(labelKey string, config *RootCommandConfig) (digest string, err error) {
 	var fullDigest string
-	splitImage := strings.Split(labelKey, ":")
+	splitImage := strings.Split(labelKey, ":") //Split the label key to extract just the image name e.g. docker.io/appsody/nodejs-express
 	imageName := splitImage[0]
 	cmdName := "buildah"
-	cmdArgs := []string{"images", "--digests", "--filter", "label=dev.appsody.stack.tag=" + labelKey, "--format", "'{{.Digest}} {{.Name}}'"}
+	cmdArgs := []string{"images", "--digests", "--filter", "label=dev.appsody.stack.tag=" + labelKey, "--format", "'{{.Digest}} {{.Name}}'"} //Run command to retrieve all images (name + digest) with a label matching the tag
 	digestCmd := exec.Command(cmdName, cmdArgs...)
 
 	output, cmdErr := SeparateOutput(digestCmd)
 	if cmdErr != nil {
 		return "", errors.Errorf("Error running command to retrieve image digest. Continuing...")
 	}
-	digestArray := strings.Split(output, "\n")
-	if len(digestArray) < 1 {
+	digestArray := strings.Split(output, "\n") //Add each line of output to an array
+	if len(digestArray) < 1 {                  //No images returned, no digests in output
 		return "", errors.Errorf("Unable to retrieve image digest for label. Continuing...")
 	}
 
 	for _, nameAndDigest := range digestArray {
-		if strings.Contains(nameAndDigest, imageName) {
-			arr := strings.Split(nameAndDigest, "   ")
+		if strings.Contains(nameAndDigest, imageName) { //Attempt to take the digest of the image matching the tag first
+			arr := strings.Split(nameAndDigest, "   ") //Split to separate the digest from the name
 			if len(arr) > 0 {
-				fullDigest = arr[0]
+				fullDigest = arr[0] //Only add if command successfully split
 			}
 		}
 	}
 	if fullDigest != "" {
-		fullDigest = strings.Trim(fullDigest, "'")
+		fullDigest = strings.Trim(fullDigest, "'") //Remove random ' symbols trailing the digest
 		return fullDigest, nil
 	}
 	fullDigest = strings.Trim(digestArray[0], "'")

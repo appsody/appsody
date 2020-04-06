@@ -125,6 +125,7 @@ var appsodyStackLabels = []string{
 	"tag",
 	"version",
 	"configured",
+	"digest",
 }
 
 var appsodyCommitKey = "dev.appsody.image.commit."
@@ -227,6 +228,55 @@ func deleteImage(imageName string, cmdName string, t *testing.T) {
 	if err != nil {
 		t.Logf("Ignoring error running docker image rm: %s", err)
 	}
+}
+
+func TestDigestLabelBuildah(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip()
+	}
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// first add the test repo index
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// appsody init
+	_, err = cmdtest.RunAppsody(sandbox, "init", "nodejs")
+	t.Log("Running appsody init...")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// appsody build
+	imageName := "testbuildimagebuildah"
+	_, err = cmdtest.RunAppsody(sandbox, "build", "--buildah", "--tag", imageName)
+	if err != nil {
+		t.Fatalf("Error on appsody build: %v", err)
+	}
+
+	inspectOutput, inspectErr := cmdtest.RunCmdExec("buildah", []string{"inspect", "--format={{.Config}}", imageName}, t)
+	if inspectErr != nil {
+		t.Fatal(inspectErr)
+	}
+
+	var containerConfig map[string]interface{}
+	var buildahData map[string]interface{}
+	err = json.Unmarshal([]byte(inspectOutput), &buildahData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	containerConfig = buildahData["config"].(map[string]interface{})
+	labelsMap := containerConfig["Labels"].(map[string]interface{})
+
+	if labelsMap[appsodyPrefixKey+"digest"] == nil {
+		t.Fatal("No label for image digest found.")
+	}
+
 }
 
 func TestDeploymentConfig(t *testing.T) {
