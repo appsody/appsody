@@ -14,12 +14,17 @@
 package functest
 
 import (
+	"bytes"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -184,5 +189,243 @@ func TestRunTooManyArgs(t *testing.T) {
 	}
 	if !strings.Contains(output, "Unexpected argument.") {
 		t.Error("Failed to flag too many arguments.")
+	}
+}
+
+//check appsody run is using the same volumes as in project.yaml
+func TestRunUsesCorrectProjectVolumes(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args = []string{"run", "--dryrun"}
+
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := new(cmd.RootCommandConfig)
+	_, project, _ := getCurrentProjectEntry(t, sandbox, config)
+
+	depsMount := project.Volumes[0].Name + ":" + project.Volumes[0].Path
+
+	if !strings.Contains(output, depsMount) {
+		t.Fatalf("Did not find expected docker volume mount in run command output: %s", depsMount)
+	}
+}
+
+// check project entry path in project.yaml gets updated when project moves
+func TestRunUpdatesProjectPath(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args = []string{"run", "--dryrun"}
+
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config := new(cmd.RootCommandConfig)
+
+	p, _, _ := getCurrentProjectEntry(t, sandbox, config)
+	projectsBefore := len(p.Projects)
+
+	tmpDir := filepath.Join(sandbox.TestDataPath, "tmp")
+	err = os.Rename(sandbox.ProjectDir, tmpDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sandbox.ProjectDir = tmpDir
+
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p, project, _ := getCurrentProjectEntry(t, sandbox, config)
+	projectsAfter := len(p.Projects)
+
+	if project.Path != tmpDir {
+		t.Fatalf("Expected project entry path to be updated to %s but found %s", tmpDir, project.Path)
+	}
+	if projectsBefore != projectsAfter {
+		t.Fatalf("Expected number of project entries to be %v but found %v", projectsBefore, projectsAfter)
+	}
+}
+
+// check if id exists in .appsody-config.yaml but not in project.yaml, a new project entry in project.yaml gets created with the same id
+func TestRunIfProjectIDNotExistInProjectYaml(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+
+	p, _, _ := getCurrentProjectEntry(t, sandbox, config)
+	projectsBefore := len(p.Projects)
+
+	err = cmd.SaveIDToConfig("newRandomID", config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	args = []string{"run", "--dryrun"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p, project, configID := getCurrentProjectEntry(t, sandbox, config)
+	projectsAfter := len(p.Projects)
+
+	if projectsBefore+1 != projectsAfter {
+		t.Fatalf("Expected number of project entries to be %v but found %v", projectsBefore+1, projectsAfter)
+	}
+	if project.ID != configID {
+		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
+	}
+}
+
+// check if id does not exists in .appsody-config.yaml, a new project entry in project.yaml gets created with the same id
+func TestRunIfProjectIDNotExistInConfigYaml(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := new(cmd.RootCommandConfig)
+
+	p, _, configID := getCurrentProjectEntry(t, sandbox, config)
+	projectsBefore := len(p.Projects)
+
+	// delete id from .appsody-config.yaml
+	appsodyConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	data, err := ioutil.ReadFile(appsodyConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	removedID := bytes.Replace(data, []byte("id: \""+configID+"\""), []byte(""), 1)
+	err = ioutil.WriteFile(appsodyConfig, []byte(removedID), 0666)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args = []string{"run", "--dryrun"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p, project, configID := getCurrentProjectEntry(t, sandbox, config)
+	projectsAfter := len(p.Projects)
+
+	if projectsBefore+1 != projectsAfter {
+		t.Fatalf("Expected number of project entries to be %v but found %v", projectsBefore+1, projectsAfter)
+	}
+	if project.ID != configID {
+		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
+	}
+}
+
+// check error if user specified mount interferes with stack mounts
+func TestRunUserSpecifiedVolumesStack(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	userSpecifiedMount := "volume:/project/user-app/node_modules"
+	userSpecifiedMountSplit := strings.Split(userSpecifiedMount, ":")
+	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount, "--dryrun"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err == nil {
+		t.Fatal("Expected non-zero exit code")
+	}
+
+	expectedError := "User specified mount path " + userSpecifiedMountSplit[1] + " is not allowed in --docker-options, as it interferes with the stack specified mount path /project/user-app/node_modules"
+	if !strings.Contains(output, expectedError) {
+		t.Fatalf("Expected error not found: %s", expectedError)
+	}
+}
+
+// check error if user specified mount interferes with stack mounts
+func TestRunUserSpecifiedVolumesDefault(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	userSpecifiedMount := "volume:/project/user-app"
+	userSpecifiedMountSplit := strings.Split(userSpecifiedMount, ":")
+	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount, "--dryrun"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err == nil {
+		t.Fatal("Expected non-zero exit code")
+	}
+
+	expectedError := "User specified mount path " + userSpecifiedMountSplit[1] + " is not allowed in --docker-options, as it interferes with the default specified mount path /project/user-app"
+	if !strings.Contains(output, expectedError) {
+		t.Fatalf("Expected error not found: %s", expectedError)
+	}
+}
+
+// check that user specified mount doesnt interferes with stack mounts
+func TestRunUserSpecifiedVolumesSimilar(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	userSpecifiedMount := "volume:/project/user-app/node_modules2"
+	userSpecifiedMountSplit := strings.Split(userSpecifiedMount, ":")
+	args = []string{"run", "--docker-options", "-v " + userSpecifiedMount, "--dryrun"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		unexpectedError := "User specified mount path " + userSpecifiedMountSplit[1] + " is not allowed in --docker-options, as it interferes with the stack specified mount path /project/user-app/node_modules2"
+		if strings.Contains(output, unexpectedError) {
+			t.Fatalf("Unexpected error found: %s", unexpectedError)
+		} else {
+			t.Fatal("Expected zero exit code")
+		}
 	}
 }
