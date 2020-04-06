@@ -82,7 +82,6 @@ jobs:
        - sudo apt-add-repository -y ppa:projectatomic/ppa
        - sudo apt-get -y -qq update
        - sudo apt-get -y install bats btrfs-tools git libapparmor-dev libdevmapper-dev libglib2.0-dev libgpgme11-dev libseccomp-dev libselinux1-dev skopeo-containers go-md2man
-       - sudo apt-get -y install golang-1.12
        - mkdir ~/buildah
        - cd ~/buildah
        - export GOPATH=`pwd`
