@@ -1073,6 +1073,16 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 			return labels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
 		containerConfig = data[0]["Config"].(map[string]interface{})
+		imageAndDigest := data[0]["RepoDigests"].([]interface{})
+
+		if len(imageAndDigest) > 0 { //Check that the image has a digest
+			digest := strings.Split(imageAndDigest[0].(string), "@")
+			if len(digest) > 0 {
+				labels[appsodyStackKeyPrefix+"digest"] = digest[1]
+			} else {
+				config.Warning.log("Unable to add image digest label. Continuing...")
+			}
+		}
 	}
 	if containerConfig["Labels"] != nil {
 		labelsMap := containerConfig["Labels"].(map[string]interface{})
@@ -1082,7 +1092,49 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 		}
 	}
 
+	if config.Buildah {
+		buildahDigest, err := getBuildahDigest(labels["dev.appsody.stack.tag"], config)
+		if err != nil {
+			config.Warning.log(err)
+			return labels, nil
+		}
+		labels[appsodyStackKeyPrefix+"digest"] = buildahDigest
+	}
+
 	return labels, nil
+}
+
+func getBuildahDigest(labelKey string, config *RootCommandConfig) (digest string, err error) {
+	var fullDigest string
+	splitImage := strings.Split(labelKey, ":")
+	imageName := splitImage[0]
+	cmdName := "buildah"
+	cmdArgs := []string{"images", "--digests", "--filter", "label=dev.appsody.stack.tag=" + labelKey, "--format", "'{{.Digest}} {{.Name}}'"}
+	digestCmd := exec.Command(cmdName, cmdArgs...)
+
+	output, cmdErr := SeparateOutput(digestCmd)
+	if cmdErr != nil {
+		return "", errors.Errorf("Error running command to retrieve image digest. Continuing...")
+	}
+	digestArray := strings.Split(output, "\n")
+	if len(digestArray) < 1 {
+		return "", errors.Errorf("Unable to retrieve image digest for label. Continuing...")
+	}
+
+	for _, nameAndDigest := range digestArray {
+		if strings.Contains(nameAndDigest, imageName) {
+			arr := strings.Split(nameAndDigest, "   ")
+			if len(arr) > 0 {
+				fullDigest = arr[0]
+			}
+		}
+	}
+	if fullDigest != "" {
+		fullDigest = strings.Trim(fullDigest, "'")
+		return fullDigest, nil
+	}
+	fullDigest = strings.Trim(digestArray[0], "'")
+	return fullDigest, nil
 }
 
 func getExposedPorts(config *RootCommandConfig) ([]string, error) {
