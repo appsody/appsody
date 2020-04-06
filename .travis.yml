@@ -63,6 +63,7 @@ jobs:
       before_script:
       - id
       - sudo sed -i 's/travis:100000/travis:165536/g' /etc/subuid
+      - sudo sed -i 's/travis:100000/travis:165536/g' /etc/subgid
       - buildah version
       - make build-linux-ppc64le
       - cd ./cmd/testdata/starter
@@ -86,6 +87,7 @@ jobs:
       before_script:
       - id
       - sudo sed -i 's/travis:100000/travis:165536/g' /etc/subuid
+      - sudo sed -i 's/travis:100000/travis:165536/g' /etc/subgid
       - buildah version
       - cd $TRAVIS_BUILD_DIR
       - make build-linux-s390x
