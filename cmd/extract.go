@@ -231,10 +231,10 @@ func extract(config *extractCommandConfig) error {
 			config.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
 			buildahMountCmd := exec.Command(cmdName, cmdArgs...)
 			buildahMountOutput, err := SeparateOutput(buildahMountCmd)
+			config.Debug.Log("Output of buildah mount command: ", buildahMountOutput)
 			if err != nil {
 				return errors.Errorf("buildah mount command failed: %v", err)
 			}
-			config.Debug.Log("Output of buildah mount command: ", buildahMountOutput)
 
 			appDir = filepath.Join(buildahMountOutput, containerProjectDir)
 			err = CopyDir(config.LoggingConfig, appDir, extractDir)
