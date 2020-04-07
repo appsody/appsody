@@ -49,6 +49,11 @@ Run this command from the root directory of your Appsody project.`,
 			if len(args) > 0 {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
+			var project ProjectFile
+			_, _, err := project.ensureProjectIDAndEntryExists(config.RootCommandConfig)
+			if err != nil {
+				return err
+			}
 			return extract(config)
 		},
 	}
@@ -327,9 +332,7 @@ func defaultExtractContainerName(config *RootCommandConfig) string {
 	projectName, perr := getProjectName(config)
 
 	if perr != nil {
-		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			//Debug.log("Cannot retrieve the project name - continuing: ", perr)
-		} else {
+		if _, ok := perr.(*NotAnAppsodyProject); !ok {
 			config.Error.log("Error occurred retrieving project name... exiting: ", perr)
 			os.Exit(1)
 		}

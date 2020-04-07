@@ -14,6 +14,7 @@
 package functest
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -413,36 +414,79 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, deploymentManifest cmd.Deploy
 			t.Errorf("Mismatch of %s annotation between built image and deployment config. Expected %s but found %s", key, value, annotation)
 		}
 	}
-
 }
 
-func TestBuildMissingTagFail(t *testing.T) {
+func TestInvalidBuild(t *testing.T) {
+
+	var knativeFlagTests = []struct {
+		testName    string
+		args        []string
+		expectedLog string
+	}{
+		{"Missing Tag ", []string{"--push"}, "Cannot specify --push or --push-url without a --tag"},
+		{"Invalid Tag with Push URL", []string{"--push-url", "i.am.not.a.real.url", "--tag", "£"}, "invalid argument \"i.am.not.a.real.url/£\" for \"-t, --tag"},
+		// Temporary expected return code, until new check is added
+		{"Invalid Push URL", []string{"--push-url", "i.am.not.a.real.url", "--tag", "notgonna/work"}, "Could not push the docker image"},
+	}
+	for _, testData := range knativeFlagTests {
+		tt := testData
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
+			// appsody init
+			t.Log("Running appsody init...")
+			_, err := cmdtest.RunAppsody(sandbox, "init", "starter")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// set push flag to true with no tag
+			args := append([]string{"build"}, tt.args...)
+			output, err := cmdtest.RunAppsody(sandbox, args...)
+			if err != nil {
+
+				// As tag is missing, appsody verifies user input and shows error
+				if !strings.Contains(output, tt.expectedLog) {
+					t.Errorf("String \""+tt.expectedLog+"\" not found in output: %v", err)
+				}
+
+				// If an error is not returned, the test should fail
+			} else {
+				t.Error("Build with missing tag did not fail as expected")
+			}
+		})
+	}
+}
+
+func TestBuildDeploymentConfigAlreadyExists(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// appsody init
 	t.Log("Running appsody init...")
 	_, err := cmdtest.RunAppsody(sandbox, "init", "starter")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// set push flag to true with no tag
-	args := []string{"build", "--push"}
+	configFile := filepath.Join(sandbox.ProjectDir, "app-deploy.yaml")
+	err = ioutil.WriteFile(configFile, []byte("Created for testing"), 0755)
+	if err != nil {
+		fmt.Printf("Unable to write file: %v", err)
+	}
+
+	args := []string{"build"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 
-		// As tag is missing, appsody verifies user input and shows error
-		if !strings.Contains(output, "Cannot specify --push or --push-url without a --tag") {
-			t.Errorf("String \"Cannot specify --push or --push-url without a --tag\" not found in output: %v", err)
+		if !strings.Contains(output, "Found existing deployment manifest "+configFile) {
+			t.Errorf("String \"Found existing deployment manifest "+configFile+"\" not found in output: %v", err)
 		}
-
-		// If an error is not returned, the test should fail
 	} else {
 		t.Error("Build with missing tag did not fail as expected")
 	}
-
 }
 
 func TestOpenLibertyDeploymentConfig(t *testing.T) {
@@ -551,4 +595,89 @@ func writeAppDeployYaml(destination string, deploymentManifest cmd.DeploymentMan
 		return fmt.Errorf("error writing deployment yaml to file %s: %v", destination, err)
 	}
 	return nil
+}
+
+// check if id exists in .appsody-config.yaml but not in project.yaml, a new project entry in project.yaml gets created with the same id
+func TestBuildIfProjectIDNotExistInProjectYaml(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+
+	p, _, _ := getCurrentProjectEntry(t, sandbox, config)
+	projectsBefore := len(p.Projects)
+
+	err = cmd.SaveIDToConfig("newRandomID", config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	args = []string{"build", "--dryrun"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p, project, configID := getCurrentProjectEntry(t, sandbox, config)
+	projectsAfter := len(p.Projects)
+
+	if projectsBefore+1 != projectsAfter {
+		t.Fatalf("Expected number of project entries to be %v but found %v", projectsBefore+1, projectsAfter)
+	}
+	if project.ID != configID {
+		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
+	}
+}
+
+// check if id does not exists in .appsody-config.yaml, a new project entry in project.yaml gets created with the same id
+func TestBuildIfProjectIDNotExistInConfigYaml(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := new(cmd.RootCommandConfig)
+
+	p, _, configID := getCurrentProjectEntry(t, sandbox, config)
+	projectsBefore := len(p.Projects)
+
+	// delete id from .appsody-config.yaml
+	appsodyConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	data, err := ioutil.ReadFile(appsodyConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	removedID := bytes.Replace(data, []byte("id: \""+configID+"\""), []byte(""), 1)
+	err = ioutil.WriteFile(appsodyConfig, []byte(removedID), 0666)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args = []string{"build", "--dryrun"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p, project, configID := getCurrentProjectEntry(t, sandbox, config)
+	projectsAfter := len(p.Projects)
+
+	if projectsBefore+1 != projectsAfter {
+		t.Fatalf("Expected number of project entries to be %v but found %v", projectsBefore+1, projectsAfter)
+	}
+	if project.ID != configID {
+		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
+	}
 }

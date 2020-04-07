@@ -294,6 +294,25 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 	if err != nil {
 		return err
 	}
+
+	_, err = generateNewProjectAndID(config.RootCommandConfig)
+	if err != nil {
+		return err
+	}
+
+	var p ProjectFile
+	fileLocation := getProjectYamlPath(config.RootCommandConfig)
+
+	_, err = p.GetProjects(fileLocation)
+	if err != nil {
+		return err
+	}
+
+	err = p.cleanupDockerVolumes(config.RootCommandConfig)
+	if err != nil {
+		return err
+	}
+
 	if template == "" {
 		config.Info.logf("Successfully initialized Appsody project with the %s stack and the default template.", stack)
 	} else if template != "none" {
@@ -652,9 +671,7 @@ func parseProjectParm(projectParm string, config *RootCommandConfig) (string, st
 func defaultProjectName(config *RootCommandConfig) string {
 	projectDirPath, perr := getProjectDir(config)
 	if perr != nil {
-		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			//Debug.log("Cannot retrieve the project dir - continuing: ", perr)
-		} else {
+		if _, ok := perr.(*NotAnAppsodyProject); !ok {
 			config.Error.logf("Error occurred retrieving project dir... exiting: %s", perr)
 			os.Exit(1)
 		}
@@ -667,7 +684,7 @@ func defaultProjectName(config *RootCommandConfig) string {
 	}
 	return projectName
 }
+
 func addStackRegistryFlagInit(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
 	cmd.PersistentFlags().StringVar(flagVar, "stack-registry", "", "Specify the URL of the registry that hosts your stack images.")
-
 }
