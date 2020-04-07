@@ -251,13 +251,6 @@ func TestDigestLabelBuildah(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Log("Copying .appsody-config.yaml to project dir...")
-	copyCmd := exec.Command("cp", filepath.Join(sandbox.TestDataPath, ".appsody-config.yaml"), sandbox.ProjectDir)
-	err = copyCmd.Run()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// appsody build
 	imageName := "testbuildimagebuildah"
 	_, err = cmdtest.RunAppsody(sandbox, "build", "--buildah", "--tag", imageName)
