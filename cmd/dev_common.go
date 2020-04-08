@@ -44,20 +44,63 @@ type devCommonConfig struct {
 	dockerOptions   string
 }
 
-func checkDockerRunOptions(options []string) error {
-	//runOptionsTest := "(^((-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume)|(-e)|(--env))((=?$)|(=.*)))"
-	runOptionsTest := "(^((--help)|(-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint)|(-v)|(--volume))((=?$)|(=.*)))"
-
+func checkDockerRunOptions(options []string, config *RootCommandConfig) error {
+	runOptionsTest := "(^((--help)|(-p)|(--publish)|(--publish-all)|(-P)|(-u)|(--user)|(--name)|(--network)|(-t)|(--tty)|(--rm)|(--entrypoint))((=?$)|(=.*)))"
 	blackListedRunOptionsRegexp := regexp.MustCompile(runOptionsTest)
-	for _, value := range options {
+
+	for ind, value := range options {
 		isInBlackListed := blackListedRunOptionsRegexp.MatchString(value)
 		if isInBlackListed {
 			return errors.Errorf("%s is not allowed in --docker-options", value)
+		}
+		if value == "-v" || value == "--volume" {
+			var p ProjectFile
+			project, _, err := p.ensureProjectIDAndEntryExists(config)
+			if err != nil {
+				return err
+			}
 
+			if ind+1 == len(options) {
+				return errors.Errorf("-v or --volume flag passed without associated fields. Options passed: %s", options)
+			}
+
+			userSpecifiedMount := options[ind+1]
+			userSpecifiedMountSplit := strings.Split(userSpecifiedMount, ":")
+			if len(userSpecifiedMountSplit) != 2 {
+				return errors.Errorf("User specified mount %s is not in the correct format.", userSpecifiedMount)
+			}
+			userSpecifiedMountPath := userSpecifiedMountSplit[1]
+
+			if strings.HasPrefix(userSpecifiedMountPath, "/.appsody") {
+				return errors.Errorf("User specified mount %s cannot override /.appsody folder.", userSpecifiedMount)
+			}
+
+			stackMounts, err := getStackMounts(config)
+			if err != nil {
+				return err
+			}
+
+			// Checking against mounts specified in APPSODY_MOUNTS
+			for _, mount := range stackMounts {
+				mountSplit := strings.Split(mount, ":")
+				if len(mountSplit) != 2 {
+					return errors.Errorf("Stack specified mount %s is not in the correct format.", mount)
+				}
+				mountPath := mountSplit[1]
+				if userSpecifiedMountPath == mountPath {
+					return errors.Errorf("User specified mount path %s is not allowed in --docker-options, as it interferes with the default specified mount path %s", userSpecifiedMountPath, mountPath)
+				}
+			}
+
+			// Checking against volume specified in APPSODY_DEPS which are store in the project.yaml
+			for _, volume := range project.Volumes {
+				if userSpecifiedMountPath == volume.Path {
+					return errors.Errorf("User specified mount path %s is not allowed in --docker-options, as it interferes with the stack specified mount path %s", userSpecifiedMountPath, volume.Path)
+				}
+			}
 		}
 	}
 	return nil
-
 }
 
 func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig) {
@@ -69,7 +112,7 @@ func addNameFlag(cmd *cobra.Command, flagVar *string, config *RootCommandConfig)
 		}
 	}
 
-	defaultName := projectName + "-dev"
+	defaultName := projectName
 	cmd.PersistentFlags().StringVar(flagVar, "name", defaultName, "Assign a name to your development container.")
 }
 
@@ -98,7 +141,7 @@ func addDevCommonFlags(cmd *cobra.Command, config *devCommonConfig) {
 	cmd.PersistentFlags().BoolVarP(&config.publishAllPorts, "publish-all", "P", false, "Publish all exposed ports to random ports")
 	cmd.PersistentFlags().BoolVar(&config.disableWatcher, "no-watcher", false, "Disable file watching, regardless of container environment variable settings.")
 	cmd.PersistentFlags().BoolVarP(&config.interactive, "interactive", "i", false, "Attach STDIN to the container for interactive TTY mode")
-	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\". The following Docker options are not supported:  '--help','-p','--publish-all','-P','-u','-—user','-—name','-—network','-t','-—tty,'—rm','—entrypoint','-v','—volume'.")
+	cmd.PersistentFlags().StringVar(&config.dockerOptions, "docker-options", "", "Specify the docker run options to use.  Value must be in \"\". The following Docker options are not supported:  '--help','-p','--publish-all','-P','-u','-—user','-—name','-—network','-t','-—tty,'—rm','—entrypoint', '--mount'.")
 }
 
 func commonCmd(config *devCommonConfig, mode string) error {
@@ -280,7 +323,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		dockerOptions = strings.TrimPrefix(dockerOptions, " ")
 		dockerOptions = strings.TrimSuffix(dockerOptions, " ")
 		dockerOptionsCmd := strings.Split(dockerOptions, " ")
-		err := checkDockerRunOptions(dockerOptionsCmd)
+		err := checkDockerRunOptions(dockerOptionsCmd, config.RootCommandConfig)
 		if err != nil {
 			return err
 		}
