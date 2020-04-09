@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -49,6 +50,7 @@ type StackYaml struct {
 	TemplatingData  map[string]string `yaml:"templating-data"`
 	Requirements    StackRequirement  `yaml:"requirements,omitempty"`
 	Deprecated      string            `yaml:"deprecated,omitempty"`
+	NoServer        bool              `yaml:"no-server,omitempty"`
 }
 type Maintainer struct {
 	Name     string `yaml:"name"`
@@ -76,6 +78,7 @@ type IndexYamlStack struct {
 	Requirements    StackRequirement `yaml:"requirements,omitempty"`
 	Image           string           `yaml:"image"`
 	Deprecated      string           `yaml:"deprecated,omitempty"`
+	NoServer        bool             `yaml:"no-server,omitempty"`
 }
 type IndexYamlStackTemplate struct {
 	ID        string `yaml:"id"`
@@ -515,6 +518,7 @@ func initialiseStackData(stackID string, stackImage string, stackYaml StackYaml)
 	newStackStruct.Requirements = stackYaml.Requirements
 	newStackStruct.Image = stackImage
 	newStackStruct.Deprecated = stackYaml.Deprecated
+	newStackStruct.NoServer = stackYaml.NoServer
 
 	return newStackStruct
 }
@@ -576,6 +580,7 @@ func GetLabelsForStackImage(stackID string, buildImage string, stackYaml StackYa
 	}
 	configLabels[appsodyStackKeyPrefix+"id"] = stackID
 	configLabels[appsodyStackKeyPrefix+"tag"] = buildImage
+	configLabels[appsodyStackKeyPrefix+"noServer"] = strconv.FormatBool(stackYaml.NoServer)
 
 	if stackYaml.Deprecated != "" {
 		configLabels[appsodyStackKeyPrefix+"deprecated"] = stackYaml.Deprecated
