@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
 	"unicode"
 
 	"encoding/json"
@@ -2182,6 +2183,17 @@ func downloadFile(log *LoggingConfig, href string, writer io.Writer) error {
 		Proxy: http.ProxyFromEnvironment,
 	}
 	log.Debug.log("Proxy function for HTTP transport set to: ", &t.Proxy)
+
+	// set skipCertVerification to true to work with secured endpoints
+	// We will need to fully support secure endpoints (with authentication) in the future
+	// So this will need to be removed and possibly set as an external property
+	skipCertVerification := true
+
+	if skipCertVerification {
+		tlsConf := &tls.Config{InsecureSkipVerify: skipCertVerification}
+		t.TLSClientConfig = tlsConf
+	}
+
 	if runtime.GOOS == "windows" {
 		// For Windows, remove the root url. It seems to work fine with an empty string.
 		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("")))
