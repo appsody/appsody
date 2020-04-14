@@ -444,7 +444,7 @@ func generateDeploymentConfig(config *buildCommandConfig, imageName string, labe
 		//cmdArgs = []string{"copy", configDir, configFile}
 		configDir = containerConfigDir
 		cmdName = "/bin/sh"
-		script := fmt.Sprintf("x=`buildah unshare buildah mount %s`; cp -f $x/%s %s", extractContainerName, configDir, configFile)
+		script := fmt.Sprintf("x=`buildah mount %s`; cp -f $x/%s %s", extractContainerName, configDir, configFile)
 		cmdArgs = []string{"-c", script}
 	}
 	err = execAndWaitReturnErr(config.LoggingConfig, cmdName, cmdArgs, config.Debug, config.Dryrun)

@@ -1094,7 +1094,7 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 	}
 
 	if config.Buildah {
-		buildahDigest, err := getBuildahDigest(labels["dev.appsody.stack.tag"], config)
+		buildahDigest, err := getBuildahDigest(labels["dev.appsody.stack.id"], imageName, config)
 		if err != nil || buildahDigest == "" {
 			config.Warning.log(err)
 			return labels, nil
@@ -1106,37 +1106,36 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 	return labels, nil
 }
 
-func getBuildahDigest(labelKey string, config *RootCommandConfig) (digest string, err error) {
-	var fullDigest string
-	splitImage := strings.Split(labelKey, ":") //Split the label key to extract just the image name e.g. docker.io/appsody/nodejs-express
-	imageName := splitImage[0]
+func getBuildahDigest(idKey string, image string, config *RootCommandConfig) (digest string, err error) {
+	splitImage := strings.Split(image, ":") //Split the label key to extract just the image name e.g. docker.io/appsody/nodejs-express
+	if len(splitImage) == 2 {
+		return "", errors.New("Error retrieving image name and tag used for build. The image digest will not be added as a label")
+	}
+	imageName := splitImage[0]    //The image name minus the version
+	imageVersion := splitImage[1] //The version of the image used
 	cmdName := "buildah"
-	cmdArgs := []string{"images", "--digests", "--filter", "label=dev.appsody.stack.tag=" + labelKey, "--format", "'{{.Digest}} {{.Name}}'"} //Run command to retrieve all images (name + digest) with a label matching the tag
+	cmdArgs := []string{"images", "--digests", "--filter", "label=dev.appsody.stack.id=" + idKey, "--format", "{{.Digest}}---{{.Name}}---{{.Tag}}"} //Run command to retrieve all images (name + digest + tag) with a label matching the id of the stack
+	config.Debug.log("Running command: buildah", " ", ArgsToString(cmdArgs))
 	digestCmd := exec.Command(cmdName, cmdArgs...)
-
 	output, cmdErr := SeparateOutput(digestCmd)
 	if cmdErr != nil {
-		return "", errors.Errorf("Error running command to retrieve image digest. Continuing...")
+		return "", cmdErr
 	}
 	digestArray := strings.Split(output, "\n") //Add each line of output to an array
 	if len(digestArray) < 1 {                  //No images returned, no digests in output
 		return "", errors.Errorf("Unable to retrieve image digest for label. Continuing...")
 	}
-
 	for _, nameAndDigest := range digestArray {
-		if strings.Contains(nameAndDigest, imageName) { //Attempt to take the digest of the image matching the tag first
-			arr := strings.Split(nameAndDigest, "   ") //Split to separate the digest from the name
-			if len(arr) > 0 {
-				fullDigest = arr[0] //Only add if command successfully split
-			}
+		arr := strings.Split(nameAndDigest, "---") //Split to have the digest, name, and tag as separate elements.
+		if len(arr) != 3 {                         //Safeguarding in case the output is not split correctly.
+			return "", errors.Errorf("Unable to split output of buildah digests command")
+		}
+		if arr[2] == imageVersion && arr[1] == imageName { //We check that the tag matches the version of the stack that the user is using and that the name matches the stack.
+			config.Debug.log("Successfully retrieved image digest")
+			return arr[0], nil
 		}
 	}
-	if fullDigest != "" {
-		fullDigest = strings.Trim(fullDigest, "'") //Remove random ' symbols trailing the digest
-		return fullDigest, nil
-	}
-	fullDigest = strings.Trim(digestArray[0], "'")
-	return fullDigest, nil
+	return "", errors.Errorf("Unable to retrieve image digest for label. Continuing...") //Otherwise we don't add the label
 }
 
 func getExposedPorts(config *RootCommandConfig) ([]string, error) {

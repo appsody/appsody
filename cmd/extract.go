@@ -223,7 +223,7 @@ func extract(config *extractCommandConfig) error {
 	// Now we need to copy files out of the container using the `docker cp` or `buildah mount` commands
 	if config.Buildah {
 		// In buildah, we need to mount the container filesystem then manually copy the files out
-		cmdArgs := []string{"unshare", "buildah", "mount", extractContainerName}
+		cmdArgs := []string{"mount", extractContainerName}
 		if config.Dryrun {
 			config.Info.log("Dry Run - Skip running buildah mount and copying files")
 		} else {
