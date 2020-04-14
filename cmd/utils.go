@@ -1108,7 +1108,7 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 
 func getBuildahDigest(idKey string, image string, config *RootCommandConfig) (digest string, err error) {
 	splitImage := strings.Split(image, ":") //Split the image to extract the image name and version separately
-	if len(splitImage) == 2 {
+	if len(splitImage) != 2 {
 		return "", errors.New("Error retrieving image name and tag used for build. The image digest will not be added as a label")
 	}
 	imageName := splitImage[0]    //The image name minus the version
