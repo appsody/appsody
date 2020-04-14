@@ -59,23 +59,9 @@ jobs:
         - sudo add-apt-repository -y ppa:projectatomic/ppa
         - sudo apt-get update -qq
         - sudo apt-get -qq -y install buildah
-        - sudo apt-get -qq -y install podman
-        # Show version and info.
-        - podman --version
         - sudo touch /etc/sub{u,g}id
         - sudo usermod --add-subuids 10000-75535 $(whoami)
         - sudo usermod --add-subgids 10000-75535 $(whoami)
-        - rm /run/user/$(id -u)/libpod/pause.pid
-        - podman version
-        - podman info --debug
-        - apt-cache show podman
-        - dpkg-query -L podman
-        # Hack podman's configuration files.
-        # /etc/containers/registries.conf does not exist.
-        # https://clouding.io/kb/en/how-to-install-and-use-podman-on-ubuntu-18-04/
-        - ls -1 /etc/containers/registries.conf || true
-        - sudo mkdir -p /etc/containers
-        - echo -e "[registries.search]\nregistries = ['docker.io', 'quay.io']" | sudo tee /etc/containers/registries.conf
       before_script:
       - id
       - buildah version
@@ -85,7 +71,6 @@ jobs:
       - cd ../../../
       - cat /etc/subgid
       - cat /etc/subuid
-      - podman system migrate
     - <<: *test-template
       name: Full Test on Linux s390x
       env: STACKS_LIST=dev.local/starter
@@ -98,23 +83,9 @@ jobs:
         - sudo add-apt-repository -y ppa:projectatomic/ppa
         - sudo apt-get update -qq
         - sudo apt-get -qq -y install buildah
-        - sudo apt-get -qq -y install podman
-        # Show version and info.
-        - podman --version
         - sudo touch /etc/sub{u,g}id
         - sudo usermod --add-subuids 10000-75535 $(whoami)
         - sudo usermod --add-subgids 10000-75535 $(whoami)
-        - rm /run/user/$(id -u)/libpod/pause.pid
-        - podman version
-        - podman info --debug
-        - apt-cache show podman
-        - dpkg-query -L podman
-        # Hack podman's configuration files.
-        # /etc/containers/registries.conf does not exist.
-        # https://clouding.io/kb/en/how-to-install-and-use-podman-on-ubuntu-18-04/
-        - ls -1 /etc/containers/registries.conf || true
-        - sudo mkdir -p /etc/containers
-        - echo -e "[registries.search]\nregistries = ['docker.io', 'quay.io']" | sudo tee /etc/containers/registries.conf
       before_script:
       - id
       - buildah version
@@ -125,7 +96,6 @@ jobs:
       - cd ../../../
       - cat /etc/subgid
       - cat /etc/subuid
-      - podman system migrate
     - <<: *test-template
       name: Unit Test on MacOS
       os: osx
