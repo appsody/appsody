@@ -428,36 +428,79 @@ func verifyImageAndConfigLabelsMatch(t *testing.T, deploymentManifest cmd.Deploy
 			t.Errorf("Mismatch of %s annotation between built image and deployment config. Expected %s but found %s", key, value, annotation)
 		}
 	}
-
 }
 
-func TestBuildMissingTagFail(t *testing.T) {
+func TestInvalidBuild(t *testing.T) {
+
+	var knativeFlagTests = []struct {
+		testName    string
+		args        []string
+		expectedLog string
+	}{
+		{"Missing Tag ", []string{"--push"}, "Cannot specify --push or --push-url without a --tag"},
+		{"Invalid Tag with Push URL", []string{"--push-url", "i.am.not.a.real.url", "--tag", "£"}, "invalid argument \"i.am.not.a.real.url/£\" for \"-t, --tag"},
+		// Temporary expected return code, until new check is added
+		{"Invalid Push URL", []string{"--push-url", "i.am.not.a.real.url", "--tag", "notgonna/work"}, "Could not push the docker image"},
+	}
+	for _, testData := range knativeFlagTests {
+		tt := testData
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+
+			// appsody init
+			t.Log("Running appsody init...")
+			_, err := cmdtest.RunAppsody(sandbox, "init", "starter")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// set push flag to true with no tag
+			args := append([]string{"build"}, tt.args...)
+			output, err := cmdtest.RunAppsody(sandbox, args...)
+			if err != nil {
+
+				// As tag is missing, appsody verifies user input and shows error
+				if !strings.Contains(output, tt.expectedLog) {
+					t.Errorf("String \""+tt.expectedLog+"\" not found in output: %v", err)
+				}
+
+				// If an error is not returned, the test should fail
+			} else {
+				t.Error("Build with missing tag did not fail as expected")
+			}
+		})
+	}
+}
+
+func TestBuildDeploymentConfigAlreadyExists(t *testing.T) {
 
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 	defer cleanup()
 
-	// appsody init
 	t.Log("Running appsody init...")
 	_, err := cmdtest.RunAppsody(sandbox, "init", "starter")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// set push flag to true with no tag
-	args := []string{"build", "--push"}
+	configFile := filepath.Join(sandbox.ProjectDir, "app-deploy.yaml")
+	err = ioutil.WriteFile(configFile, []byte("Created for testing"), 0755)
+	if err != nil {
+		fmt.Printf("Unable to write file: %v", err)
+	}
+
+	args := []string{"build"}
 	output, err := cmdtest.RunAppsody(sandbox, args...)
 	if err != nil {
 
-		// As tag is missing, appsody verifies user input and shows error
-		if !strings.Contains(output, "Cannot specify --push or --push-url without a --tag") {
-			t.Errorf("String \"Cannot specify --push or --push-url without a --tag\" not found in output: %v", err)
+		if !strings.Contains(output, "Found existing deployment manifest "+configFile) {
+			t.Errorf("String \"Found existing deployment manifest "+configFile+"\" not found in output: %v", err)
 		}
-
-		// If an error is not returned, the test should fail
 	} else {
 		t.Error("Build with missing tag did not fail as expected")
 	}
-
 }
 
 func TestOpenLibertyDeploymentConfig(t *testing.T) {
