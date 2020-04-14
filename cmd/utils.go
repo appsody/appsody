@@ -1107,7 +1107,7 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 }
 
 func getBuildahDigest(idKey string, image string, config *RootCommandConfig) (digest string, err error) {
-	splitImage := strings.Split(image, ":") //Split the label key to extract just the image name e.g. docker.io/appsody/nodejs-express
+	splitImage := strings.Split(image, ":") //Split the image to extract the image name and version separately
 	if len(splitImage) == 2 {
 		return "", errors.New("Error retrieving image name and tag used for build. The image digest will not be added as a label")
 	}
