@@ -613,7 +613,6 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	templateMetadata["description"] = labels[ociKeyPrefix+"description"]
 	templateMetadata["created"] = labels[ociKeyPrefix+"created"]
 	templateMetadata["tag"] = labels[appsodyStackKeyPrefix+"tag"]
-	templateMetadata["maintainers"] = labels[ociKeyPrefix+"authors"]
 
 	// create version map and add to templateMetadata map
 	var semver = make(map[string]string)

@@ -931,18 +931,6 @@ func getConfigLabels(projectConfig ProjectConfig, filename string, log *LoggingC
 
 	labels[ociKeyPrefix+"created"] = t.Format(time.RFC3339)
 
-	var maintainersString string
-	for index, maintainer := range projectConfig.Maintainers {
-		maintainersString += maintainer.Name + " <" + maintainer.Email + ">"
-		if index < len(projectConfig.Maintainers)-1 {
-			maintainersString += ", "
-		}
-	}
-
-	if maintainersString != "" {
-		labels[ociKeyPrefix+"authors"] = maintainersString
-	}
-
 	if projectConfig.Version != "" {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.Version); !valid {
 			return labels, errors.Errorf("%s version value is invalid. %v", ConfigFile, err)
@@ -1009,22 +997,6 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		if !gitInfo.Commit.Pushed {
 			labels[revisionKey] += "-not-pushed"
 		}
-	}
-
-	if commitInfo.Author != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author
-	}
-
-	if commitInfo.AuthorEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] += " <" + commitInfo.AuthorEmail + ">"
-	}
-
-	if commitInfo.Committer != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] = commitInfo.Committer
-	}
-
-	if commitInfo.CommitterEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] += " <" + commitInfo.CommitterEmail + ">"
 	}
 
 	if commitInfo.Date != "" {
