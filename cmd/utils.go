@@ -1111,9 +1111,11 @@ func getBuildahDigest(idKey string, image string, config *RootCommandConfig) (di
 	if len(splitImage) == 2 {
 		return "", errors.New("Error retrieving image name and tag used for build. The image digest will not be added as a label")
 	}
-	imageName := splitImage[0]    //The image name minus the version
-	imageVersion := splitImage[1] //The version of the image used
+	imageName := splitImage[0] //The image name minus the version
+	imageTag := splitImage[1]  //The version of the image used
 	cmdName := "buildah"
+	/*In versions of buildah older than 1.12, the format of the buildah inspect command is slightly different and therefore we can not reliably retrieve the image digest.
+	As a result, we need to run a buildah images --digests command and filter to find the image that has just been pulled down on an appsody build.*/
 	cmdArgs := []string{"images", "--digests", "--filter", "label=dev.appsody.stack.id=" + idKey, "--format", "{{.Digest}}---{{.Name}}---{{.Tag}}"} //Run command to retrieve all images (name + digest + tag) with a label matching the id of the stack
 	config.Debug.log("Running command: buildah", " ", ArgsToString(cmdArgs))
 	digestCmd := exec.Command(cmdName, cmdArgs...)
@@ -1130,7 +1132,7 @@ func getBuildahDigest(idKey string, image string, config *RootCommandConfig) (di
 		if len(arr) != 3 {                         //Safeguarding in case the output is not split correctly.
 			return "", errors.Errorf("Unable to split output of buildah digests command")
 		}
-		if arr[2] == imageVersion && arr[1] == imageName { //We check that the tag matches the version of the stack that the user is using and that the name matches the stack.
+		if arr[2] == imageTag && arr[1] == imageName { //We check that the tag matches the version of the stack that the user is using and that the name matches the stack.
 			config.Debug.log("Successfully retrieved image digest")
 			return arr[0], nil
 		}

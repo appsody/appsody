@@ -273,7 +273,13 @@ func TestDigestLabelBuildah(t *testing.T) {
 	}
 
 	containerConfig = buildahData["config"].(map[string]interface{})
+	if containerConfig == nil {
+		t.Fatal("Unable to read config on buildah inspect command")
+	}
 	labelsMap := containerConfig["Labels"].(map[string]interface{})
+	if labelsMap == nil {
+		t.Fatal("Unable to read labels in image on buildah inspect command")
+	}
 
 	if labelsMap[appsodyPrefixKey+"digest"] == nil {
 		t.Fatal("No label for image digest found.")
