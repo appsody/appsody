@@ -614,6 +614,16 @@ func CreateTemplateMap(labels map[string]string, stackYaml StackYaml, imageNames
 	templateMetadata["created"] = labels[ociKeyPrefix+"created"]
 	templateMetadata["tag"] = labels[appsodyStackKeyPrefix+"tag"]
 
+	var maintainers string
+	for index, maintainer := range stackYaml.Maintainers {
+		maintainers += maintainer.Name + " <" + maintainer.Email + ">"
+		if index < len(stackYaml.Maintainers)-1 {
+			maintainers += ", "
+		}
+	}
+
+	templateMetadata["maintainers"] = maintainers
+
 	// create version map and add to templateMetadata map
 	var semver = make(map[string]string)
 	semver["major"] = versionFull[0]
