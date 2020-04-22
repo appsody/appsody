@@ -44,6 +44,7 @@ type buildCommandConfig struct {
 	knativeFlagPresent   bool
 	namespaceFlagPresent bool
 	namespace            string
+	generateOnly         bool
 }
 
 type DeploymentManifest struct {
@@ -210,6 +211,14 @@ func build(config *buildCommandConfig) error {
 	// It would be nicer to only call the --label flag once. Could also use the --label-file flag.
 	for _, label := range labelPairs {
 		cmdArgs = append(cmdArgs, "--label", label)
+	}
+
+	if (config.generateOnly) {
+		err = generateDeploymentConfig(config, buildImage, labels)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	cmdArgs = append(cmdArgs, "-f", dockerfile, extractDir)

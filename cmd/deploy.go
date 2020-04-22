@@ -86,7 +86,32 @@ Run this command from the root directory of your Appsody project.`,
 
 			dryrun := config.Dryrun
 			namespace := config.namespace
+
 			configFile := filepath.Join(projectDir, config.appDeployFile)
+
+			if config.generate {
+				buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
+				buildConfig.Verbose = config.Verbose
+				buildConfig.pushURL = config.pushURL
+				buildConfig.push = config.push
+				buildConfig.dockerBuildOptions = config.dockerBuildOptions
+				buildConfig.buildahBuildOptions = config.buildahBuildOptions
+
+				buildConfig.tag = config.tag
+				buildConfig.pullURL = config.pullURL
+				buildConfig.knative = config.knative
+				buildConfig.knativeFlagPresent = config.knativeFlagPresent
+				buildConfig.appDeployFile = configFile
+				buildConfig.namespace = namespace
+				buildConfig.namespaceFlagPresent = config.namespaceFlagPresent
+				buildConfig.generateOnly = config.generate
+
+				buildErr := build(buildConfig)
+				if buildErr != nil {
+					return buildErr
+				}
+				return nil
+			}
 
 			exists, err := Exists(configFile)
 			if err != nil {
@@ -148,10 +173,6 @@ Run this command from the root directory of your Appsody project.`,
 				if buildErr != nil {
 					return buildErr
 				}
-			}
-
-			if config.generate {
-				return nil
 			}
 
 			deploymentManifest, err := getDeploymentManifest(configFile)
