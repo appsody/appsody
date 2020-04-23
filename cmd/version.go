@@ -16,6 +16,9 @@ package cmd
 
 import (
 	"errors"
+	"os"
+	"strings"
+
 	"github.com/spf13/cobra"
 )
 
@@ -30,6 +33,25 @@ func newVersionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
 			log.Info.log(rootCmd.Use, " ", VERSION)
+			overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
+			if overrideControllerImage == "" {
+				log.Debug.Log("Using default controller image...")
+				overrideVersion := os.Getenv("APPSODY_CONTROLLER_VERSION")
+				if overrideVersion != "" {
+					CONTROLLERVERSION = overrideVersion
+				}
+			} else {
+				log.Info.Log("Overriding default controller image with: " + overrideControllerImage)
+				imageSplit := strings.Split(overrideControllerImage, ":")
+				if len(imageSplit) == 1 {
+					// this is an implicit reference to latest
+					CONTROLLERVERSION = "latest"
+				} else {
+					CONTROLLERVERSION = imageSplit[1]
+					//This also could be latest
+				}
+			}
+			log.Info.log("appsody-controller", " ", CONTROLLERVERSION)
 			return nil
 		},
 	}
