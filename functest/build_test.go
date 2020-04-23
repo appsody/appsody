@@ -125,6 +125,7 @@ var appsodyStackLabels = []string{
 	"tag",
 	"version",
 	"configured",
+	"digest",
 }
 
 var appsodyCommitKey = "dev.appsody.image.commit."
@@ -227,6 +228,63 @@ func deleteImage(imageName string, cmdName string, t *testing.T) {
 	if err != nil {
 		t.Logf("Ignoring error running docker image rm: %s", err)
 	}
+}
+
+//Skip this test for now as it fails on Travis but passes locally. We will need to change the
+//way some Buildah commands are run (e.g. use unshare) which may not be worth it just yet for one test.
+func TestDigestLabelBuildah(t *testing.T) {
+	if runtime.GOOS != "linux" || !cmdtest.TravisTesting {
+		t.Skip()
+	}
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// first add the test repo index
+	_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// appsody init
+	_, err = cmdtest.RunAppsody(sandbox, "init", "nodejs")
+	t.Log("Running appsody init...")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// appsody build
+	imageName := "testbuildimagebuildah"
+	_, err = cmdtest.RunAppsody(sandbox, "build", "--buildah", "--tag", imageName)
+	if err != nil {
+		t.Fatalf("Error on appsody build: %v", err)
+	}
+
+	inspectOutput, inspectErr := cmdtest.RunCmdExec("buildah", []string{"inspect", "--format={{.Config}}", imageName}, t)
+	if inspectErr != nil {
+		t.Fatal(inspectErr)
+	}
+
+	var containerConfig map[string]interface{}
+	var buildahData map[string]interface{}
+	err = json.Unmarshal([]byte(inspectOutput), &buildahData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	containerConfig = buildahData["config"].(map[string]interface{})
+	if containerConfig == nil {
+		t.Fatal("Unable to read config on buildah inspect command")
+	}
+	labelsMap := containerConfig["Labels"].(map[string]interface{})
+	if labelsMap == nil {
+		t.Fatal("Unable to read labels in image on buildah inspect command")
+	}
+
+	if labelsMap[appsodyPrefixKey+"digest"] == nil {
+		t.Fatal("No label for image digest found.")
+	}
+
 }
 
 func TestDeploymentConfig(t *testing.T) {
