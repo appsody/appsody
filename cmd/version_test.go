@@ -15,6 +15,7 @@
 package cmd_test
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -34,8 +35,8 @@ func TestVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(output, cmd.VERSION) {
-		t.Fatal("Output does not contain version")
+	if !strings.Contains(output, cmd.VERSION) && !strings.Contains(output, cmd.CONTROLLERVERSION) {
+		t.Fatal("Output does not contain CLI or controller version")
 	}
 }
 
@@ -52,5 +53,41 @@ func TestVersionTooManyArgs(t *testing.T) {
 	}
 	if !strings.Contains(output, "Unexpected argument.") {
 		t.Fatal("Correct error message not given.")
+	}
+}
+
+func TestOverrideControllerVersion(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	os.Setenv("APPSODY_CONTROLLER_VERSION", "0.3.0")
+
+	args := []string{"version"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(output, cmd.VERSION) && !strings.Contains(output, "0.3.0") {
+		t.Fatal("Output does not contain CLI or altered controller version")
+	}
+}
+
+func TestOverrideControllerImage(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	os.Setenv("APPSODY_CONTROLLER_IMAGE", "appsody/new-controller:0.1.1")
+
+	args := []string{"version"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(output, cmd.VERSION) && !strings.Contains(output, "appsody/new-controller:0.1.1") {
+		t.Fatal("Output does not contain CLI or new controller image")
 	}
 }
