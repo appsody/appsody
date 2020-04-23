@@ -26,8 +26,8 @@ func newVersionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command {
 	// versionCmd represents the version command
 	var versionCmd = &cobra.Command{
 		Use:   "version",
-		Short: "Show the version of the Appsody CLI.",
-		Long:  `Show the version of the Appsody CLI that is currently in use.`,
+		Short: "Show the version of the Appsody CLI and Controller.",
+		Long:  `Show the version of the Appsody CLI and Controller that is currently in use.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
