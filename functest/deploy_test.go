@@ -122,7 +122,7 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 			// t.Fatal(err)
 		}
 
-		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, namespace, true})
+		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageTag, namespace, true}, false)
 	}
 }
 
@@ -146,7 +146,7 @@ func TestDeployNoNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageTag, "", false})
+	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageTag, "", false}, false)
 }
 
 func TestDeployChangeNamespace(t *testing.T) {
