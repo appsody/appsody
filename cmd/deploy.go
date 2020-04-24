@@ -89,30 +89,6 @@ Run this command from the root directory of your Appsody project.`,
 
 			configFile := filepath.Join(projectDir, config.appDeployFile)
 
-			if config.generate {
-				buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
-				buildConfig.Verbose = config.Verbose
-				buildConfig.pushURL = config.pushURL
-				buildConfig.push = config.push
-				buildConfig.dockerBuildOptions = config.dockerBuildOptions
-				buildConfig.buildahBuildOptions = config.buildahBuildOptions
-
-				buildConfig.tag = config.tag
-				buildConfig.pullURL = config.pullURL
-				buildConfig.knative = config.knative
-				buildConfig.knativeFlagPresent = config.knativeFlagPresent
-				buildConfig.appDeployFile = configFile
-				buildConfig.namespace = namespace
-				buildConfig.namespaceFlagPresent = config.namespaceFlagPresent
-				buildConfig.generateOnly = config.generate
-
-				buildErr := build(buildConfig)
-				if buildErr != nil {
-					return buildErr
-				}
-				return nil
-			}
-
 			exists, err := Exists(configFile)
 			if err != nil {
 				return err
@@ -150,6 +126,30 @@ Run this command from the root directory of your Appsody project.`,
 			}
 
 			config.Info.Logf("Using namespace %s for deployment", namespace)
+
+			if config.generate {
+				buildConfig := &buildCommandConfig{RootCommandConfig: config.RootCommandConfig}
+				buildConfig.Verbose = config.Verbose
+				buildConfig.pushURL = config.pushURL
+				buildConfig.push = config.push
+				buildConfig.dockerBuildOptions = config.dockerBuildOptions
+				buildConfig.buildahBuildOptions = config.buildahBuildOptions
+
+				buildConfig.tag = config.tag
+				buildConfig.pullURL = config.pullURL
+				buildConfig.knative = config.knative
+				buildConfig.knativeFlagPresent = config.knativeFlagPresent
+				buildConfig.appDeployFile = configFile
+				buildConfig.namespace = namespace
+				buildConfig.namespaceFlagPresent = config.namespaceFlagPresent
+				buildConfig.generateOnly = config.generate
+
+				buildErr := build(buildConfig)
+				if buildErr != nil {
+					return buildErr
+				}
+				return nil
+			}
 
 			if !config.nobuild {
 				config.Info.Log("Building the production image")
