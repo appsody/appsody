@@ -32,6 +32,7 @@ func newVersionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command {
 			if len(args) > 0 {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
+			// default value in main.go is vlatest
 			log.Info.log(rootCmd.Use, " ", VERSION)
 			overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
 			if overrideControllerImage == "" {
@@ -51,6 +52,7 @@ func newVersionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command {
 					//This also could be latest
 				}
 			}
+			// default value in main.go is latest
 			log.Info.log("appsody-controller", " ", CONTROLLERVERSION)
 			return nil
 		},

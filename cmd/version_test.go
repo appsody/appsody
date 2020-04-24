@@ -87,7 +87,7 @@ func TestOverrideControllerImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(output, cmd.VERSION) && !strings.Contains(output, "appsody/new-controller:0.1.1") {
+	if !strings.Contains(output, cmd.VERSION) && !strings.Contains(output, "appsody/new-controller:0.1.1") && !strings.Contains(output, "appsody-controller 0.1.1") {
 		t.Fatal("Output does not contain CLI or new controller image")
 	}
 }
