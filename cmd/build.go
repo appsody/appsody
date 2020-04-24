@@ -213,7 +213,7 @@ func build(config *buildCommandConfig) error {
 		cmdArgs = append(cmdArgs, "--label", label)
 	}
 
-	if (config.generateOnly) {
+	if config.generateOnly {
 		err = generateDeploymentConfig(config, buildImage, labels)
 		if err != nil {
 			return err
