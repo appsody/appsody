@@ -111,7 +111,6 @@ func TestSimpleBuildCases(t *testing.T) {
 var ociPrefixKey = "org.opencontainers.image."
 var openContainerLabels = []string{
 	"created",
-	"authors",
 	"version",
 	"licenses",
 	"title",
@@ -132,8 +131,6 @@ var appsodyCommitKey = "dev.appsody.image.commit."
 var appsodyCommitLabels = []string{
 	"message",
 	"date",
-	"committer",
-	"author",
 }
 
 func TestBuildLabels(t *testing.T) {
