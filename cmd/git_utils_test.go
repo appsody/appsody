@@ -113,6 +113,7 @@ func TestGetGitInfoWithNotAGitRepo(t *testing.T) {
 	_, err := cmd.GetGitInfo(config)
 	expectedError := "not a git repository"
 	if err != nil {
+		// lower case as different messages across z and p architectures
 		lowercaseError := strings.ToLower(err.Error())
 		if !strings.Contains(lowercaseError, expectedError) {
 			t.Errorf("String \"not a git repository\" not found in output: %v", err)
