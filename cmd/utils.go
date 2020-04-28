@@ -2626,7 +2626,12 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 	for _, stack := range indexYaml.Stacks {
 		for _, template := range stack.Templates {
 			stackJSON := IndexJSONStack{}
-			stackJSON.DisplayName = prefixName + " " + stack.Name + " " + template.ID + " template"
+			if stack.Deprecated != "" {
+				stackJSON.DisplayName = "[Deprecated] "
+				stackJSON.Deprecated = stack.Deprecated
+			}
+
+			stackJSON.DisplayName = stackJSON.DisplayName + prefixName + " " + stack.Name + " " + template.ID + " template"
 			stackJSON.Description = stack.Description
 			stackJSON.Language = stack.Language
 			stackJSON.ProjectType = "appsodyExtension"
