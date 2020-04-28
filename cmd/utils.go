@@ -933,7 +933,7 @@ func getConfigLabels(projectConfig ProjectConfig, filename string, log *LoggingC
 
 	var maintainersString string
 	for index, maintainer := range projectConfig.Maintainers {
-		maintainersString += maintainer.Name + " <" + maintainer.Email + ">"
+		maintainersString += maintainer.Name + " <" + maintainer.GithubID + ">"
 		if index < len(projectConfig.Maintainers)-1 {
 			maintainersString += ", "
 		}
@@ -1009,22 +1009,6 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		if !gitInfo.Commit.Pushed {
 			labels[revisionKey] += "-not-pushed"
 		}
-	}
-
-	if commitInfo.Author != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author
-	}
-
-	if commitInfo.AuthorEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] += " <" + commitInfo.AuthorEmail + ">"
-	}
-
-	if commitInfo.Committer != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] = commitInfo.Committer
-	}
-
-	if commitInfo.CommitterEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] += " <" + commitInfo.CommitterEmail + ">"
 	}
 
 	if commitInfo.Date != "" {
