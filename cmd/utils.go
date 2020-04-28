@@ -931,6 +931,18 @@ func getConfigLabels(projectConfig ProjectConfig, filename string, log *LoggingC
 
 	labels[ociKeyPrefix+"created"] = t.Format(time.RFC3339)
 
+	var maintainersString string
+	for index, maintainer := range projectConfig.Maintainers {
+		maintainersString += maintainer.Name + " <" + maintainer.GithubID + ">"
+		if index < len(projectConfig.Maintainers)-1 {
+			maintainersString += ", "
+		}
+	}
+
+	if maintainersString != "" {
+		labels[ociKeyPrefix+"authors"] = maintainersString
+	}
+
 	if projectConfig.Version != "" {
 		if valid, err := IsValidKubernetesLabelValue(projectConfig.Version); !valid {
 			return labels, errors.Errorf("%s version value is invalid. %v", ConfigFile, err)
