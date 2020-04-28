@@ -69,6 +69,7 @@ type RootCommandConfig struct {
 	setupConfigRun bool
 	imagePulled    map[string]bool
 	cachedEnvVars  map[string]string
+	cachedIndices  RepoIndices
 }
 
 // Regular expression to match ANSI terminal commands so that we can remove them from the log

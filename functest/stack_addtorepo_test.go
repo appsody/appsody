@@ -15,11 +15,12 @@
 package functest
 
 import (
-	"github.com/appsody/appsody/cmd/cmdtest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
 var stackAddToRepoTests = []struct {

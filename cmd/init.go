@@ -127,7 +127,7 @@ func initAppsody(stack string, template string, config *initCommandConfig) error
 
 	//err = index.getIndex()
 
-	indices, err := repos.GetIndices(config.LoggingConfig)
+	indices, err := repos.GetIndices(config.RootCommandConfig)
 
 	if err != nil {
 		config.Error.logf("Does the APIVersion of your repository match what the Appsody CLI currently supports? (%v). The following indices could not be read. skipping:\n%v", supportedIndexAPIVersion, err)

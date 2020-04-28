@@ -65,7 +65,7 @@ An asterisk in the repository column denotes the default repository. An asterisk
 					return nil
 				}
 
-				list, err := repos.getRepositories(rootConfig.LoggingConfig)
+				list, err := repos.getRepositories(rootConfig)
 				if err != nil {
 					return err
 				}
@@ -87,11 +87,7 @@ An asterisk in the repository column denotes the default repository. An asterisk
 				}
 			} else {
 				repoName := args[0]
-				_, err := repos.getRepos(rootConfig)
-				if err != nil {
-					return err
-				}
-				repoProjects, err := repos.listRepoProjects(repoName, rootConfig)
+				repoProjects, index, err := repos.listRepoProjects(repoName, rootConfig)
 				if err != nil {
 					return err
 				}
@@ -104,7 +100,7 @@ An asterisk in the repository column denotes the default repository. An asterisk
 					return nil
 				}
 
-				repoList, err := repos.getRepository(rootConfig.LoggingConfig, repoName)
+				repoList, err := repos.getRepository(index, repoName)
 				if err != nil {
 					return err
 				}

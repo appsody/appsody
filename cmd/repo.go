@@ -260,20 +260,20 @@ func (index *IndexYaml) listProjects(repoName string, config *RootCommandConfig)
 	return table.String(), nil
 }
 
-func (r *RepositoryFile) listRepoProjects(repoName string, config *RootCommandConfig) (string, error) {
+func (r *RepositoryFile) listRepoProjects(repoName string, config *RootCommandConfig) (string, *IndexYaml, error) {
 	if repo := r.GetRepo(repoName); repo != nil {
 		url := repo.URL
 		index, err := downloadIndex(config.LoggingConfig, url)
 		if err != nil {
-			return "", err
+			return "", index, err
 		}
 		tableString, err := index.listProjects(repoName, config)
 		if err != nil {
-			return "", err
+			return "", index, err
 		}
-		return tableString, nil
+		return tableString, index, nil
 	}
-	return "", errors.New("cannot locate repository named " + repoName)
+	return "", nil, errors.New("cannot locate repository named " + repoName)
 }
 
 func (r *RepositoryFile) getRepos(rootConfig *RootCommandConfig) (*RepositoryFile, error) {
@@ -427,11 +427,15 @@ func (r *RepositoryFile) WriteFile(path string) error {
 	return ioutil.WriteFile(path, data, 0644)
 }
 
-func (r *RepositoryFile) GetIndices(log *LoggingConfig) (RepoIndices, error) {
+func (r *RepositoryFile) GetIndices(config *RootCommandConfig) (RepoIndices, error) {
+	if config.cachedIndices != nil {
+		return config.cachedIndices, nil
+	}
+
 	indices := make(map[string]*IndexYaml)
 	brokenRepos := make([]indexError, 0)
 	for _, rf := range r.Repositories {
-		var index, err = downloadIndex(log, rf.URL)
+		var index, err = downloadIndex(config.LoggingConfig, rf.URL)
 		if err != nil {
 			repoErr := indexError{rf.Name, err}
 			brokenRepos = append(brokenRepos, repoErr)
@@ -442,6 +446,8 @@ func (r *RepositoryFile) GetIndices(log *LoggingConfig) (RepoIndices, error) {
 	if len(brokenRepos) > 0 {
 		return indices, &indexErrors{brokenRepos}
 	}
+
+	config.cachedIndices = indices
 	return indices, nil
 }
 
@@ -506,7 +512,7 @@ func (r *RepositoryFile) listProjects(config *RootCommandConfig) (string, error)
 	table.Wrap = true
 
 	table.AddRow("REPO", "ID", "VERSION  ", "TEMPLATES", "DESCRIPTION")
-	indices, err := r.GetIndices(config.LoggingConfig)
+	indices, err := r.GetIndices(config)
 
 	if err != nil {
 		config.Error.logf("The following indices could not be read, skipping:\n%v", err)
@@ -558,11 +564,11 @@ type RepositoryOutputFormat struct {
 	Stacks []Stack `yaml:"stacks" json:"stacks"`
 }
 
-func (r *RepositoryFile) getRepositories(log *LoggingConfig) (IndexOutputFormat, error) {
+func (r *RepositoryFile) getRepositories(config *RootCommandConfig) (IndexOutputFormat, error) {
 	var indexOutput IndexOutputFormat
 	indexOutput.APIVersion = r.APIVersion
 	indexOutput.Generated = r.Generated
-	indices, err := r.GetIndices(log)
+	indices, err := r.GetIndices(config)
 	if err != nil {
 		return indexOutput, errors.Errorf("Could not read indices: %v", err)
 	}
@@ -578,20 +584,13 @@ func (r *RepositoryFile) getRepositories(log *LoggingConfig) (IndexOutputFormat,
 	return indexOutput, nil
 }
 
-func (r *RepositoryFile) getRepository(log *LoggingConfig, repoName string) (IndexOutputFormat, error) {
+func (r *RepositoryFile) getRepository(index *IndexYaml, repoName string) (IndexOutputFormat, error) {
 	var indexOutput IndexOutputFormat
 	indexOutput.APIVersion = r.APIVersion
 	indexOutput.Generated = r.Generated
-	indices, err := r.GetIndices(log)
-	if err != nil {
-		return indexOutput, errors.Errorf("Could not read indices: %v", err)
-	}
 
-	if indices[repoName] != nil {
-		var Stacks []Stack
-		Stacks = indices[repoName].buildStacksFromIndex(repoName, Stacks)
-
-		indexOutput.Repositories = append(indexOutput.Repositories, RepositoryOutputFormat{Name: repoName, Stacks: Stacks})
-	}
+	var stacks []Stack
+	stacks = index.buildStacksFromIndex(repoName, stacks)
+	indexOutput.Repositories = append(indexOutput.Repositories, RepositoryOutputFormat{Name: repoName, Stacks: stacks})
 	return indexOutput, nil
 }
