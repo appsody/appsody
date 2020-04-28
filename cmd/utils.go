@@ -2628,7 +2628,7 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 			stackJSON := IndexJSONStack{}
 			if stack.Deprecated != "" {
 				stackJSON.DisplayName = "[Deprecated] "
-				stackJSON.Deprecated = "true"
+				stackJSON.Deprecated = stack.Deprecated
 			}
 
 			stackJSON.DisplayName = stackJSON.DisplayName + prefixName + " " + stack.Name + " " + template.ID + " template"
