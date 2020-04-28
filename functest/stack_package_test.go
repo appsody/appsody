@@ -58,7 +58,7 @@ func TestStackPackageLabels(t *testing.T) {
 		}
 	}
 
-	for _, label := range openContainerLabels {
+	for _, label := range append(openContainerLabels, "authors") {
 		if labelsMap[ociPrefixKey+label] == nil {
 			t.Errorf("Could not find %s%s label in Docker image!", ociPrefixKey, label)
 		}
