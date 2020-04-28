@@ -92,6 +92,7 @@ type IndexJSONStack struct {
 	ProjectStyle string `json:"projectStyle"`
 	Location     string `json:"location"`
 	Links        Link   `json:"links"`
+	Deprecated   string `json:"deprecated,omitempty"`
 }
 
 type Link struct {
