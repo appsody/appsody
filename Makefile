@@ -147,7 +147,7 @@ localbin-darwin localbin-linux localbin-windows:
 	cp -p $(BUILD_PATH)/$(build_binary) $(LOCAL_BIN_PATH)/appsody
 
 .PHONY: package
-package: build-docs tar-linux tar-linux-ppc64le deb-linux rpm-linux tar-darwin brew-darwin tar-windows ## Creates packages for all operating systems and store them in package/ dir
+package: build-docs tar-linux tar-linux-ppc64le tar-linux-s390x deb-linux rpm-linux tar-darwin brew-darwin tar-windows ## Creates packages for all operating systems and store them in package/ dir
 
 .PHONY: tar-linux
 tar-linux: build-linux ## Build the linux binary and package it in a .tar.gz file
