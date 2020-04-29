@@ -31,10 +31,11 @@ jobs:
       os: linux
       script: make lint
     - <<: *test-template
-      name: Full Test on Linux
+      name: Full Test on Linux amd64
       os: linux
-      # installation instructions for Buildah taken from https://github.com/containers/buildah/blob/master/install.md
+      arch: amd64
       dist: xenial
+      # installation instructions for Buildah taken from https://github.com/containers/buildah/blob/master/install.md
       before_install:
         - sudo apt-get update -qq
         - sudo apt-get install -qq -y software-properties-common
@@ -42,9 +43,46 @@ jobs:
         - sudo apt-get update -qq
         - sudo apt-get -qq -y install buildah
     - <<: *test-template
+      name: Full Test on Linux ppc64le
+      env: STACKS_LIST=dev.local/starter
+      os: linux
+      arch: ppc64le
+      dist: xenial
+      before_install:
+        - sudo apt-get update -qq
+        - sudo apt-get install -qq -y software-properties-common
+        - sudo add-apt-repository -y ppa:projectatomic/ppa
+        - sudo apt-get update -qq
+        - sudo apt-get -qq -y install buildah
+      before_script:
+      # packaging starter stack
+      - make build-linux-ppc64le
+      - cd ./cmd/testdata/starter
+      - ../../../build/appsody-0.0.0-linux-ppc64le stack package
+      - cd ../../../
+    - <<: *test-template
+      name: Full Test on Linux s390x
+      env: STACKS_LIST=dev.local/starter
+      os: linux
+      arch: s390x
+      dist: xenial
+      before_install:
+        - sudo apt-get update -qq
+        - sudo apt-get install -qq -y software-properties-common
+        - sudo add-apt-repository -y ppa:projectatomic/ppa
+        - sudo apt-get update -qq
+        - sudo apt-get -qq -y install buildah
+      before_script:
+      # packaging starter stack
+      - make build-linux-s390x
+      - cd ./cmd/testdata/starter
+      - ../../../build/appsody-0.0.0-linux-s390x stack package
+      - cd ../../../
+    - <<: *test-template
       name: Unit Test on MacOS
       os: osx
-      script: make unittest
+      script: 
+      - make unittest
     - <<: *test-template
       name: Unit Test on Windows
       os: windows

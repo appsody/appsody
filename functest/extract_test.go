@@ -40,6 +40,8 @@ func TestExtract(t *testing.T) {
 
 	stacksList := cmdtest.GetEnvStacksList()
 
+	// z and p use locally packaged dev.local so we need to add it to the config of the sandbox for it to work
+	cmdtest.ZAndPDevLocal(t, sandbox)
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
 

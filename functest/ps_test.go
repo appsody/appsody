@@ -37,27 +37,40 @@ func TestPS(t *testing.T) {
 	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, false)
 	defer cleanup()
 
-	// appsody init nodejs-express
-	args := []string{"init", "nodejs-express"}
-	_, err := cmdtest.RunAppsody(sandbox, args...)
-	if err != nil {
-		t.Fatal(err)
+	stacksList := cmdtest.GetEnvStacksList()
+
+	if stacksList == "dev.local/starter" {
+		cmdtest.ZAndPDevLocal(t, sandbox)
+		// appsody init dev.local/starter
+		args := []string{"init", "dev.local/starter"}
+		_, err := cmdtest.RunAppsody(sandbox, args...)
+		if err != nil {
+			t.Fatal(err)
+		}
+	} else {
+
+		// appsody init nodejs-express
+		args := []string{"init", "nodejs-express"}
+		_, err := cmdtest.RunAppsody(sandbox, args...)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// appsody run
 	runChannel := make(chan error)
 	containerName := "testPSContainer"
 	go func() {
-		args = []string{"run", "--name", containerName}
-		_, err = cmdtest.RunAppsody(sandbox, args...)
+		args := []string{"run", "--name", containerName}
+		_, err := cmdtest.RunAppsody(sandbox, args...)
 		runChannel <- err
 		close(runChannel)
 	}()
 
 	defer func() {
 		// run appsody stop to close the docker container
-		args = []string{"stop", "--name", containerName}
-		_, err = cmdtest.RunAppsody(sandbox, args...)
+		args := []string{"stop", "--name", containerName}
+		_, err := cmdtest.RunAppsody(sandbox, args...)
 		if err != nil {
 			t.Logf("Ignoring error running appsody stop: %s", err)
 		}

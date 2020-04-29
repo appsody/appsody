@@ -406,3 +406,20 @@ func cleanUpTestDepDockerVolumes(t *testing.T, testDir string) {
 	}
 
 }
+
+//ZandPDevLocal - Adds dev.local repo to the config repo.yaml
+func ZAndPDevLocal(t *testing.T, sandbox *TestSandbox) {
+	stackList := GetEnvStacksList()
+	if stackList == "dev.local/starter" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			t.Fatal(err)
+		}
+		devlocal := filepath.Join(home, ".appsody", "stacks", "dev.local", "dev.local-index.yaml")
+		devlocalPath := "file://" + devlocal
+		_, err = RunAppsody(sandbox, "repo", "add", "dev.local", devlocalPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
