@@ -933,7 +933,7 @@ func getConfigLabels(projectConfig ProjectConfig, filename string, log *LoggingC
 
 	var maintainersString string
 	for index, maintainer := range projectConfig.Maintainers {
-		maintainersString += maintainer.Name + " <" + maintainer.Email + ">"
+		maintainersString += maintainer.Name + " <" + maintainer.GithubID + ">"
 		if index < len(projectConfig.Maintainers)-1 {
 			maintainersString += ", "
 		}
@@ -1011,22 +1011,6 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		}
 	}
 
-	if commitInfo.Author != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author
-	}
-
-	if commitInfo.AuthorEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] += " <" + commitInfo.AuthorEmail + ">"
-	}
-
-	if commitInfo.Committer != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] = commitInfo.Committer
-	}
-
-	if commitInfo.CommitterEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] += " <" + commitInfo.CommitterEmail + ">"
-	}
-
 	if commitInfo.Date != "" {
 		labels[appsodyImageCommitKeyPrefix+"date"] = commitInfo.Date
 	}
@@ -1073,6 +1057,17 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 			return labels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
 		containerConfig = data[0]["Config"].(map[string]interface{})
+		imageAndDigest := data[0]["RepoDigests"].([]interface{})
+
+		if len(imageAndDigest) > 0 { //Check that the image has a digest
+			digest := strings.Split(imageAndDigest[0].(string), "@")
+			if len(digest) > 0 {
+				labels[appsodyStackKeyPrefix+"digest"] = digest[1]
+				config.Debug.log("Digest label successfully added")
+			} else {
+				config.Warning.log("Unable to add image digest label. Continuing...")
+			}
+		}
 	}
 	if containerConfig["Labels"] != nil {
 		labelsMap := containerConfig["Labels"].(map[string]interface{})
@@ -1082,7 +1077,51 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 		}
 	}
 
+	if config.Buildah {
+		buildahDigest, err := getBuildahDigest(labels["dev.appsody.stack.id"], imageName, config)
+		if err != nil || buildahDigest == "" {
+			config.Warning.log(err)
+			return labels, nil
+		}
+		labels[appsodyStackKeyPrefix+"digest"] = buildahDigest
+		config.Debug.log("Digest label successfully added")
+	}
+
 	return labels, nil
+}
+
+func getBuildahDigest(idKey string, image string, config *RootCommandConfig) (digest string, err error) {
+	splitImage := strings.Split(image, ":") //Split the image to extract the image name and version separately
+	if len(splitImage) != 2 {
+		return "", errors.New("Error retrieving image name and tag used for build. The image digest will not be added as a label")
+	}
+	imageName := splitImage[0] //The image name minus the version
+	imageTag := splitImage[1]  //The version of the image used
+	cmdName := "buildah"
+	/*In versions of buildah older than 1.12, the format of the buildah inspect command is slightly different and therefore we can not reliably retrieve the image digest.
+	As a result, we need to run a buildah images --digests command and filter to find the image that has just been pulled down on an appsody build.*/
+	cmdArgs := []string{"images", "--digests", "--filter", "label=dev.appsody.stack.id=" + idKey, "--format", "{{.Digest}}---{{.Name}}---{{.Tag}}"} //Run command to retrieve all images (name + digest + tag) with a label matching the id of the stack
+	config.Debug.log("Running command: buildah", " ", ArgsToString(cmdArgs))
+	digestCmd := exec.Command(cmdName, cmdArgs...)
+	output, cmdErr := SeparateOutput(digestCmd)
+	if cmdErr != nil {
+		return "", cmdErr
+	}
+	digestArray := strings.Split(output, "\n") //Add each line of output to an array
+	if len(digestArray) < 1 {                  //No images returned, no digests in output
+		return "", errors.Errorf("Unable to retrieve image digest for label. Continuing...")
+	}
+	for _, nameAndDigest := range digestArray {
+		arr := strings.Split(nameAndDigest, "---") //Split to have the digest, name, and tag as separate elements.
+		if len(arr) != 3 {                         //Safeguarding in case the output is not split correctly.
+			return "", errors.Errorf("Unable to split output of buildah digests command")
+		}
+		if arr[2] == imageTag && arr[1] == imageName { //We check that the tag matches the version of the stack that the user is using and that the name matches the stack.
+			config.Debug.log("Successfully retrieved image digest")
+			return arr[0], nil
+		}
+	}
+	return "", errors.Errorf("Unable to retrieve image digest for label. Continuing...") //Otherwise we don't add the label
 }
 
 func getExposedPorts(config *RootCommandConfig) ([]string, error) {
@@ -2571,7 +2610,12 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 	for _, stack := range indexYaml.Stacks {
 		for _, template := range stack.Templates {
 			stackJSON := IndexJSONStack{}
-			stackJSON.DisplayName = prefixName + " " + stack.Name + " " + template.ID + " template"
+			if stack.Deprecated != "" {
+				stackJSON.DisplayName = "[Deprecated] "
+				stackJSON.Deprecated = stack.Deprecated
+			}
+
+			stackJSON.DisplayName = stackJSON.DisplayName + prefixName + " " + stack.Name + " " + template.ID + " template"
 			stackJSON.Description = stack.Description
 			stackJSON.Language = stack.Language
 			stackJSON.ProjectType = "appsodyExtension"
