@@ -55,7 +55,7 @@ func checkDockerRunOptions(options []string, config *RootCommandConfig) error {
 		}
 		if value == "-v" || value == "--volume" {
 			var p ProjectFile
-			project, _, err := p.ensureProjectIDAndEntryExists(config)
+			project, _, err := p.EnsureProjectIDAndEntryExists(config)
 			if err != nil {
 				return err
 			}
@@ -204,7 +204,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	// Mount the APPSODY_DEPS cache volume if it exists
-	depsEnvVars, envErr := getDepVolumeArgs(config.RootCommandConfig)
+	depsEnvVars, envErr := GetDepVolumeArgs(config.RootCommandConfig)
 	if envErr != nil {
 		return envErr
 	}
@@ -213,7 +213,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		var project ProjectFile
 
 		//add volumes to project entry of current Appsody project
-		volumeMaps, err = project.addDepsVolumesToProjectEntry(depsEnvVars, volumeMaps, config.RootCommandConfig)
+		volumeMaps, err = project.AddDepsVolumesToProjectEntry(depsEnvVars, volumeMaps, config.RootCommandConfig)
 		if err != nil {
 			return err
 		}
