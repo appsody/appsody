@@ -379,6 +379,11 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return portsErr
 		}
 
+		debugPort, debugPortErr := GetEnvVar("APPSODY_DEBUG_PORT", config.RootCommandConfig)
+		if debugPortErr != nil || debugPort == "" {
+			config.Debug.log("No debug port found. Continuing...")
+		}
+
 		projectDir, err := getProjectDir(config.RootCommandConfig)
 		if err != nil {
 			return err
@@ -397,7 +402,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 		config.Debug.Logf("Docker env vars extracted from docker options: %v", dockerEnvVars)
-		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, dockerEnvVars, depsMount, dryrun)
+		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, debugPort, projectDir, dockerMounts, dockerEnvVars, depsMount, dryrun)
 		if err != nil {
 			return err
 		}
@@ -408,7 +413,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portList, projectDir, dryrun)
+		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portList, debugPort, projectDir, dryrun)
 		if err != nil {
 			return err
 		}
