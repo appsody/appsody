@@ -68,7 +68,7 @@ type RootCommandConfig struct {
 	// package scoped, these are mostly for caching
 	setupConfigRun bool
 	imagePulled    map[string]bool
-	cachedEnvVars  map[string]string
+	CachedEnvVars  map[string]string
 }
 
 // Regular expression to match ANSI terminal commands so that we can remove them from the log
@@ -169,7 +169,7 @@ func ensureProjectConfig(config *RootCommandConfig) error {
 	projectFile := getProjectYamlPath(config)
 	if _, err := os.Stat(projectFile); err != nil {
 		project := NewProjectFile()
-		if err := project.writeFile(projectFile); err != nil {
+		if err := project.WriteFile(projectFile); err != nil {
 			return errors.Errorf("Error writing %s file: %s ", projectFile, err)
 		}
 	}
