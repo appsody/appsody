@@ -44,6 +44,7 @@ type buildCommandConfig struct {
 	knativeFlagPresent   bool
 	namespaceFlagPresent bool
 	namespace            string
+	criu 				bool
 }
 
 type DeploymentManifest struct {
@@ -131,6 +132,7 @@ Run this command from the root directory of your Appsody project.`,
 	buildCmd.PersistentFlags().StringVar(&config.pullURL, "pull-url", "", "Remote repository to pull image from.")
 	buildCmd.PersistentFlags().BoolVar(&config.knative, "knative", false, "Deploy as a Knative Service")
 	buildCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment configuration.")
+	buildCmd.PersistentFlags().BoolVar(&config.criu, "criu", false, "Makes appsody to build a startup optimized image")
 
 	buildCmd.AddCommand(newBuildDeleteCmd(config))
 	buildCmd.AddCommand(newSetupCmd(config))
@@ -141,6 +143,11 @@ func build(config *buildCommandConfig) error {
 	// This needs to do:
 	// 1. appsody Extract
 	// 2. docker build -t <project name> -f Dockerfile ./extracted
+
+	if config.criu && config.Buildah {
+		return errors.New("Currently CRIU is not supported with --buildah")
+	} 
+
 	buildOptions := ""
 	if config.dockerBuildOptions != "" {
 		if config.Buildah {
@@ -171,6 +178,10 @@ func build(config *buildCommandConfig) error {
 	dockerfile := filepath.Join(extractDir, "Dockerfile")
 	buildImage := "dev.local/" + projectName //Lowercased
 
+	if config.criu {
+		buildImage = "dev.local/" + projectName + ":to-be-checkpointed"
+	}
+
 	// Regardless of pass or fail, remove the local extracted folder
 	defer os.RemoveAll(extractDir)
 
@@ -180,11 +191,11 @@ func build(config *buildCommandConfig) error {
 	}
 
 	// If a tag is specified, change the buildImage
-	if config.tag != "" {
+	if config.tag != "" && !config.criu {
 		buildImage = config.tag
 	}
 
-	if config.pushURL != "" {
+	if config.pushURL != "" && !config.criu {
 		buildImage = config.pushURL + "/" + buildImage
 	}
 
@@ -212,6 +223,10 @@ func build(config *buildCommandConfig) error {
 		cmdArgs = append(cmdArgs, "--label", label)
 	}
 
+	if config.criu {
+		cmdArgs = append(cmdArgs, "--build-arg", "APPSODY_CRIU_ENABLED=true")
+	}
+
 	cmdArgs = append(cmdArgs, "-f", dockerfile, extractDir)
 	config.Debug.log("final cmd args", cmdArgs)
 	var execError error
@@ -224,6 +239,54 @@ func build(config *buildCommandConfig) error {
 	if execError != nil {
 		return execError
 	}
+
+	if config.criu {
+		createCheckpointErr := RunToCreateCheckpoint(config.RootCommandConfig, buildImage, config.DockerLog)
+		if createCheckpointErr != nil {
+			return createCheckpointErr
+		}
+
+		waitingForCheckpointErr, successfullCheckpoint := WaitAndCheckForSuccessfulCheckpoint (config.RootCommandConfig)
+		if waitingForCheckpointErr != nil {
+			return waitingForCheckpointErr
+		}
+
+		if !successfullCheckpoint {
+			return errors.Errorf("Checkpoint creation failed")
+		}
+
+		tempImage := buildImage
+		checkpointContainerName := projectName + "-criu-checkpoint-runner"
+
+		buildImage = "dev.local/" + projectName //Lowercased
+
+		if config.tag != "" {
+			buildImage = config.tag
+		}
+	
+		if config.pushURL != "" {
+			buildImage = config.pushURL + "/" + buildImage
+		}
+
+		restorableImageCreationErr := CreateRestorableImage (config.RootCommandConfig, buildImage, config.DockerLog)
+
+		if restorableImageCreationErr != nil {
+			return restorableImageCreationErr
+		}
+
+		stopAndRemoveContErr := StopAndRemoveCriuTempContainer (config.RootCommandConfig, checkpointContainerName, config.DockerLog)
+
+		if stopAndRemoveContErr != nil {
+			return stopAndRemoveContErr
+		}
+
+		clearTempImageErr := RemoveDockerImage (config.RootCommandConfig, tempImage, config.DockerLog)
+
+		if clearTempImageErr != nil {
+			return clearTempImageErr
+		}
+	}
+
 	if config.pushURL != "" || config.push {
 		err := ImagePush(config.LoggingConfig, buildImage, config.Buildah, config.Dryrun)
 		if err != nil {

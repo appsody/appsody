@@ -140,3 +140,27 @@ func RunCommandAndListen(config *RootCommandConfig, commandValue string, args []
 	}
 	return execCmd, err
 }
+
+func StopDockerContainer (config *RootCommandConfig, containerIdOrName string, logger appsodylogger) error {
+	args := []string {"stop"}
+	args = append(args, containerIdOrName)
+	return RunDockerCommandAndWait (config, args, logger)
+}
+
+func RemoveDockerContainer (config *RootCommandConfig, containerIdOrName string, logger appsodylogger) error {
+	args := []string {"rm"}
+	args = append(args, containerIdOrName)
+	return RunDockerCommandAndWait (config, args, logger)
+}
+
+func CommitDockerContainer (config *RootCommandConfig, containerIdOrName string, imageName string, logger appsodylogger) error {
+	args := []string {"commit"}
+	args = append(args, containerIdOrName, imageName)
+	return RunDockerCommandAndWait (config, args, logger)
+}
+
+func RemoveDockerImage (config *RootCommandConfig, imageIdOrName string, logger appsodylogger) error {
+	args := []string {"rmi"}
+	args = append(args, imageIdOrName)
+	return RunDockerCommandAndWait(config, args, logger)
+}
