@@ -1173,7 +1173,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, debugPort string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, debugPortArray []string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -1306,7 +1306,8 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 	//Set the containerPort
 	containerPorts := make([]*Port, 0)
 	for i, port := range ports {
-		if port == debugPort {
+		portFound := findElement(debugPortArray, port)
+		if portFound {
 			log.Debug.log("Debug port found. Skipping addition to the deployment file...")
 		} else {
 			//KNative only allows a single port entry
@@ -1395,6 +1396,16 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 	}
 	return yamlFile, nil
 }
+
+func findElement(slice []string, value string) bool {
+	for _, item := range slice {
+		if item == value {
+			return true
+		}
+	}
+	return false
+}
+
 func getDeploymentTemplate() string {
 	yamltempl := `
 apiVersion: apps/v1
@@ -1436,7 +1447,7 @@ spec:
 }
 
 //GenServiceYaml returns the file name of a generated K8S Service yaml
-func GenServiceYaml(log *LoggingConfig, appName string, ports []string, debugPort string, pdir string, dryrun bool) (fileName string, err error) {
+func GenServiceYaml(log *LoggingConfig, appName string, ports []string, debugPortArray []string, pdir string, dryrun bool) (fileName string, err error) {
 
 	type Port struct {
 		Name       string `yaml:"name,omitempty"`
@@ -1495,8 +1506,9 @@ func GenServiceYaml(log *LoggingConfig, appName string, ports []string, debugPor
 	service.Spec.ServiceType = "NodePort"
 	service.Spec.Ports = make([]Port, len(ports))
 	for i, port := range ports {
-		if port == debugPort {
-			log.Debug.log("Debug port found. Skipping addition to the service file...")
+		portFound := findElement(debugPortArray, port)
+		if portFound {
+			log.Debug.log("Debug port found. Skipping addition to the deployment file...")
 		} else {
 			service.Spec.Ports[i].Name = fmt.Sprintf("port-%d", i)
 			iPort, err := strconv.Atoi(port)
