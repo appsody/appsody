@@ -42,17 +42,14 @@ func TestLinterInvalidValues(t *testing.T) {
 		replaceLine  string
 		expectedLog  string
 	}{
-		{"Invalid Run Value", dockerfilePath, "APPSODY_RUN", "Testing", "Missing APPSODY_RUN"},
 		{"Invalid Kill Value", dockerfilePath, "_KILL", "ENV APPSODY_DEBUG_KILL=trued", "APPSODY_DEBUG_KILL can only have value true/false"},
 		{"Invalid Regex Value", dockerfilePath, "ENV APPSODY_WATCH_REGEX='^.*(.xml|.java|.properties)$'", "ENV APPSODY_WATCH_REGEX='['", "error parsing regexp: missing closing ]"},
 		{"Invalid Mount Seperator", dockerfilePath, "ENV APPSODY_MOUNTS", "ENV APPSODY_MOUNTS=.,/project/user-app", "Mount is not properly formatted"},
 		{"Invalid Mounts", dockerfilePath, "ENV APPSODY_MOUNTS", "ENV APPSODY_MOUNTS=a:abcde", "Could not stat path"},
-		{"Invalid Watch Dir", dockerfilePath, "_ON_CHANGE", "Testing", "APPSODY_WATCH_DIR is defined, but no ON_CHANGE variable is defined"},
 		{"Invalid Version", "stack.yaml", "version: ", "version: invalidVersion", "Version must be formatted in accordance to semver"},
 		// Fails unmarshalling the file when searching for "name" - searching for "sample stack" instead
 		{"Invalid Name Length", "stack.yaml", "sample stack", "name: This name is far too long to pass and therefore should also fail.", "Stack name must be under "},
 		{"Invalid Description Length", "stack.yaml", "description: ", "description: This stack description is far too long (greater than 70 characters) and therefore should also fail.", "Description must be under "},
-		{"Invalid License Field", "stack.yaml", "license: ", "license: invalidLicense", "The stack.yaml SPDX license ID is invalid"},
 		{"Invalid Templating Value", "stack.yaml", "  key1: ", "  key&@_1: value", "stack.yaml templating-data key is not alphanumeric:"},
 		{"Invalid Requirements", "stack.yaml", "  appsody-version:", "  appsody-version: invalid-req", "is not in the correct format. See:"},
 	}
@@ -85,6 +82,59 @@ func TestLinterInvalidValues(t *testing.T) {
 			args := []string{"stack", "lint", testStackPath}
 			output, err = cmdtest.RunAppsody(sandbox, args...)
 			if err == nil {
+				t.Fatalf("Expected non-zero exit code: %v", tt.expectedLog)
+			}
+			if !strings.Contains(output, tt.expectedLog) {
+				t.Fatalf("Expected failure to include - %s but instead received %s", tt.expectedLog, output)
+			}
+		})
+	}
+}
+
+func TestLinterWarnings(t *testing.T) {
+	var dockerfilePath = filepath.Join("image", "Dockerfile-stack")
+
+	var linterInvalidValues = []struct {
+		testName     string
+		targetPath   string
+		containsLine string
+		replaceLine  string
+		expectedLog  string
+	}{
+		{"Invalid Run Value", dockerfilePath, "APPSODY_RUN", "Testing", "Missing APPSODY_RUN"},
+		{"Invalid Watch Dir", dockerfilePath, "_ON_CHANGE", "Testing", "APPSODY_WATCH_DIR is defined, but no ON_CHANGE variable is defined"},
+		// Fails unmarshalling the file when searching for "name" - searching for "sample stack" instead
+		{"Invalid License Field", "stack.yaml", "license: ", "license: invalidLicense", "The stack.yaml SPDX license ID is invalid"},
+	}
+	for _, testData := range linterInvalidValues {
+		// need to set testData to a new variable scoped under the for loop
+		// otherwise tests run in parallel may get the wrong testData
+		// because the for loop reassigns it before the func runs
+		tt := testData
+		// call t.Run so that we can name and report on individual tests
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
+			testStackPath := filepath.Join(sandbox.TestDataPath, "test-stack")
+			targetPath := filepath.Join(testStackPath, tt.targetPath)
+			file, err := ioutil.ReadFile(targetPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lines := strings.Split(string(file), "\n")
+			for i, line := range lines {
+				if strings.Contains(line, tt.containsLine) {
+					lines[i] = tt.replaceLine
+				}
+			}
+			output := strings.Join(lines, "\n")
+			err = ioutil.WriteFile(targetPath, []byte(output), 0644)
+			if err != nil {
+				t.Fatal(err)
+			}
+			args := []string{"stack", "lint", testStackPath}
+			output, err = cmdtest.RunAppsody(sandbox, args...)
+			if err != nil {
 				t.Fatalf("Expected non-zero exit code: %v", tt.expectedLog)
 			}
 			if !strings.Contains(output, tt.expectedLog) {
