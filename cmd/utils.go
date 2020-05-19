@@ -1306,7 +1306,7 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 	//Set the containerPort
 	containerPorts := make([]*Port, 0)
 	for i, port := range ports {
-		portFound := FindElement(debugPortArray, port)
+		portFound := InArray(debugPortArray, port)
 		if portFound {
 			log.Debug.log("Debug port found. Skipping addition to the deployment file...")
 		} else {
@@ -1397,10 +1397,10 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 	return yamlFile, nil
 }
 
-//FindElement returns true if an element is in an array, and false otherwise
-func FindElement(slice []string, value string) bool {
-	for _, item := range slice {
-		if item == value {
+//InArray returns true if an element is in an array, and false otherwise
+func InArray(haystack []string, needle string) bool {
+	for _, value := range haystack {
+		if needle == value {
 			return true
 		}
 	}
@@ -1507,7 +1507,7 @@ func GenServiceYaml(log *LoggingConfig, appName string, ports []string, debugPor
 	service.Spec.ServiceType = "NodePort"
 	service.Spec.Ports = make([]Port, len(ports)-len(debugPortArray))
 	for i, port := range ports {
-		portFound := FindElement(debugPortArray, port)
+		portFound := InArray(debugPortArray, port)
 		if portFound {
 			log.Debug.log("Debug port found. Skipping addition to the deployment file...")
 		} else {

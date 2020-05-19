@@ -384,9 +384,9 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if debugPortErr != nil || debugPorts == "" {
 			config.Debug.log("No debug port found. Continuing...")
 		} else {
-			debugPortArray = strings.Split(debugPorts, " ") //Split the string if multiple debug ports exist
+			debugPortArray = strings.Split(debugPorts, ", ") //Split the string if multiple debug ports exist
 			for _, debugPort := range debugPortArray {
-				debugPortExists := FindElement(portList, debugPort) //Determine whether all ports specified in env var have actually been exposed
+				debugPortExists := InArray(portList, debugPort) //Determine whether all ports specified in env var have actually been exposed
 				if !debugPortExists {
 					return errors.Errorf("Port: %s specified in APPSODY_DEBUG_PORT could not be found in ports list", debugPort)
 				}
