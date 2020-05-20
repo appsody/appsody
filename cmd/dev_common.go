@@ -379,14 +379,15 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return portsErr
 		}
 
-		var debugPortArray []string
-		debugPorts, debugPortErr := GetEnvVar("APPSODY_DEBUG_PORT", config.RootCommandConfig)
-		if debugPortErr != nil || debugPorts == "" {
-			config.Debug.log("No debug port found. Continuing...")
-		} else {
-			debugPortArray = strings.Split(debugPorts, ", ") //Split the string if multiple debug ports exist
-			for _, debugPort := range debugPortArray {
-				debugPortExists := InArray(portList, debugPort) //Determine whether all ports specified in env var have actually been exposed
+		var debugPort string
+		codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
+
+		if codeWindProjectID != "" && mode == "debug" {
+			debugPort, debugPortErr := GetEnvVar("APPSODY_DEBUG_PORT", config.RootCommandConfig)
+			if debugPortErr != nil || debugPort == "" {
+				config.Debug.log("No debug port found. Continuing...")
+			} else {
+				debugPortExists := InArray(portList, debugPort) //Determine whether port specified in env var has actually been exposed
 				if !debugPortExists {
 					return errors.Errorf("Port: %s specified in APPSODY_DEBUG_PORT could not be found in ports list", debugPort)
 				}
@@ -411,7 +412,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 		config.Debug.Logf("Docker env vars extracted from docker options: %v", dockerEnvVars)
-		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, debugPortArray, projectDir, dockerMounts, dockerEnvVars, depsMount, dryrun)
+		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, debugPort, projectDir, dockerMounts, dockerEnvVars, depsMount, dryrun)
 		if err != nil {
 			return err
 		}
@@ -422,7 +423,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portList, debugPortArray, projectDir, dryrun)
+		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portList, debugPort, projectDir, dryrun)
 		if err != nil {
 			return err
 		}
@@ -431,7 +432,6 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
 		if codeWindProjectID == "" {
 			port := getIngressPort(config.RootCommandConfig)
 			// Generate the Ingress only if it makes sense - i.e. there's a port to expose
