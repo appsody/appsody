@@ -379,11 +379,11 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return portsErr
 		}
 
-		var debugPort string
 		codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
-
+		var debugPort string
+		var debugPortErr error
 		if codeWindProjectID != "" && mode == "debug" {
-			debugPort, debugPortErr := GetEnvVar("APPSODY_DEBUG_PORT", config.RootCommandConfig)
+			debugPort, debugPortErr = GetEnvVar("APPSODY_DEBUG_PORT", config.RootCommandConfig)
 			if debugPortErr != nil || debugPort == "" {
 				config.Debug.log("No debug port found. Continuing...")
 			} else {
