@@ -1173,7 +1173,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, debugPort string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, debugPort string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, mode string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -1269,6 +1269,10 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 		log.Error.log("Could not create the YAML structure from template. Exiting.")
 		return "", err
 	}
+
+	//Set the args for the appsody mode used i.e. run/test/debug
+	yamlMap.Spec.PodTemplate.Spec.Containers[0].Args = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Args, mode)
+
 	//Set the name
 	yamlMap.Metadata.Name = appName
 
@@ -1435,7 +1439,8 @@ spec:
       - name: APPSODY_APP_NAME
         image: APPSODY_STACK
         imagePullPolicy: Always
-        command: ["/.appsody/appsody-controller"]
+		command: ["/.appsody/appsody-controller"]
+		args: ["--mode"]
         volumeMounts:
         - name: appsody-controller
           mountPath: /.appsody
