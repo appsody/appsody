@@ -56,6 +56,9 @@ func TestDeploySimple(t *testing.T) {
 		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 		defer cleanup()
 
+		// z and p use locally packaged dev.local so we need to add it to the config of the sandbox for it to work
+		cmdtest.ZAndPDevLocal(t, sandbox)
+
 		// first add the test repo index
 		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))
 		if err != nil {
@@ -96,6 +99,9 @@ func TestGenerationDeploymentConfig(t *testing.T) {
 
 		sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
 		defer cleanup()
+
+		// z and p use locally packaged dev.local so we need to add it to the config of the sandbox for it to work
+		cmdtest.ZAndPDevLocal(t, sandbox)
 
 		// first add the test repo index
 		_, err := cmdtest.AddLocalRepo(sandbox, "LocalTestRepo", filepath.Join(sandbox.TestDataPath, "dev.local-index.yaml"))

@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
 )
 
@@ -446,4 +447,91 @@ func checkExpressNotExists(projectDir string, t *testing.T) {
 	shouldNotExist(appjs, t)
 	shouldNotExist(packagejson, t)
 	shouldNotExist(packagejsonlock, t)
+}
+
+func getCurrentProjectEntry(t *testing.T, sandbox *cmdtest.TestSandbox, config *cmd.RootCommandConfig) (cmd.ProjectFile, *cmd.ProjectEntry, string) {
+	config.ProjectDir = sandbox.ProjectDir
+	configID, err := cmd.GetIDFromConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	projectYaml := filepath.Join(sandbox.ConfigDir, "project.yaml")
+	var p cmd.ProjectFile
+	_, err = p.GetProjects(projectYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := p.GetProject(configID)
+	return p, project, configID
+}
+
+//check project id and path in .appsody-config.yaml matches the project entry id and path in project.yaml
+func TestInitProjectIDAndPathMatches(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config := new(cmd.RootCommandConfig)
+	_, project, configID := getCurrentProjectEntry(t, sandbox, config)
+
+	if project.ID != configID {
+		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
+	}
+	if project.Path != sandbox.ProjectDir {
+		t.Fatalf("Expected project path in project.yaml to match the project directory path.")
+	}
+}
+
+//check appsody init cleanups unused docker volumes
+func TestInitVolumeCleanup(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	//create first Appsody project
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args = []string{"run", "--dryrun"}
+
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := new(cmd.RootCommandConfig)
+	_, project, _ := getCurrentProjectEntry(t, sandbox, config)
+	depsVolume := project.Volumes[0].Name
+
+	//remove config file
+	err = os.Remove(filepath.Join(sandbox.ProjectDir, cmd.ConfigFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newAppsodyProject := filepath.Join(sandbox.ProjectDir, "newAppsodyProject")
+	err = os.Mkdir(newAppsodyProject, 0775)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sandbox.ProjectDir = newAppsodyProject
+	//create new Appsody project
+	args = []string{"init", "nodejs"}
+	output, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// check correct volume of old Appsody project is deleted
+	if !strings.Contains(output, "docker volume rm "+depsVolume) {
+		t.Fatalf("Did not delete expected unused docker volume during init: %s", depsVolume)
+	}
 }

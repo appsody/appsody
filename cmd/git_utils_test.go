@@ -112,32 +112,64 @@ func TestGetGitInfoWithNotAGitRepo(t *testing.T) {
 
 	_, err := cmd.GetGitInfo(config)
 	expectedError := "not a git repository"
-	if err == nil || !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Should had flagged error: %v", expectedError)
+	if err != nil {
+		// lower case as different messages across z and p architectures
+		lowercaseError := strings.ToLower(err.Error())
+		if !strings.Contains(lowercaseError, expectedError) {
+			t.Errorf("String \"not a git repository\" not found in output: %v", err)
+		}
+	} else {
+		t.Errorf("Test unexpectedly passed")
 	}
 }
 
-func TestGetGitInfoWithNoCommits(t *testing.T) {
-	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
-	defer cleanup()
-
-	var outBuffer bytes.Buffer
-	loggingConfig := &cmd.LoggingConfig{}
-	loggingConfig.InitLogging(&outBuffer, &outBuffer)
-	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
-
-	// Change the config ProjectDir to be in the sandboxing folder because that's where
-	// we want to execute the commands
-	config.ProjectDir = sandbox.ProjectDir
-
-	_, gitErr := cmd.RunGit(loggingConfig, sandbox.ProjectDir, []string{"init"}, false)
-	if gitErr != nil {
-		t.Error(gitErr)
+func TestGitInfo(t *testing.T) {
+	var gitInfoValues = []struct {
+		testName    string
+		expectedLog string
+	}{
+		{"TestGetGitInfoWithNoCommits", "does not have any commits yet"},
+		{"TestGetGitInfoWithRemote", "Successfully retrieved remote name"},
 	}
-	_, err := cmd.GetGitInfo(config)
-	expectedError := "does not have any commits yet"
-	if err == nil || !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Should had flagged error: %v", expectedError)
-	}
+	for _, testData := range gitInfoValues {
+		tt := testData
+		t.Run(tt.testName, func(t *testing.T) {
+			sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+			defer cleanup()
 
+			var outBuffer bytes.Buffer
+			loggingConfig := &cmd.LoggingConfig{}
+			loggingConfig.InitLogging(&outBuffer, &outBuffer)
+			config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+
+			// Change the config ProjectDir to be in the sandboxing folder because that's where
+			// we want to execute the commands
+			config.ProjectDir = sandbox.ProjectDir
+
+			_, gitErr := cmd.RunGit(loggingConfig, sandbox.ProjectDir, []string{"init"}, false)
+			if gitErr != nil {
+				t.Error(gitErr)
+			}
+
+			if tt.testName == "TestGetGitInfoWithRemote" {
+				_, gitErr := cmd.RunGit(loggingConfig, sandbox.ProjectDir, []string{"remote", "add", "testRemote", "testURL"}, false)
+				if gitErr != nil {
+					t.Error(gitErr)
+				}
+			}
+
+			output, err := cmd.GetGitInfo(config)
+
+			if tt.testName == "TestGetGitInfoWithRemote" {
+				if output.Upstream != "testRemote" {
+					t.Errorf("Did not return expected upstream: testRemote, instead got: %v", output.Upstream)
+				}
+			} else {
+				if err == nil || !strings.Contains(err.Error(), tt.expectedLog) {
+					t.Errorf("Should have flagged error: %v. Got: %v", tt.expectedLog, err)
+				}
+			}
+
+		})
+	}
 }

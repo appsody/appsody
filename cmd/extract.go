@@ -49,6 +49,11 @@ Run this command from the root directory of your Appsody project.`,
 			if len(args) > 0 {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
+			var project ProjectFile
+			_, _, err := project.EnsureProjectIDAndEntryExists(config.RootCommandConfig)
+			if err != nil {
+				return err
+			}
 			return extract(config)
 		},
 	}
@@ -219,17 +224,16 @@ func extract(config *extractCommandConfig) error {
 	if config.Buildah {
 		// In buildah, we need to mount the container filesystem then manually copy the files out
 		cmdArgs := []string{"mount", extractContainerName}
-
 		if config.Dryrun {
 			config.Info.log("Dry Run - Skip running buildah mount and copying files")
 		} else {
 			config.Debug.Logf("About to run %s with args %s ", cmdName, cmdArgs)
 			buildahMountCmd := exec.Command(cmdName, cmdArgs...)
 			buildahMountOutput, err := SeparateOutput(buildahMountCmd)
+			config.Debug.Log("Output of buildah mount command: ", buildahMountOutput)
 			if err != nil {
 				return errors.Errorf("buildah mount command failed: %v", err)
 			}
-			config.Debug.Log("Output of buildah mount command: ", buildahMountOutput)
 
 			appDir = filepath.Join(buildahMountOutput, containerProjectDir)
 			err = CopyDir(config.LoggingConfig, appDir, extractDir)
@@ -327,9 +331,7 @@ func defaultExtractContainerName(config *RootCommandConfig) string {
 	projectName, perr := getProjectName(config)
 
 	if perr != nil {
-		if _, ok := perr.(*NotAnAppsodyProject); ok {
-			//Debug.log("Cannot retrieve the project name - continuing: ", perr)
-		} else {
+		if _, ok := perr.(*NotAnAppsodyProject); !ok {
 			config.Error.log("Error occurred retrieving project name... exiting: ", perr)
 			os.Exit(1)
 		}

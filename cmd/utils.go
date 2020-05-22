@@ -20,11 +20,9 @@ import (
 	"compress/gzip"
 	"unicode"
 
-	//"crypto/sha256"
 	"encoding/json"
 	"fmt"
 
-	//"hash"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -61,6 +59,17 @@ type OwnerReference struct {
 	Controller         bool   `yaml:"controller"`
 	Name               string `yaml:"name"`
 	UID                string `yaml:"uid"`
+}
+type ProjectFile struct {
+	Projects []*ProjectEntry `yaml:"projects"`
+}
+type ProjectEntry struct {
+	ID      string    `yaml:"id"`
+	Path    string    `yaml:"path"`
+	Volumes []*Volume `yaml:"volumes,omitempty"`
+}
+type Volume struct {
+	Name, Path string
 }
 
 type NotAnAppsodyProject string
@@ -172,11 +181,11 @@ func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
 
 //GetEnvVar obtains a Stack environment variable from the Stack image
 func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
-	if config.cachedEnvVars == nil {
-		config.cachedEnvVars = make(map[string]string)
+	if config.CachedEnvVars == nil {
+		config.CachedEnvVars = make(map[string]string)
 	}
 
-	if value, present := config.cachedEnvVars[searchEnvVar]; present {
+	if value, present := config.CachedEnvVars[searchEnvVar]; present {
 		config.Debug.logf("Environment variable found cached: %s Value: %s", searchEnvVar, value)
 		return value, nil
 	}
@@ -226,14 +235,14 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	for _, envVar := range envVars {
 		nameValuePair := strings.SplitN(envVar.(string), "=", 2)
 		name, value := nameValuePair[0], nameValuePair[1]
-		config.cachedEnvVars[name] = value
+		config.CachedEnvVars[name] = value
 		if name == searchEnvVar {
 			varFound = true
 		}
 	}
 	if varFound {
-		config.Debug.logf("Environment variable found: %s Value: %s", searchEnvVar, config.cachedEnvVars[searchEnvVar])
-		return config.cachedEnvVars[searchEnvVar], nil
+		config.Debug.logf("Environment variable found: %s Value: %s", searchEnvVar, config.CachedEnvVars[searchEnvVar])
+		return config.CachedEnvVars[searchEnvVar], nil
 	}
 	config.Debug.log("Could not find env var: ", searchEnvVar)
 	return "", nil
@@ -273,17 +282,27 @@ func getExtractDir(config *RootCommandConfig) (string, error) {
 	return extractDir, nil
 }
 
-func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
-	volumeArgs := []string{}
+func getStackMounts(config *RootCommandConfig) ([]string, error) {
+	stackMountList := []string{}
 	stackMounts, envErr := GetEnvVar("APPSODY_MOUNTS", config)
 	if envErr != nil {
 		return nil, envErr
 	}
 	if stackMounts == "" {
 		config.Warning.log("The stack image does not contain APPSODY_MOUNTS")
-		return volumeArgs, nil
+		return stackMountList, nil
 	}
-	stackMountList := strings.Split(stackMounts, ";")
+	stackMountList = strings.Split(stackMounts, ";")
+	return stackMountList, nil
+}
+
+func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
+	volumeArgs := []string{}
+	stackMountList, err := getStackMounts(config)
+	if err != nil {
+		return stackMountList, err
+	}
+
 	homeDir := UserHomeDir(config.LoggingConfig)
 	homeDirOverride := os.Getenv("APPSODY_MOUNT_HOME")
 	homeDirOverridden := false
@@ -305,6 +324,7 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 		projectDirOverridden = true
 	}
 
+	namedVolumeCount := 0
 	for _, mount := range stackMountList {
 		if mount == "" {
 			continue
@@ -312,7 +332,14 @@ func getVolumeArgs(config *RootCommandConfig) ([]string, error) {
 		var mappedMount string
 		var overridden bool
 		if strings.HasPrefix(mount, "~") {
-			mappedMount = strings.Replace(mount, "~", homeDir, 1)
+			if homeDirOverride != "" && !strings.ContainsAny(homeDir, "/\\") {
+				// home dir was overridden with a named volume (rather than a path)
+				namedVolumeCount++
+				start := strings.LastIndex(mount, ":")
+				mappedMount = fmt.Sprintf("%s%d%s", homeDir, namedVolumeCount, mount[start:])
+			} else {
+				mappedMount = strings.Replace(mount, "~", homeDir, 1)
+			}
 			overridden = homeDirOverridden
 		} else {
 			if strings.HasPrefix(mount, ".:") {
@@ -906,7 +933,7 @@ func getConfigLabels(projectConfig ProjectConfig, filename string, log *LoggingC
 
 	var maintainersString string
 	for index, maintainer := range projectConfig.Maintainers {
-		maintainersString += maintainer.Name + " <" + maintainer.Email + ">"
+		maintainersString += maintainer.Name + " <" + maintainer.GithubID + ">"
 		if index < len(projectConfig.Maintainers)-1 {
 			maintainersString += ", "
 		}
@@ -979,22 +1006,9 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		if gitInfo.ChangesMade {
 			labels[revisionKey] += "-modified"
 		}
-	}
-
-	if commitInfo.Author != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author
-	}
-
-	if commitInfo.AuthorEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] += " <" + commitInfo.AuthorEmail + ">"
-	}
-
-	if commitInfo.Committer != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] = commitInfo.Committer
-	}
-
-	if commitInfo.CommitterEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] += " <" + commitInfo.CommitterEmail + ">"
+		if !gitInfo.Commit.Pushed {
+			labels[revisionKey] += "-not-pushed"
+		}
 	}
 
 	if commitInfo.Date != "" {
@@ -1043,6 +1057,17 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 			return labels, errors.Errorf("Error unmarshaling data from inspect command - exiting %v", err)
 		}
 		containerConfig = data[0]["Config"].(map[string]interface{})
+		imageAndDigest := data[0]["RepoDigests"].([]interface{})
+
+		if len(imageAndDigest) > 0 { //Check that the image has a digest
+			digest := strings.Split(imageAndDigest[0].(string), "@")
+			if len(digest) > 0 {
+				labels[appsodyStackKeyPrefix+"digest"] = digest[1]
+				config.Debug.log("Digest label successfully added")
+			} else {
+				config.Warning.log("Unable to add image digest label. Continuing...")
+			}
+		}
 	}
 	if containerConfig["Labels"] != nil {
 		labelsMap := containerConfig["Labels"].(map[string]interface{})
@@ -1052,7 +1077,51 @@ func getStackLabels(config *RootCommandConfig) (map[string]string, error) {
 		}
 	}
 
+	if config.Buildah {
+		buildahDigest, err := getBuildahDigest(labels["dev.appsody.stack.id"], imageName, config)
+		if err != nil || buildahDigest == "" {
+			config.Warning.log(err)
+			return labels, nil
+		}
+		labels[appsodyStackKeyPrefix+"digest"] = buildahDigest
+		config.Debug.log("Digest label successfully added")
+	}
+
 	return labels, nil
+}
+
+func getBuildahDigest(idKey string, image string, config *RootCommandConfig) (digest string, err error) {
+	splitImage := strings.Split(image, ":") //Split the image to extract the image name and version separately
+	if len(splitImage) != 2 {
+		return "", errors.New("Error retrieving image name and tag used for build. The image digest will not be added as a label")
+	}
+	imageName := splitImage[0] //The image name minus the version
+	imageTag := splitImage[1]  //The version of the image used
+	cmdName := "buildah"
+	/*In versions of buildah older than 1.12, the format of the buildah inspect command is slightly different and therefore we can not reliably retrieve the image digest.
+	As a result, we need to run a buildah images --digests command and filter to find the image that has just been pulled down on an appsody build.*/
+	cmdArgs := []string{"images", "--digests", "--filter", "label=dev.appsody.stack.id=" + idKey, "--format", "{{.Digest}}---{{.Name}}---{{.Tag}}"} //Run command to retrieve all images (name + digest + tag) with a label matching the id of the stack
+	config.Debug.log("Running command: buildah", " ", ArgsToString(cmdArgs))
+	digestCmd := exec.Command(cmdName, cmdArgs...)
+	output, cmdErr := SeparateOutput(digestCmd)
+	if cmdErr != nil {
+		return "", cmdErr
+	}
+	digestArray := strings.Split(output, "\n") //Add each line of output to an array
+	if len(digestArray) < 1 {                  //No images returned, no digests in output
+		return "", errors.Errorf("Unable to retrieve image digest for label. Continuing...")
+	}
+	for _, nameAndDigest := range digestArray {
+		arr := strings.Split(nameAndDigest, "---") //Split to have the digest, name, and tag as separate elements.
+		if len(arr) != 3 {                         //Safeguarding in case the output is not split correctly.
+			return "", errors.Errorf("Unable to split output of buildah digests command")
+		}
+		if arr[2] == imageTag && arr[1] == imageName { //We check that the tag matches the version of the stack that the user is using and that the name matches the stack.
+			config.Debug.log("Successfully retrieved image digest")
+			return arr[0], nil
+		}
+	}
+	return "", errors.Errorf("Unable to retrieve image digest for label. Continuing...") //Otherwise we don't add the label
 }
 
 func getExposedPorts(config *RootCommandConfig) ([]string, error) {
@@ -1686,13 +1755,54 @@ func KubeDelete(log *LoggingConfig, fileToApply string, namespace string, dryrun
 	return kerr
 }
 
+//KubeGetNodePortURLIBMCloud issues several kubectl commands and prints the concatenated URL
+func KubeGetNodePortURLIBMCloud(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
+	kargs := []string{"pod"}
+	kargs = append(kargs, "-l", "app.kubernetes.io/name="+service, "-o", "jsonpath={.items[].spec.nodeName}")
+	nodeName, err := KubeGet(log, kargs, namespace, dryrun)
+	// Performing the kubectl apply
+	if err != nil {
+		return "", errors.Errorf("Failed to find nodeName for deployed service: %s", err)
+	}
+
+	kargs = append([]string{"node"}, nodeName)
+	kargs = append(kargs, "-o", "jsonpath=http://{.status.addresses[?(@.type=='ExternalIP')].address}")
+	hostURL, err := KubeGet(log, kargs, namespace, dryrun)
+	// Performing the kubectl apply
+	if err != nil {
+		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
+	}
+	kargs = append([]string{"svc"}, service)
+	kargs = append(kargs, "-o", "jsonpath="+hostURL+":{.spec.ports[0].nodePort}")
+	out, err := KubeGet(log, kargs, namespace, dryrun)
+	// Performing the kubectl apply
+	if err != nil {
+		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
+	}
+	return out, nil
+}
+
+//KubeGetClusterURL kubectl get svc <service> -o jsonpath=http://{.spec.clusterIP}:{.spec.ports[0].port} and prints the return URL
+func KubeGetClusterURL(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
+	kargs := append([]string{"svc"}, service)
+	kargs = append(kargs, "-o", "jsonpath=http://{.spec.clusterIP}:{.spec.ports[0].port}")
+	out, err := KubeGet(log, kargs, namespace, dryrun)
+	// Performing the kubectl apply
+	if err != nil {
+		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
+	}
+	out = out + "\nHowever, as the ServiceType was specified as ClusterIP this url is only accessible to other applications in the same cluster." +
+		"\nTo access it try using 'kubectl port-forward', or exposing it further by 'oc expose'"
+	return out, nil
+}
+
 //KubeGetNodePortURL kubectl get svc <service> -o jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort} and prints the return URL
 func KubeGetNodePortURL(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
 	kargs := append([]string{"svc"}, service)
 	kargs = append(kargs, "-o", "jsonpath=http://{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].nodePort}")
 	out, err := KubeGet(log, kargs, namespace, dryrun)
 	// Performing the kubectl apply
-	if err != nil {
+	if err != nil || strings.Contains(out, "://:") {
 		return "", errors.Errorf("Failed to find deployed service IP and Port: %s", err)
 	}
 	return out, nil
@@ -1733,18 +1843,34 @@ func KubeGetKnativeURL(log *LoggingConfig, service string, namespace string, dry
 }
 
 //KubeGetDeploymentURL searches for an exposed hostname and port for the deployed service
-func KubeGetDeploymentURL(log *LoggingConfig, service string, namespace string, dryrun bool) (url string, err error) {
-	url, err = KubeGetKnativeURL(log, service, namespace, dryrun)
-	if err == nil {
-		return url, nil
+func KubeGetDeploymentURL(log *LoggingConfig, serviceName string, service map[string]interface{}, namespace string, dryrun bool) (url string, err error) {
+	serviceType := ""
+	if service != nil {
+		serviceType = service["type"].(string)
 	}
-	url, err = KubeGetRouteURL(log, service, namespace, dryrun)
-	if err == nil {
-		return url, nil
-	}
-	url, err = KubeGetNodePortURL(log, service, namespace, dryrun)
-	if err == nil {
-		return url, nil
+	if serviceType == "ClusterIP" {
+		// We have a ClusterIP type
+		url, err = KubeGetClusterURL(log, serviceName, namespace, dryrun)
+		if err == nil {
+			return url, nil
+		}
+	} else {
+		url, err = KubeGetKnativeURL(log, serviceName, namespace, dryrun)
+		if err == nil {
+			return url, nil
+		}
+		url, err = KubeGetRouteURL(log, serviceName, namespace, dryrun)
+		if err == nil {
+			return url, nil
+		}
+		url, err = KubeGetNodePortURL(log, serviceName, namespace, dryrun)
+		if err == nil {
+			return url, nil
+		}
+		url, err = KubeGetNodePortURLIBMCloud(log, serviceName, namespace, dryrun)
+		if err == nil {
+			return url, nil
+		}
 	}
 	log.Error.log("Failed to get deployment hostname and port: ", err)
 	return "", err
@@ -2484,7 +2610,12 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 	for _, stack := range indexYaml.Stacks {
 		for _, template := range stack.Templates {
 			stackJSON := IndexJSONStack{}
-			stackJSON.DisplayName = prefixName + " " + stack.Name + " " + template.ID + " template"
+			if stack.Deprecated != "" {
+				stackJSON.DisplayName = "[Deprecated] "
+				stackJSON.Deprecated = stack.Deprecated
+			}
+
+			stackJSON.DisplayName = stackJSON.DisplayName + prefixName + " " + stack.Name + " " + template.ID + " template"
 			stackJSON.Description = stack.Description
 			stackJSON.Language = stack.Language
 			stackJSON.ProjectType = "appsodyExtension"
@@ -2513,6 +2644,242 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 
 	log.Info.logf("Succesfully generated file: %s", indexFilePath)
 	return nil
+}
+
+func getProjectYamlPath(rootConfig *RootCommandConfig) string {
+	return filepath.Join(getHome(rootConfig), "project.yaml")
+}
+
+// add a new project entry to the project.yaml file
+func (p *ProjectFile) Add(projectEntry ...*ProjectEntry) {
+	p.Projects = append(p.Projects, projectEntry...)
+}
+
+// write to the project.yaml file
+func (p *ProjectFile) WriteFile(path string) error {
+	data, err := yaml.Marshal(p)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, data, 0644)
+}
+
+// check if project.yaml file had a project with given id
+func (p *ProjectFile) HasID(id string) bool {
+	for _, pf := range p.Projects {
+		if id == pf.ID {
+			return true
+		}
+	}
+	return false
+}
+
+// get project from project.yaml with given id
+func (p *ProjectFile) GetProject(id string) *ProjectEntry {
+	for _, pf := range p.Projects {
+		if id == pf.ID {
+			return pf
+		}
+	}
+	return nil
+}
+
+// get all project entries from project.yaml
+func (p *ProjectFile) GetProjects(fileLocation string) (*ProjectFile, error) {
+	projectReader, err := ioutil.ReadFile(fileLocation)
+	if err != nil {
+		return nil, err
+	}
+	err = yaml.Unmarshal(projectReader, p)
+	if err != nil {
+		return nil, errors.Errorf("Failed to parse project file %v", err)
+	}
+	return p, nil
+}
+
+// create unique project id for .appsody-config.yaml
+func GenerateID(log *LoggingConfig) string {
+	var id = time.Now().Format("20060102150405.00000000")
+
+	log.Debug.Logf("Successfully generated ID: %s", id)
+	return id
+}
+
+// add new project entry to ~/.appsody/project.yaml
+func (p *ProjectFile) AddNewProject(ID string, config *RootCommandConfig) error {
+	projectDir, err := getProjectDir(config)
+	if err != nil {
+		return err
+	}
+	fileLocation := getProjectYamlPath(config)
+
+	_, err = p.GetProjects(fileLocation)
+	if err != nil {
+		return err
+	}
+
+	var newEntry = ProjectEntry{
+		ID:   ID,
+		Path: projectDir,
+	}
+	p.Add(&newEntry)
+	err = p.WriteFile(fileLocation)
+	if err != nil {
+		return errors.Errorf("Failed to write file to repository location: %v", err)
+	}
+	config.Info.Logf("Successfully added your project to %s", getProjectYamlPath(config))
+	return nil
+}
+
+// get APPSODY_DEPS environment variable and split it into and array
+func GetDepVolumeArgs(config *RootCommandConfig) ([]string, error) {
+	stackDeps, envErr := GetEnvVar("APPSODY_DEPS", config)
+	if envErr != nil {
+		return nil, envErr
+	}
+	if stackDeps == "" {
+		config.Warning.log("The stack image does not contain APPSODY_DEPS")
+		return nil, nil
+	}
+	volumeArgs := strings.Split(stackDeps, ";")
+	return volumeArgs, nil
+}
+
+// create unique name for APPSODY_DEPS volumes
+func GenerateVolumeName(config *RootCommandConfig) string {
+	projectName, perr := getProjectName(config)
+	if perr != nil {
+		if _, ok := perr.(*NotAnAppsodyProject); !ok {
+			config.Error.logf("Error occurred retrieving project name... exiting: %s", perr)
+			os.Exit(1)
+		}
+	}
+	ID := GenerateID(config.LoggingConfig)
+	volumeName := "appsody-" + projectName + "-" + ID
+
+	config.Debug.Logf("Using docker volume name: %s", volumeName)
+	return volumeName
+}
+
+// save project id to .appsody-config.yaml
+func SaveIDToConfig(ID string, config *RootCommandConfig) error {
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	v.Set("id", ID)
+	err = v.WriteConfig()
+	if err != nil {
+		return err
+	}
+
+	config.Info.log("Your Appsody project ID has been set to ", ID)
+	return nil
+}
+
+// get project id from .appsody-config.yaml and create project entry if id does not exist
+func GetIDFromConfig(config *RootCommandConfig) (string, error) {
+	appsodyConfig := filepath.Join(config.ProjectDir, ConfigFile)
+	v := viper.New()
+	v.SetConfigFile(appsodyConfig)
+	err := v.ReadInConfig()
+	if err != nil {
+		return "", err
+	}
+	id := v.GetString("id")
+	if id == "" {
+		id, err := generateNewProjectAndID(config)
+		return id, err
+	}
+	return id, nil
+}
+
+// create new project entry in ~/.appsody/project.yaml and add id to .appsody-config.yaml
+func generateNewProjectAndID(config *RootCommandConfig) (string, error) {
+	var projectFile ProjectFile
+	ID := GenerateID(config.LoggingConfig)
+	err := projectFile.AddNewProject(ID, config)
+	if err != nil {
+		return "", err
+	}
+
+	err = SaveIDToConfig(ID, config)
+	if err != nil {
+		return "", err
+	}
+	return ID, nil
+}
+
+func (p *ProjectFile) EnsureProjectIDAndEntryExists(rootConfig *RootCommandConfig) (*ProjectEntry, string, error) {
+	id, err := GetIDFromConfig(rootConfig)
+	if err != nil {
+		return nil, "", err
+	}
+	var fileLocation = getProjectYamlPath(rootConfig)
+	_, err = p.GetProjects(fileLocation)
+	if err != nil {
+		return nil, "", err
+	}
+	// if id exists in .appsody-config.yaml but not in project.yaml, add a new project entry in project.yaml with that id, and get projects again
+	if !p.HasID(id) {
+		err = p.AddNewProject(id, rootConfig)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	project := p.GetProject(id)
+
+	projectDir, err := getProjectDir(rootConfig)
+	if err != nil {
+		return nil, "", err
+	}
+	// if the user moves their Appsody project, (same project id different path), update the project path in project.yaml
+	if project.Path != projectDir {
+		project.Path = projectDir
+		if err := p.WriteFile(fileLocation); err != nil {
+			return nil, "", err
+		}
+	}
+	return project, id, nil
+}
+
+// create docker volume names for every path in APPSODY_DEPS and put it in project.yaml
+func (p *ProjectFile) AddDepsVolumesToProjectEntry(depsEnvVars []string, volumeMaps []string, rootConfig *RootCommandConfig) ([]string, error) {
+	project, _, err := p.EnsureProjectIDAndEntryExists(rootConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// if the project entry does not have existing dependency volumes, for every path in APPSODY_DEPS, generate a new volume name, assign it to that path, and write it to the current project entry in project.yaml
+	if project.Volumes == nil {
+		for _, volumePath := range depsEnvVars {
+			volumeName := GenerateVolumeName(rootConfig)
+			depsMount := volumeName + ":" + volumePath
+			rootConfig.Debug.log("Adding dependency cache to volume mounts: ", depsMount)
+			// add the volume mounts to volumeMaps
+			volumeMaps = append(volumeMaps, "-v", depsMount)
+
+			v := new(Volume)
+			v.Name = volumeName
+			v.Path = volumePath
+			project.Volumes = append(project.Volumes, v)
+		}
+
+		var fileLocation = getProjectYamlPath(rootConfig)
+		if err := p.WriteFile(fileLocation); err != nil {
+			return volumeMaps, err
+		}
+	} else { // else if project entry has existing dependency volumes, loop through volumes in the current project entry, and add each volume mount to volumeMaps
+		for _, v := range project.Volumes {
+			depsMount := v.Name + ":" + v.Path
+			rootConfig.Debug.log("Adding dependency cache to volume mounts: ", depsMount)
+			volumeMaps = append(volumeMaps, "-v", depsMount)
+		}
+	}
+	return volumeMaps, nil
 }
 
 /**
@@ -2557,4 +2924,53 @@ func SplitBuildOptions(options string) []string {
 	}
 
 	return strings.FieldsFunc(options, f)
+}
+
+func (p *ProjectFile) Remove(id string) {
+	for ind, pf := range p.Projects {
+		if id == pf.ID {
+			p.Projects[ind] = p.Projects[0]
+			p.Projects = p.Projects[1:]
+			return
+		}
+	}
+}
+
+func (p *ProjectFile) cleanupDockerVolumes(config *RootCommandConfig) error {
+	id := ""
+	removeVolumes := []string{"volume", "rm"}
+	for _, project := range p.Projects {
+		projectConfig := RootCommandConfig{}
+		projectConfig.ProjectDir = project.Path
+		projectConfigPath := filepath.Join(projectConfig.ProjectDir, ".appsody-config.yaml")
+		projectConfigExists, err := Exists(projectConfigPath)
+		if err != nil {
+			return err
+		}
+		if projectConfigExists {
+			id, err = GetIDFromConfig(&projectConfig)
+			if err != nil {
+				return err
+			}
+		}
+		if id != project.ID {
+			for _, volume := range project.Volumes {
+				removeVolumes = append(removeVolumes, volume.Name)
+			}
+			p.Remove(project.ID)
+			fileLocation := getProjectYamlPath(config)
+			err = p.WriteFile(fileLocation)
+			if err != nil {
+				return errors.Errorf("Failed to write file to repository location: %v", err)
+			}
+		}
+	}
+	if len(removeVolumes) > 2 {
+		config.Debug.logf("Cleaning up unused docker volumes.")
+		_, err := RunDockerCmdExec(removeVolumes, config.LoggingConfig)
+		if err != nil {
+			config.Debug.logf("Skipping some docker volumes that could not be removed: %v", err)
+		}
+	}
+	return nil
 }

@@ -40,6 +40,8 @@ func TestExtract(t *testing.T) {
 
 	stacksList := cmdtest.GetEnvStacksList()
 
+	// z and p use locally packaged dev.local so we need to add it to the config of the sandbox for it to work
+	cmdtest.ZAndPDevLocal(t, sandbox)
 	// split the appsodyStack env variable
 	stackRaw := strings.Split(stacksList, " ")
 
@@ -206,5 +208,90 @@ func TestExtractCases(t *testing.T) {
 				t.Fatalf("Expected failure to include: %s but instead receieved: %s. Full error: %s", tt.expectedLogs, output, extractErr)
 			}
 		})
+	}
+}
+
+// check if id exists in .appsody-config.yaml but not in project.yaml, a new project entry in project.yaml gets created with the same id
+func TestExtractIfProjectIDNotExistInProjectYaml(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+
+	p, _, _ := getCurrentProjectEntry(t, sandbox, config)
+	projectsBefore := len(p.Projects)
+
+	err = cmd.SaveIDToConfig("newRandomID", config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	args = []string{"extract", "--dryrun"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p, project, configID := getCurrentProjectEntry(t, sandbox, config)
+	projectsAfter := len(p.Projects)
+
+	if projectsBefore+1 != projectsAfter {
+		t.Fatalf("Expected number of project entries to be %v but found %v", projectsBefore+1, projectsAfter)
+	}
+	if project.ID != configID {
+		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
+	}
+}
+
+// check if id does not exists in .appsody-config.yaml, a new project entry in project.yaml gets created with the same id
+func TestExtractIfProjectIDNotExistInConfigYaml(t *testing.T) {
+
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	args := []string{"init", "nodejs"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := new(cmd.RootCommandConfig)
+
+	p, _, configID := getCurrentProjectEntry(t, sandbox, config)
+	projectsBefore := len(p.Projects)
+
+	// delete id from .appsody-config.yaml
+	appsodyConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	data, err := ioutil.ReadFile(appsodyConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	removedID := bytes.Replace(data, []byte("id: \""+configID+"\""), []byte(""), 1)
+	err = ioutil.WriteFile(appsodyConfig, []byte(removedID), 0666)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	args = []string{"extract", "--dryrun"}
+	_, err = cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p, project, configID := getCurrentProjectEntry(t, sandbox, config)
+	projectsAfter := len(p.Projects)
+
+	if projectsBefore+1 != projectsAfter {
+		t.Fatalf("Expected number of project entries to be %v but found %v", projectsBefore+1, projectsAfter)
+	}
+	if project.ID != configID {
+		t.Fatalf("Expected project id in .appsody-config.yaml to have a valid project entry in project.yaml.")
 	}
 }

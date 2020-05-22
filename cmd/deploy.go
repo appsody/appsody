@@ -70,6 +70,11 @@ Run this command from the root directory of your Appsody project.`,
 			if len(args) > 0 {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
+			var project ProjectFile
+			_, _, err := project.EnsureProjectIDAndEntryExists(config.RootCommandConfig)
+			if err != nil {
+				return err
+			}
 			config.Debug.Log("Default stack registry set to: ", &config.RootCommandConfig.StackRegistry)
 			projectDir, err := getProjectDir(config.RootCommandConfig)
 			if err != nil {
@@ -189,7 +194,7 @@ Run this command from the root directory of your Appsody project.`,
 			// Ensure hostname and IP config is set up for deployment
 			time.Sleep(1 * time.Second)
 			config.Info.log("Appsody Deployment name is: ", deploymentManifest.Name)
-			out, err := KubeGetDeploymentURL(config.LoggingConfig, deploymentManifest.Name, namespace, dryrun)
+			out, err := KubeGetDeploymentURL(config.LoggingConfig, deploymentManifest.Name, deploymentManifest.Spec["service"].(map[string]interface{}), namespace, dryrun)
 			// Performing the kubectl apply
 			if err != nil {
 				return errors.Errorf("Failed to find deployed service IP and Port: %s", err)
