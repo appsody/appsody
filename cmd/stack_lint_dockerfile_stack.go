@@ -136,13 +136,14 @@ func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
 }
 
 func lintMountVar(mountListSource string, log *LoggingConfig, stackPath string) (int, int) {
+	errCount := 0
+	warningCount := 0
 
 	if mountListSource == "" {
 		log.Warning.log("No APPSODY MOUNTS exists, mount paths can not be validated.")
-		return 1, 0
+		warningCount++
+		return warningCount, errCount
 	}
-	errCount := 0
-	warningCount := 0
 	mountList := strings.Split(mountListSource, ";")
 
 	templatePath := filepath.Join(stackPath, "templates")
@@ -151,15 +152,18 @@ func lintMountVar(mountListSource string, log *LoggingConfig, stackPath string) 
 	log.Debug.log("Template path exists: ", fileCheck)
 	if err != nil {
 		log.Error.log("Error attempting to determine if template path exists: ", err)
-		return 0, 1
+		errCount++
+		return warningCount, errCount
 	}
 	if !fileCheck {
 		log.Error.log("Missing template directory in: ", stackPath)
-		return 0, 1
+		errCount++
+		return warningCount, errCount
 	}
 	if IsEmptyDir(templatePath) {
 		log.Error.log("No templates found in: ", templatePath)
-		return 0, 1
+		errCount++
+		return warningCount, errCount
 	}
 	templates, _ := ioutil.ReadDir(templatePath)
 

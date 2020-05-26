@@ -103,7 +103,6 @@ func TestLinterWarnings(t *testing.T) {
 	}{
 		{"Invalid Run Value", dockerfilePath, "APPSODY_RUN", "Testing", "Missing APPSODY_RUN"},
 		{"Invalid Watch Dir", dockerfilePath, "_ON_CHANGE", "Testing", "APPSODY_WATCH_DIR is defined, but no ON_CHANGE variable is defined"},
-		// Fails unmarshalling the file when searching for "name" - searching for "sample stack" instead
 		{"Invalid License Field", "stack.yaml", "license: ", "license: invalidLicense", "The stack.yaml SPDX license ID is invalid"},
 	}
 	for _, testData := range linterInvalidValues {
