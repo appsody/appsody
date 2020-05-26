@@ -1173,7 +1173,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, debugPort string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, mode string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -1269,6 +1269,10 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 		log.Error.log("Could not create the YAML structure from template. Exiting.")
 		return "", err
 	}
+
+	//Set the args for the appsody mode used i.e. run/test/debug
+	yamlMap.Spec.PodTemplate.Spec.Containers[0].Args = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Args, mode)
+
 	//Set the name
 	yamlMap.Metadata.Name = appName
 
@@ -1306,17 +1310,21 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 	//Set the containerPort
 	containerPorts := make([]*Port, 0)
 	for i, port := range ports {
-		//KNative only allows a single port entry
-		if i == 0 {
-			yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = containerPorts
+		if port == debugPort {
+			log.Debug.log("Debug port found. Skipping addition to the deployment file...")
+		} else {
+			//KNative only allows a single port entry
+			if i == 0 {
+				yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = containerPorts
+			}
+			log.Debug.Log("Adding port to yaml: ", port)
+			newContainerPort := new(Port)
+			newContainerPort.ContainerPort, err = strconv.Atoi(port)
+			if err != nil {
+				return "", err
+			}
+			yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 		}
-		log.Debug.Log("Adding port to yaml: ", port)
-		newContainerPort := new(Port)
-		newContainerPort.ContainerPort, err = strconv.Atoi(port)
-		if err != nil {
-			return "", err
-		}
-		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 	}
 	//Set the env vars from docker run, if any
 	if len(dockerEnvVars) > 0 {
@@ -1391,6 +1399,17 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 	}
 	return yamlFile, nil
 }
+
+//InArray returns true if an element is in an array, and false otherwise
+func InArray(haystack []string, needle string) bool {
+	for _, value := range haystack {
+		if needle == value {
+			return true
+		}
+	}
+	return false
+}
+
 func getDeploymentTemplate() string {
 	yamltempl := `
 apiVersion: apps/v1
@@ -1421,6 +1440,7 @@ spec:
         image: APPSODY_STACK
         imagePullPolicy: Always
         command: ["/.appsody/appsody-controller"]
+        args: ["--mode"]
         volumeMounts:
         - name: appsody-controller
           mountPath: /.appsody
@@ -1432,7 +1452,7 @@ spec:
 }
 
 //GenServiceYaml returns the file name of a generated K8S Service yaml
-func GenServiceYaml(log *LoggingConfig, appName string, ports []string, pdir string, dryrun bool) (fileName string, err error) {
+func GenServiceYaml(log *LoggingConfig, appName string, ports []string, debugPort string, pdir string, dryrun bool) (fileName string, err error) {
 
 	type Port struct {
 		Name       string `yaml:"name,omitempty"`
@@ -1489,15 +1509,23 @@ func GenServiceYaml(log *LoggingConfig, appName string, ports []string, pdir str
 	service.Spec.Selector = make(map[string]string, 1)
 	service.Spec.Selector["app"] = appName
 	service.Spec.ServiceType = "NodePort"
-	service.Spec.Ports = make([]Port, len(ports))
+	if debugPort != "" {
+		service.Spec.Ports = make([]Port, len(ports)-1)
+	} else {
+		service.Spec.Ports = make([]Port, len(ports))
+	}
 	for i, port := range ports {
-		service.Spec.Ports[i].Name = fmt.Sprintf("port-%d", i)
-		iPort, err := strconv.Atoi(port)
-		if err != nil {
-			return "", err
+		if port == debugPort {
+			log.Debug.log("Debug port found. Skipping addition to the deployment file...")
+		} else {
+			service.Spec.Ports[i].Name = fmt.Sprintf("port-%d", i)
+			iPort, err := strconv.Atoi(port)
+			if err != nil {
+				return "", err
+			}
+			service.Spec.Ports[i].Port = iPort
+			service.Spec.Ports[i].TargetPort = iPort
 		}
-		service.Spec.Ports[i].Port = iPort
-		service.Spec.Ports[i].TargetPort = iPort
 	}
 
 	yamlStr, err := yaml.Marshal(&service)
