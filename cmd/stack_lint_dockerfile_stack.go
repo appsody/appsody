@@ -58,8 +58,7 @@ func getENVDockerfile(log *LoggingConfig, stackPath string) (dockerfileStack map
 }
 
 func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
-	mendatoryEnvironmentVariables := [...]string{"APPSODY_MOUNTS", "APPSODY_RUN"}
-	optionalEnvironmentVariables := [...]string{"APPSODY_DEBUG", "APPSODY_TEST", "APPSODY_DEPS", "APPSODY_PROJECT_DIR"}
+	optionalEnvironmentVariables := [...]string{"APPSODY_DEBUG", "APPSODY_TEST", "APPSODY_DEPS", "APPSODY_PROJECT_DIR", "APPSODY_MOUNTS", "APPSODY_RUN"}
 
 	stackLintErrorCount := 0
 	stackLintWarningCount := 0
@@ -71,22 +70,6 @@ func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
 
 	variableFound := false
 	variable := ""
-
-	for i := 0; i < len(mendatoryEnvironmentVariables); i++ {
-		variable = mendatoryEnvironmentVariables[i]
-		for k := range dockerfileStack {
-			if k == mendatoryEnvironmentVariables[i] {
-				variableFound = true
-			}
-		}
-		if !variableFound {
-			log.Error.log("Missing ", variable)
-			stackLintErrorCount++
-		}
-		variableFound = false
-	}
-
-	variableFound = false
 
 	for i := 0; i < len(optionalEnvironmentVariables); i++ {
 		variable = optionalEnvironmentVariables[i]
@@ -119,13 +102,13 @@ func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
 	}
 
 	if count == len(dockerfileStack) && !onChangeFound {
-		log.Error.log("APPSODY_WATCH_DIR is defined, but no ON_CHANGE variable is defined")
-		stackLintErrorCount++
+		log.Warning.log("APPSODY_WATCH_DIR is defined, but no ON_CHANGE variable is defined")
+		stackLintWarningCount++
 	}
 
 	for k, v := range dockerfileStack {
 		if strings.Contains(k, "APPSODY_INSTALL") {
-			log.Warning.log("APPSODY_INSTALL should be deprecated and APPSODY_PREP should be used instead")
+			log.Warning.log("APPSODY_INSTALL has been deprecated. Please use APPSODY_PREP instead")
 			stackLintWarningCount++
 		}
 
@@ -153,13 +136,14 @@ func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
 }
 
 func lintMountVar(mountListSource string, log *LoggingConfig, stackPath string) (int, int) {
-
-	if mountListSource == "" {
-		log.Error.log("No APPSODY MOUNTS exists, mount paths can not be validated.")
-		return 0, 1
-	}
 	errCount := 0
 	warningCount := 0
+
+	if mountListSource == "" {
+		log.Warning.log("No APPSODY MOUNTS exists, mount paths can not be validated.")
+		warningCount++
+		return warningCount, errCount
+	}
 	mountList := strings.Split(mountListSource, ";")
 
 	templatePath := filepath.Join(stackPath, "templates")
@@ -168,15 +152,18 @@ func lintMountVar(mountListSource string, log *LoggingConfig, stackPath string) 
 	log.Debug.log("Template path exists: ", fileCheck)
 	if err != nil {
 		log.Error.log("Error attempting to determine if template path exists: ", err)
-		return 0, 1
+		errCount++
+		return warningCount, errCount
 	}
 	if !fileCheck {
 		log.Error.log("Missing template directory in: ", stackPath)
-		return 0, 1
+		errCount++
+		return warningCount, errCount
 	}
 	if IsEmptyDir(templatePath) {
 		log.Error.log("No templates found in: ", templatePath)
-		return 0, 1
+		errCount++
+		return warningCount, errCount
 	}
 	templates, _ := ioutil.ReadDir(templatePath)
 

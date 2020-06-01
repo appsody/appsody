@@ -71,7 +71,7 @@ Run this command from the root directory of your Appsody project.`,
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
 			var project ProjectFile
-			_, _, err := project.ensureProjectIDAndEntryExists(config.RootCommandConfig)
+			_, _, err := project.EnsureProjectIDAndEntryExists(config.RootCommandConfig)
 			if err != nil {
 				return err
 			}

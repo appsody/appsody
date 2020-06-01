@@ -24,16 +24,12 @@ import (
 )
 
 type CommitInfo struct {
-	Author         string
-	AuthorEmail    string
-	Committer      string
-	CommitterEmail string
-	SHA            string
-	Date           string
-	URL            string
-	Message        string
-	contextDir     string
-	Pushed         bool
+	SHA        string
+	Date       string
+	URL        string
+	Message    string
+	contextDir string
+	Pushed     bool
 }
 
 type GitInfo struct {
@@ -289,7 +285,7 @@ func (commitInfo *CommitInfo) setURL(URL string) {
 //RunGitLog issues git log
 func RunGitGetLastCommit(config *RootCommandConfig) (CommitInfo, error) {
 	//git log -n 1 --pretty=format:"{"author":"%cn","sha":"%h","date":"%cd”,}”
-	kargs := []string{"log", "-n", "1", "--pretty=format:'{\"author\":\"%an\", \"authoremail\":\"%ae\", \"sha\":\"%H\", \"date\":\"%cd\", \"committer\":\"%cn\", \"committeremail\":\"%ce\", \"message\":\"%s\"}'"}
+	kargs := []string{"log", "-n", "1", "--pretty=format:'{\"sha\":\"%H\", \"date\":\"%cd\", \"message\":\"%s\"}'"}
 	var commitInfo CommitInfo
 	commitStringInfo, gitErr := RunGit(config.LoggingConfig, config.ProjectDir, kargs, config.Dryrun)
 	if gitErr != nil {

@@ -83,8 +83,9 @@ func TestPackageDockerOptions(t *testing.T) {
 }
 
 func TestPackageBuildah(t *testing.T) {
-
-	if runtime.GOOS != "linux" {
+	stacksList := cmdtest.GetEnvStacksList()
+	// TODO: Fix test on Z and P
+	if runtime.GOOS != "linux" || stacksList == "dev.local/starter" {
 		t.Skip()
 	}
 
@@ -110,7 +111,9 @@ func TestPackageBuildah(t *testing.T) {
 
 func TestPackageBuildahWithOptions(t *testing.T) {
 
-	if runtime.GOOS != "linux" {
+	stacksList := cmdtest.GetEnvStacksList()
+	// TODO: Fix test on Z and P
+	if runtime.GOOS != "linux" || stacksList == "dev.local/starter" {
 		t.Skip()
 	}
 

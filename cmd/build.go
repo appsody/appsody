@@ -114,7 +114,7 @@ Run this command from the root directory of your Appsody project.`,
 			config.appDeployFile = filepath.Join(projectDir, config.appDeployFile)
 
 			var project ProjectFile
-			_, _, err = project.ensureProjectIDAndEntryExists(config.RootCommandConfig)
+			_, _, err = project.EnsureProjectIDAndEntryExists(config.RootCommandConfig)
 			if err != nil {
 				return err
 			}

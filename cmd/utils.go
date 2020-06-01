@@ -181,11 +181,11 @@ func ExtractDockerEnvVars(dockerOptions string) (map[string]string, error) {
 
 //GetEnvVar obtains a Stack environment variable from the Stack image
 func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
-	if config.cachedEnvVars == nil {
-		config.cachedEnvVars = make(map[string]string)
+	if config.CachedEnvVars == nil {
+		config.CachedEnvVars = make(map[string]string)
 	}
 
-	if value, present := config.cachedEnvVars[searchEnvVar]; present {
+	if value, present := config.CachedEnvVars[searchEnvVar]; present {
 		config.Debug.logf("Environment variable found cached: %s Value: %s", searchEnvVar, value)
 		return value, nil
 	}
@@ -235,14 +235,14 @@ func GetEnvVar(searchEnvVar string, config *RootCommandConfig) (string, error) {
 	for _, envVar := range envVars {
 		nameValuePair := strings.SplitN(envVar.(string), "=", 2)
 		name, value := nameValuePair[0], nameValuePair[1]
-		config.cachedEnvVars[name] = value
+		config.CachedEnvVars[name] = value
 		if name == searchEnvVar {
 			varFound = true
 		}
 	}
 	if varFound {
-		config.Debug.logf("Environment variable found: %s Value: %s", searchEnvVar, config.cachedEnvVars[searchEnvVar])
-		return config.cachedEnvVars[searchEnvVar], nil
+		config.Debug.logf("Environment variable found: %s Value: %s", searchEnvVar, config.CachedEnvVars[searchEnvVar])
+		return config.CachedEnvVars[searchEnvVar], nil
 	}
 	config.Debug.log("Could not find env var: ", searchEnvVar)
 	return "", nil
@@ -933,7 +933,7 @@ func getConfigLabels(projectConfig ProjectConfig, filename string, log *LoggingC
 
 	var maintainersString string
 	for index, maintainer := range projectConfig.Maintainers {
-		maintainersString += maintainer.Name + " <" + maintainer.Email + ">"
+		maintainersString += maintainer.Name + " <" + maintainer.GithubID + ">"
 		if index < len(projectConfig.Maintainers)-1 {
 			maintainersString += ", "
 		}
@@ -1009,22 +1009,6 @@ func getGitLabels(config *RootCommandConfig) (map[string]string, error) {
 		if !gitInfo.Commit.Pushed {
 			labels[revisionKey] += "-not-pushed"
 		}
-	}
-
-	if commitInfo.Author != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] = commitInfo.Author
-	}
-
-	if commitInfo.AuthorEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"author"] += " <" + commitInfo.AuthorEmail + ">"
-	}
-
-	if commitInfo.Committer != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] = commitInfo.Committer
-	}
-
-	if commitInfo.CommitterEmail != "" {
-		labels[appsodyImageCommitKeyPrefix+"committer"] += " <" + commitInfo.CommitterEmail + ">"
 	}
 
 	if commitInfo.Date != "" {
@@ -1189,7 +1173,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, debugPort string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, mode string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -1285,6 +1269,10 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 		log.Error.log("Could not create the YAML structure from template. Exiting.")
 		return "", err
 	}
+
+	//Set the args for the appsody mode used i.e. run/test/debug
+	yamlMap.Spec.PodTemplate.Spec.Containers[0].Args = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Args, mode)
+
 	//Set the name
 	yamlMap.Metadata.Name = appName
 
@@ -1322,17 +1310,21 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 	//Set the containerPort
 	containerPorts := make([]*Port, 0)
 	for i, port := range ports {
-		//KNative only allows a single port entry
-		if i == 0 {
-			yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = containerPorts
+		if port == debugPort {
+			log.Debug.log("Debug port found. Skipping addition to the deployment file...")
+		} else {
+			//KNative only allows a single port entry
+			if i == 0 {
+				yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = containerPorts
+			}
+			log.Debug.Log("Adding port to yaml: ", port)
+			newContainerPort := new(Port)
+			newContainerPort.ContainerPort, err = strconv.Atoi(port)
+			if err != nil {
+				return "", err
+			}
+			yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 		}
-		log.Debug.Log("Adding port to yaml: ", port)
-		newContainerPort := new(Port)
-		newContainerPort.ContainerPort, err = strconv.Atoi(port)
-		if err != nil {
-			return "", err
-		}
-		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 	}
 	//Set the env vars from docker run, if any
 	if len(dockerEnvVars) > 0 {
@@ -1407,6 +1399,17 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 	}
 	return yamlFile, nil
 }
+
+//InArray returns true if an element is in an array, and false otherwise
+func InArray(haystack []string, needle string) bool {
+	for _, value := range haystack {
+		if needle == value {
+			return true
+		}
+	}
+	return false
+}
+
 func getDeploymentTemplate() string {
 	yamltempl := `
 apiVersion: apps/v1
@@ -1437,6 +1440,7 @@ spec:
         image: APPSODY_STACK
         imagePullPolicy: Always
         command: ["/.appsody/appsody-controller"]
+        args: ["--mode"]
         volumeMounts:
         - name: appsody-controller
           mountPath: /.appsody
@@ -1448,7 +1452,7 @@ spec:
 }
 
 //GenServiceYaml returns the file name of a generated K8S Service yaml
-func GenServiceYaml(log *LoggingConfig, appName string, ports []string, pdir string, dryrun bool) (fileName string, err error) {
+func GenServiceYaml(log *LoggingConfig, appName string, ports []string, debugPort string, pdir string, dryrun bool) (fileName string, err error) {
 
 	type Port struct {
 		Name       string `yaml:"name,omitempty"`
@@ -1505,15 +1509,23 @@ func GenServiceYaml(log *LoggingConfig, appName string, ports []string, pdir str
 	service.Spec.Selector = make(map[string]string, 1)
 	service.Spec.Selector["app"] = appName
 	service.Spec.ServiceType = "NodePort"
-	service.Spec.Ports = make([]Port, len(ports))
+	if debugPort != "" {
+		service.Spec.Ports = make([]Port, len(ports)-1)
+	} else {
+		service.Spec.Ports = make([]Port, len(ports))
+	}
 	for i, port := range ports {
-		service.Spec.Ports[i].Name = fmt.Sprintf("port-%d", i)
-		iPort, err := strconv.Atoi(port)
-		if err != nil {
-			return "", err
+		if port == debugPort {
+			log.Debug.log("Debug port found. Skipping addition to the deployment file...")
+		} else {
+			service.Spec.Ports[i].Name = fmt.Sprintf("port-%d", i)
+			iPort, err := strconv.Atoi(port)
+			if err != nil {
+				return "", err
+			}
+			service.Spec.Ports[i].Port = iPort
+			service.Spec.Ports[i].TargetPort = iPort
 		}
-		service.Spec.Ports[i].Port = iPort
-		service.Spec.Ports[i].TargetPort = iPort
 	}
 
 	yamlStr, err := yaml.Marshal(&service)
@@ -2626,7 +2638,12 @@ func generateCodewindJSON(log *LoggingConfig, indexYaml IndexYaml, indexFilePath
 	for _, stack := range indexYaml.Stacks {
 		for _, template := range stack.Templates {
 			stackJSON := IndexJSONStack{}
-			stackJSON.DisplayName = prefixName + " " + stack.Name + " " + template.ID + " template"
+			if stack.Deprecated != "" {
+				stackJSON.DisplayName = "[Deprecated] "
+				stackJSON.Deprecated = stack.Deprecated
+			}
+
+			stackJSON.DisplayName = stackJSON.DisplayName + prefixName + " " + stack.Name + " " + template.ID + " template"
 			stackJSON.Description = stack.Description
 			stackJSON.Language = stack.Language
 			stackJSON.ProjectType = "appsodyExtension"
@@ -2662,12 +2679,12 @@ func getProjectYamlPath(rootConfig *RootCommandConfig) string {
 }
 
 // add a new project entry to the project.yaml file
-func (p *ProjectFile) add(projectEntry ...*ProjectEntry) {
+func (p *ProjectFile) Add(projectEntry ...*ProjectEntry) {
 	p.Projects = append(p.Projects, projectEntry...)
 }
 
 // write to the project.yaml file
-func (p *ProjectFile) writeFile(path string) error {
+func (p *ProjectFile) WriteFile(path string) error {
 	data, err := yaml.Marshal(p)
 	if err != nil {
 		return err
@@ -2676,7 +2693,7 @@ func (p *ProjectFile) writeFile(path string) error {
 }
 
 // check if project.yaml file had a project with given id
-func (p *ProjectFile) hasID(id string) bool {
+func (p *ProjectFile) HasID(id string) bool {
 	for _, pf := range p.Projects {
 		if id == pf.ID {
 			return true
@@ -2709,7 +2726,7 @@ func (p *ProjectFile) GetProjects(fileLocation string) (*ProjectFile, error) {
 }
 
 // create unique project id for .appsody-config.yaml
-func generateID(log *LoggingConfig) string {
+func GenerateID(log *LoggingConfig) string {
 	var id = time.Now().Format("20060102150405.00000000")
 
 	log.Debug.Logf("Successfully generated ID: %s", id)
@@ -2717,7 +2734,7 @@ func generateID(log *LoggingConfig) string {
 }
 
 // add new project entry to ~/.appsody/project.yaml
-func (p *ProjectFile) addNewProject(ID string, config *RootCommandConfig) error {
+func (p *ProjectFile) AddNewProject(ID string, config *RootCommandConfig) error {
 	projectDir, err := getProjectDir(config)
 	if err != nil {
 		return err
@@ -2733,8 +2750,8 @@ func (p *ProjectFile) addNewProject(ID string, config *RootCommandConfig) error 
 		ID:   ID,
 		Path: projectDir,
 	}
-	p.add(&newEntry)
-	err = p.writeFile(fileLocation)
+	p.Add(&newEntry)
+	err = p.WriteFile(fileLocation)
 	if err != nil {
 		return errors.Errorf("Failed to write file to repository location: %v", err)
 	}
@@ -2743,7 +2760,7 @@ func (p *ProjectFile) addNewProject(ID string, config *RootCommandConfig) error 
 }
 
 // get APPSODY_DEPS environment variable and split it into and array
-func getDepVolumeArgs(config *RootCommandConfig) ([]string, error) {
+func GetDepVolumeArgs(config *RootCommandConfig) ([]string, error) {
 	stackDeps, envErr := GetEnvVar("APPSODY_DEPS", config)
 	if envErr != nil {
 		return nil, envErr
@@ -2757,7 +2774,7 @@ func getDepVolumeArgs(config *RootCommandConfig) ([]string, error) {
 }
 
 // create unique name for APPSODY_DEPS volumes
-func generateVolumeName(config *RootCommandConfig) string {
+func GenerateVolumeName(config *RootCommandConfig) string {
 	projectName, perr := getProjectName(config)
 	if perr != nil {
 		if _, ok := perr.(*NotAnAppsodyProject); !ok {
@@ -2765,7 +2782,7 @@ func generateVolumeName(config *RootCommandConfig) string {
 			os.Exit(1)
 		}
 	}
-	ID := generateID(config.LoggingConfig)
+	ID := GenerateID(config.LoggingConfig)
 	volumeName := "appsody-" + projectName + "-" + ID
 
 	config.Debug.Logf("Using docker volume name: %s", volumeName)
@@ -2811,8 +2828,8 @@ func GetIDFromConfig(config *RootCommandConfig) (string, error) {
 // create new project entry in ~/.appsody/project.yaml and add id to .appsody-config.yaml
 func generateNewProjectAndID(config *RootCommandConfig) (string, error) {
 	var projectFile ProjectFile
-	ID := generateID(config.LoggingConfig)
-	err := projectFile.addNewProject(ID, config)
+	ID := GenerateID(config.LoggingConfig)
+	err := projectFile.AddNewProject(ID, config)
 	if err != nil {
 		return "", err
 	}
@@ -2824,7 +2841,7 @@ func generateNewProjectAndID(config *RootCommandConfig) (string, error) {
 	return ID, nil
 }
 
-func (p *ProjectFile) ensureProjectIDAndEntryExists(rootConfig *RootCommandConfig) (*ProjectEntry, string, error) {
+func (p *ProjectFile) EnsureProjectIDAndEntryExists(rootConfig *RootCommandConfig) (*ProjectEntry, string, error) {
 	id, err := GetIDFromConfig(rootConfig)
 	if err != nil {
 		return nil, "", err
@@ -2835,8 +2852,8 @@ func (p *ProjectFile) ensureProjectIDAndEntryExists(rootConfig *RootCommandConfi
 		return nil, "", err
 	}
 	// if id exists in .appsody-config.yaml but not in project.yaml, add a new project entry in project.yaml with that id, and get projects again
-	if !p.hasID(id) {
-		err = p.addNewProject(id, rootConfig)
+	if !p.HasID(id) {
+		err = p.AddNewProject(id, rootConfig)
 		if err != nil {
 			return nil, "", err
 		}
@@ -2850,7 +2867,7 @@ func (p *ProjectFile) ensureProjectIDAndEntryExists(rootConfig *RootCommandConfi
 	// if the user moves their Appsody project, (same project id different path), update the project path in project.yaml
 	if project.Path != projectDir {
 		project.Path = projectDir
-		if err := p.writeFile(fileLocation); err != nil {
+		if err := p.WriteFile(fileLocation); err != nil {
 			return nil, "", err
 		}
 	}
@@ -2858,8 +2875,8 @@ func (p *ProjectFile) ensureProjectIDAndEntryExists(rootConfig *RootCommandConfi
 }
 
 // create docker volume names for every path in APPSODY_DEPS and put it in project.yaml
-func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, volumeMaps []string, rootConfig *RootCommandConfig) ([]string, error) {
-	project, _, err := p.ensureProjectIDAndEntryExists(rootConfig)
+func (p *ProjectFile) AddDepsVolumesToProjectEntry(depsEnvVars []string, volumeMaps []string, rootConfig *RootCommandConfig) ([]string, error) {
+	project, _, err := p.EnsureProjectIDAndEntryExists(rootConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -2867,7 +2884,7 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, volumeM
 	// if the project entry does not have existing dependency volumes, for every path in APPSODY_DEPS, generate a new volume name, assign it to that path, and write it to the current project entry in project.yaml
 	if project.Volumes == nil {
 		for _, volumePath := range depsEnvVars {
-			volumeName := generateVolumeName(rootConfig)
+			volumeName := GenerateVolumeName(rootConfig)
 			depsMount := volumeName + ":" + volumePath
 			rootConfig.Debug.log("Adding dependency cache to volume mounts: ", depsMount)
 			// add the volume mounts to volumeMaps
@@ -2880,7 +2897,7 @@ func (p *ProjectFile) addDepsVolumesToProjectEntry(depsEnvVars []string, volumeM
 		}
 
 		var fileLocation = getProjectYamlPath(rootConfig)
-		if err := p.writeFile(fileLocation); err != nil {
+		if err := p.WriteFile(fileLocation); err != nil {
 			return volumeMaps, err
 		}
 	} else { // else if project entry has existing dependency volumes, loop through volumes in the current project entry, and add each volume mount to volumeMaps
@@ -2937,7 +2954,7 @@ func SplitBuildOptions(options string) []string {
 	return strings.FieldsFunc(options, f)
 }
 
-func (p *ProjectFile) remove(id string) {
+func (p *ProjectFile) Remove(id string) {
 	for ind, pf := range p.Projects {
 		if id == pf.ID {
 			p.Projects[ind] = p.Projects[0]
@@ -2968,9 +2985,9 @@ func (p *ProjectFile) cleanupDockerVolumes(config *RootCommandConfig) error {
 			for _, volume := range project.Volumes {
 				removeVolumes = append(removeVolumes, volume.Name)
 			}
-			p.remove(project.ID)
+			p.Remove(project.ID)
 			fileLocation := getProjectYamlPath(config)
-			err = p.writeFile(fileLocation)
+			err = p.WriteFile(fileLocation)
 			if err != nil {
 				return errors.Errorf("Failed to write file to repository location: %v", err)
 			}

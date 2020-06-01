@@ -21,12 +21,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
 
 	cmd "github.com/appsody/appsody/cmd"
 	"github.com/appsody/appsody/cmd/cmdtest"
+	"github.com/spf13/viper"
 )
 
 var validProjectNameTests = []string{
@@ -1655,4 +1657,446 @@ func TestRemoveIfExists(t *testing.T) {
 		t.Fatal("Folders were not removed")
 	}
 
+}
+
+func TestProjectFileHasCorrectID(t *testing.T) {
+	correctID := "correctID"
+	wrongID := "wrongID"
+	var newEntry = cmd.ProjectEntry{
+		ID:   correctID,
+		Path: "randomProjectDir",
+	}
+
+	p := new(cmd.ProjectFile)
+	p.Add(&newEntry)
+
+	hasCorrectID := p.HasID(correctID)
+	if !hasCorrectID {
+		t.Fatalf("Expected project ID \"%s\" not found in project.yaml file", correctID)
+	}
+
+	hasWrongID := p.HasID(wrongID)
+	if hasWrongID {
+		t.Fatalf("Expected project ID \"%s\" not to be found in project.yaml file", wrongID)
+	}
+}
+
+func TestGetProject(t *testing.T) {
+	expectedID := "correctID"
+	wrongID := "wrongID"
+	var newEntry = cmd.ProjectEntry{
+		ID:   expectedID,
+		Path: "randomProjectDir",
+	}
+
+	p := new(cmd.ProjectFile)
+	p.Add(&newEntry)
+
+	expectedProjectEntry := p.GetProject(expectedID)
+	if expectedProjectEntry == nil {
+		t.Fatalf("Expected project entry with ID \"%s\" not found in project.yaml file", expectedID)
+	}
+
+	wrongProjectEntry := p.GetProject(wrongID)
+	if wrongProjectEntry != nil {
+		t.Fatalf("Expected project entry with ID \"%s\" not to be found in project.yaml file", wrongID)
+	}
+}
+
+func TestGetProjects(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	// create project.yaml
+	args := []string{"version"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p cmd.ProjectFile
+
+	projectYaml := "/this/is/not/a/real/project.yaml"
+	_, err = p.GetProjects(projectYaml)
+	if err == nil {
+		t.Fatal("Expected non-zero exit code.")
+	}
+
+	projectYaml = filepath.Join(sandbox.ConfigDir, "project.yaml")
+	_, err = p.GetProjects(projectYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGenerateProjectID(t *testing.T) {
+	log := &cmd.LoggingConfig{}
+	var outBuffer bytes.Buffer
+	log.InitLogging(&outBuffer, &outBuffer)
+
+	generatedID := cmd.GenerateID(log)
+	IDLength := len(generatedID)
+	if IDLength != 23 {
+		t.Fatalf("Expected generated ID to have a length of 23 characters, instead generated ID has a length of %v characters", IDLength)
+	}
+}
+
+func TestAddNewProject(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+	config.CliConfig = viper.New()
+	config.CliConfig.SetDefault("home", sandbox.ConfigDir)
+	config.ProjectDir = sandbox.ProjectDir
+
+	// create project.yaml
+	args := []string{"version"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check function fails if used on an invalid appsody project
+	var p cmd.ProjectFile
+	ID := "newID"
+	err = p.AddNewProject(ID, config)
+	if err == nil {
+		t.Fatal("Expected non-zero exit code.")
+	}
+
+	// create .appsody-config.yaml to simulate a valid appsody project
+	projectConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	_, err = os.Create(projectConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check function passes on valid appsody project
+	err = p.AddNewProject(ID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	correctProjectEntry := p.GetProject(ID)
+	if correctProjectEntry == nil {
+		t.Fatalf("Expected project entry with ID \"%s\" not found in project.yaml file", ID)
+	}
+}
+
+func TestGetDepVolumeArgs(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+	config.ProjectDir = sandbox.ProjectDir
+
+	// create .appsody-config.yaml to simulate a valid appsody project
+	projectConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	_, err := os.Create(projectConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedVolume := "randomVolumePath"
+	config.CachedEnvVars = make(map[string]string)
+	config.CachedEnvVars["APPSODY_DEPS"] = expectedVolume
+
+	dep, envErr := cmd.GetDepVolumeArgs(config)
+	if envErr != nil {
+		t.Fatal(envErr)
+	}
+	if dep[0] != expectedVolume {
+		t.Fatalf("Expected dep volume to be %s but found %s", expectedVolume, dep)
+	}
+}
+
+func TestSaveAndGetIDFromConfig(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+	config.ProjectDir = sandbox.ProjectDir
+
+	// create .appsody-config.yaml to simulate a valid appsody project
+	projectConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	_, err := os.Create(projectConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedID := "randomID"
+	// check function passes on valid config file
+	err = cmd.SaveIDToConfig(expectedID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actualID, err := cmd.GetIDFromConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if actualID != expectedID {
+		t.Fatalf("Expected project entry with ID \"%s\" but found ID \"%s\" in the %s file", expectedID, actualID, cmd.ConfigFile)
+	}
+}
+
+func TestGetIDFromConfigWithNoID(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+	config.CliConfig = viper.New()
+	config.CliConfig.SetDefault("home", sandbox.ConfigDir)
+	config.ProjectDir = sandbox.ProjectDir
+
+	// create project.yaml
+	args := []string{"version"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// create .appsody-config.yaml to simulate a valid appsody project
+	projectConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	_, err = os.Create(projectConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	generatedID, err := cmd.GetIDFromConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	IDLength := len(generatedID)
+	if IDLength != 23 {
+		t.Fatalf("Expected generated ID to have a length of 23 characters, instead generated ID has a length of %v characters", IDLength)
+	}
+}
+
+func TestEnsureProjectIDAndEntryExists(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+	config.CliConfig = viper.New()
+	config.CliConfig.SetDefault("home", sandbox.ConfigDir)
+	config.ProjectDir = sandbox.ProjectDir
+
+	// create project.yaml
+	args := []string{"version"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// create .appsody-config.yaml to simulate a valid appsody project
+	projectConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	_, err = os.Create(projectConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var p cmd.ProjectFile
+	// test function creates new ID and project when ID does not exist in both .appsody-config.yaml and project.yaml
+	project, generatedID, err := p.EnsureProjectIDAndEntryExists(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if project == nil {
+		t.Fatal("Expected project to be generated successfully")
+	}
+
+	IDLength := len(generatedID)
+	if IDLength != 23 {
+		t.Fatalf("Expected generated ID to have a length of 23 characters, instead generated ID has a length of %v characters", IDLength)
+	}
+
+	// test function updates the project path in project.yaml, if user moves project to different directory
+	correctProjectPath := project.Path
+	project.Path = "/random/path/"
+	if err := p.WriteFile(filepath.Join(sandbox.ConfigDir, "project.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	project, _, err = p.EnsureProjectIDAndEntryExists(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if project.Path != correctProjectPath {
+		t.Fatalf("Expected project entry with project path \"%s\" but found path \"%s\" in the project.yaml file", correctProjectPath, project.Path)
+	}
+}
+
+func TestAddDepsVolumesToProjectEntryWhenNoVolumesPresent(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+	config.CliConfig = viper.New()
+	config.CliConfig.SetDefault("home", sandbox.ConfigDir)
+	config.ProjectDir = sandbox.ProjectDir
+
+	// create project.yaml
+	args := []string{"version"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// create .appsody-config.yaml to simulate a valid appsody project
+	projectConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	_, err = os.Create(projectConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	depsEnvVars := []string{"env", "vars"}
+	volumeMaps := []string{"volume", "maps"}
+	var p cmd.ProjectFile
+	dep, envErr := p.AddDepsVolumesToProjectEntry(depsEnvVars, volumeMaps, config)
+	if envErr != nil {
+		t.Fatal(envErr)
+	}
+	r, err := regexp.Compile("volume maps( -v appsody-[a-z]*-([0-9]|-)*.([0-9])*:(env|vars))*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !r.MatchString(strings.Join(dep, " ")) {
+		t.Fatalf("Did not get expected output, instead got: %s", strings.Join(dep, " "))
+	}
+}
+
+func TestAddDepsVolumesToProjectEntryWhenVolumesPresent(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+	config.CliConfig = viper.New()
+	config.CliConfig.SetDefault("home", sandbox.ConfigDir)
+	config.ProjectDir = sandbox.ProjectDir
+
+	// create project.yaml
+	args := []string{"version"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// create .appsody-config.yaml to simulate a valid appsody project and give it a known id
+	projectConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	_, err = os.Create(projectConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ID := "newID"
+	v := viper.New()
+	v.SetConfigFile(projectConfig)
+	err = v.ReadInConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	v.Set("id", ID)
+	err = v.WriteConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var p cmd.ProjectFile
+	err = p.AddNewProject(ID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	currentProjectEntry := p.GetProject(ID)
+	volume := new(cmd.Volume)
+	volume.Name = "volumeName"
+	volume.Path = "volumePath"
+
+	currentProjectEntry.Volumes = append(currentProjectEntry.Volumes, volume)
+	if err := p.WriteFile(filepath.Join(sandbox.ConfigDir, "project.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	depsEnvVars := []string{"env", "vars"}
+	volumeMaps := []string{"volume", "maps"}
+	dep, envErr := p.AddDepsVolumesToProjectEntry(depsEnvVars, volumeMaps, config)
+	if envErr != nil {
+		t.Fatal(envErr)
+	}
+
+	expectedOutput := "volume maps -v volumeName:volumePath"
+	if !strings.Contains(strings.Join(dep, " "), expectedOutput) {
+		t.Fatalf("Did not get expected output \"%s\", instead got: \"%s\"", expectedOutput, strings.Join(dep, " "))
+	}
+}
+
+func TestRemoveProject(t *testing.T) {
+	sandbox, cleanup := cmdtest.TestSetupWithSandbox(t, true)
+	defer cleanup()
+
+	var outBuffer bytes.Buffer
+	loggingConfig := &cmd.LoggingConfig{}
+	loggingConfig.InitLogging(&outBuffer, &outBuffer)
+	config := &cmd.RootCommandConfig{LoggingConfig: loggingConfig}
+	config.CliConfig = viper.New()
+	config.CliConfig.SetDefault("home", sandbox.ConfigDir)
+	config.ProjectDir = sandbox.ProjectDir
+
+	// create project.yaml
+	args := []string{"version"}
+	_, err := cmdtest.RunAppsody(sandbox, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// create .appsody-config.yaml to simulate a valid appsody project
+	projectConfig := filepath.Join(sandbox.ProjectDir, cmd.ConfigFile)
+	_, err = os.Create(projectConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var p cmd.ProjectFile
+	// add new project with known ID and check exists in project.yaml
+	ID := "newID"
+	err = p.AddNewProject(ID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	currentProjectEntry := p.GetProject(ID)
+	if currentProjectEntry == nil {
+		t.Fatalf("Expected project entry with ID \"%s\" not found in project.yaml file", ID)
+	}
+
+	// remove project and check it no longer exists in project.yaml
+	p.Remove(ID)
+	currentProjectEntry = p.GetProject(ID)
+	if currentProjectEntry != nil {
+		t.Fatalf("Expected project entry with ID \"%s\" not to be found in project.yaml file", ID)
+	}
 }

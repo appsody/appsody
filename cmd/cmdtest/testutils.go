@@ -27,7 +27,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/appsody/appsody/cmd"
+	cmd "github.com/appsody/appsody/cmd"
 	"gopkg.in/yaml.v2"
 )
 
@@ -49,14 +49,6 @@ type TestSandbox struct {
 	Verbose      bool
 }
 
-func inArray(haystack []string, needle string) bool {
-	for _, value := range haystack {
-		if needle == value {
-			return true
-		}
-	}
-	return false
-}
 func TestSetup(t *testing.T, parallel bool) {
 	if parallel {
 		t.Parallel()
@@ -185,12 +177,11 @@ func (s *TestSandbox) SetConfigInTestData(pathUnderTestdata string) {
 // The stdout and stderr are captured, printed and returned
 // args will be passed to the appsody command
 func RunAppsody(t *TestSandbox, args ...string) (string, error) {
-
-	if t.Verbose && !(inArray(args, "-v") || inArray(args, "--verbose")) {
+	if t.Verbose && !(cmd.InArray(args, "-v") || cmd.InArray(args, "--verbose")) {
 		args = append(args, "-v")
 	}
 
-	if !inArray(args, "--config") {
+	if !cmd.InArray(args, "--config") {
 		// Set appsody args to use custom home directory.
 		args = append(args, "--config", t.ConfigFile)
 	}
@@ -405,4 +396,21 @@ func cleanUpTestDepDockerVolumes(t *testing.T, testDir string) {
 		t.Logf("WARNING - error cleaning up test volumes created: %v", err)
 	}
 
+}
+
+//ZandPDevLocal - Adds dev.local repo to the config repo.yaml
+func ZAndPDevLocal(t *testing.T, sandbox *TestSandbox) {
+	stackList := GetEnvStacksList()
+	if stackList == "dev.local/starter" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			t.Fatal(err)
+		}
+		devlocal := filepath.Join(home, ".appsody", "stacks", "dev.local", "dev.local-index.yaml")
+		devlocalPath := "file://" + devlocal
+		_, err = RunAppsody(sandbox, "repo", "add", "dev.local", devlocalPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 }

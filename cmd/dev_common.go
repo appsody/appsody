@@ -55,7 +55,7 @@ func checkDockerRunOptions(options []string, config *RootCommandConfig) error {
 		}
 		if value == "-v" || value == "--volume" {
 			var p ProjectFile
-			project, _, err := p.ensureProjectIDAndEntryExists(config)
+			project, _, err := p.EnsureProjectIDAndEntryExists(config)
 			if err != nil {
 				return err
 			}
@@ -204,7 +204,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 
 	// Mount the APPSODY_DEPS cache volume if it exists
-	depsEnvVars, envErr := getDepVolumeArgs(config.RootCommandConfig)
+	depsEnvVars, envErr := GetDepVolumeArgs(config.RootCommandConfig)
 	if envErr != nil {
 		return envErr
 	}
@@ -213,7 +213,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		var project ProjectFile
 
 		//add volumes to project entry of current Appsody project
-		volumeMaps, err = project.addDepsVolumesToProjectEntry(depsEnvVars, volumeMaps, config.RootCommandConfig)
+		volumeMaps, err = project.AddDepsVolumesToProjectEntry(depsEnvVars, volumeMaps, config.RootCommandConfig)
 		if err != nil {
 			return err
 		}
@@ -379,6 +379,21 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return portsErr
 		}
 
+		codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
+		var debugPort string
+		var debugPortErr error
+		if codeWindProjectID != "" {
+			debugPort, debugPortErr = GetEnvVar("APPSODY_DEBUG_PORT", config.RootCommandConfig)
+			if debugPortErr != nil || debugPort == "" {
+				config.Debug.log("No debug port found. Continuing...")
+			} else {
+				debugPortExists := InArray(portList, debugPort) //Determine whether port specified in env var has actually been exposed
+				if !debugPortExists {
+					return errors.Errorf("Port: %s specified in APPSODY_DEBUG_PORT could not be found in ports list", debugPort)
+				}
+			}
+		}
+
 		projectDir, err := getProjectDir(config.RootCommandConfig)
 		if err != nil {
 			return err
@@ -397,7 +412,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 		config.Debug.Logf("Docker env vars extracted from docker options: %v", dockerEnvVars)
-		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, dockerEnvVars, depsMount, dryrun)
+		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, debugPort, projectDir, dockerMounts, dockerEnvVars, depsMount, mode, dryrun)
 		if err != nil {
 			return err
 		}
@@ -408,7 +423,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portList, projectDir, dryrun)
+		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portList, debugPort, projectDir, dryrun)
 		if err != nil {
 			return err
 		}
@@ -417,7 +432,6 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
 		if codeWindProjectID == "" {
 			port := getIngressPort(config.RootCommandConfig)
 			// Generate the Ingress only if it makes sense - i.e. there's a port to expose
