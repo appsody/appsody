@@ -236,7 +236,7 @@ Run this command from the root directory of your Appsody project.`,
 	}
 
 	addStackRegistryFlag(deployCmd, &config.RootCommandConfig.StackRegistry, config.RootCommandConfig)
-	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "DEPRECATED - Only generate the deployment manifest file. Do not deploy the project.")
+	deployCmd.PersistentFlags().BoolVar(&config.generate, "generate-only", false, "Only generate the deployment manifest file. Do not deploy the project.")
 	deployCmd.PersistentFlags().BoolVar(&config.nobuild, "no-build", false, "Deploys the application without building a new image or modifying the deployment manifest file.")
 	deployCmd.PersistentFlags().StringVarP(&config.appDeployFile, "file", "f", "app-deploy.yaml", "The file name to use for the deployment manifest.")
 	deployCmd.PersistentFlags().BoolVar(&config.force, "force", false, "DEPRECATED - Force the reuse of the deployment manifest file if one exists.")

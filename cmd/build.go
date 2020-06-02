@@ -545,27 +545,29 @@ func updateDeploymentConfig(config *buildCommandConfig, imageName string, labels
 
 	labels = convertLabelsToKubeFormat(config.LoggingConfig, labels)
 
-	var selectedLabels = make(map[string]string)
-	for _, label := range supportedKubeLabels {
-		if labels[label] != "" {
-			selectedLabels[label] = labels[label]
-			delete(labels, label)
+	if !config.generateOnly {
+		var selectedLabels = make(map[string]string)
+		for _, label := range supportedKubeLabels {
+			if labels[label] != "" {
+				selectedLabels[label] = labels[label]
+				delete(labels, label)
+			}
 		}
-	}
 
-	if deploymentManifest.Labels == nil {
-		deploymentManifest.Labels = selectedLabels
-	} else {
-		for key, value := range selectedLabels {
-			deploymentManifest.Labels[key] = value
+		if deploymentManifest.Labels == nil {
+			deploymentManifest.Labels = selectedLabels
+		} else {
+			for key, value := range selectedLabels {
+				deploymentManifest.Labels[key] = value
+			}
 		}
-	}
 
-	if deploymentManifest.Annotations == nil {
-		deploymentManifest.Annotations = labels
-	} else {
-		for key, value := range labels {
-			deploymentManifest.Annotations[key] = value
+		if deploymentManifest.Annotations == nil {
+			deploymentManifest.Annotations = labels
+		} else {
+			for key, value := range labels {
+				deploymentManifest.Annotations[key] = value
+			}
 		}
 	}
 
