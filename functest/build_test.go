@@ -224,7 +224,7 @@ func TestBuildLabels(t *testing.T) {
 		t.Errorf("Expected commit message \"%s\" but found \"%s\"", commitMessage, labelsMap[appsodyCommitKey+"message"])
 	}
 
-	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, "", false})
+	checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), "", imageName, "", false}, true)
 
 	//delete the image
 	deleteImage(imageName, "docker", t)
@@ -332,7 +332,7 @@ func TestDeploymentConfig(t *testing.T) {
 			t.Error("appsody build command returned err: ", err)
 		}
 
-		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, "", true})
+		checkDeploymentConfig(t, expectedDeploymentConfig{filepath.Join(sandbox.ProjectDir, deployFile), pullURL, imageName, "", true}, true)
 
 		//delete the image
 		deleteImage(imageName, "docker", t)
@@ -403,7 +403,7 @@ func TestKnativeFlagOnBuild(t *testing.T) {
 					t.Error("appsody build command returned err: ", err)
 				}
 				expectedImageName := "dev.local/" + sandbox.ProjectName
-				checkDeploymentConfig(t, expectedDeploymentConfig{deployFilePath, "", expectedImageName, "", tt.appDeployExpected})
+				checkDeploymentConfig(t, expectedDeploymentConfig{deployFilePath, "", expectedImageName, "", tt.appDeployExpected}, true)
 
 				//delete the image
 				deleteImage(expectedImageName, "docker", t)
@@ -419,7 +419,7 @@ func makeKnativeAppDeployYaml(destination string, createKnativeService bool) err
 	return writeAppDeployYaml(destination, deploymentManifest)
 }
 
-func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploymentConfig) {
+func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploymentConfig, verifyAgainstImage bool) {
 	deploymentManifest, err := getAppDeployYaml(expectedDeploymentConfig.deployFile, t)
 	if err != nil {
 		t.Errorf("Could not get deployment manifest: %s", err)
@@ -442,8 +442,9 @@ func checkDeploymentConfig(t *testing.T, expectedDeploymentConfig expectedDeploy
 	if deploymentManifest.Namespace != expectedDeploymentConfig.namespace {
 		t.Errorf("Incorrect Namespace in app-deploy.yaml. Expected %s but found %s", expectedDeploymentConfig.namespace, deploymentManifest.Namespace)
 	}
-
-	verifyImageAndConfigLabelsMatch(t, deploymentManifest, expectedDeploymentConfig.imageTag)
+	if verifyAgainstImage {
+		verifyImageAndConfigLabelsMatch(t, deploymentManifest, expectedDeploymentConfig.imageTag)
+	}
 }
 
 func verifyImageAndConfigLabelsMatch(t *testing.T, deploymentManifest cmd.DeploymentManifest, imageTag string) {
@@ -584,7 +585,7 @@ func TestOpenLibertyDeploymentConfig(t *testing.T) {
 	}
 
 	expectedImageName := "dev.local/" + sandbox.ProjectName
-	checkDeploymentConfig(t, expectedDeploymentConfig{deployFilePath, "", expectedImageName, "", false})
+	checkDeploymentConfig(t, expectedDeploymentConfig{deployFilePath, "", expectedImageName, "", false}, true)
 	checkOpenLibertyAppDeployYaml(deployFilePath, t)
 }
 
