@@ -58,7 +58,7 @@ func getENVDockerfile(log *LoggingConfig, stackPath string) (dockerfileStack map
 }
 
 func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
-	optionalEnvironmentVariables := [...]string{"APPSODY_DEBUG", "APPSODY_TEST", "APPSODY_DEPS", "APPSODY_PROJECT_DIR", "APPSODY_MOUNTS", "APPSODY_RUN"}
+	optionalEnvironmentVariables := [...]string{"APPSODY_DEBUG", "APPSODY_TEST", "APPSODY_DEPS", "APPSODY_PROJECT_DIR", "APPSODY_MOUNTS", "APPSODY_RUN", "APPSODY_DEBUG_PORT"}
 
 	stackLintErrorCount := 0
 	stackLintWarningCount := 0
@@ -69,6 +69,7 @@ func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
 	dockerfileStack := getENVDockerfile(log, stackPath)
 
 	variableFound := false
+	appsodyDebugFound := false
 	variable := ""
 
 	for i := 0; i < len(optionalEnvironmentVariables); i++ {
@@ -77,9 +78,16 @@ func lintDockerFileStack(log *LoggingConfig, stackPath string) (int, int) {
 			if k == optionalEnvironmentVariables[i] {
 				variableFound = true
 			}
+			if k == "APPSODY_DEBUG" {
+				appsodyDebugFound = true
+			}
 		}
 		if !variableFound {
-			log.Warning.log("Missing ", variable)
+			errMsg := ""
+			if appsodyDebugFound && optionalEnvironmentVariables[i] == "APPSODY_DEBUG_PORT" {
+				errMsg = ". The APPSODY_DEBUG environment variable was found but no APPSODY_DEBUG_PORT."
+			}
+			log.Warning.log("Missing ", variable, errMsg)
 			stackLintWarningCount++
 		}
 		variableFound = false
