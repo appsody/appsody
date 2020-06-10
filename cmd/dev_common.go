@@ -391,6 +391,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 				if !debugPortExists {
 					return errors.Errorf("Port: %s specified in APPSODY_DEBUG_PORT could not be found in ports list", debugPort)
 				}
+				portList = removeFromArray(portList, debugPort)
 			}
 		}
 
@@ -412,7 +413,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 		config.Debug.Logf("Docker env vars extracted from docker options: %v", dockerEnvVars)
-		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, debugPort, projectDir, dockerMounts, dockerEnvVars, depsMount, mode, dryrun)
+		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, projectDir, dockerMounts, dockerEnvVars, depsMount, mode, dryrun)
 		if err != nil {
 			return err
 		}
@@ -423,7 +424,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portList, debugPort, projectDir, dryrun)
+		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portList, projectDir, dryrun)
 		if err != nil {
 			return err
 		}

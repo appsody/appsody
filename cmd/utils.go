@@ -1173,7 +1173,7 @@ func getExposedPorts(config *RootCommandConfig) ([]string, error) {
 }
 
 //GenDeploymentYaml generates a simple yaml for a plaing K8S deployment
-func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, debugPort string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, mode string, dryrun bool) (fileName string, err error) {
+func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, controllerImageName string, ports []string, pdir string, dockerMounts []string, dockerEnvVars map[string]string, depsMount string, mode string, dryrun bool) (fileName string, err error) {
 
 	// Codewind workspace root dir constant
 	codeWindWorkspace := "/"
@@ -1310,21 +1310,17 @@ func GenDeploymentYaml(log *LoggingConfig, appName string, imageName string, con
 	//Set the containerPort
 	containerPorts := make([]*Port, 0)
 	for i, port := range ports {
-		if port == debugPort {
-			log.Debug.log("Debug port found. Skipping addition to the deployment file...")
-		} else {
-			//KNative only allows a single port entry
-			if i == 0 {
-				yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = containerPorts
-			}
-			log.Debug.Log("Adding port to yaml: ", port)
-			newContainerPort := new(Port)
-			newContainerPort.ContainerPort, err = strconv.Atoi(port)
-			if err != nil {
-				return "", err
-			}
-			yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
+		//KNative only allows a single port entry
+		if i == 0 {
+			yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = containerPorts
 		}
+		log.Debug.Log("Adding port to yaml: ", port)
+		newContainerPort := new(Port)
+		newContainerPort.ContainerPort, err = strconv.Atoi(port)
+		if err != nil {
+			return "", err
+		}
+		yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports = append(yamlMap.Spec.PodTemplate.Spec.Containers[0].Ports, newContainerPort)
 	}
 	//Set the env vars from docker run, if any
 	if len(dockerEnvVars) > 0 {
@@ -1452,7 +1448,7 @@ spec:
 }
 
 //GenServiceYaml returns the file name of a generated K8S Service yaml
-func GenServiceYaml(log *LoggingConfig, appName string, ports []string, debugPort string, pdir string, dryrun bool) (fileName string, err error) {
+func GenServiceYaml(log *LoggingConfig, appName string, ports []string, pdir string, dryrun bool) (fileName string, err error) {
 
 	type Port struct {
 		Name       string `yaml:"name,omitempty"`
@@ -1509,23 +1505,15 @@ func GenServiceYaml(log *LoggingConfig, appName string, ports []string, debugPor
 	service.Spec.Selector = make(map[string]string, 1)
 	service.Spec.Selector["app"] = appName
 	service.Spec.ServiceType = "NodePort"
-	if debugPort != "" {
-		service.Spec.Ports = make([]Port, len(ports)-1)
-	} else {
-		service.Spec.Ports = make([]Port, len(ports))
-	}
+	service.Spec.Ports = make([]Port, len(ports))
 	for i, port := range ports {
-		if port == debugPort {
-			log.Debug.log("Debug port found. Skipping addition to the deployment file...")
-		} else {
-			service.Spec.Ports[i].Name = fmt.Sprintf("port-%d", i)
-			iPort, err := strconv.Atoi(port)
-			if err != nil {
-				return "", err
-			}
-			service.Spec.Ports[i].Port = iPort
-			service.Spec.Ports[i].TargetPort = iPort
+		service.Spec.Ports[i].Name = fmt.Sprintf("port-%d", i)
+		iPort, err := strconv.Atoi(port)
+		if err != nil {
+			return "", err
 		}
+		service.Spec.Ports[i].Port = iPort
+		service.Spec.Ports[i].TargetPort = iPort
 	}
 
 	yamlStr, err := yaml.Marshal(&service)
@@ -3001,4 +2989,13 @@ func (p *ProjectFile) cleanupDockerVolumes(config *RootCommandConfig) error {
 		}
 	}
 	return nil
+}
+
+func removeFromArray(s []string, r string) []string {
+	for i, v := range s {
+		if v == r {
+			return append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
 }
