@@ -382,6 +382,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		codeWindProjectID := os.Getenv("CODEWIND_PROJECT_ID")
 		var debugPort string
 		var debugPortErr error
+		var portsNoDebug []string
 		if codeWindProjectID != "" {
 			debugPort, debugPortErr = GetEnvVar("APPSODY_DEBUG_PORT", config.RootCommandConfig)
 			if debugPortErr != nil || debugPort == "" {
@@ -390,6 +391,13 @@ func commonCmd(config *devCommonConfig, mode string) error {
 				debugPortExists := InArray(portList, debugPort) //Determine whether port specified in env var has actually been exposed
 				if !debugPortExists {
 					return errors.Errorf("Port: %s specified in APPSODY_DEBUG_PORT could not be found in ports list", debugPort)
+				}
+				for _, port := range portList {
+					if port == debugPort {
+						config.Debug.log("Skipping debug port")
+					} else {
+						portsNoDebug = append(portsNoDebug, port)
+					}
 				}
 			}
 		}
@@ -412,7 +420,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 			return err
 		}
 		config.Debug.Logf("Docker env vars extracted from docker options: %v", dockerEnvVars)
-		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portList, debugPort, projectDir, dockerMounts, dockerEnvVars, depsMount, mode, dryrun)
+		deploymentYaml, err := GenDeploymentYaml(config.LoggingConfig, config.containerName, platformDefinition, controllerImageName, portsNoDebug, projectDir, dockerMounts, dockerEnvVars, depsMount, mode, dryrun)
 		if err != nil {
 			return err
 		}
@@ -423,7 +431,7 @@ func commonCmd(config *devCommonConfig, mode string) error {
 		if err != nil {
 			return err
 		}
-		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portList, debugPort, projectDir, dryrun)
+		serviceYaml, err := GenServiceYaml(config.LoggingConfig, config.containerName, portsNoDebug, projectDir, dryrun)
 		if err != nil {
 			return err
 		}
