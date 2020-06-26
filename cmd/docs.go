@@ -48,7 +48,7 @@ func generateDoc(log *LoggingConfig, commandDocFile string, rootCmd *cobra.Comma
 	}
 
 	defer docFile.Close()
-	preAmble := "---\ntitle: CLI Reference\n---\n\n# Appsody CLI\n"
+	preAmble := "---\ntitle: CLI Commands\n---\n\n# Appsody CLI\n"
 	preAmbleBytes := []byte(preAmble)
 	_, preambleErr := docFile.Write(preAmbleBytes)
 	if preambleErr != nil {
