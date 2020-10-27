@@ -2401,7 +2401,12 @@ func CheckStackRequirements(log *LoggingConfig, requirementArray map[string]stri
 			}
 			runVersionCmd = VERSION
 		} else {
-			cmd := exec.Command(strings.ToLower(technology), "version")
+			var cmd *exec.Cmd
+			if strings.ToLower(technology) == "docker" {
+				cmd = exec.Command(strings.ToLower(technology), "version", "--format", "{{.Client.Version}}")
+			} else {
+				cmd = exec.Command(strings.ToLower(technology), "version")
+			}
 			runVersionCmd, err = SeparateOutput(cmd)
 			if err != nil {
 				log.Error.log(err, " - Are you sure ", technology, " is installed?")
