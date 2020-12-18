@@ -5,12 +5,7 @@
 
 ![Twitter Follow](https://img.shields.io/twitter/follow/appsodydev?style=social)
 
-## Welcome to Appsody!
-<https://appsody.dev>
-
-#### Compose a cloud native masterpiece.
-
-Infused with cloud native capabilities from the moment you start, Appsody provides everything you need to iteratively develop applications, ready for deployment to Kubernetes environments. Teams are empowered with sharable technology stacks, configurable and controllable through a central hub.
+## Development of Appsody as a standalone project has ended, but the core technologies of Appsody have been merged with odo to create odo 2.0! See our [blog post](https://appsody.dev/blogs/DevelopmentEnded) for more details!
 
 See the [documentation](https://appsody.dev/docs) for more details:
 * [Quick Start](https://appsody.dev/docs/getting-started/quick-start)
