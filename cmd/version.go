@@ -16,6 +16,9 @@ package cmd
 
 import (
 	"errors"
+	"os"
+	"strings"
+
 	"github.com/spf13/cobra"
 )
 
@@ -23,13 +26,34 @@ func newVersionCmd(log *LoggingConfig, rootCmd *cobra.Command) *cobra.Command {
 	// versionCmd represents the version command
 	var versionCmd = &cobra.Command{
 		Use:   "version",
-		Short: "Show the version of the Appsody CLI.",
-		Long:  `Show the version of the Appsody CLI that is currently in use.`,
+		Short: "Show the version of the Appsody CLI and Controller.",
+		Long:  `Show the version of the Appsody CLI and Controller that is currently in use.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				return errors.New("Unexpected argument. Use 'appsody [command] --help' for more information about a command")
 			}
+			// default value in main.go is vlatest
 			log.Info.log(rootCmd.Use, " ", VERSION)
+			overrideControllerImage := os.Getenv("APPSODY_CONTROLLER_IMAGE")
+			if overrideControllerImage == "" {
+				log.Debug.Log("Using default controller image...")
+				overrideVersion := os.Getenv("APPSODY_CONTROLLER_VERSION")
+				if overrideVersion != "" {
+					CONTROLLERVERSION = overrideVersion
+				}
+			} else {
+				log.Info.Log("Overriding default controller image with: " + overrideControllerImage)
+				imageSplit := strings.Split(overrideControllerImage, ":")
+				if len(imageSplit) == 1 {
+					// this is an implicit reference to latest
+					CONTROLLERVERSION = "latest"
+				} else {
+					CONTROLLERVERSION = imageSplit[1]
+					//This also could be latest
+				}
+			}
+			// default value in main.go is latest
+			log.Info.log("appsody-controller", " ", CONTROLLERVERSION)
 			return nil
 		},
 	}
