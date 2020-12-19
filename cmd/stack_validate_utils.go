@@ -16,11 +16,12 @@ package cmd
 import (
 	"bufio"
 	"bytes"
-	"log"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
 )
 
 // RunAppsodyCmdExec runs the appsody CLI with the given args in a new process
@@ -28,46 +29,18 @@ import (
 // args will be passed to the appsody command
 // workingDir will be the directory the command runs in
 func RunAppsodyCmdExec(args []string, workingDir string, rootConfig *RootCommandConfig) (string, error) {
-	execDir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		// replace the original working directory when this function completes
-		err := os.Chdir(execDir)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
 
-	// set the working directory
-	if err := os.Chdir(workingDir); err != nil {
-		return "", err
-	}
+	rootConfig.ProjectDir = workingDir
 
-	executable, _ := os.Executable()
-
-	cmdArgs := []string{executable}
-	if rootConfig.Verbose {
-		cmdArgs = append(cmdArgs, "-v")
-	}
-	cmdArgs = append(cmdArgs, args...)
-	rootConfig.LoggingConfig.Info.log(cmdArgs)
-
-	execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	outReader, outWriter, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		// Make sure to close the writer first or this will hang on Windows
-		outWriter.Close()
-		outReader.Close()
-	}()
-	execCmd.Stdout = outWriter
-	execCmd.Stderr = outWriter
-	outScanner := bufio.NewScanner(outReader)
+	// // Buffer cmd output, to be logged if there is a failure
 	var outBuffer bytes.Buffer
+	// Direct cmd console output to a buffer
+	outReader, outWriter := io.Pipe()
+
+	// copy the output to the buffer, and also to the test log
+	outScanner := bufio.NewScanner(outReader)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for outScanner.Scan() {
 			out := outScanner.Bytes()
@@ -75,19 +48,20 @@ func RunAppsodyCmdExec(args []string, workingDir string, rootConfig *RootCommand
 			outBuffer.WriteByte('\n')
 			rootConfig.LoggingConfig.Info.logf(string(out))
 		}
+		wg.Done()
 	}()
 
-	err = execCmd.Start()
+	rootConfig.Info.Log("Running appsody in the test sandbox with args: ", args)
+	err := ExecuteE("vlatest", "latest", rootConfig.ProjectDir, outWriter, outWriter, args)
 	if err != nil {
-		return "", err
+		rootConfig.Error.Log("Error returned from appsody command: ", err)
 	}
 
-	// replace the original working directory when this function completes
-	err = os.Chdir(execDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = execCmd.Wait()
+	// close the writer first, so it sends an EOF to the scanner above,
+	// then wait for the scanner to finish before closing the reader
+	outWriter.Close()
+	wg.Wait()
+	outReader.Close()
 
 	return outBuffer.String(), err
 }
