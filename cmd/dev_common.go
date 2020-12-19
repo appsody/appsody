@@ -310,8 +310,8 @@ func commonCmd(config *devCommonConfig, mode string) error {
 	}
 	if runAsLocal && runtime.GOOS != "windows" {
 		current, _ := user.Current()
-		cmdArgs = append(cmdArgs, "-u", fmt.Sprintf("%s:%s", current.Uid, current.Gid))
-		cmdArgs = append(cmdArgs, "-e", fmt.Sprintf("APPSODY_USER=%s", current.Uid), "-e", fmt.Sprintf("APPSODY_GROUP=%s", current.Gid))
+		cmdArgs = append(cmdArgs, "-u", fmt.Sprintf("%s:0", current.Uid))
+		cmdArgs = append(cmdArgs, "-e", fmt.Sprintf("APPSODY_USER=%s", current.Uid), "-e", "APPSODY_GROUP=0")
 	}
 
 	if len(volumeMaps) > 0 {
